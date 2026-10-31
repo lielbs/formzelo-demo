@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" font-family="Rubik, 'Segoe UI', Arial, sans-serif">
+  <title>Formangle by RockStack</title>
+  <rect width="420" height="80" rx="16" fill="#18212D"/>
+  <g transform="translate(8 8)"><rect width="64" height="64" rx="15" fill="#2A3442"/><path d="M17 14h31l-6 9H26v7h13l-5.5 8H26v12h-9z" fill="#fff"/><path d="M50 50H34l16-16z" fill="#E96B3D"/></g>
+  <text x="88" y="54" font-size="40" font-weight="600" letter-spacing="-0.8" fill="#FFFFFF">Form<tspan fill="#E96B3D">angle</tspan></text>
+  <text x="300" y="54" font-size="15" font-weight="500" fill="#9CA3AF">by RockStack</text>
+</svg>

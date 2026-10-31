@@ -7,6 +7,8 @@ import { BOOKING_STAGES, bookingState, CUSTOMER_CANCELLABLE } from '../engine/bo
 import { completionOf, safeExternalUrl } from '../engine/completion';
 import { formatCurrency, formatDateTime } from '../lib/format';
 import { BrandRow } from './parts';
+import { DigitalPresence, ReviewRequest } from './presence';
+import { presenceOf, reviewLink, shouldAskForReview } from '../engine/presence';
 
 const REVIEWED: WorkflowRun['status'][] = ['in_review', 'approved', 'rejected', 'completed', 'cancelled'];
 const DECIDED: WorkflowRun['status'][] = ['approved', 'rejected', 'completed', 'cancelled'];
@@ -158,7 +160,7 @@ export function Confirmation({
             {c.externalLabel || 'מעבר לעמוד התשלום של העסק'}
           </a>
         )}
-        {externalUrl && <p className="fz-help text-center">אתר חיצוני ({new URL(externalUrl).hostname}). Formzelo אינו מעבד את התשלום ואינו יודע אם בוצע.</p>}
+        {externalUrl && <p className="fz-help text-center">אתר חיצוני ({new URL(externalUrl).hostname}). Formangle אינו מעבד את התשלום ואינו יודע אם בוצע.</p>}
 
         <div className="fz-review mt-5">
           <dl className="fz-review-section !py-2">
@@ -215,6 +217,9 @@ export function Confirmation({
           </ol>
         </section>
         {booking && onCancelBooking && CUSTOMER_CANCELLABLE.includes(run.status) && <CancelBooking onCancel={onCancelBooking} />}
+        {/* Engagement comes after the confirmation details, never instead of them. */}
+        <DigitalPresence theme={theme} slot="completion" title={booking && !booking.confirmed ? 'בינתיים, אפשר להכיר אותנו' : 'נשארים בקשר'} />
+        {shouldAskForReview({ enabled: presenceOf(theme.presence).reviewCta, hasReviewLink: Boolean(reviewLink(theme.presence?.links ?? [])), status: run.status }) && <ReviewRequest theme={theme} />}
         <p className="fz-help mt-5 text-center">אפשר לרענן את הדף — הבקשה נשמרה מקומית בדפדפן זה.</p>
       </section>
     </div>

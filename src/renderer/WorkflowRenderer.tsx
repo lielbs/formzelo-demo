@@ -19,6 +19,7 @@ import { validateFields, type FieldErrors } from '../engine/validation';
 import { ThemeScope } from '../theme/ThemeScope';
 import { recommendTheme } from '../theme/resolver';
 import { fieldDomId, FieldInput } from './FieldInput';
+import { DigitalPresence } from './presence';
 import { CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
 
 export interface RendererProps {
@@ -287,6 +288,7 @@ export function WorkflowRenderer({
           >
             {editorial && booking ? <ReservationCard config={config} values={values} /> : editorial && pricing ? <PriceCard config={config} price={price} values={values} /> : null}
           </Hero>
+          <DigitalPresence theme={theme} slot="header" interactive={mode === 'live'} />
         </div>
 
         <form
@@ -467,6 +469,7 @@ export function WorkflowRenderer({
               )}
             </div>
           </div>
+          <DigitalPresence theme={theme} slot="footer" interactive={mode === 'live'} />
         </form>
 
         {(pricing || booking) && (

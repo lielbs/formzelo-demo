@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Organization } from '../domain/schema';
 import { LocalStorageRepository } from './localRepository';
-import type { FormzeloRepository } from './repository';
+import type { FormangleRepository } from './repository';
 
 interface RepoState {
-  repo: FormzeloRepository;
+  repo: FormangleRepository;
   /** Increments on every write (this tab or another) so queries refetch. */
   revision: number;
   ready: boolean;
@@ -17,7 +17,7 @@ interface RepoState {
 const RepoContext = createContext<RepoState | null>(null);
 
 // Single repository instance for the app. Swap this line for a SupabaseRepository later.
-const repository: FormzeloRepository = new LocalStorageRepository();
+const repository: FormangleRepository = new LocalStorageRepository();
 
 export function RepoProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
@@ -44,7 +44,7 @@ export function RepoProvider({ children }: { children: ReactNode }) {
         setActiveOrgId(active ?? list[0]?.id ?? null);
         setReady(true);
       } catch (err) {
-        console.error('[formzelo] boot failed', err);
+        console.error('[formangle] boot failed', err);
         if (!cancelled) setBootError(err instanceof Error ? err.message : 'שגיאה בטעינת הנתונים המקומיים');
       }
     })();
@@ -94,7 +94,7 @@ export interface QueryState<T> {
 }
 
 /** Minimal async query hook. Refetches on any repository write and when deps change. */
-export function useRepoQuery<T>(fn: (repo: FormzeloRepository) => Promise<T>, deps: unknown[]): QueryState<T> {
+export function useRepoQuery<T>(fn: (repo: FormangleRepository) => Promise<T>, deps: unknown[]): QueryState<T> {
   const { repo, revision } = useRepo();
   const [state, setState] = useState<{ data: T | undefined; loading: boolean; error: Error | null }>({
     data: undefined,
@@ -118,7 +118,7 @@ export function useRepoQuery<T>(fn: (repo: FormzeloRepository) => Promise<T>, de
       .current(repo)
       .then((data) => !cancelled && setState({ data, loading: false, error: null }))
       .catch((error: unknown) => {
-        console.error('[formzelo] query failed', error);
+        console.error('[formangle] query failed', error);
         if (!cancelled) setState({ data: undefined, loading: false, error: error instanceof Error ? error : new Error(String(error)) });
       });
     return () => {

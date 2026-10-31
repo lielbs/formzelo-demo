@@ -46,6 +46,7 @@ export function BrandShowcase() {
     logoPlacement: placement,
     decorations: decor,
     personality: 'floral_boutique',
+    links: [],
     updatedAt: '2026-01-01T00:00:00.000Z',
   };
   const theme = effectiveTheme({ ...buildTheme('floral_boutique'), inheritBrand: true }, kit);

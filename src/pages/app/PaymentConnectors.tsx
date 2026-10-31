@@ -35,7 +35,7 @@ export function PaymentConnectors() {
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-xs text-ink-soft">בגרסת ייצור כל ספק יחובר בצד השרת דרך ממשק PaymentProviderAdapter, עם דף סליקה מאובטח של הספק ואימות webhooks. פרטי אשראי לעולם לא יוזנו בטפסי Formzelo.</p>
+      <p className="mt-4 text-xs text-ink-soft">בגרסת ייצור כל ספק יחובר בצד השרת דרך ממשק PaymentProviderAdapter, עם דף סליקה מאובטח של הספק ואימות webhooks. פרטי אשראי לעולם לא יוזנו בטפסי Formangle.</p>
     </Card>
   );
 }

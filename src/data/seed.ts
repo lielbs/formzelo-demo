@@ -20,6 +20,7 @@ import { buildSubmission, nextReference, statusNotification, submitNotifications
 import { TEMPLATES, type TemplateKey } from '../engine/templates';
 import { STATUS_LABELS } from '../engine/transitions';
 import { toRunAnswers } from '../engine/validation';
+import type { PresenceLink, PresenceSettings } from '../domain/theme';
 import { isoDay } from '../lib/format';
 import { brandKitFromTheme, defaultBrandKit, freezeTheme } from '../theme/brand';
 import { recommendTheme } from '../theme/resolver';
@@ -29,6 +30,45 @@ export const DEMO_ORG_IDS = { bloom: 'org_bloom', autocare: 'org_autocare', urba
 export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events', booking: 'urban-table-booking', contest: 'valley-run' } as const;
 /** Stable open case so the landing page can link straight to a live garage approval. */
 export const DEMO_GARAGE_CASE_ID = 'run_demo_garage_case';
+
+
+/**
+ * Sample business links for the fictional demo workspaces. Every one is flagged
+ * `sample`, so customers see a labelled, NON-clickable preview — demo visitors are
+ * never sent to real, unrelated accounts. Domains use reserved names (.example,
+ * example.com) and fictional 555 numbers wherever the platform allows it.
+ */
+const L = (id: string, platform: PresenceLink['platform'], value: string, extra: Partial<PresenceLink> = {}): PresenceLink => ({ id, platform, value, enabled: true, sample: true, ...extra });
+
+export const DEMO_LINKS: Record<string, PresenceLink[]> = {
+  [DEMO_ORG_IDS.bloom]: [
+    L('lnk_bloom_ig', 'instagram', '@bloom.studio.demo'),
+    L('lnk_bloom_web', 'website', 'https://bloom-studio.example'),
+    L('lnk_bloom_wa', 'whatsapp', '050-555-0100'),
+    L('lnk_bloom_tel', 'phone', '03-555-0100'),
+    L('lnk_bloom_review', 'google_review', 'https://g.page/r/DEMO-BLOOM/review'),
+  ],
+  [DEMO_ORG_IDS.autocare]: [
+    L('lnk_auto_waze', 'waze', 'https://waze.com/ul/autocare-demo'),
+    L('lnk_auto_wa', 'whatsapp', '050-555-0177'),
+    L('lnk_auto_tel', 'phone', '03-555-0177'),
+    L('lnk_auto_maps', 'google_maps', 'https://maps.app.goo.gl/autocare-demo'),
+    L('lnk_auto_review', 'google_review', 'https://g.page/r/DEMO-AUTOCARE/review'),
+  ],
+  [DEMO_ORG_IDS.urban]: [
+    L('lnk_urban_ig', 'instagram', '@urban.table.demo'),
+    L('lnk_urban_maps', 'google_maps', 'https://maps.app.goo.gl/urban-table-demo'),
+    L('lnk_urban_web', 'website', 'https://urban-table.example'),
+    L('lnk_urban_tel', 'phone', '03-555-0133'),
+    L('lnk_urban_tt', 'tiktok', '@urban.table.demo'),
+  ],
+  [DEMO_ORG_IDS.valley]: [
+    L('lnk_valley_web', 'website', 'https://valley-run.example'),
+    L('lnk_valley_ig', 'instagram', '@valley.run.demo'),
+    L('lnk_valley_fb', 'facebook', 'https://facebook.com/valley.run.demo'),
+    L('lnk_valley_rules', 'custom', 'https://valley-run.example/rules', { label: 'תקנון המרוץ', description: 'כללים, ציוד ומסלולים', icon: 'link' }),
+  ],
+};
 
 const DAY = 86_400_000;
 
@@ -62,6 +102,8 @@ interface Ctx {
   rand: () => number;
   /** The first workflow added defines the workspace brand kit. */
   kitFromWorkflow?: boolean;
+  /** Brand Kit links for the workspace (set before the first workflow is frozen). */
+  links?: PresenceLink[];
 }
 
 function org(id: string, slug: string, name: string, industry: string, tagline: string, color: string, email: string, now: number): Organization {
@@ -90,7 +132,7 @@ function emptyData(organization: Organization): OrgData {
 
 function addWorkflow(
   ctx: Ctx,
-  opts: { slug: string; templateKey: TemplateKey; status: Workflow['status']; config?: WorkflowConfig; daysAgo: number },
+  opts: { slug: string; templateKey: TemplateKey; status: Workflow['status']; config?: WorkflowConfig; daysAgo: number; presence?: Omit<PresenceSettings, 'links'> },
 ): { workflow: Workflow; version?: WorkflowVersion } {
   const config = opts.config ?? TEMPLATES[opts.templateKey].build();
   const at = new Date(ctx.now - opts.daysAgo * DAY).toISOString();
@@ -101,7 +143,7 @@ function addWorkflow(
     status: opts.status,
     templateKey: opts.templateKey,
     draft: config,
-    design: { ...recommendTheme({ templateKey: opts.templateKey, title: config.title, description: config.description, industry: ctx.data.organization.industry }).theme, inheritBrand: true },
+    design: { ...recommendTheme({ templateKey: opts.templateKey, title: config.title, description: config.description, industry: ctx.data.organization.industry }).theme, inheritBrand: true, ...(opts.presence ? { presence: opts.presence } : {}) },
     hasUnpublishedChanges: false,
     isDemo: true,
     createdAt: at,
@@ -109,7 +151,7 @@ function addWorkflow(
   };
   if (!ctx.kitFromWorkflow) {
     const o = ctx.data.organization;
-    ctx.data.brandKit = brandKitFromTheme(o.name, o.tagline, workflow.design, at);
+    ctx.data.brandKit = { ...brandKitFromTheme(o.name, o.tagline, workflow.design, at), links: structuredClone(ctx.links ?? DEMO_LINKS[o.id] ?? []) };
     ctx.kitFromWorkflow = true;
   }
   ctx.data.workflows.push(workflow);
@@ -212,7 +254,13 @@ function addRun(
 
 function seedBloom(now: number): OrgData {
   const ctx: Ctx = { data: emptyData(org(DEMO_ORG_IDS.bloom, 'bloom-studio', 'Bloom Studio', 'חנות פרחים', 'זרים בעבודת יד, משלוחים בעיר', '#B84C6E', 'hello@bloom.example.com', now)), now, rand: rng(11) };
-  const flowers = addWorkflow(ctx, { slug: DEMO_SLUGS.flowers, templateKey: 'flower_order', status: 'published', daysAgo: 30 });
+  const flowers = addWorkflow(ctx, {
+    slug: DEMO_SLUGS.flowers,
+    templateKey: 'flower_order',
+    status: 'published',
+    daysAgo: 30,
+    presence: { visibility: 'selected', selected: ['lnk_bloom_ig', 'lnk_bloom_web', 'lnk_bloom_wa'], placement: 'footer_completion', style: 'icon_label', reviewCta: true },
+  });
   const workshopConfig = TEMPLATES.generic.build();
   workshopConfig.title = 'הרשמה לסדנת זרים';
   workshopConfig.description = 'טיוטה: סדנת קיץ לקבוצות קטנות.';
@@ -263,7 +311,13 @@ function seedBloom(now: number): OrgData {
 
 function seedAutoCare(now: number): OrgData {
   const ctx: Ctx = { data: emptyData(org(DEMO_ORG_IDS.autocare, 'autocare', 'AutoCare Garage', 'מוסך', 'שירות ותיקונים לכל סוגי הרכב', '#2F5D8A', 'service@autocare.example.com', now)), now, rand: rng(22) };
-  const repairs = addWorkflow(ctx, { slug: DEMO_SLUGS.garage, templateKey: 'garage_repairs', status: 'published', daysAgo: 28 });
+  const repairs = addWorkflow(ctx, {
+    slug: DEMO_SLUGS.garage,
+    templateKey: 'garage_repairs',
+    status: 'published',
+    daysAgo: 28,
+    presence: { visibility: 'selected', selected: ['lnk_auto_waze', 'lnk_auto_wa', 'lnk_auto_tel', 'lnk_auto_maps'], placement: 'completion', style: 'cards', reviewCta: true },
+  });
   const cars = ['טויוטה קורולה 2019', 'יונדאי i30 2021', 'מאזדה 3 2018', 'קיה פיקנטו 2020', 'סקודה אוקטביה 2017', 'שברולט ספארק 2016'];
   const decide = (a: boolean) => (a ? 'approved' : 'declined');
   const plan: [RunStatus, number, [boolean, boolean, boolean]][] = [
@@ -300,7 +354,13 @@ function seedAutoCare(now: number): OrgData {
 
 function seedUrban(now: number): OrgData {
   const ctx: Ctx = { data: emptyData(org(DEMO_ORG_IDS.urban, 'urban-table', 'Urban Table', 'מסעדה', 'מטבח עונתי ואירועים פרטיים', '#3A8A78', 'events@urbantable.example.com', now)), now, rand: rng(33) };
-  const events = addWorkflow(ctx, { slug: DEMO_SLUGS.events, templateKey: 'restaurant_event', status: 'published', daysAgo: 26 });
+  const events = addWorkflow(ctx, {
+    slug: DEMO_SLUGS.events,
+    templateKey: 'restaurant_event',
+    status: 'published',
+    daysAgo: 26,
+    presence: { visibility: 'selected', selected: ['lnk_urban_ig', 'lnk_urban_maps', 'lnk_urban_web'], placement: 'completion', style: 'cards', reviewCta: false },
+  });
   const holiday = TEMPLATES.restaurant_event.build();
   holiday.title = 'תפריט חג — 2025';
   addWorkflow(ctx, { slug: 'urban-holiday-2025', templateKey: 'restaurant_event', status: 'archived', config: holiday, daysAgo: 35 });
@@ -354,7 +414,14 @@ const BOOKING_PLAN: [RunStatus, number, number, string, number][] = [
 
 /** Urban Table booking requests demo. Also used by the v2 → v3 migration for existing browsers. */
 function addBookingDemo(ctx: Ctx) {
-  const booking = addWorkflow(ctx, { slug: DEMO_SLUGS.booking, templateKey: 'table_booking', status: 'published', daysAgo: 12 });
+  const booking = addWorkflow(ctx, {
+    slug: DEMO_SLUGS.booking,
+    templateKey: 'table_booking',
+    status: 'published',
+    daysAgo: 12,
+    // A booking request is not a delivered service: no review request here.
+    presence: { visibility: 'selected', selected: ['lnk_urban_maps', 'lnk_urban_tel', 'lnk_urban_ig'], placement: 'footer_completion', style: 'icon_label', reviewCta: false },
+  });
   const openDay = (offset: number) => {
     // Shift forward to the next open day so seeded requests are valid.
     let d = offset;
@@ -406,7 +473,7 @@ const CONTEST_PLAN: [RunStatus, number, string, number, boolean][] = [
 /** Valley Run — community race registration (contest showcase). */
 function seedValley(now: number): OrgData {
   const ctx: Ctx = { data: emptyData(org(DEMO_ORG_IDS.valley, 'valley-run', 'Valley Run', 'אירועי ספורט', 'מרוץ קהילתי לכל הגילים', '#3D3BF3', 'hello@valleyrun.example.com', now)), now, rand: rng(55) };
-  const contest = addWorkflow(ctx, { slug: DEMO_SLUGS.contest, templateKey: 'contest_registration', status: 'published', daysAgo: 18 });
+  const contest = addWorkflow(ctx, { slug: DEMO_SLUGS.contest, templateKey: 'contest_registration', status: 'published', daysAgo: 18, presence: { visibility: 'all', selected: [], placement: 'footer_completion', style: 'icon_label', reviewCta: false } });
   CONTEST_PLAN.forEach(([status, hoursAgo, track, age, payNow], i) => {
     const minor = age < 18;
     addRun(ctx, contest, {

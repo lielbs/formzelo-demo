@@ -1,5 +1,5 @@
 /**
- * Formzelo domain schema — the single source of truth for every entity.
+ * Formangle domain schema — the single source of truth for every entity.
  * Types are inferred from Zod so runtime validation (localStorage parsing,
  * imports) and compile-time types can never drift apart.
  *
@@ -11,13 +11,13 @@ import { BrandKitSchema, WorkflowThemeSchema } from './theme';
 
 /**
  * Data schema version, migrated on read (src/data/migrations.ts). The
- * localStorage key namespace stays `formzelo:v1:`.
+ * localStorage key namespace stays `formzelo:v1:` (historical name, kept so saved data survives the rebrand).
  *  v2: Workflow.design / WorkflowVersion.design + field presentation hints.
  *  v3: per-workspace brand kit, content blocks, optional booking rules and an
  *      explicit completion (payment) mode. New config fields are optional, so
  *      published versions are never rewritten.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const id = z.string().min(1);
 const timestamp = z.string().min(1); // ISO-8601

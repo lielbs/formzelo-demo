@@ -1,5 +1,5 @@
 import { Link2Off, Lock } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Brand';
 import { ButtonLink, Spinner } from '../components/ui';
@@ -8,6 +8,7 @@ import type { WorkflowTheme } from '../domain/theme';
 import { useRepo, useRepoQuery } from '../data/store';
 import { hasOptionCapacity } from '../engine/capacity';
 import { answersToValues } from '../engine/validation';
+import { workflowTitle } from '../lib/meta';
 import { Confirmation } from '../renderer/Confirmation';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { buildTheme } from '../theme/presets';
@@ -16,7 +17,7 @@ import { ThemeScope } from '../theme/ThemeScope';
 const EDITABLE: WorkflowRun['status'][] = ['awaiting_customer', 'changes_requested'];
 const NEUTRAL = buildTheme('modern_minimal');
 
-/** Page frame: the customer's business identity first, a quiet Formzelo credit last. */
+/** Page frame: the customer's business identity first, a quiet Formangle credit last. */
 function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; theme?: WorkflowTheme; orgName?: string }) {
   return (
     <ThemeScope theme={theme} className="fz-page flex flex-col">
@@ -65,6 +66,12 @@ export function PublicFlow() {
     (r) => (pub.data && version ? r.getAssetUrls(pub.data.organization.id, [version.design.logo.assetId, version.design.hero.coverAssetId]) : Promise.resolve({} as Record<string, string>)),
     [pub.data?.organization.id, version?.id],
   );
+
+  // Customers see the business's name in the tab, not the platform's.
+  const tabTitle = pub.data && version ? workflowTitle(version.config.title, pub.data.organization.name) : null;
+  useEffect(() => {
+    if (tabTitle) document.title = tabTitle;
+  }, [tabTitle]);
 
   if (pub.loading || runQ.loading)
     return (

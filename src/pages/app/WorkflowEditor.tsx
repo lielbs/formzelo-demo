@@ -27,6 +27,7 @@ import {
   Rocket,
   Save,
   Settings2,
+  Share2,
   Undo2,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -52,12 +53,14 @@ import { DesignPanel, Toggle } from './editor/DesignPanel';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
 import { FIELD_TYPE_LABELS, FieldListEditor, move } from './editor/FieldEditor';
 import { BookingInspector, CompletionInspector, FieldInspector, NextStepsEditor, Panel, StepInspector } from './editor/Inspector';
+import { PresenceInspector } from './editor/PresenceInspector';
 
 type Selection =
   | { kind: 'workflow' }
   | { kind: 'design' }
   | { kind: 'completion' }
   | { kind: 'booking' }
+  | { kind: 'presence' }
   | { kind: 'publish' }
   | { kind: 'step'; stepId: string }
   | { kind: 'field'; fieldId: string };
@@ -386,6 +389,14 @@ export function WorkflowEditor() {
         <NavItem active={sel.kind === 'booking'} icon={CalendarClock} onClick={() => select({ kind: 'booking' })} badge={config.booking?.enabled ? <Badge tone="teal">פעיל</Badge> : undefined}>
           הזמנות ושעות
         </NavItem>
+        <NavItem
+          active={sel.kind === 'presence'}
+          icon={Share2}
+          onClick={() => select({ kind: 'presence' })}
+          badge={design.presence?.visibility === 'hidden' ? <span className="text-[10px] opacity-70">מוסתר</span> : kit?.links.some((l) => l.enabled) ? <Badge tone="teal">קישורים</Badge> : undefined}
+        >
+          נוכחות דיגיטלית
+        </NavItem>
         <NavItem active={sel.kind === 'publish'} icon={History} onClick={() => select({ kind: 'publish' })} badge={<span className="text-[10px] opacity-70">{versions.length} גרסאות</span>}>
           גרסאות ושיתוף
         </NavItem>
@@ -545,6 +556,15 @@ export function WorkflowEditor() {
             }}
           />
         ) : null;
+      case 'presence':
+        return (
+          <PresenceInspector
+            settings={design.presence}
+            kitLinks={kit?.links ?? []}
+            booking={Boolean(config.booking?.enabled)}
+            onChange={(presence) => apply((s) => void (s.design.presence = presence), 'presence')}
+          />
+        );
       case 'design':
         return (
           <div className="space-y-4">

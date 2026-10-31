@@ -85,7 +85,7 @@ function LivePromptDemo() {
         <span className="h-2.5 w-2.5 rounded-full bg-cloud-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-cloud-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-cloud-300" />
-        <span className="ms-3 text-xs text-ink-soft ltr">formzelo · builder</span>
+        <span className="ms-3 text-xs text-ink-soft ltr">Formangle · builder</span>
       </div>
       <div className="grid gap-0 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-3 border-b border-cloud-200 p-5 md:border-b-0 md:border-e">
@@ -183,7 +183,7 @@ export function Landing() {
         <section className="relative overflow-hidden border-b border-cloud-200 bg-cloud">
           <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:py-20">
             <div>
-              <p className="text-sm font-medium text-orange">מתארים. יוצרים. שולחים.</p>
+              <p className="text-sm font-medium text-orange">לכל עסק יש את הזווית שלו.</p>
               <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-midnight sm:text-5xl lg:text-[54px]">תהליך עסקי יפה, מתיאור של משפט אחד.</h1>
               <ol className="mt-6 max-w-md space-y-3 text-[17px] leading-snug text-ink">
                 {[
@@ -333,7 +333,7 @@ export function Landing() {
 
         <section className="py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-3xl font-semibold tracking-tight text-midnight">למה formzelo</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-midnight">למה Formangle</h2>
             <ul className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
               {BENEFITS.map((b) => (
                 <li key={b.title}>

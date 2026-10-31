@@ -101,7 +101,7 @@ function Sidebar({ onNavigate, pending }: { onNavigate?: () => void; pending: nu
   return (
     <div className="flex h-full flex-col gap-6 bg-midnight px-4 py-5">
       <div className="px-1">
-        <Logo dark to="/" />
+        <Logo dark stacked to="/" />
       </div>
       <WorkspaceSwitcher />
       <ButtonLink to="/app/workflows/new" icon={Plus} onClick={onNavigate} className="w-full">

@@ -2,7 +2,7 @@
   "name": "formzelo-demo",
   "private": true,
   "version": "0.1.0",
-  "description": "Formzelo by RockStack — local demo. Plain-language description to shareable customer workflow.",
+  "description": "Formangle by RockStack — local demo of branded digital business workflows. (Package and repository keep the historical formzelo-demo name for GitHub Pages compatibility.)",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,8 +1,12 @@
-# formzelo by RockStack — local demo
+# Formangle by RockStack — local demo
 
-**כל רעיון הופך לתהליך.** · מתארים. יוצרים. שולחים.
+**לכל עסק יש את הזווית שלו.** · *Every business. A different angle.*
 
-Formzelo turns a business owner's plain-language (Hebrew) description into a shareable, multi-step customer workflow. One schema-driven engine renders every workflow — flower orders, garage repair approvals, restaurant events, document collection, quote requests, or any generic form — with no per-business pages.
+**Formangle** (Form + Angle) is RockStack Digital Solutions' branded digital-workflow and business-process platform: customer-facing workflows (requests, approvals, bookings, registrations, optional payment), business branding and digital presence, and an owner dashboard. It is marketed, configured and supported by RockStack — not a public self-service SaaS. One schema-driven engine renders every workflow — flower orders, garage repair approvals, restaurant events and bookings, contest registrations, document collection, quote requests — with no per-business pages.
+
+> **Naming and compatibility.** The product was previously called *Formzelo*. The repository (`lielbs/formzelo-demo`), the npm package name, the GitHub Pages path (`/formzelo-demo/`) and the browser storage namespace (`formzelo:v1:` / `formzelo:ui:`) intentionally keep the old name so existing links, deep links and every visitor's saved data keep working. Renaming the repository or moving to a Formangle domain is a separate, future decision.
+
+**Brand assets** (local, editable SVG): `public/favicon.svg` (app icon), `public/brand/formangle-mark.svg`, `public/brand/formangle-lockup.svg`, `public/brand/formangle-lockup-dark.svg`; `public/og-image.png` (1200×630 social preview, rendered locally from the same SVG). In code: `src/components/Brand.tsx` (`BrandMark`, `Wordmark`, `Logo` full / compact / stacked, `PRODUCT_NAME`). The mark is an "F" whose arms are cut at one angle, with an orange wedge — a form seen from a different angle. Canonical spelling: **Formangle**.
 
 > **This is a local demo.** It runs entirely in your browser with `localStorage`. There is no server, no account, no AI model, no payments, no real messages and no real reservations. Every simulation is labeled in the UI.
 
@@ -60,7 +64,7 @@ VITE_BASE=/formzelo-demo/ npm run build
 | `/app/workflows` | Search, filter, open, copy link, duplicate, archive/restore. |
 | `/app/workflows/new` | Describe a workflow in Hebrew (or click an example). See detected template + keywords, a live preview, then save as draft. |
 | `/app/workflows/:id` | **Design studio**: structure pane (steps & blocks, reorder, add from the block library) · live canvas (phone / tablet / desktop; click a block to select it) · inspector (block properties, step conditions, workflow details, design, completion & payment, booking rules, versions & share). Undo / redo (Ctrl+Z / Ctrl+Shift+Z), revert, save draft, versioned publish, unsaved-changes guard. |
-| `/app/brand` | **Brand kit**: display name, description, logo + secondary logo + cover (local upload), 4 brand colors with local colour extraction from the logo, typography, button shape, density, logo placement, decorations on/off, default design personality. Live preview on a real workflow. |
+| `/app/brand` | **Brand kit** (incl. **נוכחות דיגיטלית וקישורים עסקיים** — see below): display name, description, logo + secondary logo + cover (local upload), 4 brand colors with local colour extraction from the logo, typography, button shape, density, logo placement, decorations on/off, default design personality. Live preview on a real workflow. |
 | `/app/requests` | Inbox with status tabs, search, workflow filter, payment-state filter (none / quote / outstanding / paid — all simulated), sorting, **תיק חדש** (garage case). |
 | `/app/requests/:id` | Answers, booking card (request vs confirmed), completion & payment summary, price breakdown, approve / reject / request changes / complete / cancel, simulated "mark paid", internal notes, event timeline, notification previews. |
 | `/app/analytics` | Computed live from local runs: per-day chart, approval rate, response time, value per workflow. Toggle **כולל נתוני דמו** to exclude seeded data. |
@@ -117,7 +121,7 @@ src/
     metrics.ts            Objective-aware metrics (bookings, approvals, quotes, registrations, simulated payments)
     runs.ts               Builds a run submission + simulated notification previews
   data/
-    repository.ts         Async FormzeloRepository interface (storage-agnostic contract)
+    repository.ts         Async FormangleRepository interface (storage-agnostic contract)
     localRepository.ts    localStorage implementation: versioned keys, Zod-validated reads, quarantine/recovery, local image assets
     migrations.ts         Pure forward migrations applied on read (v1 → v2 designs, v2 → v3 brand kit + booking demo)
     seed.ts               Fictional demo workspaces
@@ -137,7 +141,7 @@ src/
 Key decisions:
 
 - **One renderer, many businesses.** `WorkflowRenderer` reads a `WorkflowConfig` and handles steps, progress, validation, conditional display, live totals, summary, consent and submission. Flowers, garage and restaurant are only data.
-- **Repository boundary.** Pages only call `FormzeloRepository`. The interface is async so a `SupabaseRepository` (or REST client) can replace `LocalStorageRepository` by changing one line in `src/data/store.tsx`.
+- **Repository boundary.** Pages only call `FormangleRepository`. The interface is async so a `SupabaseRepository` (or REST client) can replace `LocalStorageRepository` by changing one line in `src/data/store.tsx`.
 - **Validation at every boundary.** Every localStorage read is parsed with Zod; every write is validated before persisting; the generator's output is parsed; submissions are re-validated in the repository (not only in the UI).
 - **Immutable versions.** Publishing snapshots the draft into a `WorkflowVersion`. A run stores `versionId` and is always rendered and priced with that version, even after re-publishing.
 - **No arbitrary code.** Conditions use a fixed operator enum; pricing is declarative. Nothing from configuration is ever evaluated as JavaScript.
@@ -190,6 +194,18 @@ Payment.status: none | quote | payment_requested | deposit_requested | paid_simu
 OrgData.brandKit: { displayName, description, logo/secondaryLogo/cover asset ids, palette{primary,secondary,accent,background},
                     typography, button, density, logoPlacement, decorations, personality }
 ```
+
+### Business Engagement Kit (digital presence, schema v5)
+
+Configured once per workspace in **ערכת מותג → נוכחות דיגיטלית וקישורים עסקיים**: Instagram, Facebook, TikTok, WhatsApp, Waze, Google Maps, Google Reviews, website, YouTube, LinkedIn, phone, email and custom links (label, URL, icon, optional description). Each link can be added, edited, cleared, removed, enabled / disabled and reordered, with inline validation and a "will open: …" preview; the live workflow preview on the same page updates as you type. Saving is blocked while an enabled link is invalid, and the repository re-checks every link at the trust boundary.
+
+- **Validation (`src/engine/presence.ts`, pure):** only `https:` (http is upgraded), `tel:`, `mailto:` and normalized `https://wa.me/<digits>` can be produced. `javascript:`, `data:`, `file:` and every other scheme, credentials in URLs, localhost / IP hosts, whitespace and quote characters are rejected. Service links must match the service's hostnames (subdomains such as `m.facebook.com`, `vm.tiktok.com`, `ul.waze.com` allowed; look-alikes such as `instagram.com.evil.example` rejected). `@handle` input expands for Instagram, TikTok and YouTube; Israeli numbers become `972…` for WhatsApp. Links are re-validated every time they are rendered, labels are plain text, and external links open with `target="_blank" rel="noopener noreferrer"`.
+- **Google Reviews:** a dedicated "קישור לכתיבת ביקורת בגוגל" field that accepts only the review-writing link (`g.page/r/…/review` or `search.google.com/local/writereview…`); a Google Maps link pasted there is rejected with an explanation, and the help text explains how to copy the link from the Google Business Profile. The neutral CTA "שתפו את החוויה שלכם בגוגל" appears only when the owner enabled it for that workflow **and** the request was marked **completed** (a delivered service) — never after a mere request, booking inquiry or approval, never filtered by satisfaction, no incentives, no ratings, and the app never claims a review was written.
+- **Per workflow (Design Studio → נוכחות דיגיטלית):** visibility (all / selected / hidden), placement (header, footer, completion, header + completion, footer + completion, all), style (icon row, icon + label, premium action cards, compact mobile navigation) and the review-request toggle. Stored in the draft design, so undo / redo, save draft and the unsaved-changes guard apply. The workflow's primary action stays dominant; engagement links sit outside the form card, and on completion screens below the confirmation details.
+- **Publishing:** the Brand Kit links are resolved and frozen into the published version's design (`WorkflowTheme.presence.links`). Editing the Brand Kit never changes a published version; the owner republishes to apply link changes. Versions published before v5 have no `presence` and look exactly as before.
+- **Demo content:** the four fictional businesses have sample links (Bloom: Instagram / website / WhatsApp / phone / review; AutoCare: Waze / WhatsApp / phone / Maps / review; Urban Table: Instagram / Maps / website / phone / TikTok; Valley Run: website / Instagram / Facebook / custom "תקנון המרוץ"). Every sample link is flagged `sample` and rendered as a labelled, **non-clickable** preview ("קישורי דוגמה של עסק בדיוני — לא פעילים בדמו"), so visitors are never sent to real, unrelated accounts; domains use reserved names (`.example`, `example.com`) and fictional 555 numbers where the platform allows. Editing a sample value turns it into a real, clickable link.
+- **Migration v4 → v5:** brand kits gain a `links` list (empty for real workspaces; the demo workspaces get their sample links). Published versions are untouched. Browsers that already had the demo see the links in drafts and the Brand Kit immediately, and in public flows after a republish or **/demo → איפוס**.
+- **Sales contact ≠ business contact:** the "שליחת פנייה ל-RockStack" CTA always opens `mailto:contact@rockstackds.com` (validated `VITE_CONTACT_EMAIL` override; no public GitHub fallback). A business's own email in its Brand Kit is a separate field shown only inside that business's workflows.
 
 **Schema v4:** no structural change to stored workspaces (version bump only, original kept under `formzelo:v1:pre-v4:*`). On the first read of an older browser's meta, demo workspaces introduced later (currently **Valley Run**) are added alongside existing data — never replacing a workspace, and skipped if their slug is already taken by one of the owner's workflows. New template: `contest_registration`.
 
@@ -262,7 +278,9 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-103 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`):
+126 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`):
+
+- **Business Engagement Kit & rebrand (`presence.test.ts`):** unsafe / local / malformed URLs rejected; http → https; service hostnames incl. mobile and short variants, look-alikes rejected; Google Maps vs review-link separation; tel / mailto / WhatsApp normalization; custom links as plain text; enabled-only, owner order, selected / hidden visibility; placement → slot mapping; review request only for completed services; drafts resolve live links, old designs unchanged; per-workspace persistence and isolation; trust-boundary rejection; freeze at publish, Brand Kit edits need a republish, previous versions unchanged; demo bookings never ask for reviews; v4 → v5 migration; sample links flagged; Formangle name / lockup, page titles (brand vs business), index.html Open Graph tags, no product-facing "Formzelo" left in `src/`; RockStack sales address with validated override and no GitHub fallback; GitHub Pages base path and SPA fallback.
 
 - **Reference prompts (`prompts.test.ts`):** the seven business scenarios above produce the expected template / completion / theme / notes; every labelled example yields a valid workflow with at least medium confidence.
 - **Valley Run & v4 migration (`valley.test.ts`):** valid seed with 8 of 10 half-marathon places held; parent consent shown and enforced only below 18; a track closes when its last places are taken; a v3 browser gains the Valley Run workspace without touching existing runs.
@@ -297,6 +315,8 @@ Earlier browser end-to-end checks (scripted over the DevTools protocol in local 
 - No authentication: anyone using this browser is the "owner". Memberships are simulated.
 - No real AI, messages, payments, signatures or delivery-availability checks. Garage approvals have no legal or e-signature validity.
 - Writes from two tabs at the same moment are last-write-wins per workspace.
+- Real mobile browsers were not used for QA; checks ran in headless Edge with phone-sized viewports.
+- Sample demo links are deliberately inert. Real links work as soon as an owner enters them, but no reachability check is made (no network calls).
 - Uploaded images live only in this browser and count toward the localStorage quota (capped at 1.2 MB per workspace). In production they'd go to object storage.
 - Option illustrations are generic local SVGs, inferred by keywords; they are labelled as illustrative and are not product photos.
 - Browsers that ran the earlier demo keep their data after the upgrade (migrated in place). Their stored demo workflows predate the new presentation hints, so some fields fall back to inferred styling (e.g. a dropdown instead of chips); **/demo → איפוס נתוני הדמו** loads the fully art-directed seeds.

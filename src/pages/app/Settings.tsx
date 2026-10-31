@@ -52,7 +52,7 @@ export function Settings() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `formzelo-${org.slug}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `formangle-${org.slug}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast('קובץ הגיבוי נוצר');

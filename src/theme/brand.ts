@@ -8,11 +8,25 @@
 import type { BrandKit, WorkflowTheme } from '../domain/theme';
 import { WorkflowThemeSchema } from '../domain/theme';
 import { mix } from './color';
+import { presenceOf } from '../engine/presence';
 import { PRESETS } from './presets';
 
-export function effectiveTheme(design: WorkflowTheme, kit: BrandKit | null | undefined): WorkflowTheme {
-  if (!kit || design.inheritBrand !== true) return design;
+/**
+ * Business links belong to the business, not to the colour scheme: a draft shows
+ * the kit's current links whether or not it inherits the brand look. Only a
+ * draft that already has presence settings, or a kit that has links, changes.
+ */
+function withKitLinks(design: WorkflowTheme, kit: BrandKit): WorkflowTheme {
+  if (!design.presence && !kit.links.length) return design;
   const next = structuredClone(design);
+  next.presence = { ...presenceOf(design.presence), links: structuredClone(kit.links) };
+  return next;
+}
+
+export function effectiveTheme(design: WorkflowTheme, kit: BrandKit | null | undefined): WorkflowTheme {
+  if (!kit) return design;
+  if (design.inheritBrand !== true) return withKitLinks(design, kit);
+  const next = withKitLinks(structuredClone(design), kit);
   next.palette = {
     ...next.palette,
     primary: kit.palette.primary,
@@ -56,6 +70,7 @@ export function brandKitFromTheme(name: string, description: string, design: Wor
     logoPlacement: design.logo.placement ?? 'start',
     decorations: design.decoration !== 'none',
     personality: design.presetId,
+    links: [],
     updatedAt: at,
   };
 }

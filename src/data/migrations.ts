@@ -10,7 +10,7 @@ import type { WorkflowTheme } from '../domain/theme';
 import { brandKitFromTheme } from '../theme/brand';
 import { buildTheme, DEFAULT_PRESET } from '../theme/presets';
 import { recommendTheme } from '../theme/resolver';
-import { appendBookingDemo, DEMO_ORG_IDS, DEMO_SLUGS } from './seed';
+import { appendBookingDemo, DEMO_LINKS, DEMO_ORG_IDS, DEMO_SLUGS } from './seed';
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -74,6 +74,25 @@ function v2ToV3(input: Json, now = Date.now()): Json {
   return data;
 }
 
+/**
+ * v4 -> v5: Business Engagement Kit. Brand kits gain an (empty) links list; the
+ * fictional demo workspaces get their labelled, non-clickable sample links.
+ * Published versions are untouched, so live workflows keep their exact look until
+ * the owner republishes.
+ */
+function v4ToV5(input: Json): Json {
+  const data = structuredClone(input);
+  const org = isObj(data.organization) ? data.organization : {};
+  if (isObj(data.brandKit)) {
+    const kit = data.brandKit;
+    const existing = Array.isArray(kit.links) ? kit.links : [];
+    const demo = org.isDemo === true ? DEMO_LINKS[String(org.id)] : undefined;
+    kit.links = existing.length ? existing : structuredClone(demo ?? []);
+  }
+  data.schemaVersion = 5;
+  return data;
+}
+
 export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown; migrated: boolean } {
   if (!isObj(raw) || typeof raw.schemaVersion !== 'number' || raw.schemaVersion >= SCHEMA_VERSION) return { value: raw, migrated: false };
   let value = raw;
@@ -81,6 +100,7 @@ export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown
   if (value.schemaVersion === 2) value = v2ToV3(value, now);
   // v3 -> v4: no structural change to a workspace (new fields are optional); new demo workspaces are added at the meta level.
   if (value.schemaVersion === 3) value = { ...value, schemaVersion: 4 };
+  if (value.schemaVersion === 4) value = v4ToV5(value);
   return { value, migrated: value !== raw };
 }
 

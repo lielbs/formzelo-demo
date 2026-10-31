@@ -11,7 +11,7 @@ export function Pricing() {
       <main id="main" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="text-center">
           <h1 className="text-4xl font-semibold tracking-tight text-midnight">מחירים שקופים</h1>
-          <p className="mx-auto mt-3 max-w-lg text-ink-muted">תוכנית חודשית פשוטה, בלי התחייבות. מחיר לפני מע״מ.</p>
+          <p className="mx-auto mt-3 max-w-lg text-ink-muted">Formangle מוקם, מותאם ומלווה עבורכם על ידי צוות RockStack. המחירים להמחשה, לפני מע״מ — ההצעה הסופית נקבעת לפי היקף ההקמה.</p>
           <p role="note" className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-sm text-amber-900">
             <Info className="h-4 w-4" aria-hidden /> מחירים להמחשה בלבד — אין חיוב או סליקה אמיתיים בדמו
           </p>

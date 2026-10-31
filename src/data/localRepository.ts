@@ -1,5 +1,5 @@
 /**
- * localStorage implementation of FormzeloRepository.
+ * localStorage implementation of FormangleRepository.
  *
  * Layout (each workspace isolated under its own key):
  *   formzelo:v1:meta          -> Meta (org list, active org, public slug index)
@@ -32,6 +32,7 @@ import {
 } from '../domain/schema';
 import { ASSET_LIMITS, AssetSchema, BrandKitSchema, WorkflowThemeSchema, type Asset, type BrandKit, type WorkflowTheme } from '../domain/theme';
 import { CUSTOMER_CANCELLABLE, slotAvailability, validateBooking } from '../engine/booking';
+import { normalizeLink } from '../engine/presence';
 import { optionUsage, validateOptionCapacity } from '../engine/capacity';
 import { initialPayment, paymentOnApproval, simulatePaid } from '../engine/completion';
 import { computePrice } from '../engine/pricing';
@@ -48,13 +49,15 @@ import {
   NotFoundError,
   StorageQuotaError,
   ValidationFailedError,
-  type FormzeloRepository,
+  type FormangleRepository,
   type PublicWorkflow,
   type StorageReport,
 } from './repository';
 import { buildSeed, LATER_DEMO_ORGS } from './seed';
 
 /** Storage namespace. Independent of SCHEMA_VERSION so migrations happen in place. */
+// Historical namespace from the product's previous name (Formzelo). Kept on purpose: renaming it would orphan every
+// visitor's saved workspaces. Not product-facing.
 const PREFIX = 'formzelo:v1:';
 const META_KEY = `${PREFIX}meta`;
 const orgKey = (orgId: string) => `${PREFIX}org:${orgId}`;
@@ -68,7 +71,7 @@ export interface KeyValueStore {
   readonly length: number;
 }
 
-export class LocalStorageRepository implements FormzeloRepository {
+export class LocalStorageRepository implements FormangleRepository {
   private listeners = new Set<() => void>();
   private warnings: string[] = [];
 
@@ -124,7 +127,7 @@ export class LocalStorageRepository implements FormzeloRepository {
   private quarantine(key: string, reason: string) {
     this.backup(key, 'corrupt');
     this.warnings.push(reason);
-    console.warn(`[formzelo] ${reason}`);
+    console.warn(`[formangle] ${reason}`);
   }
 
   private readMeta(): Meta {
@@ -172,7 +175,7 @@ export class LocalStorageRepository implements FormzeloRepository {
         this.write(orgKey(orgId), parsed.data);
         // Migrations may add workflows (e.g. new demo flows) — keep public slugs resolvable.
         this.reindexSlugs();
-        console.info(`[formzelo] migrated workspace ${orgId} to schema v${SCHEMA_VERSION}`);
+        console.info(`[formangle] migrated workspace ${orgId} to schema v${SCHEMA_VERSION}`);
       }
       return parsed.data;
     }
@@ -691,6 +694,10 @@ export class LocalStorageRepository implements FormzeloRepository {
 
   async updateBrandKit(orgId: string, kit: BrandKit) {
     const valid = BrandKitSchema.parse({ ...kit, updatedAt: nowIso() });
+    // Validated at the trust boundary too, not only in the editor.
+    for (const l of valid.links) {
+      if (!l.value.trim() ? l.enabled : !normalizeLink(l.platform, l.value).ok) throw new DomainRuleError(`הקישור "${l.label || l.platform}" אינו תקין`);
+    }
     const ids = new Set(this.readAssets(orgId).map((a) => a.id));
     for (const id of [valid.logoAssetId, valid.secondaryLogoAssetId, valid.coverAssetId]) {
       if (id && !ids.has(id)) throw new DomainRuleError('תמונה שנבחרה לערכת המותג לא נמצאה. בחרו אותה מחדש.');

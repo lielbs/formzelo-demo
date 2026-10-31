@@ -493,7 +493,7 @@ export function CheckoutPanel({ config, price, payNow, onPayNow }: { config: Wor
       <section className="fz-checkout" data-mode="external" aria-label="תשלום">
         <p className="font-semibold">{meta.title}</p>
         <p className="fz-help !mt-1">
-          אחרי השליחה יוצג קישור לעמוד התשלום של העסק{url ? ` (${new URL(url).hostname})` : ''}. Formzelo אינו גובה ואינו רואה את פרטי התשלום.
+          אחרי השליחה יוצג קישור לעמוד התשלום של העסק{url ? ` (${new URL(url).hostname})` : ''}. Formangle אינו גובה ואינו רואה את פרטי התשלום.
         </p>
       </section>
     );

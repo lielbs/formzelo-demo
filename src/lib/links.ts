@@ -11,8 +11,22 @@ export const appHref = (path: string) => `${BASE_PATH}${path.startsWith('/') ? p
 export const publicBaseUrl = () => `${window.location.origin}${BASE_PATH}`;
 export const publicFlowUrl = (slug: string, runId?: string) => `${publicBaseUrl()}/f/${slug}${runId ? `?r=${runId}` : ''}`;
 
-/** Public repository of this demo (issues double as a zero-cost, clearly public contact form). */
+/** Public repository of this demo. Its historical name (formzelo-demo) is kept so the GitHub Pages URL never breaks. */
 export const REPO_URL = 'https://github.com/lielbs/formzelo-demo';
-/** Public sales contact for the interest button. VITE_CONTACT_EMAIL (build time) overrides it. */
+/**
+ * RockStack sales contact (the company selling Formangle) — NOT a business's own
+ * Brand Kit email. VITE_CONTACT_EMAIL (build time) may override it with another valid address.
+ */
 export const DEFAULT_CONTACT_EMAIL = 'contact@rockstackds.com';
-export const CONTACT_EMAIL: string | undefined = (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || DEFAULT_CONTACT_EMAIL;
+const EMAIL_RE = /^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i;
+
+export function resolveSalesEmail(override?: string): string {
+  const v = override?.trim();
+  return v && EMAIL_RE.test(v) ? v : DEFAULT_CONTACT_EMAIL;
+}
+
+export const CONTACT_EMAIL = resolveSalesEmail(import.meta.env.VITE_CONTACT_EMAIL as string | undefined);
+
+export function salesMailto(subject: string, body: string, email = CONTACT_EMAIL): string {
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}

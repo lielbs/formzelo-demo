@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { Spinner } from './components/ui';
+import { pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
 import { PublicFlow } from './pages/PublicFlow';
 
@@ -29,6 +30,8 @@ function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
+    const title = pageTitle(pathname);
+    if (title) document.title = title;
   }, [pathname]);
   return null;
 }

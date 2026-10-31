@@ -52,6 +52,44 @@ export const MOTION_LEVELS = ['none', 'subtle', 'expressive'] as const;
 
 export const ThemeAssetRefSchema = z.string().regex(/^ast_[a-z0-9]+$/);
 
+// ---------- Business Engagement Kit (digital presence links) ----------
+
+export const PRESENCE_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'whatsapp', 'waze', 'google_maps', 'google_review', 'website', 'youtube', 'linkedin', 'phone', 'email', 'custom'] as const;
+export const PRESENCE_ICONS = ['link', 'globe', 'calendar', 'bag', 'star', 'phone', 'mail', 'pin', 'chat', 'music'] as const;
+
+/** One business link, configured once in the workspace Brand Kit. Values are re-validated whenever rendered. */
+export const PresenceLinkSchema = z.object({
+  id: z.string().min(1),
+  platform: z.enum(PRESENCE_PLATFORMS),
+  value: z.string().max(500),
+  /** Custom label (custom links; optional override otherwise). Plain text only. */
+  label: z.string().max(40).optional(),
+  description: z.string().max(80).optional(),
+  /** Icon for custom links. */
+  icon: z.enum(PRESENCE_ICONS).optional(),
+  enabled: z.boolean(),
+  /** Demo placeholder for a fictional business: rendered as a labelled, non-clickable preview. */
+  sample: z.boolean().optional(),
+});
+export type PresenceLink = z.infer<typeof PresenceLinkSchema>;
+
+/** Per-workflow presentation of the links (draft design → frozen at publish). */
+export const PresenceSettingsSchema = z.object({
+  visibility: z.enum(['all', 'selected', 'hidden']),
+  /** Link ids shown when visibility = selected. */
+  selected: z.array(z.string()).max(20),
+  placement: z.enum(['header', 'footer', 'completion', 'header_completion', 'footer_completion', 'all']),
+  style: z.enum(['icons', 'icon_label', 'cards', 'compact']),
+  /** Neutral "share your experience on Google" request — only after a completed service. */
+  reviewCta: z.boolean(),
+  /**
+   * Links resolved from the Brand Kit. Drafts get them live (effectiveTheme); a
+   * published version keeps the snapshot taken at publish time.
+   */
+  links: z.array(PresenceLinkSchema).max(20).optional(),
+});
+export type PresenceSettings = z.infer<typeof PresenceSettingsSchema>;
+
 export const WorkflowThemeSchema = z.object({
   /** Bumped only if the theme shape changes; lets old frozen versions be read safely. */
   themeVersion: z.literal(1),
@@ -100,6 +138,8 @@ export const WorkflowThemeSchema = z.object({
    * workspace brand kit. Published versions store the resolved theme with this off.
    */
   inheritBrand: z.boolean().optional(),
+  /** Business links: where / how they appear. Absent on older versions = no links (unchanged look). */
+  presence: PresenceSettingsSchema.optional(),
 });
 export type WorkflowTheme = z.infer<typeof WorkflowThemeSchema>;
 
@@ -119,6 +159,8 @@ export const BrandKitSchema = z.object({
   decorations: z.boolean(),
   /** Default design personality for new workflows. */
   personality: ThemePresetIdSchema,
+  /** Digital presence: social, navigation, contact, reviews and custom links (ordered). */
+  links: z.array(PresenceLinkSchema).max(20).default([]),
   updatedAt: z.string().min(1),
 });
 export type BrandKit = z.infer<typeof BrandKitSchema>;

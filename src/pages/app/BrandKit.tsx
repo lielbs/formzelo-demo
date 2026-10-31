@@ -18,6 +18,7 @@ import { buildTheme, PRESET_LIST } from '../../theme/presets';
 import { PresetPreview } from '../../theme/PresetPreview';
 import { themeTokens, TYPOGRAPHY } from '../../theme/tokens';
 import { ColorInput, Group, L, Segmented, Toggle } from './editor/DesignPanel';
+import { PresenceEditor, presenceErrors } from './editor/PresenceEditor';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
 
 const PLACEMENT = { start: 'בצד', center: 'במרכז', hidden: 'מוסתר' } as const;
@@ -77,6 +78,8 @@ export function BrandKitPage() {
 
   const save = async () => {
     if (!kit.displayName.trim()) return toast('נדרש שם תצוגה', 'error');
+    const linkProblems = presenceErrors(kit.links);
+    if (linkProblems.length) return toast(`יש לתקן קישורים לפני שמירה: ${linkProblems[0]}`, 'error');
     setBusy(true);
     try {
       const stored = await repo.updateBrandKit(org.id, { ...kit, displayName: kit.displayName.trim(), description: kit.description.trim() });
@@ -231,7 +234,7 @@ export function BrandKitPage() {
                     className={cx('rounded-xl border px-3 py-2 text-start transition', kit.typography === t ? 'border-midnight bg-cloud' : 'border-cloud-300 hover:border-ink-soft')}
                   >
                     <span className="block text-lg leading-tight" style={{ fontFamily: TYPOGRAPHY[t].display, fontWeight: TYPOGRAPHY[t].weight }}>
-                      {kit.displayName || 'כל רעיון הופך לתהליך'}
+                      {kit.displayName || 'לכל עסק יש את הזווית שלו'}
                     </span>
                     <span className="text-[11px] text-ink-muted">{TYPOGRAPHY[t].label}</span>
                   </button>
@@ -264,6 +267,10 @@ export function BrandKitPage() {
                 </button>
               ))}
             </div>
+          </Group>
+
+          <Group title="נוכחות דיגיטלית וקישורים עסקיים" hint="רשתות, ניווט, יצירת קשר, ביקורות ופעולות מותאמות — מוגדרים פעם אחת לעסק ומוצגים בתהליכים לפי הבחירה בסטודיו.">
+            <PresenceEditor links={kit.links} onChange={(links) => set((k) => void (k.links = links))} />
           </Group>
         </div>
 

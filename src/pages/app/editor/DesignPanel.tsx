@@ -241,7 +241,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
                 className={cx('rounded-xl border px-3 py-2 text-start transition', design.typography === t ? 'border-midnight bg-cloud' : 'border-cloud-300 hover:border-ink-soft')}
               >
                 <span className="block text-lg leading-tight" style={{ fontFamily: TYPOGRAPHY[t].display, fontWeight: TYPOGRAPHY[t].weight }}>
-                  כל רעיון הופך לתהליך
+                  לכל עסק יש את הזווית שלו
                 </span>
                 <span className="text-[11px] text-ink-muted">{TYPOGRAPHY[t].label}</span>
               </button>

@@ -10,7 +10,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[formzelo] render error', error, info.componentStack);
+    console.error('[formangle] render error', error, info.componentStack);
   }
 
   render() {

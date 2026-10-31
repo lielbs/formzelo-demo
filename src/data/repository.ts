@@ -37,7 +37,7 @@ export interface StorageReport {
   warnings: string[];
 }
 
-export interface FormzeloRepository {
+export interface FormangleRepository {
   init(): Promise<void>;
   subscribe(listener: () => void): () => void;
 

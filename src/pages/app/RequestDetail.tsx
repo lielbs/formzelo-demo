@@ -236,7 +236,7 @@ export function RequestDetail() {
                   : run.payment.status === 'quote'
                     ? `הלקוח ראה הערכה של ${formatCurrency(run.payment.amount)}. לא נדרש תשלום; שלחו הצעה סופית.`
                     : run.payment.status === 'external_link'
-                      ? 'הלקוח הופנה לקישור התשלום החיצוני של העסק. Formzelo אינו יודע אם שולם — בדקו במערכת התשלום שלכם.'
+                      ? 'הלקוח הופנה לקישור התשלום החיצוני של העסק. Formangle אינו יודע אם שולם — בדקו במערכת התשלום שלכם.'
                       : run.payment.status === 'none'
                         ? `${run.payment.kind === 'deposit' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} יתבקש רק אחרי אישור.`
                         : isPaymentOutstanding(run.payment)
