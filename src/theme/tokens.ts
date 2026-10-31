@@ -14,6 +14,11 @@ export const TYPOGRAPHY: Record<WorkflowTheme['typography'], { label: string; di
   corporate: { label: 'משרדי — Heebo', display: 'Heebo, Rubik, system-ui, sans-serif', body: 'Heebo, Rubik, system-ui, sans-serif', weight: 700, tracking: '-0.01em', scale: 1 },
   display: { label: 'נועז — Secular One', display: '"Secular One", Rubik, system-ui, sans-serif', body: 'Rubik, system-ui, sans-serif', weight: 400, tracking: '-0.015em', scale: 1.32 },
   neutral: { label: 'ניטרלי — Rubik', display: 'Rubik, system-ui, sans-serif', body: 'Rubik, system-ui, sans-serif', weight: 600, tracking: '-0.01em', scale: 1 },
+  classic: { label: 'קלאסי — David Libre', display: '"David Libre", "Frank Ruhl Libre", Georgia, serif', body: 'Assistant, Heebo, system-ui, sans-serif', weight: 500, tracking: '0', scale: 1.16 },
+  friendly: { label: 'ידידותי — Varela Round', display: '"Varela Round", Assistant, system-ui, sans-serif', body: 'Assistant, Heebo, system-ui, sans-serif', weight: 400, tracking: '-0.005em', scale: 1.06 },
+  handwritten: { label: 'כתב יד — Amatic SC', display: '"Amatic SC", "Varela Round", system-ui, sans-serif', body: 'Assistant, Heebo, system-ui, sans-serif', weight: 700, tracking: '0.01em', scale: 1.55 },
+  impact: { label: 'עוצמתי — Suez One', display: '"Suez One", "Secular One", Georgia, serif', body: 'Assistant, Heebo, system-ui, sans-serif', weight: 400, tracking: '-0.01em', scale: 1.18 },
+  clean: { label: 'נקי — Assistant', display: 'Assistant, Heebo, system-ui, sans-serif', body: 'Assistant, Heebo, system-ui, sans-serif', weight: 700, tracking: '-0.015em', scale: 1.04 },
 };
 
 const RADIUS: Record<WorkflowTheme['radius'], [number, number]> = {

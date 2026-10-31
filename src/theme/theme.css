@@ -21,6 +21,11 @@
 .fz-frame {
   background: var(--fz-bg);
 }
+/* In a scrolling preview frame the themed page fills the frame (dark designs leave no white band). */
+[data-fz-scroll] > .fz-frame,
+[data-fz-scroll] > .fz {
+  min-height: 100%;
+}
 .fz :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--fz-primary) 60%, transparent);
   outline-offset: 2px;
@@ -481,6 +486,14 @@
   }
   .fz-hero[data-layout='poster'] .fz-hero-title {
     font-size: calc(3.6rem * var(--fz-display-scale));
+  }
+}
+
+/* A compact mobile poster hides its artwork, so it must not keep the space reserved for it. */
+@container fz (max-width: 760px) {
+  .fz-hero[data-layout='poster'][data-mobile-compact='true'] {
+    min-height: 0;
+    padding-bottom: calc(var(--fz-pad) * 0.9);
   }
 }
 

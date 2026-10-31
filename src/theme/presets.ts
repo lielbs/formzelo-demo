@@ -1,24 +1,17 @@
 /**
- * Six art-directed presets. They differ in composition, hero, typography,
- * component shapes, density and motion — not only in color.
+ * Art-directed presets: the six core personalities below plus the design
+ * library (theme/presetLibrary.ts). They differ in composition, hero,
+ * typography, component shapes, density and motion — not only in color.
  */
-import { WorkflowThemeSchema, type ThemePresetId, type WorkflowTheme } from '../domain/theme';
+import { THEME_PRESET_IDS, WorkflowThemeSchema, type ThemePresetId, type WorkflowTheme } from '../domain/theme';
+import { LIBRARY_PRESETS, type PresetEntry, type PresetMeta, type PresetTheme } from './presetLibrary';
 
-export interface PresetMeta {
-  id: ThemePresetId;
-  name: string;
-  nameHe: string;
-  description: string;
-  bestFor: string;
-  /** Sample copy for gallery previews. */
-  sample: { eyebrow: string; title: string; option: string; cta: string };
-}
-
-type PresetTheme = Omit<WorkflowTheme, 'source'>;
+export type { PresetCategory, PresetMeta } from './presetLibrary';
+export { PRESET_CATEGORIES } from './presetLibrary';
 
 const base = { themeVersion: 1 as const, optionArt: true, logo: { showName: true }, hero: {} };
 
-export const PRESETS: Record<ThemePresetId, { meta: PresetMeta; theme: PresetTheme }> = {
+const CORE: Record<string, { meta: Omit<PresetMeta, 'experience' | 'category'>; theme: PresetTheme }> = {
   floral_boutique: {
     meta: {
       id: 'floral_boutique',
@@ -231,7 +224,29 @@ export const PRESETS: Record<ThemePresetId, { meta: PresetMeta; theme: PresetThe
   },
 };
 
-export const PRESET_LIST: PresetMeta[] = Object.values(PRESETS).map((p) => p.meta);
+/** The six core personalities — the original, most-tested starting points. */
+export const CORE_PRESET_IDS = ['floral_boutique', 'automotive_precision', 'hospitality_premium', 'corporate_modern', 'creative_studio', 'modern_minimal'] as const satisfies readonly ThemePresetId[];
+
+const CORE_META: Record<(typeof CORE_PRESET_IDS)[number], Pick<PresetMeta, 'experience' | 'category'>> = {
+  floral_boutique: { experience: 'בוטיק', category: 'beauty' },
+  automotive_precision: { experience: 'מקצועי', category: 'home' },
+  hospitality_premium: { experience: 'פרימיום', category: 'food' },
+  corporate_modern: { experience: 'מודרני', category: 'professional' },
+  creative_studio: { experience: 'יצירתי', category: 'events' },
+  modern_minimal: { experience: 'מינימלי', category: 'universal' },
+};
+
+export const PRESETS = Object.fromEntries(
+  THEME_PRESET_IDS.map((id): [ThemePresetId, PresetEntry] => {
+    const core = CORE[id];
+    if (core) return [id, { meta: { ...core.meta, ...CORE_META[id as (typeof CORE_PRESET_IDS)[number]] }, theme: core.theme }];
+    const lib = LIBRARY_PRESETS[id];
+    if (!lib) throw new Error(`Missing preset definition: ${id}`);
+    return [id, lib];
+  }),
+) as Record<ThemePresetId, PresetEntry>;
+
+export const PRESET_LIST: PresetMeta[] = THEME_PRESET_IDS.map((id) => PRESETS[id].meta);
 
 /** A complete, validated theme for a preset. Uploaded assets can be carried over. */
 export function buildTheme(presetId: ThemePresetId, opts: { source?: WorkflowTheme['source']; keep?: Pick<WorkflowTheme, 'hero' | 'logo'> } = {}): WorkflowTheme {

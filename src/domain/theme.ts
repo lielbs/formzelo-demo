@@ -15,6 +15,27 @@ export const THEME_PRESET_IDS = [
   'corporate_modern',
   'creative_studio',
   'modern_minimal',
+  // Design library (additive — every stored design keeps its id).
+  'spa_serenity',
+  'beauty_glam',
+  'bakery_sweet',
+  'cafe_bistro',
+  'celebration_party',
+  'wedding_elegance',
+  'legal_trust',
+  'finance_clarity',
+  'tech_startup',
+  'medical_care',
+  'fitness_energy',
+  'kids_play',
+  'academy_learn',
+  'home_services',
+  'eco_nature',
+  'luxury_noir',
+  'nightlife_neon',
+  'travel_coastal',
+  'pets_friendly',
+  'community_warm',
 ] as const;
 export const ThemePresetIdSchema = z.enum(THEME_PRESET_IDS);
 export type ThemePresetId = z.infer<typeof ThemePresetIdSchema>;
@@ -36,10 +57,10 @@ export const ThemePaletteSchema = z.object({
 });
 export type ThemePalette = z.infer<typeof ThemePaletteSchema>;
 
-export const TYPOGRAPHY_PRESETS = ['editorial', 'technical', 'warm', 'corporate', 'display', 'neutral'] as const;
+export const TYPOGRAPHY_PRESETS = ['editorial', 'technical', 'warm', 'corporate', 'display', 'neutral', 'classic', 'friendly', 'handwritten', 'impact', 'clean'] as const;
 export const HERO_LAYOUTS = ['split', 'banner', 'immersive', 'compact', 'poster', 'centered', 'none'] as const;
 export const COMPOSITIONS = ['centered', 'editorial_split', 'product_grid', 'decision', 'booking', 'document'] as const;
-export const DECORATIONS = ['organic', 'technical', 'atmospheric', 'structured', 'expressive', 'minimal', 'none'] as const;
+export const DECORATIONS = ['organic', 'technical', 'atmospheric', 'structured', 'expressive', 'minimal', 'geometric', 'waves', 'arches', 'celebration', 'botanical', 'constellation', 'none'] as const;
 export const CARD_VARIANTS = ['soft', 'outlined', 'elevated', 'bold', 'flat'] as const;
 export const INPUT_VARIANTS = ['outlined', 'filled', 'underline'] as const;
 export const OPTION_VARIANTS = ['tile', 'row', 'chip', 'bold'] as const;

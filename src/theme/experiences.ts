@@ -1,11 +1,5 @@
 import type { ThemePresetId } from '../domain/theme';
+import { PRESET_LIST } from './presets';
 
-/** The six design personalities, named by the experience they create for the customer. */
-export const EXPERIENCES: Record<ThemePresetId, string> = {
-  floral_boutique: 'בוטיק',
-  automotive_precision: 'מקצועי',
-  corporate_modern: 'מודרני',
-  hospitality_premium: 'פרימיום',
-  modern_minimal: 'מינימלי',
-  creative_studio: 'יצירתי',
-};
+/** Every design personality, named by the experience it creates for the customer. */
+export const EXPERIENCES = Object.fromEntries(PRESET_LIST.map((p) => [p.id, p.experience])) as Record<ThemePresetId, string>;

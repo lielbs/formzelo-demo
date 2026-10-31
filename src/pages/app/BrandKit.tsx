@@ -2,7 +2,7 @@
  * Workspace brand kit: the default identity every inheriting workflow uses.
  * Published versions keep their frozen design until they are republished.
  */
-import { AlertCircle, Check, CheckCircle2, Palette, Pipette, RotateCcw, Save } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Palette, Pipette, RotateCcw, Save } from 'lucide-react';
 import { BRAND_TABS, type BrandTab } from './brandTabs';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -16,7 +16,7 @@ import { extractColors } from '../../lib/images';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { effectiveTheme } from '../../theme/brand';
 import { buildTheme, PRESET_LIST } from '../../theme/presets';
-import { PresetPreview } from '../../theme/PresetPreview';
+import { PresetPicker } from '../../theme/PresetPicker';
 import { themeTokens, TYPOGRAPHY } from '../../theme/tokens';
 import { ColorInput, Group, L, Segmented, Toggle } from './editor/DesignPanel';
 import { PresenceEditor, presenceErrors } from './editor/PresenceEditor';
@@ -317,24 +317,7 @@ export function BrandKitPage() {
           </Group>
 
           <Group title="אישיות עיצובית ברירת מחדל" hint="הסגנון שמוצע לתהליכים חדשים. כל תהליך יכול לבחור אחר.">
-            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3" role="radiogroup" aria-label="אישיות עיצובית">
-              {PRESET_LIST.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={kit.personality === p.id}
-                  onClick={() => set((k) => void (k.personality = p.id))}
-                  className={cx('rounded-2xl border bg-white p-2 text-start transition', kit.personality === p.id ? 'border-midnight ring-2 ring-midnight/15' : 'border-cloud-200 hover:border-ink-soft')}
-                >
-                  <PresetPreview theme={buildTheme(p.id)} />
-                  <span className="mt-2 flex items-center gap-1.5 px-1 text-sm font-semibold">
-                    {p.nameHe}
-                    {kit.personality === p.id && <Check className="ms-auto h-4 w-4" aria-hidden />}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <PresetPicker label="אישיות עיצובית" value={kit.personality} columns="sm:grid-cols-2 2xl:grid-cols-3" onChange={(id) => set((k) => void (k.personality = id))} />
           </Group>
 
           </>

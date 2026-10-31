@@ -12,8 +12,6 @@ export interface Package {
   name: string;
   /** Monthly fee in ILS before VAT; null = custom quote. */
   monthly: number | null;
-  /** One-time setup fee in ILS before VAT; null = part of the custom quote. */
-  setup: number | null;
   audience: string;
   /** Short value statement for the workflow allowance. */
   workflows: string;
@@ -28,7 +26,6 @@ export const PACKAGES: Package[] = [
     key: 'business',
     name: 'Business',
     monthly: 399,
-    setup: 990,
     audience: 'לעסק שרוצה להעביר את הפניות וההזמנות לתהליך דיגיטלי ממותג.',
     workflows: 'עד 3 תהליכים פעילים',
     features: ['ערכת מותג לעסק', 'חוויות לקוח ממותגות', 'ניהול בקשות בלוח בקרה', 'נוכחות דיגיטלית וקישורים עסקיים', 'תמיכה רגילה', 'הקמה אישית על ידי RockStack'],
@@ -39,7 +36,6 @@ export const PACKAGES: Package[] = [
     key: 'business_plus',
     name: 'Business Plus',
     monthly: 499,
-    setup: 1490,
     recommended: true,
     audience: 'לעסק עם כמה שירותים, אישורים ותהליכים מורכבים יותר.',
     workflows: 'עד 8 תהליכים פעילים',
@@ -51,7 +47,6 @@ export const PACKAGES: Package[] = [
     key: 'enterprise',
     name: 'Enterprise',
     monthly: null,
-    setup: null,
     audience: 'לארגונים עם כמה סניפים, אינטגרציות ונפחי פעילות גבוהים.',
     workflows: 'היקף לפי אפיון',
     features: ['ריבוי סניפים', 'תהליכים מורכבים', 'אינטגרציות מותאמות', 'נפחי פעילות גבוהים', 'פרויקט הטמעה מותאם'],
@@ -64,12 +59,13 @@ export const PRICING_TERMS = {
   vat: 'כל המחירים אינם כוללים מע״מ.',
   indicative: 'מחירי חבילות מוצעים, בכפוף לאפיון ולהצעת מחיר.',
   managed: 'RockStack מאפיינת, מקימה ומתאימה את Formangle לצרכים של העסק שלכם.',
+  setup: 'דמי ההקמה החד-פעמיים משתנים לפי היקף התהליכים וצורכי העסק, ונקבעים בהצעת המחיר אחרי שיחת האפיון.',
   separate: 'אינטגרציות ופיתוח מותאם מתומחרים בנפרד, לפי היקף.',
   noSelfService: 'אין רכישה עצמית באתר: כל חבילה נמכרת ומוגדרת ישירות על ידי RockStack.',
 } as const;
 
 export function packageMailto(p: Package): string {
-  const price = p.monthly === null ? 'הצעת מחיר מותאמת' : `${p.monthly} ₪ לחודש + ${p.setup?.toLocaleString('en-US')} ₪ הקמה חד-פעמית (לפני מע״מ)`;
+  const price = p.monthly === null ? 'הצעת מחיר מותאמת' : `${p.monthly} ₪ לחודש (לפני מע״מ) + דמי הקמה לפי צורכי העסק`;
   const body = [
     `שלום, אשמח לשמוע על חבילת ${p.name} של Formangle.`,
     `החבילה: ${p.name} · ${price}`,

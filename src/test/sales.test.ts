@@ -20,11 +20,14 @@ const decode = (href: string) => {
 
 describe('RockStack-managed packages', () => {
   it('has exactly Business, Business Plus and Enterprise with the agreed prices', () => {
-    expect(PACKAGES.map((p) => [p.key, p.name, p.monthly, p.setup])).toEqual([
-      ['business', 'Business', 399, 990],
-      ['business_plus', 'Business Plus', 499, 1490],
-      ['enterprise', 'Enterprise', null, null],
+    expect(PACKAGES.map((p) => [p.key, p.name, p.monthly])).toEqual([
+      ['business', 'Business', 399],
+      ['business_plus', 'Business Plus', 499],
+      ['enterprise', 'Enterprise', null],
     ]);
+    // Setup fees are not published as amounts: they depend on the business's needs.
+    expect(PACKAGES.some((p) => 'setup' in p)).toBe(false);
+    expect(PRICING_TERMS.setup).toMatch(/משתנים לפי היקף התהליכים וצורכי העסק/);
     expect(PACKAGES.filter((p) => p.recommended).map((p) => p.key)).toEqual(['business_plus']);
     expect(PACKAGES[0]!.workflows).toContain('3');
     expect(PACKAGES[1]!.workflows).toContain('8');
@@ -49,7 +52,7 @@ describe('RockStack-managed packages', () => {
       subjects.add(m.subject);
     }
     expect(subjects.size).toBe(3);
-    expect(decode(packageMailto(PACKAGES[0]!)).body).toContain('399 ₪ לחודש + 990 ₪ הקמה');
+    expect(decode(packageMailto(PACKAGES[0]!)).body).toContain('399 ₪ לחודש (לפני מע״מ) + דמי הקמה לפי צורכי העסק');
     const demo = decode(demoRequestMailto());
     expect(demo.to).toBe('contact@rockstackds.com');
     expect(demo.subject).toBe(DEMO_REQUEST_SUBJECT);
@@ -58,10 +61,11 @@ describe('RockStack-managed packages', () => {
   it('the pricing page renders both fees, VAT, and no checkout or signup', () => {
     const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Pricing)));
     const text = html.replace(/[‎‏]/g, '').replace(/ /g, ' ');
-    for (const t of ['Business', 'Business Plus', 'Enterprise', '399 ₪', '990 ₪', '499 ₪', '1,490 ₪', 'הקמה חד-פעמית', 'הצעת מחיר מותאמת', 'מע״מ', 'אינטגרציות ופיתוח מותאם']) {
+    for (const t of ['Business', 'Business Plus', 'Enterprise', '399 ₪', '499 ₪', 'דמי הקמה חד-פעמיים', 'צורכי העסק', 'הצעת מחיר מותאמת', 'מע״מ', 'אינטגרציות ופיתוח מותאם']) {
       expect(text).toContain(t);
     }
     expect(html).toContain('mailto:contact@rockstackds.com');
+    expect(text).not.toMatch(/990|1,490/);
     expect(html).not.toMatch(/checkout|לרכישה|הרשמה עצמית למנוי|כרטיס אשראי/i);
   });
 

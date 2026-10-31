@@ -10,7 +10,7 @@ import { field, step } from './templates';
 /** How an owner starts a new workflow. Every option here is implemented. */
 export const START_OPTIONS = [
   { id: 'describe', title: 'תיאור במילים שלכם', text: 'כותבים מה הלקוח צריך להזמין, לאשר או למלא — ומקבלים תהליך מוכן לעריכה.' },
-  { id: 'template', title: 'תבנית לפי תחום', text: 'פרחים, מוסך, מסעדה, הרשמה, מסמכים ועוד — תהליכים מלאים לנקודת פתיחה.' },
+  { id: 'template', title: 'תבנית לפי תחום', text: 'עשרות תהליכים מוכנים ב-12 תחומים — מתורים וקייטרינג ועד חוגים, שיפוצים ועמותות.' },
   { id: 'blank', title: 'תהליך ריק', text: 'שלב אחד עם שם וטלפון בלבד. בונים את השאר בעצמכם בסטודיו.' },
   { id: 'duplicate', title: 'שכפול תהליך קיים', text: 'עותק טיוטה של תהליך שכבר עובד אצלכם, כולל העיצוב.' },
 ] as const;

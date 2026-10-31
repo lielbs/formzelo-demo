@@ -30,7 +30,7 @@ export function Pricing() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-medium text-orange-700">חבילות Formangle</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-midnight sm:text-4xl">שירות מנוהל, מותאם לעסק שלכם</h1>
-          <p className="mt-3 leading-relaxed text-ink-muted">{PRICING_TERMS.managed} מחיר חודשי קבוע, דמי הקמה חד-פעמיים, ובלי הפתעות.</p>
+          <p className="mt-3 leading-relaxed text-ink-muted">{PRICING_TERMS.managed} מחיר חודשי קבוע, ודמי הקמה חד-פעמיים שנקבעים לפי מה שהעסק צריך.</p>
           <p className="mt-3 text-sm font-medium text-ink">{PRICING_TERMS.indicative} {PRICING_TERMS.vat}</p>
         </div>
 

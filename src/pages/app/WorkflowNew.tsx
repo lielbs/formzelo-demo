@@ -16,11 +16,12 @@ import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { blankWorkflow, START_OPTIONS, type StartOption } from '../../engine/builder';
 import { COMPLETION_LABELS } from '../../engine/completion';
 import { generateWorkflowFromPrompt, PROMPT_EXAMPLES, type GenerationResult } from '../../engine/generator';
-import { TEMPLATES, type TemplateKey } from '../../engine/templates';
+import { TEMPLATE_LIBRARY, type LibraryTemplate } from '../../engine/library';
+import { TemplateGallery } from './TemplateGallery';
 import { formatRelative } from '../../lib/format';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
-import { buildTheme, PRESET_LIST, PRESETS } from '../../theme/presets';
-import { PresetPreview } from '../../theme/PresetPreview';
+import { buildTheme, PRESETS } from '../../theme/presets';
+import { PresetPicker } from '../../theme/PresetPicker';
 import { EXPERIENCES } from '../../theme/experiences';
 
 const CONFIDENCE = { high: { label: 'התאמה גבוהה', tone: 'teal' }, medium: { label: 'התאמה חלקית', tone: 'amber' }, low: { label: 'לא זוהה תחום', tone: 'neutral' } } as const;
@@ -73,9 +74,11 @@ export function WorkflowNew() {
     }, 350);
   };
 
-  const fromTemplate = (k: TemplateKey) => {
-    const t = TEMPLATES[k];
-    setDraft(fromGeneration(generateWorkflowFromPrompt(`${t.label}: ${t.description}`, k), `${t.label}: ${t.description}`));
+
+  const fromLibrary = (t: LibraryTemplate) => {
+    const config = t.build();
+    config.branding = { ...config.branding, primaryColor: brandColor, logoText: org.name };
+    setDraft({ config, theme: buildTheme(t.preset, { source: 'auto' }), templateKey: t.id, recommended: t.preset, label: t.title });
   };
 
   const blank = () => {
@@ -163,8 +166,8 @@ export function WorkflowNew() {
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="min-w-0 space-y-4">
           {start === 'describe' && (
             <Card className="p-5">
               <form onSubmit={handleSubmit(generate)} noValidate className="space-y-4">
@@ -225,28 +228,10 @@ export function WorkflowNew() {
           {start === 'template' && (
             <Card className="p-5">
               <h2 className="font-semibold">תבנית לפי תחום</h2>
-              <p className="mt-1 text-sm text-ink-muted">תהליך מלא עם שלבים, שדות ומחירים לדוגמה. אחרי הבחירה הכול ניתן לעריכה.</p>
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="תבניות">
-                {(Object.keys(TEMPLATES) as TemplateKey[])
-                  .filter((k) => k !== 'generic')
-                  .map((k) => {
-                    const on = draft?.templateKey === k;
-                    return (
-                      <li key={k}>
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={on}
-                          onClick={() => fromTemplate(k)}
-                          className={cx('h-full w-full rounded-xl border p-3 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', on ? 'border-midnight bg-cloud' : 'border-cloud-200 bg-white hover:border-ink-soft')}
-                        >
-                          <span className="block text-sm font-semibold text-ink">{TEMPLATES[k].label}</span>
-                          <span className="mt-0.5 block text-xs leading-snug text-ink-muted">{TEMPLATES[k].description}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
+              <p className="mt-1 text-sm text-ink-muted">{TEMPLATE_LIBRARY.length} תהליכים מוכנים, כל אחד עם עיצוב שמתאים לו. אחרי הבחירה הכול ניתן לעריכה — שאלות, מחירים, תנאים ועיצוב.</p>
+              <div className="mt-4">
+                <TemplateGallery selected={draft?.templateKey} onPick={fromLibrary} />
+              </div>
             </Card>
           )}
 
@@ -295,28 +280,13 @@ export function WorkflowNew() {
                 <h2 className="font-semibold">החוויה ללקוח</h2>
                 <span className="text-xs text-ink-muted">שלב 2 · אפשר להחליף גם אחר כך</span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3" role="radiogroup" aria-label="בחירת חוויה ועיצוב">
-                {PRESET_LIST.map((p) => {
-                  const on = draft.theme.presetId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      aria-label={`${EXPERIENCES[p.id]} — ${p.nameHe}${p.id === draft.recommended ? ' (מומלץ)' : ''}`}
-                      onClick={() => setDraft({ ...draft, theme: buildTheme(p.id, { source: p.id === draft.recommended ? 'auto' : 'manual' }) })}
-                      className={cx('rounded-2xl border bg-white p-1.5 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', on ? 'border-midnight ring-2 ring-midnight/15' : 'border-cloud-200 hover:border-ink-soft')}
-                    >
-                      <PresetPreview theme={buildTheme(p.id)} />
-                      <span className="flex items-center gap-1 px-1 pb-0.5 pt-1.5">
-                        <span className="text-sm font-semibold">{EXPERIENCES[p.id]}</span>
-                        {p.id === draft.recommended && <Badge tone="teal">מומלץ</Badge>}
-                      </span>
-                      <span className="block px-1 text-[11px] text-ink-muted">{p.nameHe}</span>
-                    </button>
-                  );
-                })}
+              <div className="mt-3">
+                <PresetPicker
+                  label="בחירת חוויה ועיצוב"
+                  value={draft.theme.presetId}
+                  recommended={draft.recommended}
+                  onChange={(id) => setDraft({ ...draft, theme: buildTheme(id, { source: id === draft.recommended ? 'auto' : 'manual' }) })}
+                />
               </div>
               <p className="mt-2 text-xs text-ink-muted">{PRESETS[draft.theme.presetId].meta.description}</p>
 

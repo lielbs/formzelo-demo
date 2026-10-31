@@ -397,6 +397,150 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
           <path d="M150 268 H392" stroke={T} strokeWidth="3" />
         </svg>
       );
+    case 'geometric':
+      return (
+        <svg viewBox="0 0 400 300" {...common}>
+          {/* Bauhaus-like tiles: quarter circles, a half disc and a solid square on a quiet grid. */}
+          <g opacity={0.95}>
+            <path d="M220 20 h80 v80 a80 80 0 0 1 -80 -80 Z" fill={P} />
+            <rect x="300" y="20" width="80" height="80" fill={A} />
+            <path d="M300 100 h80 v80 h-80 a80 80 0 0 1 80 -80" fill={S} opacity={0.85} />
+            <circle cx="260" cy="140" r="40" fill={SURF} opacity={0.9} />
+            <path d="M220 180 a80 80 0 0 1 160 0 Z" fill={P} opacity={0.35} />
+            <rect x="220" y="180" width="80" height="80" fill={S} opacity={0.4} />
+            <path d="M300 260 a80 80 0 0 1 80 -80 v80 Z" fill={A} opacity={0.75} />
+          </g>
+          <g stroke="currentColor" strokeOpacity={0.12}>
+            {[20, 100, 180, 260].map((y) => (
+              <path key={y} d={`M20 ${y} H200`} />
+            ))}
+          </g>
+        </svg>
+      );
+    case 'waves':
+      return (
+        <svg viewBox="0 0 600 260" {...common} preserveAspectRatio="xMidYMax slice">
+          <defs>
+            <linearGradient id={`w${uid}`} x1="0" x2="1">
+              <stop offset="0" stopColor={P} stopOpacity={0.55} />
+              <stop offset="1" stopColor={A} stopOpacity={0.55} />
+            </linearGradient>
+          </defs>
+          <path d="M0 150 C 120 90 220 210 340 150 S 520 90 600 140 V260 H0 Z" fill={`url(#w${uid})`} opacity={0.5} />
+          <path d="M0 190 C 140 140 240 240 380 185 S 540 150 600 180 V260 H0 Z" fill={S} opacity={0.35} />
+          <path d="M0 225 C 150 195 260 260 400 222 S 550 205 600 220 V260 H0 Z" fill={P} opacity={0.45} />
+          <g fill="none" stroke="currentColor" strokeOpacity={0.22} strokeWidth="1.5">
+            <path d="M40 90 C 120 50 200 120 280 80" />
+            <path d="M330 60 C 400 25 470 85 560 50" />
+          </g>
+          <circle cx="500" cy="70" r="26" fill={A} opacity={0.7} />
+        </svg>
+      );
+    case 'arches':
+      return (
+        <svg viewBox="0 0 420 300" {...common}>
+          {/* Mediterranean arcade: three nested arches and a sun. */}
+          {[0, 1, 2].map((i) => (
+            <g key={i} transform={`translate(${190 + i * 76} 0)`}>
+              <path d="M0 300 V120 a34 34 0 0 1 68 0 V300 Z" fill={i === 1 ? P : S} opacity={i === 1 ? 0.55 : 0.3} />
+              <path d="M10 300 V124 a24 24 0 0 1 48 0 V300" fill="none" stroke={SURF} strokeOpacity={0.6} strokeWidth="2" />
+            </g>
+          ))}
+          <circle cx="300" cy="64" r="30" fill={A} opacity={0.85} />
+          <path d="M150 300 H420" stroke="currentColor" strokeOpacity={0.2} strokeWidth="2" />
+        </svg>
+      );
+    case 'celebration':
+      return (
+        <svg viewBox="0 0 400 300" {...common}>
+          {/* Confetti and streamers on the left half (mirrored): Hebrew titles sit on the right and stay clear. */}
+          <g transform="translate(400 0) scale(-1 1)">
+          {[
+            [220, 40, P, 18],
+            [300, 70, A, 26],
+            [360, 30, S, 14],
+            [260, 130, S, 20],
+            [340, 160, P, 12],
+            [380, 110, A, 16],
+            [230, 210, A, 10],
+            [310, 240, P, 22],
+          ].map(([x, y, c, r], i) => (
+            <circle key={i} cx={x as number} cy={y as number} r={r as number} fill={c as string} opacity={0.55 + (i % 3) * 0.12} />
+          ))}
+          {[
+            [250, 90, 20, P],
+            [350, 210, -30, S],
+            [200, 160, 50, A],
+            [370, 60, -15, P],
+          ].map(([x, y, rot, c], i) => (
+            <rect key={i} x={x as number} y={y as number} width="22" height="8" rx="2" fill={c as string} transform={`rotate(${rot} ${x} ${y})`} />
+          ))}
+          <path d="M190 20 C 230 60 200 100 240 140 S 260 220 300 250" fill="none" stroke={A} strokeWidth="3" strokeLinecap="round" opacity={0.8} />
+          <path d="M280 10 C 300 50 340 60 330 110" fill="none" stroke={P} strokeWidth="3" strokeLinecap="round" opacity={0.6} />
+          </g>
+        </svg>
+      );
+    case 'botanical':
+      return (
+        <svg viewBox="0 0 400 420" {...common}>
+          {/* Fine-line leaves: a stem with alternating leaves and a soft backdrop disc. */}
+          <circle cx="290" cy="200" r="150" fill={ALT} opacity={0.7} />
+          <g fill="none" stroke={S} strokeWidth="2" strokeLinecap="round">
+            <path d="M300 420 C 290 320 300 220 270 110" />
+            <path d="M340 420 C 350 330 380 260 372 170" />
+          </g>
+          {[
+            [282, 330, -40],
+            [292, 270, 35],
+            [276, 210, -35],
+            [282, 150, 30],
+            [356, 330, 40],
+            [366, 260, -30],
+          ].map(([x, y, rot], i) => (
+            <path
+              key={i}
+              d="M0 0 C 18 -22 52 -22 64 0 C 52 22 18 22 0 0 Z"
+              transform={`translate(${x} ${y}) rotate(${(rot as number) + (i % 2 ? 0 : 180)})`}
+              fill={i % 3 === 0 ? P : S}
+              fillOpacity={0.38}
+              stroke={S}
+              strokeOpacity={0.6}
+              strokeWidth="1.2"
+            />
+          ))}
+          <circle cx="262" cy="104" r="9" fill={A} />
+        </svg>
+      );
+    case 'constellation':
+      return (
+        <svg viewBox="0 0 600 300" {...common}>
+          <defs>
+            <radialGradient id={`c${uid}`} cx="0.75" cy="0.35" r="0.55">
+              <stop offset="0" stopColor={A} stopOpacity={0.35} />
+              <stop offset="1" stopColor={A} stopOpacity={0} />
+            </radialGradient>
+          </defs>
+          <rect width="600" height="300" fill={`url(#c${uid})`} />
+          <g stroke={A} strokeOpacity={0.45} strokeWidth="1">
+            <path d="M330 70 L400 110 L470 80 L520 140 L450 190 L400 110" fill="none" />
+          </g>
+          {[
+            [330, 70, 3],
+            [400, 110, 4],
+            [470, 80, 3],
+            [520, 140, 5],
+            [450, 190, 3],
+            [560, 60, 2],
+            [300, 160, 2],
+            [380, 230, 2],
+            [540, 230, 3],
+            [260, 50, 2],
+          ].map(([x, y, r], i) => (
+            <circle key={i} cx={x} cy={y} r={r} fill={i % 4 === 0 ? A : 'currentColor'} opacity={i % 4 === 0 ? 0.95 : 0.55} />
+          ))}
+          <path d="M470 250 a40 40 0 1 0 30 -66 a32 32 0 1 1 -30 66 Z" fill={A} opacity={0.75} />
+        </svg>
+      );
     case 'minimal':
       return (
         <svg viewBox="0 0 300 300" {...common}>

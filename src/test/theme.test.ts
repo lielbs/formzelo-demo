@@ -11,7 +11,7 @@ import { isoDay } from '../lib/format';
 import { resolveAppearance } from '../renderer/appearance';
 import { inferArt } from '../theme/art';
 import { contrastRatio, ensureContrast } from '../theme/color';
-import { buildTheme, PRESETS } from '../theme/presets';
+import { buildTheme, CORE_PRESET_IDS, PRESET_CATEGORIES, PRESET_LIST, PRESETS } from '../theme/presets';
 import { KeywordThemeResolver, themeResolver } from '../theme/resolver';
 import { themeTokens } from '../theme/tokens';
 
@@ -80,13 +80,32 @@ describe('theme resolver (local, deterministic)', () => {
 });
 
 describe('presets and theme schema', () => {
-  it('builds six valid, structurally different presets', () => {
+  it('keeps the six core personalities structurally different', () => {
+    const core = CORE_PRESET_IDS.map((id) => buildTheme(id));
+    expect(new Set(core.map((t) => t.hero.layout)).size).toBe(6);
+    expect(new Set(core.map((t) => t.typography)).size).toBe(6);
+  });
+
+  it('builds a large library of valid, structurally distinct designs', () => {
     const themes = THEME_PRESET_IDS.map((id) => buildTheme(id));
-    themes.forEach((t) => expect(WorkflowThemeSchema.safeParse(t).success).toBe(true));
-    const signature = (t: (typeof themes)[number]) => [t.composition, t.hero.layout, t.typography, t.components.option, t.components.button].join('|');
-    expect(new Set(themes.map(signature)).size).toBe(6);
-    expect(new Set(themes.map((t) => t.hero.layout)).size).toBe(6);
-    expect(new Set(themes.map((t) => t.typography)).size).toBe(6);
+    expect(themes.length).toBeGreaterThanOrEqual(24);
+    themes.forEach((t) => expect(WorkflowThemeSchema.safeParse(t).success, t.presetId).toBe(true));
+    // No two designs share the same structure (composition, hero, type, option, button, decoration, radius)…
+    const signature = (t: (typeof themes)[number]) => [t.composition, t.hero.layout, t.typography, t.components.option, t.components.button, t.decoration, t.radius].join('|');
+    expect(new Set(themes.map(signature)).size).toBe(themes.length);
+    // …or the same palette.
+    expect(new Set(themes.map((t) => t.palette.primary + t.palette.background)).size).toBe(themes.length);
+    expect(new Set(themes.map((t) => t.typography)).size).toBeGreaterThanOrEqual(10);
+    expect(new Set(themes.map((t) => t.decoration)).size).toBeGreaterThanOrEqual(12);
+    // Every category offers a real choice, and every design is named and described.
+    for (const c of PRESET_CATEGORIES) expect(PRESET_LIST.filter((p) => p.category === c.id).length, c.id).toBeGreaterThanOrEqual(2);
+    for (const p of PRESET_LIST) {
+      expect(p.experience.length).toBeGreaterThan(1);
+      expect(p.description.length).toBeGreaterThan(30);
+      expect(p.bestFor.length).toBeGreaterThan(5);
+    }
+    // Dark designs keep light text on dark surfaces.
+    for (const id of ['luxury_noir', 'nightlife_neon'] as const) expect(contrastRatio(PRESETS[id].theme.palette.text, PRESETS[id].theme.palette.background)).toBeGreaterThanOrEqual(12);
   });
 
   it('rejects invalid colors, presets and remote image references', () => {
@@ -100,7 +119,7 @@ describe('presets and theme schema', () => {
     for (const id of THEME_PRESET_IDS) {
       const style = themeTokens(buildTheme(id)).style as Record<string, string>;
       const p = PRESETS[id].theme.palette;
-      expect(contrastRatio(style['--fz-on-primary']!, p.primary)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(style['--fz-on-primary']!, p.primary), id).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(style['--fz-primary-ink']!, p.surface)).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(p.text, p.surface)).toBeGreaterThanOrEqual(7);
     }

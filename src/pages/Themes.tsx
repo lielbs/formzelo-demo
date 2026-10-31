@@ -1,5 +1,5 @@
 /**
- * Public showcase: six art-directed themes, one schema-driven renderer.
+ * Public showcase: the design library, one schema-driven renderer.
  * Every preview is the real WorkflowRenderer in preview mode — nothing is a screenshot.
  */
 import { ArrowLeft, Check, Cpu, Shuffle } from 'lucide-react';
@@ -10,7 +10,8 @@ import type { RunAnswer, WorkflowConfig } from '../domain/schema';
 import type { ThemePresetId } from '../domain/theme';
 import { field, option, step, TEMPLATES } from '../engine/templates';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
-import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
+import { buildTheme, PRESET_CATEGORIES, PRESET_LIST, PRESETS, type PresetCategory } from '../theme/presets';
+import { TEMPLATE_LIBRARY } from '../engine/library';
 import { PresetPreview } from '../theme/PresetPreview';
 import { TYPOGRAPHY } from '../theme/tokens';
 import { DevicePreview, DeviceToggle, type Device } from './app/editor/DevicePreview';
@@ -55,8 +56,8 @@ const GARAGE_CASE: RunAnswer[] = [
   ['advisor', 'יועץ/ת שירות', 'אבי (דמו)'],
 ].map(([k, label, v]) => ({ fieldId: `case_${k}`, fieldKey: k!, label: label!, value: v!, displayValue: v! }));
 
-type SampleKey = 'flowers' | 'garage' | 'events' | 'documents' | 'workshop' | 'quote';
-const SAMPLES: { key: SampleKey; label: string; build: () => WorkflowConfig; preset: ThemePresetId; caseAnswers?: RunAnswer[] }[] = [
+type SampleKey = string;
+const BASE_SAMPLES: { key: SampleKey; label: string; build: () => WorkflowConfig; preset: ThemePresetId; caseAnswers?: RunAnswer[] }[] = [
   { key: 'flowers', label: 'הזמנת פרחים', build: TEMPLATES.flower_order.build, preset: 'floral_boutique' },
   { key: 'garage', label: 'אישור תיקונים', build: TEMPLATES.garage_repairs.build, preset: 'automotive_precision', caseAnswers: GARAGE_CASE },
   { key: 'events', label: 'אירוע במסעדה', build: TEMPLATES.restaurant_event.build, preset: 'hospitality_premium' },
@@ -64,10 +65,19 @@ const SAMPLES: { key: SampleKey; label: string; build: () => WorkflowConfig; pre
   { key: 'workshop', label: 'הרשמה לסדנה', build: workshop, preset: 'creative_studio' },
   { key: 'quote', label: 'בקשה להצעת מחיר', build: TEMPLATES.quote_request.build, preset: 'modern_minimal' },
 ];
+/** Library designs are shown on a template from the library that was made for them. */
+const SAMPLES: typeof BASE_SAMPLES = [
+  ...BASE_SAMPLES,
+  ...PRESET_LIST.filter((p) => !BASE_SAMPLES.some((s) => s.preset === p.id)).flatMap((p) => {
+    const t = TEMPLATE_LIBRARY.find((x) => x.preset === p.id);
+    return t ? [{ key: t.id, label: t.title, build: t.build, preset: p.id }] : [];
+  }),
+];
 
 export function Themes() {
   const [presetId, setPresetId] = useState<ThemePresetId>('floral_boutique');
   const [sampleKey, setSampleKey] = useState<SampleKey>('flowers');
+  const [cat, setCat] = useState<PresetCategory | 'all'>('all');
   const [device, setDevice] = useState<Device>('desktop');
   // Build each sample once so option ids stay stable while browsing.
   const configs = useMemo(() => Object.fromEntries(SAMPLES.map((s) => [s.key, s.build()])) as Record<SampleKey, WorkflowConfig>, []);
@@ -82,7 +92,7 @@ export function Themes() {
       <main id="main">
         <section className="mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6">
           <p className="text-sm font-medium text-orange-700">גלריית עיצובים</p>
-          <h1 className="mt-2 max-w-2xl text-4xl font-semibold tracking-tight text-midnight sm:text-5xl">שישה עיצובים. מנוע אחד.</h1>
+          <h1 className="mt-2 max-w-2xl text-4xl font-semibold tracking-tight text-midnight sm:text-5xl">{PRESET_LIST.length} עיצובים. מנוע אחד.</h1>
           <p className="mt-4 max-w-2xl leading-relaxed text-ink-muted">
             כל תהליך ב-Formangle מקבל שפה עיצובית שמתאימה לעסק: קומפוזיציה, טיפוגרפיה, צורות ותנועה — לא רק צבע. כל התצוגות כאן הן הרנדרר האמיתי שרץ אצל הלקוחות, במצב תצוגה מקדימה.
           </p>
@@ -92,8 +102,24 @@ export function Themes() {
         </section>
 
         <section aria-label="בחירת עיצוב" className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="סינון עיצובים לפי תחום">
+            {[{ id: 'all' as const, label: `הכול · ${PRESET_LIST.length}` }, ...PRESET_CATEGORIES].map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={cat === c.id}
+                onClick={() => setCat(c.id)}
+                className={cx(
+                  'min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
+                  cat === c.id ? 'border-midnight bg-midnight text-white' : 'border-cloud-300 bg-white text-ink-muted hover:border-ink-soft hover:text-ink',
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="עיצוב">
-            {PRESET_LIST.map((p) => {
+            {PRESET_LIST.filter((p) => cat === 'all' || p.category === cat).map((p) => {
               const active = p.id === presetId;
               const pal = PRESETS[p.id].theme.palette;
               return (
@@ -104,7 +130,8 @@ export function Themes() {
                   aria-checked={active}
                   onClick={() => {
                     setPresetId(p.id);
-                    setSampleKey(SAMPLES.find((s) => s.preset === p.id)!.key);
+                    setSampleKey(SAMPLES.find((s) => s.preset === p.id)?.key ?? 'quote');
+                    document.getElementById('theme-live')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
                   className={cx(
                     'group rounded-2xl border bg-white p-2.5 text-start shadow-card transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
@@ -131,7 +158,7 @@ export function Themes() {
           </div>
         </section>
 
-        <section aria-label="תצוגה חיה" className="mx-auto max-w-6xl px-4 pb-20 pt-12 sm:px-6">
+        <section id="theme-live" aria-label="תצוגה חיה" className="mx-auto max-w-6xl scroll-mt-16 px-4 pb-20 pt-12 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-midnight">
@@ -146,7 +173,7 @@ export function Themes() {
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
               <Shuffle className="h-3.5 w-3.5" aria-hidden /> אותו עיצוב, תוכן אחר:
             </span>
-            {SAMPLES.map((s) => (
+            {SAMPLES.filter((s) => BASE_SAMPLES.includes(s) || s.preset === presetId || s.key === sampleKey).map((s) => (
               <button
                 key={s.key}
                 type="button"

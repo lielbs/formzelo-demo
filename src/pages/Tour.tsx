@@ -22,7 +22,7 @@ import { ownerActions } from '../engine/transitions';
 import { prepareImage } from '../lib/images';
 import { publicBaseUrl } from '../lib/links';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
-import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
+import { buildTheme, CORE_PRESET_IDS, PRESET_LIST, PRESETS } from '../theme/presets';
 import { DevicePreview, DeviceToggle, type Device } from './app/editor/DevicePreview';
 
 interface Business {
@@ -343,7 +343,7 @@ export function Tour() {
               <fieldset>
                 <legend className="mb-2 text-sm font-medium">סגנון עיצוב</legend>
                 <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="סגנון עיצוב">
-                  {PRESET_LIST.map((p) => {
+                  {PRESET_LIST.filter((p) => (CORE_PRESET_IDS as readonly string[]).includes(p.id) || p.id === pub.data!.version.design.presetId).map((p) => {
                     const active = (brand.preset ?? pub.data!.version.design.presetId) === p.id;
                     return (
                       <button
@@ -544,7 +544,7 @@ export function Tour() {
                 ))}
               </ul>
               <p className="mt-3 text-sm text-ink-muted">
-                חבילות מ-399 ₪ לחודש + 990 ₪ הקמה, לפני מע״מ.{' '}
+                חבילות מ-399 ₪ לחודש לפני מע״מ, ודמי הקמה לפי צורכי העסק.{' '}
                 <Link to="/pricing" className="font-medium text-orange-700 underline underline-offset-2">
                   לפרטי החבילות
                 </Link>

@@ -34,6 +34,7 @@ import type { ThemePresetId } from '../domain/theme';
 import { HeroArt } from '../theme/art';
 import { BrandShowcase, CompletionShowcase } from './LandingShowcase';
 import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
+import { TEMPLATE_LIBRARY } from '../engine/library';
 import { ThemeScope } from '../theme/ThemeScope';
 
 /** The story in three roles: who does what. */
@@ -67,7 +68,7 @@ const FAQ = [
   ['האם מתבצעים תשלומים או נשלחות הודעות?', 'לא. מקדמות, הודעות SMS, WhatsApp ואימייל הן סימולציות שמוצגות כתצוגה מקדימה בלבד.'],
   ['האם אישור במוסך מחייב משפטית?', 'לא. אישור בדמו נשמר מקומית, ללא חתימה אלקטרונית וללא תוקף משפטי. החלטות בטיחות מחייבות התייעצות עם איש מקצוע.'],
   ['אפשר להתאים את התהליך לעסק שלי?', 'כן. כותרות, שלבים, שדות, סוגי שדות, חובה, אפשרויות, מחירים, סדר, מיתוג ותנאים פשוטים — הכול ניתן לעריכה.'],
-  ['כמה זה עולה?', 'Business: 399 ₪ לחודש + 990 ₪ הקמה. Business Plus: 499 ₪ לחודש + 1,490 ₪ הקמה. Enterprise: הצעת מחיר מותאמת. כל המחירים לפני מע״מ, והם מחירי חבילות מוצעים בכפוף לאפיון. אינטגרציות ופיתוח מותאם מתומחרים בנפרד.'],
+  ['כמה זה עולה?', 'Business: 399 ₪ לחודש. Business Plus: 499 ₪ לחודש. Enterprise: הצעת מחיר מותאמת. דמי ההקמה החד-פעמיים משתנים לפי היקף התהליכים וצורכי העסק. כל המחירים לפני מע״מ, והם מחירי חבילות מוצעים בכפוף לאפיון. אינטגרציות ופיתוח מותאם מתומחרים בנפרד.'],
 ];
 
 function LivePromptDemo() {
@@ -283,8 +284,8 @@ export function Landing() {
               className="group mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-cloud-200 bg-white p-5 shadow-card transition hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange sm:flex-row sm:items-center"
             >
               <span>
-                <span className="block font-semibold text-ink">שישה עיצובים, מנוע אחד</span>
-                <span className="mt-0.5 block text-sm text-ink-muted">בוטיק, טכני, אירוח, משרדי, יצירתי ומינימלי — המנוע בוחר מקומית לפי התיאור, ואפשר להחליף בלחיצה.</span>
+                <span className="block font-semibold text-ink">{PRESET_LIST.length} עיצובים ו-{TEMPLATE_LIBRARY.length} תבניות מוכנות</span>
+                <span className="mt-0.5 block text-sm text-ink-muted">בוטיק, מקצועי, פרימיום, חגיגי, רפואי, יוקרה כהה ועוד — מפרחים ומוסכים ועד קליניקות, קייטנות ועמותות. הכול ניתן לעריכה.</span>
               </span>
               <span className="flex shrink-0 items-center gap-3">
                 <span className="flex -space-x-1.5 space-x-reverse" aria-hidden>

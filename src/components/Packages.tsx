@@ -23,7 +23,7 @@ export function PackagePrice({ p, size = 'lg' }: { p: Package; size?: 'lg' | 'md
         <span className="text-sm text-ink-muted">לחודש + מע״מ</span>
       </p>
       <p className="mt-2 text-sm text-ink">
-        <span className="font-semibold tabular-nums">{formatCurrency(p.setup!)}</span> <span className="text-ink-muted">הקמה חד-פעמית + מע״מ</span>
+        <span className="text-ink-muted">+ דמי הקמה חד-פעמיים — לפי היקף התהליכים וצורכי העסק</span>
       </p>
     </div>
   );
@@ -77,6 +77,7 @@ export function PricingFinePrint({ className }: { className?: string }) {
   return (
     <ul className={cx('space-y-1 text-xs leading-relaxed text-ink-muted', className)}>
       <li>{PRICING_TERMS.indicative} {PRICING_TERMS.vat}</li>
+      <li>{PRICING_TERMS.setup}</li>
       <li>{PRICING_TERMS.separate}</li>
       <li>{PRICING_TERMS.noSelfService}</li>
     </ul>

@@ -2,7 +2,7 @@
  * Design tab of the workflow editor. Edits only the draft WorkflowTheme;
  * published versions keep the design frozen with them.
  */
-import { Check, RotateCcw, Sparkles, Undo2, Wand2 } from 'lucide-react';
+import { RotateCcw, Sparkles, Undo2, Wand2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { ImagePicker } from '../../../components/ImagePicker';
 import { Badge, Button, Card, cx, FieldLabel, Input } from '../../../components/ui';
@@ -25,7 +25,7 @@ import {
   type WorkflowTheme,
 } from '../../../domain/theme';
 import { buildTheme, PRESET_LIST, PRESETS } from '../../../theme/presets';
-import { PresetPreview } from '../../../theme/PresetPreview';
+import { PresetPicker } from '../../../theme/PresetPicker';
 import type { ThemeRecommendation } from '../../../theme/resolver';
 import { themeTokens, TYPOGRAPHY } from '../../../theme/tokens';
 
@@ -178,33 +178,15 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
         </div>
       </Card>
 
-      <Group title="סגנון" hint="שש שפות עיצוב שונות — קומפוזיציה, טיפוגרפיה, צורות ותנועה, לא רק צבע.">
-        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3" role="radiogroup" aria-label="סגנון עיצוב">
-          {PRESET_LIST.map((p) => {
-            const active = design.presetId === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => onChange(buildTheme(p.id, { source: p.id === recommendation.presetId ? design.source : 'manual', keep }))}
-                className={cx(
-                  'rounded-2xl border bg-white p-2 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-                  active ? 'border-midnight ring-2 ring-midnight/15' : 'border-cloud-200 hover:border-ink-soft',
-                )}
-              >
-                <PresetPreview theme={buildTheme(p.id)} />
-                <span className="mt-2 flex items-center gap-1.5 px-1">
-                  <span className="text-sm font-semibold text-ink">{p.nameHe}</span>
-                  {p.id === recommendation.presetId && <Badge tone="teal">מומלץ</Badge>}
-                  {active && <Check className="ms-auto h-4 w-4 text-midnight" aria-hidden />}
-                </span>
-                <span className="block px-1 text-[11px] leading-snug text-ink-muted">{p.bestFor}</span>
-              </button>
-            );
-          })}
-        </div>
+      <Group title="סגנון" hint={`${PRESET_LIST.length} שפות עיצוב — כל אחת עם קומפוזיציה, טיפוגרפיה, צורות, איור ותנועה משלה, לא רק צבע. החלפה שומרת את התוכן.`}>
+        <PresetPicker
+          label="סגנון עיצוב"
+          value={design.presetId}
+          recommended={recommendation.presetId}
+          columns="sm:grid-cols-2 2xl:grid-cols-3"
+          details
+          onChange={(id) => onChange(buildTheme(id, { source: id === recommendation.presetId ? design.source : 'manual', keep }))}
+        />
         <p className="text-xs text-ink-muted">{PRESETS[design.presetId].meta.description}</p>
       </Group>
 
