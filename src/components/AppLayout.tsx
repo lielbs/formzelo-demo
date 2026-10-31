@@ -124,7 +124,7 @@ function Sidebar({ onNavigate, pending }: { onNavigate?: () => void; pending: nu
             <Icon className="h-[18px] w-[18px]" aria-hidden />
             <span className="flex-1">{label}</span>
             {badge && pending > 0 && (
-              <span className="rounded-full bg-orange px-2 py-0.5 text-[11px] font-semibold text-white" aria-label={`${pending} ממתינות`}>
+              <span className="rounded-full bg-orange-700 px-2 py-0.5 text-[11px] font-semibold text-white" aria-label={`${pending} ממתינות`}>
                 {pending}
               </span>
             )}

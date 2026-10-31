@@ -20,7 +20,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
         <h1 className="text-xl font-semibold text-ink">משהו השתבש בתצוגה</h1>
         <p className="mt-2 max-w-md text-sm text-ink-muted">הנתונים שלכם שמורים בדפדפן. נסו לרענן; אם הבעיה חוזרת, אפשר לאפס את נתוני הדמו בעמוד סביבות הדמו.</p>
         <div className="mt-6 flex gap-2">
-          <button className="h-10 rounded-xl bg-orange px-4 text-sm font-medium text-white" onClick={() => window.location.reload()}>
+          <button className="h-10 rounded-xl bg-orange-700 px-4 text-sm font-medium text-white" onClick={() => window.location.reload()}>
             רענון
           </button>
           <a className="inline-flex h-10 items-center rounded-xl border border-cloud-300 bg-white px-4 text-sm font-medium" href={appHref('/demo')}>

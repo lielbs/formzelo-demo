@@ -17,7 +17,8 @@ import type { WorkflowRun } from '../domain/schema';
 import type { ThemePresetId, WorkflowTheme } from '../domain/theme';
 import { hasOptionCapacity } from '../engine/capacity';
 import { workflowOutcome } from '../engine/metrics';
-import { formatNumber } from '../lib/format';
+import { formatNumber, formatRelative } from '../lib/format';
+import { ownerActions } from '../engine/transitions';
 import { prepareImage } from '../lib/images';
 import { publicBaseUrl } from '../lib/links';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
@@ -178,7 +179,7 @@ export function Tour() {
       <SiteHeader />
       <main id="main" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         <div ref={top} className="scroll-mt-20">
-          <p className="text-sm font-medium text-orange">סיור מודרך · כ-2 דקות</p>
+          <p className="text-sm font-medium text-orange-700">סיור מודרך · כ-2 דקות</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-midnight sm:text-4xl">כך זה ייראה אצלכם</h1>
           <p className="mt-2 max-w-2xl text-ink-muted">הסיור רץ בדפדפן שלכם בלבד. בקשה שתשלחו נשמרת כאן כדי שתראו איך היא מגיעה לעסק — היא לא נשלחת לאף אחד.</p>
         </div>
@@ -216,21 +217,21 @@ export function Tour() {
                     onClick={() => pick(b)}
                     className="group flex h-full w-full items-start gap-3 rounded-2xl border border-cloud-200 bg-white p-5 text-start shadow-card transition hover:-translate-y-0.5 hover:border-ink-soft hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700">
                       <b.icon className="h-5 w-5" aria-hidden />
                     </span>
                     <span className="min-w-0">
                       <span className="block font-semibold">{b.label}</span>
                       <span className="mt-1 block text-sm text-ink-muted">{b.value}</span>
                     </span>
-                    <ArrowLeft className="ms-auto mt-1 h-4 w-4 shrink-0 text-ink-soft transition group-hover:-translate-x-1 group-hover:text-orange" aria-hidden />
+                    <ArrowLeft className="ms-auto mt-1 h-4 w-4 shrink-0 text-ink-soft transition group-hover:-translate-x-1 group-hover:text-orange-700" aria-hidden />
                   </button>
                 </li>
               ))}
             </ul>
             <p className="mt-4 text-sm text-ink-muted">
               העסק שלכם לא ברשימה?{' '}
-              <Link to="/app/workflows/new" className="font-medium text-orange hover:underline">
+              <Link to="/app/workflows/new" className="font-medium text-orange-700 hover:underline">
                 תארו אותו במילים ונבנה תהליך
               </Link>
             </p>
@@ -400,7 +401,7 @@ export function Tour() {
                 <Spinner label="פותחים תיק…" />
               ) : submitted ? (
                 <div className="p-8 text-center">
-                  <PartyPopper className="mx-auto h-8 w-8 text-orange" aria-hidden />
+                  <PartyPopper className="mx-auto h-8 w-8 text-orange-700" aria-hidden />
                   <p className="mt-3 font-semibold">נשלח! מספר הבקשה {submitted.reference}</p>
                   <Button className="mt-4" onClick={() => go(4)}>
                     לראות מה העסק מקבל <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -449,7 +450,7 @@ export function Tour() {
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                       <Card className="p-5">
                         <p className="flex items-center gap-2 text-sm font-semibold">
-                          <Inbox className="h-4 w-4 text-orange" aria-hidden /> {mine ? 'הבקשה שלכם' : 'בקשה לדוגמה'}
+                          <Inbox className="h-4 w-4 text-orange-700" aria-hidden /> {mine ? 'הבקשה שלכם' : 'בקשה לדוגמה'}
                         </p>
                         {(mine ?? own[0]) && (
                           <>
@@ -461,6 +462,24 @@ export function Tour() {
                               <PaymentBadge payment={(mine ?? own[0])!.payment} runStatus={(mine ?? own[0])!.status} />
                               {!mine && <Badge tone="amber">דמו</Badge>}
                             </div>
+                            <dl className="mt-3 space-y-1 text-sm">
+                              <div className="flex gap-1.5">
+                                <dt className="text-ink-muted">מהתהליך:</dt>
+                                <dd className="font-medium">{wf?.draft.title}</dd>
+                              </div>
+                              {(mine ?? own[0])!.submittedAt && (
+                                <div className="flex gap-1.5">
+                                  <dt className="text-ink-muted">התקבלה:</dt>
+                                  <dd>{formatRelative((mine ?? own[0])!.submittedAt!)}</dd>
+                                </div>
+                              )}
+                              {ownerActions((mine ?? own[0])!.status)[0] && (
+                                <div className="flex gap-1.5">
+                                  <dt className="text-ink-muted">הצעד הבא של העסק:</dt>
+                                  <dd className="font-medium">{ownerActions((mine ?? own[0])!.status).map((a) => a.label).slice(0, 3).join(' · ')}</dd>
+                                </div>
+                              )}
+                            </dl>
                             <Button
                               className="mt-4"
                               variant="dark"
@@ -515,6 +534,22 @@ export function Tour() {
                 );
               })()
             )}
+            <Card className="p-5 sm:p-6">
+              <h3 className="text-lg font-semibold">מה RockStack מקימה עבורכם</h3>
+              <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                {['אפיון התהליכים של העסק — הזמנות, אישורים, תורים או הרשמות', 'מיתוג מלא: צבעים, גופן, לוגו, תמונות וקישורים עסקיים', 'שאלות, מחירים ותנאים שמתאימים בדיוק לשירות שלכם', 'לוח בקרה לניהול הבקשות, וליווי אחרי העלייה לאוויר'].map((t) => (
+                  <li key={t} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal" aria-hidden /> {t}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-sm text-ink-muted">
+                חבילות מ-399 ₪ לחודש + 990 ₪ הקמה, לפני מע״מ.{' '}
+                <Link to="/pricing" className="font-medium text-orange-700 underline underline-offset-2">
+                  לפרטי החבילות
+                </Link>
+              </p>
+            </Card>
             <InterestCTA dark business={biz.label} name={brand.name.trim() || undefined} />
           </section>
         )}

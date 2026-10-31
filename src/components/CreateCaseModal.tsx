@@ -84,7 +84,7 @@ export function CreateCaseModal({ open, onClose, orgId, workflow, caseFields }: 
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange px-4 text-sm font-medium text-white hover:bg-orange-600">
+            <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-700 px-4 text-sm font-medium text-white hover:bg-orange-800">
               <ExternalLink className="h-4 w-4" aria-hidden /> פתיחה כלקוח
             </a>
             <Link to={`/app/requests/${created.id}`} onClick={close} className="inline-flex h-10 items-center rounded-xl border border-cloud-300 px-4 text-sm font-medium hover:bg-cloud">

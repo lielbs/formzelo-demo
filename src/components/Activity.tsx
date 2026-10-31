@@ -30,7 +30,7 @@ export function Timeline({ events, runs, showRun = false }: { events: RunEvent[]
             <span
               className={cx(
                 'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white',
-                e.type === 'note_added' ? 'bg-amber-50 text-amber-700' : e.actor === 'customer' ? 'bg-orange-50 text-orange' : 'bg-cloud-200 text-ink-muted',
+                e.type === 'note_added' ? 'bg-amber-50 text-amber-700' : e.actor === 'customer' ? 'bg-orange-50 text-orange-700' : 'bg-cloud-200 text-ink-muted',
               )}
             >
               <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -49,7 +49,7 @@ export function Timeline({ events, runs, showRun = false }: { events: RunEvent[]
                 {showRun && run && (
                   <>
                     {' · '}
-                    <Link to={`/app/requests/${run.id}`} className="font-medium text-ink-muted hover:text-orange">
+                    <Link to={`/app/requests/${run.id}`} className="font-medium text-ink-muted hover:text-orange-700">
                       {run.reference} {run.customerName && `· ${run.customerName}`}
                     </Link>
                   </>

@@ -17,7 +17,7 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
 type Size = 'sm' | 'md' | 'lg';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-orange text-white hover:bg-orange-600 shadow-sm',
+  primary: 'bg-orange-700 text-white hover:bg-orange-800 shadow-sm',
   dark: 'bg-midnight text-white hover:bg-midnight-700 shadow-sm',
   secondary: 'bg-white text-ink border border-cloud-300 hover:border-ink-soft hover:bg-cloud',
   ghost: 'text-ink-muted hover:text-ink hover:bg-cloud-200',
@@ -74,7 +74,7 @@ export function Card({ className, children, as: As = 'div' }: { className?: stri
 type Tone = 'neutral' | 'orange' | 'teal' | 'blue' | 'red' | 'amber' | 'dark';
 const tones: Record<Tone, string> = {
   neutral: 'bg-cloud-200 text-ink-muted',
-  orange: 'bg-orange-50 text-orange-600',
+  orange: 'bg-orange-50 text-orange-700',
   teal: 'bg-teal-50 text-teal-600',
   blue: 'bg-sky-50 text-sky-700',
   red: 'bg-red-50 text-red-700',
@@ -130,7 +130,7 @@ export function FieldLabel({ htmlFor, children, required }: { htmlFor?: string; 
     <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-ink">
       {children}
       {required && (
-        <span className="ms-1 text-orange" aria-hidden>
+        <span className="ms-1 text-orange-700" aria-hidden>
           *
         </span>
       )}
@@ -164,7 +164,7 @@ export function ErrorState({ error, onRetry }: { error: Error | string; onRetry?
 export function EmptyState({ icon: Icon, title, children, action }: { icon: LucideIcon; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-cloud-300 bg-white px-6 py-12 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
         <Icon className="h-6 w-6" aria-hidden />
       </div>
       <h3 className="text-base font-semibold text-ink">{title}</h3>
@@ -194,6 +194,7 @@ export function Modal({
   title,
   children,
   side = false,
+  wide = false,
   footer,
 }: {
   open: boolean;
@@ -201,6 +202,8 @@ export function Modal({
   title: string;
   children: ReactNode;
   side?: boolean;
+  /** Wider centered dialog, e.g. the field library with its live preview. */
+  wide?: boolean;
   footer?: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -224,7 +227,7 @@ export function Modal({
         ref={panelRef}
         className={cx(
           'relative z-10 flex max-h-full flex-col bg-white shadow-lift animate-fade-up',
-          side ? 'ms-auto h-full w-full max-w-xl' : 'm-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl',
+          side ? 'ms-auto h-full w-full max-w-xl' : cx('m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] rounded-2xl', wide ? 'max-w-4xl' : 'max-w-lg'),
         )}
       >
         <div className="flex items-center justify-between border-b border-cloud-200 px-5 py-4">
@@ -241,7 +244,7 @@ export function Modal({
 }
 
 export function Stat({ label, value, hint, icon: Icon, tone = 'neutral' }: { label: string; value: ReactNode; hint?: ReactNode; icon: LucideIcon; tone?: 'neutral' | 'orange' | 'teal' }) {
-  const iconTone = { neutral: 'bg-cloud text-ink-muted', orange: 'bg-orange-50 text-orange', teal: 'bg-teal-50 text-teal' }[tone];
+  const iconTone = { neutral: 'bg-cloud text-ink-muted', orange: 'bg-orange-50 text-orange-700', teal: 'bg-teal-50 text-teal' }[tone];
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">

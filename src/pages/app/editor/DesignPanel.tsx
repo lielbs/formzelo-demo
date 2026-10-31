@@ -162,7 +162,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
             עיצוב מומלץ: {recName}{' '}
             {design.presetId === recommendation.presetId && design.source === 'auto' && <Badge tone="teal">נבחר אוטומטית</Badge>}
           </p>
-          <p className="mt-0.5 text-xs text-ink-muted">{recommendation.reason} בחירה מקומית ודטרמיניסטית לפי מילות מפתח — ללא AI.</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{recommendation.reason} בחירה מקומית לפי מילות מפתח.</p>
         </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5 ps-8">

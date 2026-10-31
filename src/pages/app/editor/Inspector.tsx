@@ -191,6 +191,7 @@ function OptionRows({ f, onChange, priced, images }: { f: WorkflowField; onChang
 export function FieldInspector({
   f,
   allFields,
+  earlier,
   priced,
   images,
   orgId,
@@ -200,6 +201,8 @@ export function FieldInspector({
 }: {
   f: WorkflowField;
   allFields: WorkflowField[];
+  /** Answerable fields before this one — the only valid condition sources. */
+  earlier: WorkflowField[];
   priced: boolean;
   images: Asset[];
   orgId: string;
@@ -209,7 +212,6 @@ export function FieldInspector({
 }) {
   const id = `ins-${f.id}`;
   const display = isDisplayField(f);
-  const others = allFields.filter((o) => o.key !== f.key && !isDisplayField(o));
   const numeric = allFields.filter((o) => o.type === 'number' && o.key !== f.key);
   const appearanceFor = (t: FieldType): FieldAppearance[] =>
     t === 'radio' || t === 'multiselect' ? ['auto', 'tiles', 'image_cards', 'list', 'chips', 'swatches'] : t === 'number' ? ['auto', 'stepper'] : t === 'textarea' ? ['auto', 'card_preview'] : [];
@@ -233,31 +235,22 @@ export function FieldInspector({
         <FieldLabel htmlFor={`${id}-label`}>{display ? 'כותרת' : 'תווית השדה'}</FieldLabel>
         <Input id={`${id}-label`} value={f.label} invalid={!f.label.trim()} onChange={(e) => onChange({ ...f, label: e.target.value })} />
       </div>
-      <div>
-        <FieldLabel htmlFor={`${id}-type`}>סוג</FieldLabel>
-        <Select
-          id={`${id}-type`}
-          value={f.type}
-          onChange={(e) => {
-            const type = e.target.value as FieldType;
-            const needsOptions = HAS_OPTIONS.includes(type) && !f.options?.length;
-            onChange({
-              ...f,
-              type,
-              appearance: appearanceFor(type).includes(f.appearance ?? 'auto') ? f.appearance : undefined,
-              options: needsOptions ? [makeOption('option_1', 'אפשרות 1')] : f.options,
-              required: isDisplayField({ type }) ? false : f.required,
-            });
-          }}
-        >
-          {FIELD_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {FIELD_TYPE_LABELS[t]}
-            </option>
+      {!display && f.type !== 'info' && (
+        <div className="flex gap-1.5" role="radiogroup" aria-label="חובה או רשות">
+          {([true, false] as const).map((v) => (
+            <button
+              key={String(v)}
+              type="button"
+              role="radio"
+              aria-checked={f.required === v}
+              onClick={() => onChange({ ...f, required: v })}
+              className={cx('min-h-[36px] flex-1 rounded-lg border text-xs font-medium transition', f.required === v ? 'border-midnight bg-midnight text-white' : 'border-cloud-300 bg-white text-ink-muted hover:text-ink')}
+            >
+              {v ? 'שדה חובה' : 'רשות'}
+            </button>
           ))}
-        </Select>
-      </div>
-
+        </div>
+      )}
       {appearances.length > 1 && (
         <div>
           <p className="mb-1.5 text-sm font-medium">תצוגה</p>
@@ -338,13 +331,6 @@ export function FieldInspector({
         </div>
       )}
 
-      {!display && f.type !== 'info' && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={f.required} onChange={(e) => onChange({ ...f, required: e.target.checked })} />
-          שדה חובה
-        </label>
-      )}
-
       {HAS_OPTIONS.includes(f.type) && <OptionRows f={f} onChange={onChange} priced={priced} images={images} />}
 
       {f.type === 'decision' && (
@@ -369,6 +355,7 @@ export function FieldInspector({
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-ink-muted marker:hidden hover:text-ink">
           <span>
             הגדרות מתקדמות
+            <span className="block text-[11px] font-normal text-ink-soft">הצגה מותנית, הכפלת מחיר, הגבלות, סוג השדה ומזהה פנימי</span>
             {(f.condition || f.multiplyByKey || f.role) && (
               <span className="text-xs font-normal text-sky-700"> · {[f.condition && 'מותנה', f.multiplyByKey && 'הכפלת מחיר', f.role && 'תיבת בקשות'].filter(Boolean).join(' · ')}</span>
             )}
@@ -376,6 +363,31 @@ export function FieldInspector({
           <span aria-hidden className="text-xs transition group-open:rotate-180">▾</span>
         </summary>
         <div className="mt-3 space-y-4">
+      <div>
+        <FieldLabel htmlFor={`${id}-type`}>שינוי סוג השדה</FieldLabel>
+        <Select
+          id={`${id}-type`}
+          value={f.type}
+          onChange={(e) => {
+            const type = e.target.value as FieldType;
+            const needsOptions = HAS_OPTIONS.includes(type) && !f.options?.length;
+            onChange({
+              ...f,
+              type,
+              appearance: appearanceFor(type).includes(f.appearance ?? 'auto') ? f.appearance : undefined,
+              options: needsOptions ? [makeOption('option_1', 'אפשרות 1')] : f.options,
+              required: isDisplayField({ type }) ? false : f.required,
+            });
+          }}
+        >
+          {FIELD_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {FIELD_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </Select>
+      </div>
+
         {['text', 'textarea', 'email', 'phone', 'number'].includes(f.type) && (
           <div>
             <FieldLabel htmlFor={`${id}-ph`}>טקסט מקום (placeholder)</FieldLabel>
@@ -421,7 +433,7 @@ export function FieldInspector({
             </Select>
           </div>
         )}
-        <ConditionEditor field={f} others={others} onChange={(condition) => onChange({ ...f, condition })} />
+        <ConditionEditor field={f} others={earlier} onChange={(condition) => onChange({ ...f, condition })} />
         <p className="text-[11px] text-ink-soft">
           מזהה פנימי: <code dir="ltr">{f.key}</code> · חישובים ותנאים הם הצהרתיים בלבד — לעולם לא מורץ קוד מהגדרות.
         </p>
@@ -435,7 +447,7 @@ export function StepInspector({
   step,
   index,
   count,
-  allFields,
+  earlier,
   onChange,
   onMove,
   onDelete,
@@ -443,7 +455,8 @@ export function StepInspector({
   step: WorkflowStep;
   index: number;
   count: number;
-  allFields: WorkflowField[];
+  /** Answerable fields in earlier steps — the only valid condition sources. */
+  earlier: WorkflowField[];
   onChange: (s: WorkflowStep) => void;
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
@@ -476,7 +489,7 @@ export function StepInspector({
         <FieldLabel htmlFor="st-desc">תיאור קצר</FieldLabel>
         <Textarea id="st-desc" rows={2} value={step.description ?? ''} onChange={(e) => onChange({ ...step, description: e.target.value || undefined })} />
       </div>
-      <ConditionEditor field={pseudo} others={allFields.filter((f) => !isDisplayField(f) && !step.fields.includes(f))} onChange={(condition) => onChange({ ...step, condition })} />
+      <ConditionEditor field={pseudo} subject="השלב" others={earlier} onChange={(condition) => onChange({ ...step, condition })} />
       <p className="text-xs text-ink-muted">{step.fields.length} רכיבים בשלב. תנאי שלב מסתיר את כל השלב כשאינו מתקיים.</p>
     </Panel>
   );

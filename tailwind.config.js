@@ -5,7 +5,8 @@ export default {
     extend: {
       colors: {
         midnight: { DEFAULT: '#18212D', 700: '#243142', 600: '#334357' },
-        orange: { DEFAULT: '#E96B3D', 600: '#D35A2E', 50: '#FDF0EB', 100: '#FADFD4' },
+        // 700 / 800 carry white text and small orange text at WCAG AA (≥4.5:1); DEFAULT is the brand accent for marks and large display.
+        orange: { DEFAULT: '#E96B3D', 600: '#D35A2E', 700: '#BF4F28', 800: '#A6431F', 50: '#FDF0EB', 100: '#FADFD4' },
         cloud: { DEFAULT: '#F5F6F8', 200: '#E8EAEE', 300: '#D9DDE3' },
         teal: { DEFAULT: '#3A8A78', 600: '#2F7263', 50: '#EAF4F1' },
         ink: { DEFAULT: '#1E2935', muted: '#5B6675', soft: '#8A94A3' },

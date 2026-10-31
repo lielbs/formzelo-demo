@@ -5,8 +5,13 @@
  * version (with the brand kit resolved).
  */
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowRight,
+  CheckCircle2,
+  Circle,
+  GitBranch,
+  Play,
   ArrowUp,
   CalendarClock,
   Copy,
@@ -48,7 +53,11 @@ import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { effectiveTheme } from '../../theme/brand';
 import { PRESETS } from '../../theme/presets';
 import { themeResolver } from '../../theme/resolver';
-import { BLOCK_GROUPS, BLOCKS, blockIcon, createBlock } from './editor/blockLibrary';
+import { blockIcon, createBlocks, type BlockAction, type BlockDef } from './editor/blockLibrary';
+import { FieldLibrary } from './editor/FieldLibrary';
+import { LogicPanel } from './editor/LogicPanel';
+import { duplicateField, earlierAnswerFields, historyOf, pushHistory, redoHistory, undoHistory, type History as EditHistory } from '../../engine/builder';
+import { canPublish, logicIssues, publishReadiness } from '../../engine/logic';
 import { DesignPanel, Toggle } from './editor/DesignPanel';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
 import { FIELD_TYPE_LABELS, FieldListEditor, move } from './editor/FieldEditor';
@@ -62,6 +71,7 @@ type Selection =
   | { kind: 'booking' }
   | { kind: 'presence' }
   | { kind: 'publish' }
+  | { kind: 'logic' }
   | { kind: 'step'; stepId: string }
   | { kind: 'field'; fieldId: string };
 
@@ -124,10 +134,21 @@ export function WorkflowEditor() {
   const assetUrls = useMemo(() => Object.fromEntries(assets.map((a) => [a.id, a.dataUrl])), [assets]);
   const kit = side.data?.kit;
 
-  const [snap, setSnap] = useState<Snapshot | null>(null);
+  // Undo history (engine/builder): the present is the draft being edited.
+  const [hist, setHist] = useState<EditHistory<Snapshot> | null>(null);
+  const snap = hist?.present ?? null;
+  const past = hist?.past ?? [];
+  const future = hist?.future ?? [];
+  /** Replaces the draft and starts a fresh history (load, restore, discard). */
+  const setSnap = useCallback((s: Snapshot) => setHist(historyOf(s)), []);
   const [saved, setSaved] = useState('');
-  const [past, setPast] = useState<Snapshot[]>([]);
-  const [future, setFuture] = useState<Snapshot[]>([]);
+  /** Adopts the stored draft as the present (keeping undo history) so "saved" compares like with like. */
+  const markSaved = useCallback((stored: Snapshot) => {
+    setHist((h) => (h ? { ...h, present: stored } : historyOf(stored)));
+    setSaved(JSON.stringify(stored));
+  }, []);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [published, setPublished] = useState<{ version: number } | null>(null);
   const lastEdit = useRef<{ key: string; at: number }>({ key: '', at: 0 });
   const [sel, setSel] = useState<Selection>({ kind: 'workflow' });
   const [device, setDevice] = useState<Device>('mobile');
@@ -156,54 +177,37 @@ export function WorkflowEditor() {
       const s = { config: structuredClone(q.data.workflow.draft), design: structuredClone(q.data.workflow.design) };
       setSnap(s);
       setSaved(JSON.stringify(s));
-      setPast([]);
-      setFuture([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedId]);
 
   const dirty = snap !== null && JSON.stringify(snap) !== saved;
   const issues = useMemo(() => (snap ? schemaIssues(snap.config) : []), [snap]);
+  const logic = useMemo(() => (snap ? logicIssues(snap.config) : []), [snap]);
+  const logicErrors = logic.filter((i) => i.level === 'error').length;
 
   /** Applies an edit and records undo history; rapid edits to the same thing (typing) coalesce. */
   const apply = useCallback((fn: (s: Snapshot) => void, key = 'edit') => {
-    setSnap((cur) => {
-      if (!cur) return cur;
-      const next = structuredClone(cur);
+    // Decided outside the state updater so it stays pure (StrictMode runs updaters twice).
+    const now = Date.now();
+    const coalesce = lastEdit.current.key === key && now - lastEdit.current.at < 700;
+    lastEdit.current = { key, at: now };
+    setHist((h) => {
+      if (!h) return h;
+      const next = structuredClone(h.present);
       fn(next);
-      const now = Date.now();
-      const coalesce = lastEdit.current.key === key && now - lastEdit.current.at < 700;
-      lastEdit.current = { key, at: now };
-      if (!coalesce) setPast((p) => [...p.slice(-59), cur]);
-      setFuture([]);
-      return next;
+      return pushHistory(h, next, coalesce);
     });
   }, []);
   const update = useCallback((fn: (d: WorkflowConfig) => void, key = 'cfg') => apply((s) => fn(s.config), key), [apply]);
 
   const undo = useCallback(() => {
-    setPast((p) => {
-      const prev = p[p.length - 1];
-      if (!prev) return p;
-      setSnap((cur) => {
-        if (cur) setFuture((f) => [cur, ...f].slice(0, 60));
-        return prev;
-      });
-      lastEdit.current = { key: '', at: 0 };
-      return p.slice(0, -1);
-    });
+    lastEdit.current = { key: '', at: 0 };
+    setHist((h) => h && undoHistory(h));
   }, []);
   const redo = useCallback(() => {
-    setFuture((f) => {
-      const nxt = f[0];
-      if (!nxt) return f;
-      setSnap((cur) => {
-        if (cur) setPast((p) => [...p, cur]);
-        return nxt;
-      });
-      lastEdit.current = { key: '', at: 0 };
-      return f.slice(1);
-    });
+    lastEdit.current = { key: '', at: 0 };
+    setHist((h) => h && redoHistory(h));
   }, []);
 
   useEffect(() => {
@@ -241,7 +245,7 @@ export function WorkflowEditor() {
   if (q.error) return <ErrorState error={q.error} onRetry={q.reload} />;
   if (!q.data || !snap || !previewTheme) {
     return (
-      <EmptyState icon={FilePlus2} title="התהליך לא נמצא בסביבת עבודה זו" action={<Link className="text-sm font-medium text-orange" to="/app/workflows">חזרה לתהליכים</Link>}>
+      <EmptyState icon={FilePlus2} title="התהליך לא נמצא בסביבת עבודה זו" action={<Link className="text-sm font-medium text-orange-700" to="/app/workflows">חזרה לתהליכים</Link>}>
         ייתכן שהוא שייך לסביבת עבודה אחרת.
       </EmptyState>
     );
@@ -251,7 +255,10 @@ export function WorkflowEditor() {
   const { config, design } = snap;
   const allFields = config.steps.flatMap((s) => s.fields);
   const link = publicFlowUrl(workflow.slug);
-  const published = workflow.status === 'published';
+  const isPublished = workflow.status === 'published';
+  const studioMode = previewMode ? 'preview' : sel.kind === 'design' || sel.kind === 'presence' ? 'design' : sel.kind === 'logic' ? 'logic' : 'content';
+  const readiness = publishReadiness(config);
+  const ready = canPublish(readiness) && !issues.length;
   const completion = completionOf(config);
   const savedSnap = JSON.parse(saved) as Snapshot;
 
@@ -273,7 +280,7 @@ export function WorkflowEditor() {
     setBusy('save');
     try {
       const wf = await repo.saveDraft(org.id, workflow.id, config, design);
-      setSaved(JSON.stringify({ config: wf.draft, design: wf.design }));
+      markSaved({ config: wf.draft, design: wf.design });
       toast('הטיוטה נשמרה — תוכן ועיצוב');
     } catch (e) {
       toast(e instanceof Error ? e.message : 'השמירה נכשלה', 'error');
@@ -283,16 +290,16 @@ export function WorkflowEditor() {
   };
 
   const publish = async () => {
-    setConfirmPublish(false);
-    if (issues.length) return toast('יש לתקן שגיאות לפני פרסום', 'error');
+    if (issues.length || !canPublish(publishReadiness(config))) return toast('יש לתקן את הפריטים המסומנים לפני פרסום', 'error');
     setBusy('publish');
     try {
       if (dirty) {
         const wf = await repo.saveDraft(org.id, workflow.id, config, design);
-        setSaved(JSON.stringify({ config: wf.draft, design: wf.design }));
+        markSaved({ config: wf.draft, design: wf.design });
       }
       const v = await repo.publishWorkflow(org.id, workflow.id);
-      toast(`גרסה ${v.version} פורסמה — הקישור פעיל`);
+      // The success state is shown only now, after the repository confirmed the new version.
+      setPublished({ version: v.version });
       setSel({ kind: 'publish' });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'הפרסום נכשל', 'error');
@@ -301,17 +308,31 @@ export function WorkflowEditor() {
     }
   };
 
-  const addBlock = (stepId: string, defId: string) => {
-    const def = BLOCKS.find((b) => b.id === defId)!;
-    const block = createBlock(def, allFields.map((f) => f.key));
+  const addStep = () => {
+    const stepId = newId('stp');
+    apply((s) => void s.config.steps.push({ id: stepId, title: `שלב ${s.config.steps.length + 1}`, fields: [] }), `step-${stepId}`);
+    setSel({ kind: 'step', stepId });
+    toast('נוסף שלב חדש — הוסיפו לו שדות');
+  };
+
+  const addBlock = (stepId: string, def: BlockDef) => {
+    const blocks = createBlocks(def, allFields.map((f) => f.key));
+    if (!blocks.length) return;
     apply((s) => {
       const step = s.config.steps.find((x) => x.id === stepId)!;
       const after = sel.kind === 'field' ? step.fields.findIndex((f) => f.id === sel.fieldId) : -1;
-      step.fields.splice(after >= 0 ? after + 1 : step.fields.length, 0, block);
-    }, `add-${block.id}`);
+      step.fields.splice(after >= 0 ? after + 1 : step.fields.length, 0, ...blocks);
+    }, `add-${blocks[0]!.id}`);
     setLibrary(null);
-    setSel({ kind: 'field', fieldId: block.id });
-    toast(`נוסף: ${def.label}`);
+    setSel({ kind: 'field', fieldId: blocks[0]!.id });
+    toast(blocks.length > 1 ? `נוספו ${blocks.length} שדות: ${def.label}` : `נוסף: ${def.label}`, 'success', { label: 'ביטול', onClick: undo });
+  };
+
+  const libraryAction = (action: BlockAction) => {
+    setLibrary(null);
+    if (action === 'step') return addStep();
+    setPreviewMode(false);
+    select({ kind: action });
   };
 
   const changeField = (f: WorkflowField) =>
@@ -330,12 +351,16 @@ export function WorkflowEditor() {
       : dependents.length
         ? `"${f.label}" משמש בתנאים או בחישוב של: ${dependents.map((d) => d.label).join(', ')}. למחוק בכל זאת?`
         : `למחוק את "${f.label}"?`;
-    if (!window.confirm(msg)) return;
+    // Rules depend on this field: ask first. Otherwise delete at once — the toast offers undo.
+    if ((usedByBooking || dependents.length) && !window.confirm(msg)) return;
+    const pos = locate(f.id);
+    const stepId = pos ? config.steps[pos.si]!.id : undefined;
     apply((s) => {
       s.config.steps.forEach((st) => (st.fields = st.fields.filter((x) => x.id !== f.id)));
       if (usedByBooking && s.config.booking) s.config.booking.enabled = false;
     }, `del-${f.id}`);
-    setSel({ kind: 'workflow' });
+    setSel(stepId ? { kind: 'step', stepId } : { kind: 'workflow' });
+    toast(`״${f.label}״ נמחק`, 'info', { label: 'ביטול', onClick: undo });
   };
 
   /** Drag-and-drop: place a block at an index of any step. */
@@ -474,7 +499,7 @@ export function WorkflowEditor() {
                         <span className="block truncate text-[13px] text-ink">{f.label}</span>
                         <span className="block truncate text-[10.5px] text-ink-soft">
                           {FIELD_TYPE_LABELS[f.type]}
-                          {f.required && <span className="text-orange-600"> · חובה</span>}
+                          {f.required && <span className="text-orange-700"> · חובה</span>}
                           {fieldHasPrice(f) && <span className="text-teal-600"> · ₪</span>}
                           {f.condition && <span className="text-sky-700"> · מותנה</span>}
                         </span>
@@ -491,25 +516,22 @@ export function WorkflowEditor() {
                   </li>
                 );
               })}
-              {st.fields.length === 0 && <li className="px-2 py-2 text-xs text-ink-muted">שלב ריק — הוסיפו רכיב ראשון.</li>}
+              {st.fields.length === 0 && (
+                <li>
+                  <button type="button" onClick={() => setLibrary({ stepId: st.id })} className="w-full rounded-lg border border-dashed border-cloud-300 px-2 py-3 text-center text-xs text-ink-muted hover:border-orange hover:text-ink">
+                    שלב ריק — לחצו להוספת השדה הראשון
+                  </button>
+                </li>
+              )}
             </ul>
             <div className="border-t border-cloud-200 p-1.5">
               <Button size="sm" variant="ghost" icon={Plus} className="w-full !justify-start" onClick={() => setLibrary({ stepId: st.id })}>
-                הוספת רכיב
+                הוספת שדה
               </Button>
             </div>
           </div>
         ))}
-        <Button
-          variant="secondary"
-          icon={Plus}
-          className="w-full"
-          onClick={() => {
-            const stepId = newId('stp');
-            apply((s) => void s.config.steps.push({ id: stepId, title: `שלב ${s.config.steps.length + 1}`, fields: [] }), `step-${stepId}`);
-            setSel({ kind: 'step', stepId });
-          }}
-        >
+        <Button variant="secondary" icon={Plus} className="w-full" onClick={addStep}>
           שלב חדש
         </Button>
       </div>
@@ -524,6 +546,7 @@ export function WorkflowEditor() {
           <FieldInspector
             f={selectedField}
             allFields={allFields}
+            earlier={earlierAnswerFields(config, { fieldId: selectedField.id })}
             priced={config.pricing.enabled}
             images={assets.filter((a) => a.kind === 'image')}
             orgId={org.id}
@@ -531,9 +554,10 @@ export function WorkflowEditor() {
             onDelete={() => deleteField(selectedField)}
             onDuplicate={() => {
               const pos = locate(selectedField.id)!;
-              const copy = { ...structuredClone(selectedField), id: newId('fld'), key: `${selectedField.key}_copy${allFields.length}`, label: `${selectedField.label} (עותק)` };
+              const copy = duplicateField(selectedField, allFields.map((f) => f.key));
               apply((s) => void s.config.steps[pos.si]!.fields.splice(pos.fi + 1, 0, copy), `dup-${copy.id}`);
               setSel({ kind: 'field', fieldId: copy.id });
+              toast('נוצר עותק מתחת לשדה המקורי', 'success', { label: 'ביטול', onClick: undo });
             }}
           />
         ) : (
@@ -545,7 +569,7 @@ export function WorkflowEditor() {
             step={config.steps[stepIndex]!}
             index={stepIndex}
             count={config.steps.length}
-            allFields={allFields}
+            earlier={earlierAnswerFields(config, { stepId: config.steps[stepIndex]!.id })}
             onChange={(st) => update((d) => void (d.steps[stepIndex] = st), `step-${st.id}`)}
             onMove={(dir) => update((d) => void (d.steps = move(d.steps, stepIndex, dir)), `stepmove-${Date.now()}`)}
             onDelete={() => {
@@ -556,6 +580,8 @@ export function WorkflowEditor() {
             }}
           />
         ) : null;
+      case 'logic':
+        return <LogicPanel config={config} onField={(fieldId) => select({ kind: 'field', fieldId })} onStep={(stepId) => select({ kind: 'step', stepId })} onOpen={(kind) => select({ kind })} />;
       case 'presence':
         return (
           <PresenceInspector
@@ -573,7 +599,7 @@ export function WorkflowEditor() {
                 <span className="font-medium">ירושה מערכת המותג</span>
                 <span className="block text-xs text-ink-muted">
                   צבעים, גופן, כפתורים, צפיפות, לוגו ותמונת כיסוי מגיעים מ
-                  <Link className="text-orange-600 underline" to="/app/brand">
+                  <Link className="text-orange-700 underline" to="/app/brand">
                     ערכת המותג
                   </Link>
                   . כבוי = עיצוב עצמאי לתהליך הזה.
@@ -603,7 +629,7 @@ export function WorkflowEditor() {
       case 'publish':
         return (
           <Panel title="גרסאות ושיתוף">
-            {published ? (
+            {isPublished ? (
               <div className="space-y-3">
                 <FieldLabel htmlFor="share-link">{config.mode === 'case' ? 'כתובת התהליך (נדרש תיק אישי)' : 'קישור ציבורי'}</FieldLabel>
                 <div className="flex gap-2">
@@ -662,8 +688,6 @@ export function WorkflowEditor() {
                             const s = { config: structuredClone(wf.draft), design: structuredClone(wf.design) };
                             setSnap(s);
                             setSaved(JSON.stringify(s));
-                            setPast([]);
-                            setFuture([]);
                             toast(`גרסה ${v.version} שוחזרה לטיוטה`);
                           }}
                         >
@@ -742,7 +766,7 @@ export function WorkflowEditor() {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <DeviceToggle device={device} onChange={setDevice} tablet />
         <div className="flex items-center gap-1.5">
-          <button
+          {!previewMode && <button
             type="button"
             aria-pressed={pickMode}
             onClick={() => setPickMode((m) => !m)}
@@ -750,16 +774,21 @@ export function WorkflowEditor() {
             title="במצב בחירה, לחיצה על רכיב בתצוגה פותחת את המאפיינים שלו"
           >
             <MousePointerClick className="h-3.5 w-3.5" aria-hidden /> {pickMode ? 'מצב בחירה' : 'מצב מילוי'}
-          </button>
-          <button type="button" className="h-8 rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange" onClick={() => setPreviewKey((k) => k + 1)}>
+          </button>}
+          <button type="button" className="h-8 rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange-700" onClick={() => setPreviewKey((k) => k + 1)}>
             איפוס תצוגה
           </button>
         </div>
       </div>
+      {previewMode && (
+        <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900" role="note">
+          מצב בדיקה: מלאו כמו לקוח — מעבר בין שלבים, שגיאות, תנאים וחישוב מחיר עובדים כמו בקישור הציבורי. שליחה כאן לא נשמרת כבקשה.
+        </p>
+      )}
       {issues.length ? (
         <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">התצוגה תחזור אחרי תיקון השגיאות.</p>
       ) : (
-        <DevicePreview device={device} height={device === 'desktop' ? 600 : 760}>
+        <DevicePreview device={device} height={previewMode ? 820 : device === 'desktop' ? 600 : 760}>
           <WorkflowRenderer
             key={`${previewKey}-${device}`}
             config={config}
@@ -770,7 +799,7 @@ export function WorkflowEditor() {
             scrollFrame
             focusStepId={focusStepId}
             selectedFieldId={sel.kind === 'field' ? sel.fieldId : undefined}
-            onSelectField={pickMode ? (fieldId) => select({ kind: 'field', fieldId }) : undefined}
+            onSelectField={pickMode && !previewMode ? (fieldId) => select({ kind: 'field', fieldId }) : undefined}
           />
         </DevicePreview>
       )}
@@ -781,15 +810,20 @@ export function WorkflowEditor() {
     <>
       <div className="mb-4 flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
         <div className="min-w-0">
-          <Link to="/app/workflows" className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-orange">
+          <Link to="/app/workflows" className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-orange-700">
             <ArrowRight className="h-3.5 w-3.5" aria-hidden /> תהליכים
           </Link>
           <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight">{config.title || 'ללא שם'}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-            <Badge tone={published ? 'teal' : workflow.status === 'archived' ? 'neutral' : 'amber'}>
-              {published ? `פורסם · גרסה ${versions.find((v) => v.id === workflow.publishedVersionId)?.version ?? versions[0]?.version ?? 1}` : workflow.status === 'archived' ? 'בארכיון' : 'טיוטה'}
+            <Badge tone={isPublished ? 'teal' : workflow.status === 'archived' ? 'neutral' : 'amber'}>
+              {isPublished ? `פורסם · גרסה ${versions.find((v) => v.id === workflow.publishedVersionId)?.version ?? versions[0]?.version ?? 1}` : workflow.status === 'archived' ? 'בארכיון' : 'טיוטה'}
             </Badge>
-            {(dirty || (workflow.hasUnpublishedChanges && published)) && <Badge tone="amber">{dirty ? 'שינויים שלא נשמרו' : 'טיוטה שלא פורסמה'}</Badge>}
+            {(dirty || (workflow.hasUnpublishedChanges && isPublished)) && <Badge tone="amber">{dirty ? 'שינויים שלא נשמרו' : 'טיוטה שלא פורסמה'}</Badge>}
+            {!dirty && (
+              <span className="inline-flex items-center gap-1 text-teal-600">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> הכול שמור
+              </span>
+            )}
             {workflow.isDemo && <DemoBadge />}
             <span>{formatNumber(runCount)} בקשות</span>
           </div>
@@ -810,8 +844,6 @@ export function WorkflowEditor() {
             onClick={() => {
               if (!window.confirm('לבטל את כל השינויים שלא נשמרו (תוכן ועיצוב)?')) return;
               setSnap(structuredClone(savedSnap));
-              setPast([]);
-              setFuture([]);
             }}
           >
             ביטול שינויים
@@ -819,8 +851,16 @@ export function WorkflowEditor() {
           <Button variant="secondary" icon={Save} onClick={save} loading={busy === 'save'} disabled={!dirty}>
             שמירת טיוטה
           </Button>
-          <Button icon={Rocket} onClick={() => setConfirmPublish(true)} loading={busy === 'publish'} disabled={workflow.status === 'archived' || Boolean(issues.length)}>
-            {published ? 'פרסום גרסה חדשה' : 'פרסום'}
+          <Button
+            icon={Rocket}
+            onClick={() => {
+              setPublished(null);
+              setConfirmPublish(true);
+            }}
+            loading={busy === 'publish'}
+            disabled={workflow.status === 'archived' || Boolean(issues.length)}
+          >
+            {isPublished ? 'פרסום גרסה חדשה' : 'פרסום'}
           </Button>
           <Button
             variant="ghost"
@@ -875,7 +915,7 @@ export function WorkflowEditor() {
                 ['סגנון עיצוב', design.source === 'manual', () => select({ kind: 'design' })],
                 ['עריכת שלבים ושדות', past.length > 0 || workflow.updatedAt > workflow.createdAt, () => select({ kind: 'step', stepId: config.steps[0]!.id })],
                 ['תצוגה בטלפון ובמחשב', device !== 'mobile', () => setDevice('desktop')],
-                ['פרסום וקישור', published, () => setConfirmPublish(true)],
+                ['פרסום וקישור', isPublished, () => setConfirmPublish(true)],
               ] as [string, boolean, (() => void) | undefined][]
             ).map(([label, done, action], i) => (
               <li key={label}>
@@ -920,7 +960,40 @@ export function WorkflowEditor() {
         </section>
       )}
 
-      <div className="mb-3 flex gap-1 rounded-xl bg-white p-1 shadow-card xl:hidden" role="tablist" aria-label="חלוניות הסטודיו">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1" role="group" aria-label="מצב עבודה">
+          {(
+            [
+              ['content', 'תוכן', Layers, () => { setPreviewMode(false); if (studioMode !== 'content') select({ kind: 'workflow' }); }],
+              ['design', 'עיצוב', Palette, () => { setPreviewMode(false); select({ kind: 'design' }); }],
+              ['logic', 'לוגיקה', GitBranch, () => { setPreviewMode(false); select({ kind: 'logic' }); }],
+              ['preview', 'תצוגה ובדיקה', Play, () => { setPreviewMode(true); setMobilePane('canvas'); setPreviewKey((k) => k + 1); }],
+            ] as const
+          ).map(([k, label, Icon, go]) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={studioMode === k}
+              onClick={go}
+              className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', studioMode === k ? 'bg-midnight text-white' : 'text-ink-muted hover:bg-cloud hover:text-ink')}
+            >
+              <Icon className="h-4 w-4" aria-hidden /> {label}
+              {k === 'logic' && logicErrors > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white">{logicErrors}</span>}
+            </button>
+          ))}
+        </div>
+        {previewMode ? (
+          <Button size="sm" variant="secondary" icon={PenLine} onClick={() => setPreviewMode(false)}>
+            חזרה לעריכה
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" icon={Plus} onClick={() => setLibrary({ stepId: focusStepId ?? config.steps[0]!.id })}>
+            הוספת שדה
+          </Button>
+        )}
+      </div>
+
+      <div className={cx('mb-3 flex gap-1 rounded-xl bg-white p-1 shadow-card xl:hidden', previewMode && 'hidden')} role="tablist" aria-label="חלוניות הסטודיו">
         {(
           [
             ['structure', 'מבנה', Layers],
@@ -940,59 +1013,116 @@ export function WorkflowEditor() {
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[250px_minmax(0,1fr)_360px] 2xl:grid-cols-[270px_minmax(0,1fr)_400px]">
-        <aside className={cx('xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto xl:pe-1', mobilePane !== 'structure' && 'hidden xl:block')}>{structure}</aside>
-        <section aria-label="תצוגה חיה" className={cx('min-w-0 xl:sticky xl:top-4 xl:self-start', mobilePane !== 'canvas' && 'hidden xl:block')}>
+      {previewMode ? (
+        <section aria-label="תצוגה ובדיקה" className="mx-auto max-w-5xl">
           {canvas}
         </section>
-        <aside aria-label="מאפיינים" className={cx('min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto', mobilePane !== 'inspector' && 'hidden xl:block')}>
-          <Card className="p-4">{inspector}</Card>
-        </aside>
-      </div>
-
-      <Modal open={Boolean(library)} onClose={() => setLibrary(null)} title="הוספת רכיב">
-        <div className="space-y-5">
-          {BLOCK_GROUPS.map((g) => (
-            <section key={g.id}>
-              <h3 className="mb-2 text-xs font-semibold text-ink-muted">{g.label}</h3>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {BLOCKS.filter((b) => b.group === g.id).map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => library && addBlock(library.stepId, b.id)}
-                    className="flex min-h-[64px] flex-col items-start gap-1.5 rounded-xl border border-cloud-200 bg-white p-3 text-start text-sm transition hover:border-orange hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
-                  >
-                    <b.icon className="h-4 w-4 text-ink-muted" aria-hidden />
-                    <span className="font-medium">{b.label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-          <p className="text-xs text-ink-muted">רכיבי תוכן (כותרות, תמונות, יתרונות) רק מוצגים ללקוח. אפשר למחוק כל רכיב דקורטיבי — תהליך יכול להיות אלגנטי גם בלי תמונות.</p>
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-[250px_minmax(0,1fr)_360px] 2xl:grid-cols-[270px_minmax(0,1fr)_400px]">
+          <aside className={cx('xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto xl:pe-1', mobilePane !== 'structure' && 'hidden xl:block')}>{structure}</aside>
+          <section aria-label="תצוגה חיה" className={cx('min-w-0 xl:sticky xl:top-4 xl:self-start', mobilePane !== 'canvas' && 'hidden xl:block')}>
+            {canvas}
+          </section>
+          <aside aria-label="מאפיינים" className={cx('min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto', mobilePane !== 'inspector' && 'hidden xl:block')}>
+            <Card key={sel.kind === 'field' ? sel.fieldId : sel.kind === 'step' ? sel.stepId : sel.kind} className="animate-fade-up p-4">
+              {inspector}
+            </Card>
+          </aside>
         </div>
-      </Modal>
+      )}
+
+      <FieldLibrary
+        open={Boolean(library)}
+        onClose={() => setLibrary(null)}
+        stepTitle={config.steps.find((x) => x.id === library?.stepId)?.title}
+        onAdd={(def) => library && addBlock(library.stepId, def)}
+        onAction={libraryAction}
+        theme={previewTheme}
+        config={config}
+        assets={assetUrls}
+      />
 
       <Modal
         open={confirmPublish}
         onClose={() => setConfirmPublish(false)}
-        title={`פרסום גרסה ${versions.length + 1}`}
+        title={published ? `גרסה ${published.version} פורסמה` : `פרסום גרסה ${versions.length + 1}`}
         footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmPublish(false)}>
-              ביטול
-            </Button>
-            <Button icon={Rocket} onClick={publish}>
-              פרסום
-            </Button>
-          </>
+          published ? (
+            <Button onClick={() => setConfirmPublish(false)}>סיום</Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => setConfirmPublish(false)}>
+                ביטול
+              </Button>
+              <Button icon={Rocket} onClick={publish} loading={busy === 'publish'} disabled={!ready}>
+                {dirty ? 'שמירה ופרסום' : 'פרסום'}
+              </Button>
+            </>
+          )
         }
       >
-        <p className="text-sm text-ink-muted">
-          {dirty ? 'השינויים יישמרו ו' : ''}תיווצר תמונת מצב קבועה של התהליך והעיצוב ({PRESETS[design.presetId].meta.nameHe}
-          {design.inheritBrand ? ' + ערכת המותג הנוכחית' : ''}). סיום: {COMPLETION_LABELS[completion.mode].title}. בקשות קיימות ({formatNumber(runCount)}) נשארות מקושרות לגרסה שבה נשלחו.
-        </p>
+        {published ? (
+          <div className="space-y-4" role="status">
+            <p className="flex items-center gap-2 rounded-xl bg-teal-50 p-3 text-sm font-medium text-teal-600">
+              <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /> הגרסה נשמרה כתמונת מצב קבועה והקישור פעיל.
+            </p>
+            <div>
+              <FieldLabel htmlFor="pub-link">{config.mode === 'case' ? 'כתובת התהליך (נשלחת עם תיק אישי)' : 'הקישור ללקוחות'}</FieldLabel>
+              <div className="flex gap-2">
+                <input id="pub-link" readOnly dir="ltr" value={link} onFocus={(e) => e.target.select()} className="fz-input min-w-0 flex-1 rounded-xl border border-cloud-300 bg-cloud px-3 py-2 text-sm" />
+                <Button
+                  variant="secondary"
+                  icon={Copy}
+                  onClick={async () => {
+                    const ok = await copyText(link);
+                    await repo.trackUsage(org.id, 'link_copied', workflow.id);
+                    toast(ok ? 'הקישור הועתק' : 'סמנו והעתיקו ידנית', ok ? 'success' : 'error');
+                  }}
+                >
+                  העתקה
+                </Button>
+              </div>
+            </div>
+            <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-midnight px-4 text-sm font-medium text-white hover:bg-midnight-700">
+              <Eye className="h-4 w-4" aria-hidden /> פתיחה כלקוח
+            </a>
+            <div className="rounded-xl border border-cloud-200 p-3 text-sm">
+              <p className="font-medium">מה עכשיו?</p>
+              <ul className="mt-1.5 list-inside list-disc space-y-1 text-ink-muted">
+                <li>שלחו את הקישור ללקוח, או פתחו אותו ונסו בעצמכם.</li>
+                <li>
+                  כל בקשה שנשלחת מופיעה ב
+                  <Link className="font-medium text-orange-700 underline" to="/app/requests">
+                    תיבת הבקשות
+                  </Link>
+                  .
+                </li>
+                <li>שינויים נוספים בסטודיו לא ישפיעו על הקישור עד הפרסום הבא.</li>
+              </ul>
+            </div>
+            <p className="text-xs text-ink-soft">בדמו הקישור עובד בדפדפן הזה בלבד (localStorage).</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <ul className="space-y-1.5" aria-label="בדיקת מוכנות">
+              {readiness.map((r) => (
+                <li key={r.id} className={cx('flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm', r.ok ? 'text-ink' : r.level === 'error' ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-900')}>
+                  {r.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal" aria-hidden /> : r.level === 'error' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <Circle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
+                  <span>
+                    {r.label}
+                    <span className="sr-only">{r.ok ? ' — תקין' : r.level === 'error' ? ' — חובה לתקן' : ' — מומלץ'}</span>
+                    {!r.ok && r.hint && <span className="block text-xs opacity-90">{r.hint}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-ink-muted">
+              {dirty ? 'השינויים יישמרו ו' : ''}תיווצר תמונת מצב קבועה של התהליך והעיצוב ({PRESETS[design.presetId].meta.nameHe}
+              {design.inheritBrand ? ' + ערכת המותג הנוכחית' : ''}). סיום: {COMPLETION_LABELS[completion.mode].title}. בקשות קיימות ({formatNumber(runCount)}) נשארות מקושרות לגרסה שבה נשלחו.
+            </p>
+            {!ready && <p className="text-xs font-medium text-red-700">תקנו את הפריטים המסומנים באדום כדי לפרסם. אפשר לשמור טיוטה בכל שלב.</p>}
+          </div>
+        )}
       </Modal>
 
       <Modal open={Boolean(viewVersion)} onClose={() => setViewVersion(null)} title={`גרסה ${viewVersion?.version ?? ''} · לקריאה בלבד`} side>

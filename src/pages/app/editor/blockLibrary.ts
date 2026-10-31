@@ -1,92 +1,174 @@
-/** Reusable blocks offered by the studio's "add block" library. Each one is plain WorkflowField data. */
+/**
+ * The studio's field library. Each entry is plain WorkflowField data (one or
+ * several fields); "action" entries open a studio panel instead, and
+ * "unavailable" entries are listed honestly but cannot be added.
+ */
 import {
   AlignJustify,
+  CalendarCheck,
   Calendar,
   CheckSquare,
+  CircleDot,
   Clock,
+  Contact,
   FileText,
   FileUp,
   GalleryHorizontal,
+  GitBranch,
   Hash,
   Heading,
   Image as ImageIcon,
   Info,
+  Layers,
   LayoutGrid,
   ListChecks,
   Mail,
+  MapPin,
   Minus,
+  PenTool,
   Phone,
   Receipt,
   ScrollText,
+  Share2,
   ShieldCheck,
   Sparkles,
   SquareStack,
-  Tags,
   ThumbsUp,
+  Ticket,
   Type,
   type LucideIcon,
 } from 'lucide-react';
 import type { FieldAppearance, FieldType, WorkflowField } from '../../../domain/schema';
+import { uniqueFieldKey } from '../../../engine/builder';
 import { newId } from '../../../lib/id';
+
+export type BlockGroup = 'basic' | 'business' | 'presentation' | 'advanced';
+export type BlockAction = 'presence' | 'logic' | 'step' | 'booking' | 'completion';
 
 export interface BlockDef {
   id: string;
   label: string;
-  group: 'content' | 'input' | 'choice' | 'approval';
+  /** One line, in the owner's words: what the customer sees. */
+  hint: string;
+  group: BlockGroup;
   icon: LucideIcon;
   type: FieldType;
   appearance?: FieldAppearance;
-  make: (key: string) => Partial<WorkflowField>;
+  make: () => Partial<WorkflowField>;
+  /** Inserts several related fields at once (e.g. customer details). */
+  makeMany?: () => (Partial<WorkflowField> & { type: FieldType; key: string })[];
+  /** Opens a studio panel instead of inserting a field. */
+  action?: BlockAction;
+  /** Listed for discoverability but not available in the demo — the reason, shown to the owner. */
+  unavailable?: string;
+  keywords?: string;
 }
 
 const opt = (label: string, value: string, extra: Record<string, unknown> = {}) => ({ id: newId('opt'), label, value, ...extra });
 
 export const BLOCKS: BlockDef[] = [
-  { id: 'heading', label: 'כותרת וטקסט', group: 'content', icon: Heading, type: 'heading', make: () => ({ label: 'כותרת', content: 'כמה מילים שמסבירות ללקוח מה הולך לקרות.' }) },
-  { id: 'info', label: 'הודעת מידע', group: 'content', icon: Info, type: 'info', make: () => ({ label: 'לתשומת לבכם', helpText: 'פרט חשוב שהלקוח צריך לדעת.' }) },
-  { id: 'highlights', label: 'יתרונות / שירותים', group: 'content', icon: Sparkles, type: 'highlights', make: () => ({ label: 'למה אצלנו', items: [{ id: newId('hl'), title: 'שירות אישי', icon: 'heart' }, { id: newId('hl'), title: 'מענה מהיר', icon: 'clock' }, { id: newId('hl'), title: 'אחריות מלאה', icon: 'shield' }] }) },
-  { id: 'image', label: 'תמונה', group: 'content', icon: ImageIcon, type: 'image', make: () => ({ label: 'תמונה', media: ['decor'] }) },
-  { id: 'gallery', label: 'גלריה', group: 'content', icon: GalleryHorizontal, type: 'gallery', make: () => ({ label: 'גלריה', media: ['bouquet_m', 'cake', 'decor'] }) },
-  { id: 'divider', label: 'קו מפריד', group: 'content', icon: Minus, type: 'divider', make: () => ({ label: 'מפריד' }) },
-  { id: 'price_breakdown', label: 'פירוט מחיר', group: 'content', icon: Receipt, type: 'price_breakdown', make: () => ({ label: 'פירוט ההצעה' }) },
-  { id: 'terms', label: 'תנאים', group: 'content', icon: ScrollText, type: 'terms', make: () => ({ label: 'תנאים', content: 'ביטול עד 48 שעות מראש ללא עלות.\n\nהמחירים כוללים מע״מ.' }) },
-  { id: 'text', label: 'טקסט קצר', group: 'input', icon: Type, type: 'text', make: () => ({ label: 'טקסט קצר' }) },
-  { id: 'textarea', label: 'טקסט ארוך', group: 'input', icon: AlignJustify, type: 'textarea', make: () => ({ label: 'פרטים נוספים' }) },
-  { id: 'email', label: 'אימייל', group: 'input', icon: Mail, type: 'email', make: () => ({ label: 'אימייל', role: 'customer_email' }) },
-  { id: 'phone', label: 'טלפון', group: 'input', icon: Phone, type: 'phone', make: () => ({ label: 'טלפון', role: 'customer_phone' }) },
-  { id: 'number', label: 'מספר', group: 'input', icon: Hash, type: 'number', make: () => ({ label: 'מספר' }) },
-  { id: 'quantity', label: 'כמות (+/−)', group: 'input', icon: SquareStack, type: 'number', appearance: 'stepper', make: () => ({ label: 'כמות', min: 1, max: 20 }) },
-  { id: 'date', label: 'תאריך', group: 'input', icon: Calendar, type: 'date', make: () => ({ label: 'תאריך', min: 1, max: 90 }) },
-  { id: 'time', label: 'שעה', group: 'input', icon: Clock, type: 'time', make: () => ({ label: 'שעה', options: ['10:00', '12:00', '14:00', '16:00'].map((t) => opt(t, t)) }) },
-  { id: 'file', label: 'קובץ (דמו)', group: 'input', icon: FileUp, type: 'file', make: () => ({ label: 'קובץ', helpText: 'בדמו נשמר שם הקובץ בלבד' }) },
-  { id: 'select', label: 'רשימה נפתחת', group: 'choice', icon: ListChecks, type: 'select', make: () => ({ label: 'בחירה', options: [opt('אפשרות 1', 'option_1'), opt('אפשרות 2', 'option_2')] }) },
-  { id: 'tiles', label: 'אריחי בחירה', group: 'choice', icon: LayoutGrid, type: 'radio', appearance: 'tiles', make: () => ({ label: 'בחירה', options: [opt('בסיסי', 'basic', { price: 100, description: 'החבילה הבסיסית' }), opt('מורחב', 'plus', { price: 180, description: 'הכי פופולרי' }), opt('פרימיום', 'premium', { price: 260, description: 'הכול כלול' })] }) },
-  { id: 'image_cards', label: 'כרטיסי תמונה', group: 'choice', icon: ImageIcon, type: 'radio', appearance: 'image_cards', make: () => ({ label: 'בחירה עם תמונות', options: [opt('אפשרות 1', 'option_1', { image: 'cake' }), opt('אפשרות 2', 'option_2', { image: 'decor' })] }) },
-  { id: 'chips', label: 'תגיות', group: 'choice', icon: Tags, type: 'radio', appearance: 'chips', make: () => ({ label: 'בחירה מהירה', options: [opt('בוקר', 'morning'), opt('צהריים', 'noon'), opt('ערב', 'evening')] }) },
-  { id: 'swatches', label: 'צבעים', group: 'choice', icon: SquareStack, type: 'radio', appearance: 'swatches', make: () => ({ label: 'צבע', options: [opt('ורוד', 'pink', { swatch: '#F4C6D0' }), opt('ירוק', 'green', { swatch: '#B7D3B0' }), opt('זהב', 'gold', { swatch: '#D8B26E' })] }) },
-  { id: 'multiselect', label: 'בחירה מרובה / תוספות', group: 'choice', icon: CheckSquare, type: 'multiselect', make: () => ({ label: 'תוספות', options: [opt('תוספת א', 'extra_a', { price: 50 }), opt('תוספת ב', 'extra_b', { price: 80 })] }) },
-  { id: 'checkbox', label: 'תיבת סימון / תוספת', group: 'choice', icon: CheckSquare, type: 'checkbox', make: () => ({ label: 'תוספת', price: 30 }) },
-  { id: 'consent', label: 'הסכמה לתנאים', group: 'approval', icon: ShieldCheck, type: 'checkbox', make: () => ({ label: 'קראתי ואני מסכים/ה לתנאים', required: true }) },
-  { id: 'decision', label: 'אישור / דחייה', group: 'approval', icon: ThumbsUp, type: 'decision', make: () => ({ label: 'פריט לאישור', price: 100, helpText: 'תיאור קצר של הפריט', required: true, priority: 'recommended' }) },
-  { id: 'doc', label: 'הסבר מסמך', group: 'content', icon: FileText, type: 'heading', make: () => ({ label: 'מה צריך להכין', content: 'צילום תעודה, אישור ניהול חשבון ודוח שנתי.' }) },
+  // ---------- basic ----------
+  { id: 'text', label: 'טקסט קצר', hint: 'שם, נושא או תשובה של שורה אחת', group: 'basic', icon: Type, type: 'text', make: () => ({ label: 'טקסט קצר' }) },
+  { id: 'textarea', label: 'טקסט ארוך', hint: 'הערות, תיאור או בקשה מפורטת', group: 'basic', icon: AlignJustify, type: 'textarea', make: () => ({ label: 'פרטים נוספים', placeholder: 'ספרו לנו במה מדובר' }) },
+  { id: 'email', label: 'אימייל', hint: 'כתובת מייל עם בדיקת תקינות', group: 'basic', icon: Mail, type: 'email', make: () => ({ label: 'אימייל', role: 'customer_email' }), keywords: 'מייל דואר' },
+  { id: 'phone', label: 'טלפון', hint: 'מספר נייד עם בדיקת תקינות', group: 'basic', icon: Phone, type: 'phone', make: () => ({ label: 'טלפון', role: 'customer_phone' }), keywords: 'נייד' },
+  { id: 'number', label: 'מספר', hint: 'גיל, כמות, תקציב — עם מינימום ומקסימום', group: 'basic', icon: Hash, type: 'number', make: () => ({ label: 'מספר' }) },
+  { id: 'radio', label: 'בחירה אחת', hint: 'רשימת אפשרויות שבוחרים מהן אחת', group: 'basic', icon: CircleDot, type: 'radio', appearance: 'list', make: () => ({ label: 'בחירה', options: [opt('אפשרות 1', 'option_1'), opt('אפשרות 2', 'option_2'), opt('אפשרות 3', 'option_3')] }), keywords: 'רדיו' },
+  { id: 'multiselect', label: 'בחירה מרובה', hint: 'אפשר לסמן כמה אפשרויות', group: 'basic', icon: CheckSquare, type: 'multiselect', make: () => ({ label: 'מה מעניין אתכם?', options: [opt('אפשרות א', 'option_a'), opt('אפשרות ב', 'option_b'), opt('אפשרות ג', 'option_c')] }) },
+  { id: 'select', label: 'רשימה נפתחת', hint: 'הרבה אפשרויות בתפריט קומפקטי', group: 'basic', icon: ListChecks, type: 'select', make: () => ({ label: 'בחירה מרשימה', options: [opt('אפשרות 1', 'option_1'), opt('אפשרות 2', 'option_2')] }), keywords: 'dropdown' },
+  { id: 'date', label: 'תאריך', hint: 'לוח שנה, עם טווח ימים מותר', group: 'basic', icon: Calendar, type: 'date', make: () => ({ label: 'תאריך', min: 1, max: 90 }) },
+  { id: 'time', label: 'שעה', hint: 'בחירה מתוך שעות שאתם מגדירים', group: 'basic', icon: Clock, type: 'time', make: () => ({ label: 'שעה', options: ['10:00', '12:00', '14:00', '16:00'].map((t) => opt(t, t)) }) },
+
+  // ---------- business ----------
+  {
+    id: 'customer',
+    label: 'פרטי לקוח',
+    hint: 'שם, טלפון ואימייל — מסודרים בתיבת הבקשות',
+    group: 'business',
+    icon: Contact,
+    type: 'text',
+    make: () => ({}),
+    makeMany: () => [
+      { key: 'full_name', label: 'שם מלא', type: 'text', required: true, role: 'customer_name' },
+      { key: 'phone', label: 'טלפון', type: 'phone', required: true, role: 'customer_phone' },
+      { key: 'email', label: 'אימייל', type: 'email', role: 'customer_email' },
+    ],
+    keywords: 'שם קשר contact',
+  },
+  { id: 'tiles', label: 'בחירת חבילה ומחיר', hint: 'כרטיסים עם מחיר — הסכום מתעדכן מיד', group: 'business', icon: LayoutGrid, type: 'radio', appearance: 'tiles', make: () => ({ label: 'בחרו חבילה', required: true, options: [opt('בסיסי', 'basic', { price: 100, description: 'החבילה הבסיסית' }), opt('מורחב', 'plus', { price: 180, description: 'הבחירה הנפוצה' }), opt('פרימיום', 'premium', { price: 260, description: 'הכול כלול' })] }), keywords: 'מחיר חבילה tiles' },
+  { id: 'quantity', label: 'כמות (+/−)', hint: 'כמות עם כפתורי פלוס ומינוס', group: 'business', icon: SquareStack, type: 'number', appearance: 'stepper', make: () => ({ label: 'כמות', min: 1, max: 20 }) },
+  { id: 'addons', label: 'תוספות בתשלום', hint: 'בחירה מרובה, כל תוספת עם מחיר', group: 'business', icon: Sparkles, type: 'multiselect', make: () => ({ label: 'תוספות', options: [opt('תוספת א', 'extra_a', { price: 50 }), opt('תוספת ב', 'extra_b', { price: 80 })] }) },
+  { id: 'checkbox', label: 'תוספת בודדת', hint: 'תיבת סימון אחת, עם או בלי מחיר', group: 'business', icon: CheckSquare, type: 'checkbox', make: () => ({ label: 'תוספת', price: 30 }) },
+  { id: 'address', label: 'כתובת', hint: 'רחוב, מספר ועיר — למשלוח או לביקור', group: 'business', icon: MapPin, type: 'textarea', make: () => ({ label: 'כתובת', placeholder: 'רחוב, מספר, עיר', max: 200 }), keywords: 'משלוח' },
+  {
+    id: 'booking',
+    label: 'בקשת הזמנה',
+    hint: 'תאריך, שעה ומספר משתתפים — באישור העסק',
+    group: 'business',
+    icon: CalendarCheck,
+    type: 'date',
+    make: () => ({}),
+    makeMany: () => [
+      { key: 'booking_date', label: 'תאריך', type: 'date', required: true, role: 'date', min: 0, max: 60 },
+      { key: 'booking_time', label: 'שעה', type: 'time', required: true, options: ['18:00', '19:00', '20:00', '21:00'].map((t) => opt(t, t)) },
+      { key: 'party_size', label: 'מספר משתתפים', type: 'number', required: true, min: 1, max: 12, appearance: 'stepper' },
+    ],
+    keywords: 'תור הזמנה booking',
+  },
+  { id: 'decision', label: 'אישור / דחייה', hint: 'הלקוח מאשר או דוחה פריט, עם מחיר', group: 'business', icon: ThumbsUp, type: 'decision', make: () => ({ label: 'פריט לאישור', price: 100, helpText: 'תיאור קצר של הפריט', required: true, priority: 'recommended' }), keywords: 'approval' },
+  { id: 'consent', label: 'אישור תנאים', hint: 'תיבת סימון חובה לפני שליחה', group: 'business', icon: ShieldCheck, type: 'checkbox', make: () => ({ label: 'קראתי ואני מסכים/ה לתנאים', required: true }), keywords: 'הסכמה תקנון' },
+  { id: 'file', label: 'צירוף קובץ (דמו: שם הקובץ בלבד)', hint: 'בדמו נשמר רק שם הקובץ — הקובץ עצמו לא נשמר ולא נשלח', group: 'business', icon: FileUp, type: 'file', make: () => ({ label: 'צירוף קובץ', helpText: 'בדמו נשמר שם הקובץ בלבד' }), keywords: 'מסמך העלאה' },
+  { id: 'signature', label: 'חתימה דיגיטלית', hint: 'חתימה מאומתת', group: 'business', icon: PenTool, type: 'text', make: () => ({}), unavailable: 'לא זמין בדמו: חתימה עם תוקף מחייבת זיהוי ושרת מאובטח.' },
+
+  // ---------- presentation ----------
+  { id: 'heading', label: 'כותרת וטקסט', hint: 'מסבירים ללקוח מה הולך לקרות', group: 'presentation', icon: Heading, type: 'heading', make: () => ({ label: 'כותרת', content: 'כמה מילים שמסבירות ללקוח מה הולך לקרות.' }) },
+  { id: 'info', label: 'הודעת מידע', hint: 'פרט חשוב בתיבה בולטת', group: 'presentation', icon: Info, type: 'info', make: () => ({ label: 'לתשומת לבכם', helpText: 'פרט חשוב שהלקוח צריך לדעת.' }) },
+  { id: 'highlights', label: 'כרטיסי יתרונות', hint: 'שירות אישי, משלוח מהיר, אחריות', group: 'presentation', icon: Sparkles, type: 'highlights', make: () => ({ label: 'למה אצלנו', items: [{ id: newId('hl'), title: 'שירות אישי', icon: 'heart' }, { id: newId('hl'), title: 'מענה מהיר', icon: 'clock' }, { id: newId('hl'), title: 'אחריות מלאה', icon: 'shield' }] }) },
+  { id: 'image', label: 'תמונה', hint: 'איור מקומי או תמונה שלכם', group: 'presentation', icon: ImageIcon, type: 'image', make: () => ({ label: 'תמונה', media: ['decor'] }) },
+  { id: 'gallery', label: 'גלריה', hint: 'כמה תמונות בשורה', group: 'presentation', icon: GalleryHorizontal, type: 'gallery', make: () => ({ label: 'גלריה', media: ['bouquet_m', 'cake', 'decor'] }) },
+  { id: 'divider', label: 'קו מפריד', hint: 'מחלק את השלב לחלקים', group: 'presentation', icon: Minus, type: 'divider', make: () => ({ label: 'מפריד' }) },
+  { id: 'price_breakdown', label: 'פירוט מחיר', hint: 'סיכום הסכום כפי שמחושב עכשיו', group: 'presentation', icon: Receipt, type: 'price_breakdown', make: () => ({ label: 'פירוט ההצעה' }) },
+  { id: 'terms', label: 'תנאים', hint: 'מדיניות ביטול, תקנון או הבהרות', group: 'presentation', icon: ScrollText, type: 'terms', make: () => ({ label: 'תנאים', content: 'ביטול עד 48 שעות מראש ללא עלות.' }) },
+  { id: 'doc', label: 'מה צריך להכין', hint: 'רשימת מסמכים או הכנות', group: 'presentation', icon: FileText, type: 'heading', make: () => ({ label: 'מה צריך להכין', content: 'צילום תעודה, אישור ניהול חשבון ודוח שנתי.' }) },
+  { id: 'contact_actions', label: 'כפתורי יצירת קשר', hint: 'וואטסאפ, ניווט, אינסטגרם — מערכת המותג', group: 'presentation', icon: Share2, type: 'info', make: () => ({}), action: 'presence', keywords: 'וואטסאפ waze social' },
+
+  // ---------- advanced (capabilities, not fields) ----------
+  { id: 'adv_condition', label: 'הצגה מותנית', hint: 'שאלה שמופיעה רק לפי תשובה קודמת', group: 'advanced', icon: GitBranch, type: 'info', make: () => ({}), action: 'logic', keywords: 'תנאי condition' },
+  { id: 'adv_step', label: 'שלב נוסף', hint: 'מחלקים תהליך ארוך לכמה מסכים', group: 'advanced', icon: Layers, type: 'info', make: () => ({}), action: 'step', keywords: 'multi step' },
+  { id: 'adv_pricing', label: 'חישוב מחיר ותשלום', hint: 'מחיר לפי בחירות, עמלות ומקדמה (מדומה)', group: 'advanced', icon: Receipt, type: 'info', make: () => ({}), action: 'completion', keywords: 'price' },
+  { id: 'adv_booking', label: 'כללי הזמנה ומקומות', hint: 'ימים פתוחים, שעות ותפוסה לכל משבצת', group: 'advanced', icon: Ticket, type: 'info', make: () => ({}), action: 'booking', keywords: 'capacity' },
 ];
 
-export const BLOCK_GROUPS: { id: BlockDef['group']; label: string }[] = [
-  { id: 'content', label: 'תוכן ותצוגה' },
-  { id: 'input', label: 'שדות' },
-  { id: 'choice', label: 'בחירה ותמחור' },
-  { id: 'approval', label: 'אישור והסכמה' },
+export const BLOCK_GROUPS: { id: BlockGroup; label: string; hint: string }[] = [
+  { id: 'basic', label: 'בסיסי', hint: 'השאלות הנפוצות' },
+  { id: 'business', label: 'עסקי', hint: 'מחירים, הזמנות, אישורים ופרטי לקוח' },
+  { id: 'presentation', label: 'תצוגה', hint: 'מוצג ללקוח, בלי מילוי' },
+  { id: 'advanced', label: 'מתקדם', hint: 'לוגיקה, שלבים, מחירים והזמנות' },
 ];
 
-export function createBlock(def: BlockDef, existingKeys: string[]): WorkflowField {
-  let i = existingKeys.length + 1;
-  const base = def.id.replace(/[^a-z_]/g, '') || 'field';
-  while (existingKeys.includes(`${base}_${i}`)) i++;
-  const key = `${base}_${i}`;
-  return { id: newId('fld'), key, type: def.type, required: false, label: def.label, ...(def.appearance ? { appearance: def.appearance } : {}), ...def.make(key) } as WorkflowField;
+export function searchBlocks(q: string): BlockDef[] {
+  const s = q.trim().toLowerCase();
+  if (!s) return BLOCKS;
+  return BLOCKS.filter((b) => `${b.label} ${b.hint} ${b.keywords ?? ''}`.toLowerCase().includes(s));
 }
 
+/** Fields for a library entry, with keys that do not collide with the workflow's. */
+export function createBlocks(def: BlockDef, existingKeys: string[]): WorkflowField[] {
+  if (def.unavailable || def.action) return [];
+  const used = [...existingKeys];
+  const parts = def.makeMany?.() ?? [{ key: def.id.replace(/[^a-z_]/g, '') || 'field', type: def.type, ...(def.appearance ? { appearance: def.appearance } : {}), ...def.make() }];
+  return parts.map((p) => {
+    const key = uniqueFieldKey(used, p.key ?? def.id);
+    used.push(key);
+    return { required: false, label: def.label, ...p, id: newId('fld'), key } as WorkflowField;
+  });
+}
+
+/** Back-compat single-field helper. */
+export const createBlock = (def: BlockDef, existingKeys: string[]) => createBlocks(def, existingKeys)[0]!;
+
 export function blockIcon(f: WorkflowField): LucideIcon {
-  const byAppearance = f.appearance && BLOCKS.find((b) => b.type === f.type && b.appearance === f.appearance);
-  return (byAppearance || BLOCKS.find((b) => b.type === f.type && !b.appearance) || BLOCKS.find((b) => b.type === f.type))?.icon ?? Type;
+  const fields = BLOCKS.filter((b) => !b.action && !b.makeMany && !b.unavailable);
+  const byAppearance = f.appearance && fields.find((b) => b.type === f.type && b.appearance === f.appearance);
+  return (byAppearance || fields.find((b) => b.type === f.type && !b.appearance) || fields.find((b) => b.type === f.type))?.icon ?? Type;
 }

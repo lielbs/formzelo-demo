@@ -113,7 +113,7 @@ export function WorkflowList() {
                         {w.isDemo && <DemoBadge />}
                         <span className="text-xs text-ink-soft">{TEMPLATES[w.templateKey as TemplateKey]?.label ?? w.templateKey}</span>
                       </div>
-                      <Link to={`/app/workflows/${w.id}`} className="mt-2 block text-lg font-semibold leading-snug text-ink hover:text-orange">
+                      <Link to={`/app/workflows/${w.id}`} className="mt-2 block text-lg font-semibold leading-snug text-ink hover:text-orange-700">
                         {w.draft.title}
                       </Link>
                       <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{w.draft.description}</p>

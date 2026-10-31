@@ -3,20 +3,26 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { cx } from './ui';
 
 type ToastTone = 'success' | 'error' | 'info';
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
 interface ToastItem {
   id: number;
   message: string;
   tone: ToastTone;
+  action?: ToastAction;
 }
 
-const ToastContext = createContext<(message: string, tone?: ToastTone) => void>(() => {});
+const ToastContext = createContext<(message: string, tone?: ToastTone, action?: ToastAction) => void>(() => {});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const push = useCallback((message: string, tone: ToastTone = 'success') => {
+  const push = useCallback((message: string, tone: ToastTone = 'success', action?: ToastAction) => {
     const id = Date.now() + Math.random();
-    setItems((xs) => [...xs, { id, message, tone }]);
-    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), 3600);
+    setItems((xs) => [...xs, { id, message, tone, action }]);
+    // Toasts with an action (e.g. undo) stay longer so there is time to use it.
+    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), action ? 7000 : 3600);
   }, []);
   const icons = { success: CheckCircle2, error: AlertCircle, info: Info };
   return (
@@ -36,6 +42,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <Icon className={cx('h-4 w-4', t.tone === 'success' && 'text-teal-50')} aria-hidden />
               {t.message}
+              {t.action && (
+                <button
+                  type="button"
+                  className="ms-2 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  onClick={() => {
+                    t.action!.onClick();
+                    setItems((xs) => xs.filter((x) => x.id !== t.id));
+                  }}
+                >
+                  {t.action.label}
+                </button>
+              )}
             </div>
           );
         })}

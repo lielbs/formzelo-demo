@@ -1,15 +1,15 @@
 import {
   ArrowLeft,
+  Briefcase,
   Car,
+  Mail,
+  UserRound,
   Check,
   Flower2,
   GitBranch,
   History,
   Inbox,
   Trophy,
-  Link2,
-  MessageSquareText,
-  PencilRuler,
   Calculator,
   ShieldCheck,
   Smartphone,
@@ -27,7 +27,8 @@ import { InterestCTA } from '../components/Interest';
 import { DEMO_GARAGE_CASE_ID, DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
 import { EXAMPLE_PROMPTS, generateWorkflowFromPrompt, type GenerationResult } from '../engine/generator';
 import { formatCurrency, formatRelative } from '../lib/format';
-import { PLANS } from '../lib/plans';
+import { demoRequestMailto, PRICING_TERMS } from '../lib/plans';
+import { PackageCards, PricingFinePrint } from '../components/Packages';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import type { ThemePresetId } from '../domain/theme';
 import { HeroArt } from '../theme/art';
@@ -35,11 +36,11 @@ import { BrandShowcase, CompletionShowcase } from './LandingShowcase';
 import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
 
-const STEPS = [
-  { icon: MessageSquareText, title: 'מתארים', text: 'כותבים בעברית פשוטה מה הלקוח צריך למלא, לבחור או לאשר.' },
-  { icon: PencilRuler, title: 'מתאימים', text: 'עורכים שלבים, שדות, מחירים, תנאים ומיתוג — עם תצוגה חיה.' },
-  { icon: Link2, title: 'שולחים', text: 'מפרסמים גרסה ומקבלים קישור אחד שעובד מצוין גם בנייד.' },
-  { icon: Inbox, title: 'מנהלים', text: 'כל בקשה נכנסת לתיבה אחת: אישור, דחייה, בקשת שינויים והיסטוריה.' },
+/** The story in three roles: who does what. */
+const STORY = [
+  { icon: UserRound, who: 'הלקוח', title: 'ממלא בנייד, בחוויה של המותג שלכם', text: 'בוחר שירות, תאריך או חבילה, רואה מחיר מדויק ומאשר — בלי שיחות הלוך-חזור.' },
+  { icon: Inbox, who: 'העסק', title: 'מקבל בקשה מסודרת במקום אחד', text: 'כל הפרטים שהלקוח מילא, סטטוס ברור, ואישור, דחייה או בקשת שינויים בלחיצה.' },
+  { icon: Briefcase, who: 'RockStack', title: 'מאפיינת, מקימה ומלווה', text: 'אנחנו בונים את התהליכים, המיתוג והקישורים בשבילכם — ומתאימים כשהעסק משתנה.' },
 ];
 
 const EXAMPLES = [
@@ -51,21 +52,22 @@ const EXAMPLES = [
 ];
 
 const BENEFITS = [
-  { icon: Wand2, title: 'מתיאור לתהליך בדקות', text: 'במקום לבנות טופס משדה ריק — מתחילים מתבנית אמיתית שמתאימה לעסק.' },
-  { icon: Calculator, title: 'מחיר שמחושב לבד', text: 'אפשרויות, תוספות, מחיר לאורח ועמלות קבועות. הלקוח רואה סכום מדויק.' },
-  { icon: GitBranch, title: 'תנאים בלי קוד', text: 'שדה שמופיע רק כשצריך, כמו שם חברה לאירוע עסקי.' },
-  { icon: Smartphone, title: 'נראה מעולה בנייד', text: 'שלב אחרי שלב, עם התקדמות, בדיקות ושגיאות ברורות.' },
-  { icon: History, title: 'גרסאות ובקרה', text: 'כל פרסום נשמר כגרסה קבועה. בקשה תמיד מקושרת לגרסה שבה נשלחה.' },
-  { icon: ShieldCheck, title: 'שקיפות מלאה', text: 'בדמו הכול מסומן: נתוני דמו, סימולציות והודעות שלא נשלחות.' },
+  { icon: Smartphone, title: 'פחות שיחות, יותר הזמנות סגורות', text: 'הלקוח עונה על הכול בשלבים קצרים בנייד, והפנייה מגיעה אליכם שלמה.' },
+  { icon: Calculator, title: 'מחיר ברור עוד לפני השיחה', text: 'אפשרויות, תוספות, מחיר לאורח ועמלות — הלקוח רואה סכום מדויק בזמן אמת.' },
+  { icon: Wand2, title: 'נראה כמו העסק שלכם', text: 'צבעים, גופן, לוגו, תמונות וקישורים עסקיים — כל תהליך מרגיש כמו המותג.' },
+  { icon: GitBranch, title: 'שואלים רק מה שצריך', text: 'שאלה שמופיעה רק כשהיא רלוונטית, כמו שם חברה לאירוע עסקי.' },
+  { icon: History, title: 'כל בקשה מתועדת', text: 'סטטוס, ציר זמן והגרסה המדויקת שהלקוח ראה ברגע השליחה.' },
+  { icon: ShieldCheck, title: 'בלי הפתעות', text: 'בדמו הכול מסומן: נתוני דמו, סימולציות והודעות שלא נשלחות.' },
 ];
 
 const FAQ = [
-  ['האם היצירה מבוססת AI?', 'בדמו הזה — לא. מנוע מקומי מזהה מילות מפתח בעברית וממפה את התיאור לתבנית אמיתית שאפשר לערוך. בגרסת ייצור אפשר לחבר ספק AI אמיתי מאחורי אותו ממשק.'],
+  ['מי מקים את המערכת?', 'RockStack. אנחנו מאפיינים יחד אתכם את התהליכים, מקימים אותם עם המיתוג והקישורים של העסק, בודקים ומלווים. אין הרשמה עצמית באתר.'],
+  ['איך נוצר תהליך מתיאור?', 'מנוע מקומי מזהה מילות מפתח בעברית וממפה את התיאור לתבנית אמיתית שאפשר לערוך. הכול רץ בדפדפן, בלי שירות חיצוני בתשלום.'],
   ['איפה נשמרים הנתונים?', 'ב-localStorage של הדפדפן שלכם בלבד. אין שרת, אין חשבון ואין סנכרון בין מכשירים. קישור שנפתח בדפדפן אחר לא יראה את הנתונים.'],
   ['האם מתבצעים תשלומים או נשלחות הודעות?', 'לא. מקדמות, הודעות SMS, WhatsApp ואימייל הן סימולציות שמוצגות כתצוגה מקדימה בלבד.'],
   ['האם אישור במוסך מחייב משפטית?', 'לא. אישור בדמו נשמר מקומית, ללא חתימה אלקטרונית וללא תוקף משפטי. החלטות בטיחות מחייבות התייעצות עם איש מקצוע.'],
   ['אפשר להתאים את התהליך לעסק שלי?', 'כן. כותרות, שלבים, שדות, סוגי שדות, חובה, אפשרויות, מחירים, סדר, מיתוג ותנאים פשוטים — הכול ניתן לעריכה.'],
-  ['מה המחירים?', 'המחירים בעמוד הם להמחשה בלבד: 99, 199 ו-399 ₪ לחודש. אין חיוב אמיתי בדמו.'],
+  ['כמה זה עולה?', 'Business: 399 ₪ לחודש + 990 ₪ הקמה. Business Plus: 499 ₪ לחודש + 1,490 ₪ הקמה. Enterprise: הצעת מחיר מותאמת. כל המחירים לפני מע״מ, והם מחירי חבילות מוצעים בכפוף לאפיון. אינטגרציות ופיתוח מותאם מתומחרים בנפרד.'],
 ];
 
 function LivePromptDemo() {
@@ -89,9 +91,10 @@ function LivePromptDemo() {
       </div>
       <div className="grid gap-0 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-3 border-b border-cloud-200 p-5 md:border-b-0 md:border-e">
+          <p className="text-[15px] font-semibold leading-snug text-ink">מתארים את הצורך — ומקבלים תהליך מוכן לעריכה.</p>
           <LocalGenerationNotice />
           <label htmlFor="hero-prompt" className="block text-sm font-medium">
-            תארו את התהליך
+            מה הלקוחות שלכם צריכים לעשות?
           </label>
           <textarea
             id="hero-prompt"
@@ -111,7 +114,7 @@ function LivePromptDemo() {
                   setPrompt(p);
                   run(p);
                 }}
-                className={cx('rounded-full border px-2.5 py-1 text-xs transition', prompt === p ? 'border-orange bg-orange-50 text-orange-600' : 'border-cloud-300 text-ink-muted hover:border-ink-soft')}
+                className={cx('min-h-[32px] rounded-full border px-3 py-1 text-xs transition', prompt === p ? 'border-orange-700 bg-orange-50 text-orange-700' : 'border-cloud-300 text-ink-muted hover:border-ink-soft')}
               >
                 {['פרחים', 'מוסך', 'מסעדה'][i]}
               </button>
@@ -122,7 +125,7 @@ function LivePromptDemo() {
               יצירה
             </Button>
             <Button variant="secondary" onClick={() => navigate('/app/workflows/new', { state: { prompt } })}>
-              המשך לעריכה <ArrowLeft className="h-4 w-4" aria-hidden />
+              פתיחה בבונה <ArrowLeft className="h-4 w-4" aria-hidden />
             </Button>
           </div>
           <p className="text-xs text-ink-muted" aria-live="polite">
@@ -167,7 +170,7 @@ function InboxPreview() {
         {q.loading && <li className="px-5 py-6 text-center text-sm text-ink-muted">טוען…</li>}
       </ul>
       <div className="border-t border-cloud-200 px-5 py-3 text-end">
-        <Link to="/app/requests" className="text-sm font-medium text-orange hover:underline">
+        <Link to="/app/requests" className="text-sm font-medium text-orange-700 hover:underline">
           פתיחת תיבת הבקשות
         </Link>
       </div>
@@ -181,38 +184,29 @@ export function Landing() {
       <SiteHeader />
       <main id="main">
         <section className="relative overflow-hidden border-b border-cloud-200 bg-cloud">
-          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:py-20">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:py-20">
             <div>
-              <p className="text-sm font-medium text-orange">לכל עסק יש את הזווית שלו.</p>
-              <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-midnight sm:text-5xl lg:text-[54px]">תהליך עסקי יפה, מתיאור של משפט אחד.</h1>
-              <ol className="mt-6 max-w-md space-y-3 text-[17px] leading-snug text-ink">
-                {[
-                  ['תארו', 'במילים שלכם מה הלקוחות צריכים למלא, לבחור או לאשר.'],
-                  ['קבלו', 'תהליך אינטראקטיבי ממותג — הזמנה, אישור, הרשמה או תור.'],
-                  ['שלחו קישור אחד', 'ונהלו את כל הבקשות, האישורים וההזמנות במקום אחד.'],
-                ].map(([b, t], i) => (
-                  <li key={b} className="flex gap-3">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-midnight text-xs font-semibold text-white tabular-nums" aria-hidden>
-                      {i + 1}
-                    </span>
-                    <span>
-                      <strong className="font-semibold">{b}</strong> <span className="text-ink-muted">{t}</span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink to="/app/workflows/new" size="lg">
-                  צרו תהליך עכשיו
+              <p className="text-sm font-medium text-orange-700">Formangle by RockStack · לכל עסק יש את הזווית שלו.</p>
+              <h1 className="mt-3 text-[32px] font-semibold leading-[1.15] tracking-tight text-midnight sm:text-[44px] xl:text-[48px]">
+                כל הפניות והתהליכים של העסק.
+                <span className="mt-1 block text-midnight-600">בחוויה אחת שמרגישה כמו המותג שלכם.</span>
+              </h1>
+              <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-ink-muted">הזמנות, אישורים, תיאום שירות וקליטת לקוחות — בתהליך דיגיטלי ממותג, עם ניהול מסודר במקום אחד.</p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <ButtonLink to="/tour" size="lg">
+                  צפו בהדגמה
                 </ButtonLink>
-                <ButtonLink to="/tour" size="lg" variant="secondary">
-                  סיור מודרך · 2 דקות
-                </ButtonLink>
+                <a
+                  href={demoRequestMailto()}
+                  className="inline-flex h-12 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-5 text-[15px] font-medium text-ink transition hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2"
+                >
+                  <Mail className="h-4 w-4" aria-hidden /> תיאום הדגמה לעסק
+                </a>
               </div>
-              <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-ink-muted">
-                {['בלי חשבון ובלי כרטיס אשראי', 'רץ מקומית בדפדפן', 'כל סימולציה מסומנת בבירור'].map((t) => (
+              <ul className="mt-7 grid gap-2 text-[13px] text-ink-muted sm:grid-cols-2">
+                {['RockStack מקימה ומתאימה עבורכם', 'עובד מצוין בנייד', 'כל בקשה מגיעה ללוח בקרה אחד', 'ההדגמה רצה מקומית, בלי הרשמה'].map((t) => (
                   <li key={t} className="flex items-center gap-1.5">
-                    <Check className="h-4 w-4 text-teal" aria-hidden /> {t}
+                    <Check className="h-4 w-4 shrink-0 text-teal" aria-hidden /> {t}
                   </li>
                 ))}
               </ul>
@@ -223,20 +217,29 @@ export function Landing() {
 
         <section id="how" className="scroll-mt-16 bg-midnight py-20 text-white">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-3xl font-semibold tracking-tight">ארבעה צעדים, תהליך אחד</h2>
-            <p className="mt-2 max-w-lg text-white/60">מהרעיון ועד הבקשה המאושרת — בלי מפתחים ובלי טפסים מפוזרים.</p>
-            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {STEPS.map((s, i) => (
-                <li key={s.title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <h2 className="text-3xl font-semibold tracking-tight">מהבקשה של הלקוח — לטיפול מסודר אצלכם</h2>
+            <p className="mt-2 max-w-xl text-white/65">בלי טפסים מפוזרים, צילומי מסך ושיחות הלוך-חזור. שלושה תפקידים, תהליך אחד.</p>
+            <ol className="mt-10 grid gap-4 md:grid-cols-3">
+              {STORY.map((s, i) => (
+                <li key={s.who} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
                   <div className="flex items-center justify-between">
-                    <s.icon className="h-6 w-6 text-orange" aria-hidden />
-                    <span className="text-sm tabular-nums text-white/30">0{i + 1}</span>
+                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-orange">
+                      <s.icon className="h-5 w-5" aria-hidden /> {s.who}
+                    </span>
+                    <span className="text-sm tabular-nums text-white/40">0{i + 1}</span>
                   </div>
-                  <h3 className="mt-6 text-lg font-semibold">{s.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/60">{s.text}</p>
+                  <h3 className="mt-5 text-lg font-semibold leading-snug">{s.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-white/65">{s.text}</p>
                 </li>
               ))}
             </ol>
+            <p className="mt-8 text-sm text-white/65">
+              רוצים לראות את זה קורה?{' '}
+              <Link to="/tour" className="font-medium text-white underline underline-offset-4 hover:text-orange">
+                ההדגמה המודרכת לוקחת כשתי דקות
+              </Link>
+              .
+            </p>
           </div>
         </section>
 
@@ -265,7 +268,7 @@ export function Landing() {
                     <div className="flex flex-1 flex-col p-5">
                       <p className="flex-1 text-sm leading-relaxed text-ink-muted">{e.text}</p>
                       <span className="mt-4 flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-orange">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-700">
                           פתיחת התהליך <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-1" aria-hidden />
                         </span>
                         <span className="rounded-full bg-cloud px-2.5 py-1 text-[11px] text-ink-muted">{PRESETS[e.preset].meta.nameHe}</span>
@@ -289,7 +292,7 @@ export function Landing() {
                     <span key={p.id} className="h-6 w-6 rounded-full ring-2 ring-white" style={{ background: PRESETS[p.id].theme.palette.primary }} />
                   ))}
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-orange">
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-700">
                   לגלריית העיצובים <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-1" aria-hidden />
                 </span>
               </span>
@@ -312,9 +315,9 @@ export function Landing() {
         <section className="border-y border-cloud-200 bg-cloud py-20">
           <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
             <div>
-              <h2 className="text-3xl font-semibold tracking-tight text-midnight">כל הבקשות במקום אחד</h2>
+              <h2 className="text-3xl font-semibold tracking-tight text-midnight">הבקשה מגיעה בדיוק כמו שהלקוח מילא</h2>
               <p className="mt-3 max-w-md leading-relaxed text-ink-muted">
-                אישור, דחייה או בקשת שינויים בלחיצה. הערות פנימיות, ציר זמן מלא, תצוגה מקדימה של הודעות ללקוח וסטטוס מקדמה — הכול נגזר מאותו מודל נתונים.
+                כל התשובות, הסכום והגרסה שהלקוח ראה — בתיבה אחת. אישור, דחייה או בקשת שינויים בלחיצה, עם הערות פנימיות וציר זמן מלא.
               </p>
               <ul className="mt-6 grid grid-cols-2 gap-3 text-sm">
                 {['ציר זמן לכל בקשה', 'הערות פנימיות', 'הודעות מדומות', 'אנליטיקה דינמית'].map((t) => (
@@ -333,11 +336,11 @@ export function Landing() {
 
         <section className="py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-3xl font-semibold tracking-tight text-midnight">למה Formangle</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-midnight">מה העסק מרוויח</h2>
             <ul className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
               {BENEFITS.map((b) => (
                 <li key={b.title}>
-                  <b.icon className="h-6 w-6 text-orange" aria-hidden />
+                  <b.icon className="h-6 w-6 text-orange-700" aria-hidden />
                   <h3 className="mt-4 font-semibold text-ink">{b.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{b.text}</p>
                 </li>
@@ -346,27 +349,17 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="border-t border-cloud-200 bg-cloud py-20">
+        <section aria-labelledby="pricing-title" className="border-t border-cloud-200 bg-cloud py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-semibold tracking-tight text-midnight">מחירים פשוטים</h2>
-              <p className="mt-2 text-sm text-ink-muted">מחירים להמחשה בלבד — אין חיוב אמיתי בדמו.</p>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 id="pricing-title" className="text-3xl font-semibold tracking-tight text-midnight">חבילות בהקמה ובליווי של RockStack</h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink-muted">{PRICING_TERMS.managed}</p>
             </div>
-            <ul className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-3">
-              {PLANS.map((p) => (
-                <li key={p.key} className={cx('rounded-2xl border bg-white p-6', 'highlight' in p ? 'border-orange shadow-lift' : 'border-cloud-200')}>
-                  <p className="font-semibold">{p.name}</p>
-                  <p className="mt-3">
-                    <span className="text-3xl font-semibold tabular-nums">{formatCurrency(p.price)}</span>
-                    <span className="text-sm text-ink-muted"> / חודש</span>
-                  </p>
-                  <p className="mt-2 text-sm text-ink-muted">{p.blurb}</p>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-8 text-center">
+            <PackageCards compact className="mx-auto mt-10 max-w-5xl" />
+            <div className="mt-6 flex flex-col items-center gap-4 text-center">
+              <PricingFinePrint />
               <ButtonLink to="/pricing" variant="secondary">
-                השוואת תוכניות
+                כל הפרטים והשוואה
               </ButtonLink>
             </div>
           </div>
@@ -395,22 +388,22 @@ export function Landing() {
           <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
             <div className="flex flex-col justify-between gap-6 rounded-3xl border border-cloud-200 bg-cloud p-6 sm:p-8">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight">יש לכם רעיון? זה הזמן להפוך אותו לתהליך.</h2>
-                <p className="mt-2 text-ink-muted">שתי דקות, בלי הרשמה. הכול נשאר בדפדפן שלכם.</p>
+                <h2 className="text-2xl font-semibold tracking-tight">ראו איך זה ייראה אצלכם</h2>
+                <p className="mt-2 text-ink-muted">בחרו סוג עסק, מלאו בקשה כלקוח וראו אותה מגיעה ללוח הבקרה — בערך שתי דקות, בלי הרשמה.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ButtonLink to="/app/workflows/new" size="lg">
-                  צרו תהליך
+                <ButtonLink to="/tour" size="lg">
+                  צפו בהדגמה
                 </ButtonLink>
-                <ButtonLink to="/tour" size="lg" variant="secondary">
-                  סיור מודרך
+                <ButtonLink to="/app/workflows/new" size="lg" variant="secondary">
+                  נסו לבנות תהליך
                 </ButtonLink>
               </div>
             </div>
             <InterestCTA dark />
           </div>
           <p className="mx-auto mt-4 max-w-6xl text-xs leading-relaxed text-ink-soft">
-            מה הדמו לא עושה: אין שרת, חשבונות או סנכרון בין מכשירים; תשלומים והודעות הם סימולציה; היצירה היא מנוע מקומי ולא AI. כך הדמו נשאר חינמי לגמרי.
+            מה הדמו לא עושה: אין שרת, חשבונות או סנכרון בין מכשירים; תשלומים והודעות הם סימולציה; היצירה היא מנוע מקומי מבוסס תבניות. כך הדמו נשאר חינמי לגמרי.
           </p>
         </section>
       </main>

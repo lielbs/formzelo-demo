@@ -81,13 +81,13 @@ export function Themes() {
       <SiteHeader />
       <main id="main">
         <section className="mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6">
-          <p className="text-sm font-medium text-orange">גלריית עיצובים</p>
+          <p className="text-sm font-medium text-orange-700">גלריית עיצובים</p>
           <h1 className="mt-2 max-w-2xl text-4xl font-semibold tracking-tight text-midnight sm:text-5xl">שישה עיצובים. מנוע אחד.</h1>
           <p className="mt-4 max-w-2xl leading-relaxed text-ink-muted">
             כל תהליך ב-Formangle מקבל שפה עיצובית שמתאימה לעסק: קומפוזיציה, טיפוגרפיה, צורות ותנועה — לא רק צבע. כל התצוגות כאן הן הרנדרר האמיתי שרץ אצל הלקוחות, במצב תצוגה מקדימה.
           </p>
           <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-cloud-300 bg-white px-3 py-1.5 text-xs text-ink-muted">
-            <Cpu className="h-3.5 w-3.5" aria-hidden /> בחירת העיצוב האוטומטית היא מקומית ודטרמיניסטית לפי מילות מפתח — ללא AI
+            <Cpu className="h-3.5 w-3.5" aria-hidden /> בחירת העיצוב האוטומטית היא מקומית, לפי מילות מפתח
           </p>
         </section>
 

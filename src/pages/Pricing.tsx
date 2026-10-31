@@ -1,49 +1,96 @@
-import { Check, Info } from 'lucide-react';
+import { ClipboardList, Headphones, Palette, Rocket } from 'lucide-react';
+import { PackageCards, PricingFinePrint } from '../components/Packages';
 import { SiteFooter, SiteHeader } from '../components/SiteChrome';
-import { ButtonLink, cx } from '../components/ui';
-import { formatCurrency } from '../lib/format';
-import { PLANS } from '../lib/plans';
+import { ButtonLink } from '../components/ui';
+import { PACKAGES, PRICING_TERMS } from '../lib/plans';
+
+const SETUP = [
+  { icon: ClipboardList, title: 'אפיון', text: 'שיחה על הלקוחות, השירותים והתהליכים שהעסק רוצה להעביר לדיגיטל.' },
+  { icon: Palette, title: 'הקמה ומיתוג', text: 'RockStack בונה את התהליכים, ערכת המותג והקישורים העסקיים.' },
+  { icon: Rocket, title: 'בדיקה ופרסום', text: 'עוברים יחד על חוויית הלקוח ועל לוח הבקשות, ואז מפרסמים.' },
+  { icon: Headphones, title: 'ליווי', text: 'תמיכה והתאמות לפי החבילה. פיתוח מותאם ואינטגרציות — בהצעה נפרדת.' },
+];
+
+const COMPARE: [string, string, string, string][] = [
+  ['תהליכים פעילים', 'עד 3', 'עד 8', 'לפי אפיון'],
+  ['ערכת מותג וחוויות לקוח ממותגות', '✓', '✓', '✓'],
+  ['לוח בקרה לניהול בקשות', '✓', '✓', '✓'],
+  ['נוכחות דיגיטלית וקישורים עסקיים', '✓', '✓', '✓'],
+  ['תנאים ולוגיקה מורכבת', '—', '✓', '✓'],
+  ['ריבוי סניפים ואינטגרציות מותאמות', '—', '—', '✓'],
+  ['תמיכה', 'רגילה', 'מורחבת', 'לפי הסכם'],
+  ['הקמה', 'אישית', 'הטמעה אישית', 'פרויקט מותאם'],
+];
 
 export function Pricing() {
   return (
     <div className="min-h-screen bg-cloud">
       <SiteHeader />
-      <main id="main" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="text-center">
-          <h1 className="text-4xl font-semibold tracking-tight text-midnight">מחירים שקופים</h1>
-          <p className="mx-auto mt-3 max-w-lg text-ink-muted">Formangle מוקם, מותאם ומלווה עבורכם על ידי צוות RockStack. המחירים להמחשה, לפני מע״מ — ההצעה הסופית נקבעת לפי היקף ההקמה.</p>
-          <p role="note" className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-sm text-amber-900">
-            <Info className="h-4 w-4" aria-hidden /> מחירים להמחשה בלבד — אין חיוב או סליקה אמיתיים בדמו
-          </p>
+      <main id="main" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-medium text-orange-700">חבילות Formangle</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-midnight sm:text-4xl">שירות מנוהל, מותאם לעסק שלכם</h1>
+          <p className="mt-3 leading-relaxed text-ink-muted">{PRICING_TERMS.managed} מחיר חודשי קבוע, דמי הקמה חד-פעמיים, ובלי הפתעות.</p>
+          <p className="mt-3 text-sm font-medium text-ink">{PRICING_TERMS.indicative} {PRICING_TERMS.vat}</p>
         </div>
 
-        <ul className="mt-12 grid gap-5 lg:grid-cols-3">
-          {PLANS.map((p) => {
-            const hl = 'highlight' in p;
-            return (
-              <li key={p.key} className={cx('relative flex flex-col rounded-3xl border bg-white p-7', hl ? 'border-orange shadow-lift' : 'border-cloud-200 shadow-card')}>
-                {hl && <span className="absolute -top-3 start-7 rounded-full bg-orange px-3 py-1 text-xs font-semibold text-white">הכי פופולרי</span>}
-                <h2 className="text-lg font-semibold">{p.name}</h2>
-                <p className="mt-1 text-sm text-ink-muted">{p.blurb}</p>
-                <p className="mt-6">
-                  <span className="text-4xl font-semibold tabular-nums text-midnight">{formatCurrency(p.price)}</span>
-                  <span className="text-sm text-ink-muted"> לחודש</span>
-                </p>
-                <ul className="mt-6 flex-1 space-y-2.5 text-sm">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal" aria-hidden /> {f}
-                    </li>
+        <PackageCards className="mt-10" />
+
+        <section aria-labelledby="compare-title" className="mt-12 hidden rounded-2xl border border-cloud-200 bg-white p-6 shadow-card md:block">
+          <h2 id="compare-title" className="text-lg font-semibold text-midnight">השוואה מהירה</h2>
+          <table className="mt-4 w-full text-sm">
+            <thead>
+              <tr className="border-b border-cloud-200 text-start text-ink-muted">
+                <th scope="col" className="py-2 text-start font-medium">
+                  <span className="sr-only">יכולת</span>
+                </th>
+                {PACKAGES.map((p) => (
+                  <th key={p.key} scope="col" className="w-[22%] py-2 text-center font-semibold text-ink">
+                    {p.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARE.map(([label, ...vals]) => (
+                <tr key={label} className="border-b border-cloud-200 last:border-0">
+                  <th scope="row" className="py-2.5 text-start font-normal text-ink">
+                    {label}
+                  </th>
+                  {vals.map((v, i) => (
+                    <td key={i} className={v === '—' ? 'py-2.5 text-center text-ink-soft' : 'py-2.5 text-center text-ink'}>
+                      {v === '✓' ? <span aria-label="כלול" className="font-semibold text-teal">✓</span> : v === '—' ? <span aria-label="לא כלול">—</span> : v}
+                    </td>
                   ))}
-                </ul>
-                <ButtonLink to="/demo" variant={hl ? 'primary' : 'secondary'} className="mt-8 w-full">
-                  נסו בדמו
-                </ButtonLink>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section aria-labelledby="setup-title" className="mt-12">
+          <h2 id="setup-title" className="text-center text-2xl font-semibold tracking-tight text-midnight">מה כוללת ההקמה</h2>
+          <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {SETUP.map((s, i) => (
+              <li key={s.title} className="rounded-2xl border border-cloud-200 bg-white p-5">
+                <div className="flex items-center justify-between">
+                  <s.icon className="h-5 w-5 text-orange-700" aria-hidden />
+                  <span className="text-xs tabular-nums text-ink-soft">0{i + 1}</span>
+                </div>
+                <h3 className="mt-3 font-semibold">{s.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.text}</p>
               </li>
-            );
-          })}
-        </ul>
-        <p className="mt-6 text-center text-xs text-ink-soft">* תשלומים ומקדמות קיימים בדמו כסימולציה בלבד. בגרסת ייצור יחוברו לספק סליקה מורשה.</p>
+            ))}
+          </ol>
+        </section>
+
+        <div className="mt-10 flex flex-col items-center gap-4 text-center">
+          <PricingFinePrint className="max-w-2xl" />
+          <ButtonLink to="/tour" variant="secondary">
+            צפו בהדגמה לפני שמדברים
+          </ButtonLink>
+          <p className="text-xs text-ink-soft">בדמו אין חיוב, סליקה או מנוי. המחירים מוצגים לצורך שיחת מכירה בלבד.</p>
+        </div>
       </main>
       <SiteFooter />
     </div>

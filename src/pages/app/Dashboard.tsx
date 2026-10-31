@@ -1,13 +1,14 @@
-import { CheckCircle2, CircleDashed, Clock, ExternalLink, Inbox, Plus, Sparkles, Wallet, Workflow as WorkflowIcon, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CircleDashed, Clock, ExternalLink, Inbox, Plus, Sparkles, Wallet, Workflow as WorkflowIcon, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NotificationList, Timeline } from '../../components/Activity';
 import { RunsTable } from '../../components/RunsTable';
+import { StatusBadge } from '../../components/StatusBadge';
 import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
-import { DONE_STATUSES, PENDING_STATUSES } from '../../engine/transitions';
-import { formatCurrency, formatNumber } from '../../lib/format';
+import { DONE_STATUSES, ownerActions, PENDING_STATUSES } from '../../engine/transitions';
+import { formatCurrency, formatNumber, formatRelative } from '../../lib/format';
 import { appHref } from '../../lib/links';
 
 const FILTERS = [
@@ -73,6 +74,10 @@ export function Dashboard() {
     filter === 'pending' ? PENDING_STATUSES.includes(r.status) : filter === 'done' ? DONE_STATUSES.includes(r.status) : true,
   );
   const mainFlow = workflows.find((w) => w.status === 'published');
+  // The newest submitted request — the moment a customer's answers reach the business.
+  const latest = runs.filter((r) => r.submittedAt).sort((a, b) => b.submittedAt!.localeCompare(a.submittedAt!))[0];
+  const latestFlow = latest && workflows.find((w) => w.id === latest.workflowId);
+  const latestNext = latest ? ownerActions(latest.status) : [];
 
   const steps = [
     { done: usage.some((u) => u.type === 'workflow_generated'), label: 'תארו תהליך במילים שלכם', to: '/app/workflows/new' },
@@ -111,7 +116,7 @@ export function Dashboard() {
         <Card className="mb-6 p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-700">
                 <Sparkles className="h-5 w-5" aria-hidden />
               </span>
               <div>
@@ -147,6 +152,30 @@ export function Dashboard() {
               </li>
             ))}
           </ol>
+        </Card>
+      )}
+
+      {latest && (
+        <Card className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700">
+            <Inbox className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-ink-muted">הבקשה האחרונה שהגיעה · {formatRelative(latest.submittedAt!)}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
+              <span className="truncate">{latest.customerName || 'לקוח/ה'}</span>
+              <bdi className="text-sm font-normal text-ink-muted">{latest.reference}</bdi>
+              <StatusBadge status={latest.status} />
+              {latest.isDemo && <Badge tone="amber">דמו</Badge>}
+            </p>
+            <p className="mt-0.5 text-sm text-ink-muted">
+              מהתהליך ״{latestFlow?.draft.title ?? 'תהליך שנמחק'}״{latest.total > 0 ? ` · ${formatCurrency(latest.total)}` : ''}
+              {latestNext.length > 0 && <> · אפשר: {latestNext.slice(0, 3).map((a) => a.label).join(' / ')}</>}
+            </p>
+          </div>
+          <ButtonLink to={`/app/requests/${latest.id}`} variant="dark" className="shrink-0">
+            פתיחת הבקשה <ArrowLeft className="h-4 w-4" aria-hidden />
+          </ButtonLink>
         </Card>
       )}
 
@@ -237,7 +266,7 @@ export function Dashboard() {
             </div>
           )}
           <div className="border-t border-cloud-200 px-4 py-3 text-end">
-            <Link to="/app/requests" className="text-sm font-medium text-orange hover:underline">
+            <Link to="/app/requests" className="text-sm font-medium text-orange-700 hover:underline">
               לכל הבקשות ({formatNumber(runs.length)})
             </Link>
           </div>

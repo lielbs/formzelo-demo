@@ -228,16 +228,18 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
               const checked = multi ? (selected as string[]).includes(o.value) : selected === o.value;
               // Limited places: counted from submissions in this browser (see engine/capacity).
               const left = o.capacity ? Math.max(0, o.capacity - (usage?.[o.value] ?? 0)) : null;
+              // Accessible name = the option title only; description, price and places are announced as its description.
+              const oid = `${id}-o${i}`;
               const full = left === 0 && !checked;
               const places =
                 left === null ? null : (
-                  <span className="fz-places" data-state={left === 0 ? 'full' : left <= Math.ceil(o.capacity! * 0.2) ? 'limited' : undefined}>
+                  <span id={`${oid}-c`} className="fz-places" data-state={left === 0 ? 'full' : left <= Math.ceil(o.capacity! * 0.2) ? 'limited' : undefined}>
                     {left === 0 ? 'מלא' : !usage ? `${o.capacity} מקומות` : left === 1 ? 'נותר מקום אחד' : `נותרו ${left} מקומות`}
                   </span>
                 );
               const art = kind === 'tile' ? (optionArt ? inferArt(field, o, i, opts.length) : hasArt(o.image) ? o.image : undefined) : undefined;
               const price = o.price ? (
-                <span className="fz-opt-price">
+                <span id={`${oid}-p`} className="fz-opt-price">
                   {formatCurrency(o.price)}
                   {field.multiplyByKey && <span className="fz-opt-unit"> / לאדם</span>}
                 </span>
@@ -247,6 +249,8 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                   type={multi ? 'checkbox' : 'radio'}
                   name={field.key}
                   value={o.value}
+                  aria-label={o.label}
+                  aria-describedby={[o.description && kind !== 'chip' && `${oid}-d`, price && `${oid}-p`, places && kind !== 'chip' && `${oid}-c`].filter(Boolean).join(' ') || undefined}
                   checked={checked}
                   disabled={full}
                   onBlur={onBlur}
@@ -274,7 +278,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                     </span>
                     <span className="fz-opt-body">
                       <span className="fz-opt-label">{o.label}</span>
-                      {o.description && <span className="fz-opt-desc">{o.description}</span>}
+                      {o.description && <span id={`${oid}-d`} className="fz-opt-desc">{o.description}</span>}
                       {(price || places) && (
                         <span className="fz-tile-foot">
                           {price}
@@ -307,7 +311,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                       <span className="fz-opt-label">{o.label}</span>
                       {price}
                     </span>
-                    {o.description && <span className="fz-opt-desc">{o.description}</span>}
+                    {o.description && <span id={`${oid}-d`} className="fz-opt-desc">{o.description}</span>}
                     {places}
                   </span>
                 </label>

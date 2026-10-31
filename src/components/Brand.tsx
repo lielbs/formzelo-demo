@@ -75,7 +75,7 @@ export function LocalGenerationNotice({ className }: { className?: string }) {
   return (
     <p className={cx('inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800', className)}>
       <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
-      יצירת דמו מקומית — ללא חיבור ל-AI
+      יצירה מקומית מתבניות — בתוך הדפדפן
     </p>
   );
 }

@@ -66,7 +66,7 @@ export function RequestDetail() {
   if (q.error) return <ErrorState error={q.error} onRetry={q.reload} />;
   if (!q.data) {
     return (
-      <EmptyState icon={StickyNote} title="הבקשה לא נמצאה בסביבת עבודה זו" action={<Link to="/app/requests" className="text-sm font-medium text-orange">חזרה לבקשות</Link>}>
+      <EmptyState icon={StickyNote} title="הבקשה לא נמצאה בסביבת עבודה זו" action={<Link to="/app/requests" className="text-sm font-medium text-orange-700">חזרה לבקשות</Link>}>
         בקשות שייכות לסביבת העבודה שבה נשלחו.
       </EmptyState>
     );
@@ -113,7 +113,7 @@ export function RequestDetail() {
 
   return (
     <>
-      <Link to="/app/requests" className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-orange">
+      <Link to="/app/requests" className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-orange-700">
         <ArrowRight className="h-3.5 w-3.5" aria-hidden /> בקשות
       </Link>
       <div className="mb-6 mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

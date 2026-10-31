@@ -1,7 +1,8 @@
 import { ArrowDown, ArrowUp, ChevronDown, GitBranch, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Badge, Button, cx, FieldLabel, Input, Select } from '../../../components/ui';
-import { CONDITION_OPERATORS, FIELD_TYPES, type Condition, type FieldType, type WorkflowField } from '../../../domain/schema';
+import { FIELD_TYPES, type Condition, type FieldType, type WorkflowField } from '../../../domain/schema';
+import { describeCondition, needsValue, operatorsFor } from '../../../engine/logic';
 import { OPERATOR_LABELS } from '../../../engine/conditions';
 import { fieldHasPrice } from '../../../engine/pricing';
 import { newId } from '../../../lib/id';
@@ -32,7 +33,6 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 
 const HAS_OPTIONS: FieldType[] = ['select', 'radio', 'multiselect'];
 const HAS_FLAT_PRICE: FieldType[] = ['checkbox', 'decision', 'number'];
-const VALUELESS_OPS: Condition['operator'][] = ['isTrue', 'isFalse', 'notEmpty', 'isEmpty'];
 
 export function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
   const j = i + dir;
@@ -50,40 +50,63 @@ export function uniqueKey(existing: string[], base = 'field'): string {
 
 const parseNum = (v: string) => (v === '' ? undefined : Number(v));
 
-export function ConditionEditor({ field, others, onChange }: { field: WorkflowField; others: WorkflowField[]; onChange: (c?: Condition) => void }) {
+export function ConditionEditor({ field, others, onChange, subject = 'השאלה' }: { field: WorkflowField; others: WorkflowField[]; onChange: (c?: Condition) => void; subject?: string }) {
   const c = field.condition;
   const source = others.find((f) => f.key === c?.fieldKey);
   if (!c) {
-    return (
-      <Button size="sm" variant="ghost" icon={GitBranch} disabled={!others.length} onClick={() => others[0] && onChange({ fieldKey: others[0].key, operator: 'notEmpty' })}>
-        הוספת תנאי הצגה
-      </Button>
+    return others.length ? (
+      <div>
+        <Button size="sm" variant="ghost" icon={GitBranch} onClick={() => {
+          const src = others[others.length - 1]!;
+          const op = operatorsFor(src)[0]!;
+          onChange({ fieldKey: src.key, operator: op, value: needsValue(op) && src.options?.[0] ? src.options[0].value : undefined });
+        }}>
+          הצגה מותנית
+        </Button>
+        <p className="mt-1 text-[11px] text-ink-soft">{subject} {subject === 'השאלה' ? 'תוצג' : 'יוצג'} רק כשהלקוח ענה תשובה מסוימת קודם.</p>
+      </div>
+    ) : (
+      <p className="rounded-lg bg-cloud p-2.5 text-xs leading-relaxed text-ink-muted">
+        <GitBranch className="me-1 inline h-3.5 w-3.5" aria-hidden />
+        אפשר להתנות רק בשאלה שמופיעה לפני {subject === 'השאלה' ? 'השאלה הזו' : 'השלב הזה'}. הוסיפו שאלה קודמת כדי להשתמש בהצגה מותנית.
+      </p>
     );
   }
+  const ops = operatorsFor(source);
+  const opList = ops.includes(c.operator) ? ops : [c.operator, ...ops];
+  const valid = Boolean(source) && (!needsValue(c.operator) || (c.value !== undefined && c.value !== ''));
   return (
-    <div className="rounded-xl border border-dashed border-cloud-300 p-3">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
-        <GitBranch className="h-3.5 w-3.5" aria-hidden /> הצג שדה זה רק אם:
+    <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-sky-800">
+        <GitBranch className="h-3.5 w-3.5" aria-hidden /> הצג את {subject === 'השאלה' ? 'השאלה הזו' : 'השלב הזה'} רק כאשר…
       </p>
       <div className="grid gap-2 sm:grid-cols-3">
-        <Select aria-label="שדה מקור לתנאי" value={c.fieldKey} onChange={(e) => onChange({ ...c, fieldKey: e.target.value, value: undefined })}>
+        <Select aria-label="השאלה שקובעת" value={source ? c.fieldKey : ''} invalid={!source} onChange={(e) => {
+          const src = others.find((o) => o.key === e.target.value);
+          const op = operatorsFor(src)[0]!;
+          onChange({ fieldKey: e.target.value, operator: op, value: needsValue(op) && src?.options?.[0] ? src.options[0].value : undefined });
+        }}>
+          {!source && <option value="">השדה נמחק — בחרו שדה</option>}
           {others.map((o) => (
             <option key={o.id} value={o.key}>
               {o.label}
             </option>
           ))}
         </Select>
-        <Select aria-label="אופרטור" value={c.operator} onChange={(e) => onChange({ ...c, operator: e.target.value as Condition['operator'] })}>
-          {CONDITION_OPERATORS.map((op) => (
+        <Select aria-label="תנאי" value={c.operator} onChange={(e) => {
+          const op = e.target.value as Condition['operator'];
+          onChange({ ...c, operator: op, value: needsValue(op) ? (c.value ?? source?.options?.[0]?.value) : undefined });
+        }}>
+          {opList.map((op) => (
             <option key={op} value={op}>
               {OPERATOR_LABELS[op]}
             </option>
           ))}
         </Select>
-        {!VALUELESS_OPS.includes(c.operator) &&
+        {needsValue(c.operator) &&
           (source?.options?.length ? (
-            <Select aria-label="ערך לתנאי" value={String(c.value ?? '')} onChange={(e) => onChange({ ...c, value: e.target.value })}>
-              <option value="">בחרו ערך</option>
+            <Select aria-label="ערך" value={String(c.value ?? '')} invalid={!c.value} onChange={(e) => onChange({ ...c, value: e.target.value })}>
+              <option value="">בחרו תשובה</option>
               {source.options.map((o) => (
                 <option key={o.id} value={o.value}>
                   {o.label}
@@ -91,10 +114,20 @@ export function ConditionEditor({ field, others, onChange }: { field: WorkflowFi
               ))}
             </Select>
           ) : (
-            <Input aria-label="ערך לתנאי" value={String(c.value ?? '')} onChange={(e) => onChange({ ...c, value: ['gt', 'lt'].includes(c.operator) ? Number(e.target.value) : e.target.value })} />
+            <Input
+              aria-label="ערך"
+              type={['gt', 'lt'].includes(c.operator) || source?.type === 'number' ? 'number' : 'text'}
+              dir={source?.type === 'number' ? 'ltr' : undefined}
+              invalid={c.value === undefined || c.value === ''}
+              value={String(c.value ?? '')}
+              onChange={(e) => onChange({ ...c, value: e.target.value === '' ? undefined : ['gt', 'lt'].includes(c.operator) || source?.type === 'number' ? Number(e.target.value) : e.target.value })}
+            />
           ))}
       </div>
-      <Button size="sm" variant="ghost" className="mt-2" onClick={() => onChange(undefined)}>
+      <p className="mt-2 text-xs text-sky-900" aria-live="polite">
+        {valid ? <>כלומר: {subject} {subject === 'השאלה' ? 'תוצג' : 'יוצג'} רק כאשר {describeCondition(c, others)}.</> : !source ? 'השדה שהתנאי התייחס אליו כבר לא קיים.' : 'השלימו את התשובה שקובעת.'}
+      </p>
+      <Button size="sm" variant="ghost" className="mt-1" onClick={() => onChange(undefined)}>
         הסרת התנאי
       </Button>
     </div>

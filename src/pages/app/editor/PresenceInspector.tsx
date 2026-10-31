@@ -42,7 +42,7 @@ export function PresenceInspector({
         <h2 className="font-semibold">נוכחות דיגיטלית</h2>
         <p className="mt-1 text-xs text-ink-muted">
           הקישורים מגיעים מ
-          <Link className="text-orange-600 underline" to="/app/brand">
+          <Link className="text-orange-700 underline" to="/app/brand">
             ערכת המותג
           </Link>
           . כאן בוחרים מה מוצג בתהליך הזה, איפה ואיך. הפעולה העיקרית של התהליך תמיד נשארת הבולטת.

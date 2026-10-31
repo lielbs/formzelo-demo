@@ -2,9 +2,10 @@
  * Workspace brand kit: the default identity every inheriting workflow uses.
  * Published versions keep their frozen design until they are republished.
  */
-import { Check, Palette, Pipette, RotateCcw, Save } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AlertCircle, Check, CheckCircle2, Palette, Pipette, RotateCcw, Save } from 'lucide-react';
+import { BRAND_TABS, type BrandTab } from './brandTabs';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ImagePicker } from '../../components/ImagePicker';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, cx, ErrorState, FieldLabel, Input, PageHeader, Spinner, Textarea } from '../../components/ui';
@@ -19,9 +20,12 @@ import { PresetPreview } from '../../theme/PresetPreview';
 import { themeTokens, TYPOGRAPHY } from '../../theme/tokens';
 import { ColorInput, Group, L, Segmented, Toggle } from './editor/DesignPanel';
 import { PresenceEditor, presenceErrors } from './editor/PresenceEditor';
+import { PLATFORMS, validLinks } from '../../engine/presence';
+import { PresenceIcon } from '../../renderer/presence';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
 
 const PLACEMENT = { start: 'בצד', center: 'במרכז', hidden: 'מוסתר' } as const;
+
 const ROLES = [
   ['primary', 'ראשי'],
   ['secondary', 'משני'],
@@ -44,6 +48,30 @@ export function BrandKitPage() {
   const [busy, setBusy] = useState(false);
   const [candidates, setCandidates] = useState<string[]>([]);
   const [device, setDevice] = useState<Device>('mobile');
+  const [params, setParams] = useSearchParams();
+  const tab: BrandTab = BRAND_TABS.some((t) => t.id === params.get('tab')) ? (params.get('tab') as BrandTab) : 'details';
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const goTab = (t: BrandTab, focus = false) => {
+    setParams((p) => {
+      const n = new URLSearchParams(p);
+      if (t === 'details') n.delete('tab');
+      else n.set('tab', t);
+      return n;
+    }, { replace: true });
+    if (focus) setTimeout(() => tabRefs.current[t]?.focus(), 0);
+  };
+  const onTabKey = (e: KeyboardEvent) => {
+    const i = BRAND_TABS.findIndex((t) => t.id === tab);
+    // RTL: ArrowLeft moves forward.
+    const d = e.key === 'ArrowLeft' ? 1 : e.key === 'ArrowRight' ? -1 : 0;
+    if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      goTab(BRAND_TABS[e.key === 'Home' ? 0 : BRAND_TABS.length - 1]!.id, true);
+    } else if (d) {
+      e.preventDefault();
+      goTab(BRAND_TABS[(i + d + BRAND_TABS.length) % BRAND_TABS.length]!.id, true);
+    }
+  };
 
   useUnsavedGuard(kit !== null && JSON.stringify(kit) !== saved);
 
@@ -75,11 +103,15 @@ export function BrandKitPage() {
       return next;
     });
   const warnings = previewTheme ? themeTokens(previewTheme).warnings : [];
+  const linkProblems = presenceErrors(kit.links);
+  const shownLinks = validLinks(kit.links);
 
   const save = async () => {
     if (!kit.displayName.trim()) return toast('נדרש שם תצוגה', 'error');
-    const linkProblems = presenceErrors(kit.links);
-    if (linkProblems.length) return toast(`יש לתקן קישורים לפני שמירה: ${linkProblems[0]}`, 'error');
+    if (linkProblems.length) {
+      goTab('links');
+      return toast(`יש לתקן קישורים לפני שמירה: ${linkProblems[0]}`, 'error');
+    }
     setBusy(true);
     try {
       const stored = await repo.updateBrandKit(org.id, { ...kit, displayName: kit.displayName.trim(), description: kit.description.trim() });
@@ -139,13 +171,45 @@ export function BrandKitPage() {
           </>
         }
       />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="אזורי ערכת המותג" className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1" onKeyDown={onTabKey}>
+          {BRAND_TABS.map((t) => (
+            <button
+              key={t.id}
+              ref={(el) => void (tabRefs.current[t.id] = el)}
+              id={`bk-tab-${t.id}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              aria-controls={`bk-panel-${t.id}`}
+              tabIndex={tab === t.id ? 0 : -1}
+              onClick={() => goTab(t.id)}
+              className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', tab === t.id ? 'bg-midnight text-white' : 'text-ink-muted hover:bg-cloud hover:text-ink')}
+            >
+              <t.icon className="h-4 w-4" aria-hidden /> {t.label}
+              {t.id === 'links' && linkProblems.length > 0 && (
+                <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white" aria-label={`${linkProblems.length} קישורים לתיקון`}>
+                  {linkProblems.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className={cx('inline-flex items-center gap-1.5 text-sm font-medium', dirty ? 'text-amber-800' : 'text-teal-600')} role="status">
+          {dirty ? <AlertCircle className="h-4 w-4" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />}
+          {dirty ? 'יש שינויים שלא נשמרו' : 'כל השינויים נשמרו'}
+        </p>
+      </div>
       <p className="mb-5 rounded-xl border border-cloud-200 bg-white p-3 text-xs leading-relaxed text-ink-muted">
         {inheriting.length} מתוך {q.data.workflows.length} תהליכים יורשים את המותג.{' '}
         <strong className="font-medium text-ink">גרסאות שכבר פורסמו לא משתנות</strong> — השינוי יופיע בקישור הציבורי רק אחרי פרסום גרסה חדשה. התמונות נשמרות בדפדפן זה בלבד ואינן נשלחות לשום מקום.
       </p>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-        <div className="space-y-5">
+      <div className={cx('grid gap-6', tab !== 'preview' && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]')}>
+        {tab !== 'preview' && (
+        <div className="space-y-5" role="tabpanel" id={`bk-panel-${tab}`} aria-labelledby={`bk-tab-${tab}`}>
+          {tab === 'details' && (
+          <>
           <Group title="זהות">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -184,7 +248,11 @@ export function BrandKitPage() {
             <ImagePicker kind="cover" label="תמונת כיסוי ברירת מחדל" hint="משמשת בפתיח כשלתהליך אין תמונה משלו. רק תמונות שבבעלותכם." selected={kit.coverAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.coverAssetId = id))} />
           </Group>
 
-          <Group title="צבעים" hint="אפשר לחלץ הצעות צבע מהלוגו — חישוב מקומי בדפדפן, לא AI.">
+          </>
+          )}
+          {tab === 'design' && (
+          <>
+          <Group title="צבעים" hint="אפשר לחלץ הצעות צבע מהלוגו — חישוב מקומי בדפדפן.">
             <div className="grid gap-3 sm:grid-cols-2">
               <ColorInput label="ראשי" value={kit.palette.primary} onChange={(v) => set((k) => void (k.palette.primary = v))} />
               <ColorInput label="משני" value={kit.palette.secondary} onChange={(v) => set((k) => void (k.palette.secondary = v))} />
@@ -269,12 +337,18 @@ export function BrandKitPage() {
             </div>
           </Group>
 
-          <Group title="נוכחות דיגיטלית וקישורים עסקיים" hint="רשתות, ניווט, יצירת קשר, ביקורות ופעולות מותאמות — מוגדרים פעם אחת לעסק ומוצגים בתהליכים לפי הבחירה בסטודיו.">
+          </>
+          )}
+          {tab === 'links' && (
+          <Group title="נוכחות דיגיטלית וקישורים עסקיים" hint="רשתות, ניווט, יצירת קשר, ביקורות ופעולות מותאמות — מוגדרים פעם אחת לעסק ומוצגים בתהליכים לפי הבחירה בסטודיו (מיקום וסגנון: ״נוכחות דיגיטלית״ בכל תהליך).">
             <PresenceEditor links={kit.links} onChange={(links) => set((k) => void (k.links = links))} />
           </Group>
+          )}
         </div>
+        )}
 
-        <div className="xl:sticky xl:top-6 xl:self-start">
+        <div className={tab === 'preview' ? 'grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : 'xl:sticky xl:top-6 xl:self-start'} role={tab === 'preview' ? 'tabpanel' : undefined} id={tab === 'preview' ? 'bk-panel-preview' : undefined} aria-labelledby={tab === 'preview' ? 'bk-tab-preview' : undefined}>
+          <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
             <span className="inline-flex items-center gap-1.5">
               <Palette className="h-3.5 w-3.5" aria-hidden /> תצוגה חיה{sample ? `: ${sample.draft.title}` : ''}
@@ -296,8 +370,49 @@ export function BrandKitPage() {
             </DevicePreview>
           ) : (
             <p className="rounded-xl bg-white p-6 text-center text-sm text-ink-muted">
-              אין עדיין תהליכים לתצוגה. <Link className="font-medium text-orange" to="/app/workflows/new">צרו תהליך</Link>.
+              אין עדיין תהליכים לתצוגה. <Link className="font-medium text-orange-700" to="/app/workflows/new">צרו תהליך</Link>.
             </p>
+          )}
+          </div>
+          {tab === 'preview' && (
+            <aside className="space-y-4" aria-label="סיכום המותג">
+              <Group title="המותג במבט אחד">
+                <p className="text-lg font-semibold" style={{ fontFamily: TYPOGRAPHY[kit.typography].display, fontWeight: TYPOGRAPHY[kit.typography].weight }}>
+                  {kit.displayName}
+                </p>
+                {kit.description && <p className="text-sm text-ink-muted">{kit.description}</p>}
+                <ul className="flex gap-2" aria-label="צבעי המותג">
+                  {(['primary', 'secondary', 'accent', 'background'] as const).map((c) => (
+                    <li key={c} className="h-9 w-9 rounded-full ring-1 ring-black/10" style={{ background: kit.palette[c] }} title={kit.palette[c]} />
+                  ))}
+                </ul>
+                <p className="text-xs text-ink-muted">
+                  {PRESET_LIST.find((p) => p.id === kit.personality)?.nameHe} · {TYPOGRAPHY[kit.typography].label} · {L.button[kit.button]} · {L.density[kit.density]}
+                </p>
+                <Button size="sm" variant="ghost" onClick={() => goTab('design')}>
+                  עריכת העיצוב
+                </Button>
+              </Group>
+              <Group title="קישורים שיוצגו ללקוחות" hint="מיקום וסגנון נקבעים בכל תהליך בנפרד, בסטודיו.">
+                {shownLinks.length ? (
+                  <ul className="space-y-1.5">
+                    {shownLinks.map((l) => (
+                      <li key={l.id} className="flex items-center gap-2 text-sm">
+                        <PresenceIcon link={l} />
+                        <span className="font-medium">{l.label}</span>
+                        <span className="text-xs text-ink-muted">{PLATFORMS[l.platform].label}</span>
+                        {l.sample && <Badge>דוגמה · לא פעיל</Badge>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-ink-muted">אין עדיין קישורים פעילים.</p>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => goTab('links')}>
+                  עריכת הקישורים
+                </Button>
+              </Group>
+            </aside>
           )}
         </div>
       </div>

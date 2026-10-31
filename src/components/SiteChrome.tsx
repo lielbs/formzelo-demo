@@ -6,12 +6,12 @@ import { ButtonLink } from './ui';
 import { appHref } from '../lib/links';
 
 const LINKS = [
-  { href: '/tour', label: 'סיור מודרך' },
   { href: '/#how', label: 'איך זה עובד' },
   { href: '/#examples', label: 'דוגמאות' },
   { href: '/themes', label: 'עיצובים' },
   { href: '/pricing', label: 'מחירים' },
   { href: '/#faq', label: 'שאלות' },
+  { href: '/app/workflows/new', label: 'נסו לבנות' },
 ];
 
 export function SiteHeader() {
@@ -31,7 +31,7 @@ export function SiteHeader() {
           <ButtonLink to="/demo" variant="ghost">
             סביבות דמו
           </ButtonLink>
-          <ButtonLink to="/app/workflows/new">יצירת תהליך</ButtonLink>
+          <ButtonLink to="/tour">צפו בהדגמה</ButtonLink>
         </div>
         <button
           type="button"
@@ -54,7 +54,7 @@ export function SiteHeader() {
             <ButtonLink to="/demo" variant="secondary">
               סביבות דמו
             </ButtonLink>
-            <ButtonLink to="/app/workflows/new">יצירת תהליך</ButtonLink>
+            <ButtonLink to="/tour">צפו בהדגמה</ButtonLink>
           </div>
         </nav>
       )}
@@ -70,7 +70,7 @@ export function SiteFooter() {
           <Logo dark />
           <p className="mt-3 max-w-sm text-sm leading-relaxed">לכל עסק יש את הזווית שלו. תהליכים דיגיטליים ממותגים — מוקמים ומלווים על ידי RockStack.</p>
           <p className="mt-4 max-w-sm text-xs leading-relaxed text-white/40">
-            זהו דמו מקומי: הנתונים נשמרים בדפדפן שלכם בלבד, היצירה מתבצעת במנוע מילות מפתח מקומי (לא AI), ואין תשלומים, הודעות או הזמנות אמיתיות.
+            זהו דמו מקומי: הנתונים נשמרים בדפדפן שלכם בלבד, היצירה מתבצעת במנוע מקומי שמבוסס על מילות מפתח ותבניות, ואין תשלומים, הודעות או הזמנות אמיתיות.
           </p>
         </div>
         <div>

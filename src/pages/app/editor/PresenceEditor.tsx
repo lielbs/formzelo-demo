@@ -45,7 +45,7 @@ function Row({ link, index, count, onChange, onRemove, onMove }: { link: Presenc
   return (
     <li className={cx('rounded-xl border p-3 transition', link.enabled ? 'border-cloud-200 bg-white' : 'border-dashed border-cloud-300 bg-cloud/50')}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-700">
           <PresenceIcon link={link} />
         </span>
         <span className="min-w-0 flex-1 text-sm font-semibold">{name}</span>

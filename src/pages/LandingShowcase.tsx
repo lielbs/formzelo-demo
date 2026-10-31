@@ -97,7 +97,7 @@ export function BrandShowcase() {
           <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={decor} onChange={(e) => setDecor(e.target.checked)} />
           איורים דקורטיביים (כבוי = מראה נקי)
         </label>
-        <Link to="/app/brand" className="mt-6 inline-block text-sm font-medium text-orange hover:underline">
+        <Link to="/app/brand" className="mt-6 inline-block text-sm font-medium text-orange-700 hover:underline">
           לערכת המותג בדמו ←
         </Link>
       </div>
@@ -148,7 +148,7 @@ export function CompletionShowcase() {
               onClick={() => setMode(m)}
               className={cx('flex items-start gap-3 rounded-xl border p-3 text-start transition', mode === m ? 'border-midnight bg-white shadow-card' : 'border-cloud-300 bg-white/60 hover:border-ink-soft')}
             >
-              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-orange" aria-hidden />
+              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-orange-700" aria-hidden />
               <span>
                 <span className="block text-sm font-semibold">{COMPLETION_LABELS[m].title}</span>
                 <span className="block text-xs text-ink-muted">{COMPLETION_LABELS[m].description}</span>

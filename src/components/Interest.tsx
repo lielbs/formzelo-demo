@@ -36,7 +36,7 @@ export function InterestCTA({ business, name, dark = false, className }: { busin
       <div className="mt-5 flex flex-wrap gap-2">
         <a
           href={href}
-          className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2"
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange-700 px-5 text-sm font-semibold text-white transition hover:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2"
         >
           <Mail className="h-4 w-4" aria-hidden />
           שליחת פנייה ל-RockStack
