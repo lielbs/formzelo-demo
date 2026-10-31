@@ -138,6 +138,13 @@ export function WorkflowEditor() {
   const [previewKey, setPreviewKey] = useState(0);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropAt, setDropAt] = useState<{ stepId: string; index: number } | null>(null);
+  const [guideHidden, setGuideHidden] = useState(() => {
+    try {
+      return localStorage.getItem(`formzelo:ui:studio-guide:${id}`) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   // Load the draft once per workflow; later refetches must not clobber local edits.
   const loadedId = q.data?.workflow.id;
@@ -818,6 +825,56 @@ export function WorkflowEditor() {
             ))}
           </ul>
         </div>
+      )}
+
+      {!workflow.isDemo && !guideHidden && (
+        <section aria-label="צעדים ראשונים" className="mb-4 rounded-xl border border-cloud-200 bg-white p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold">התהליך שלכם בכמה צעדים</p>
+            <button
+              type="button"
+              className="rounded-lg p-1 text-ink-soft hover:bg-cloud hover:text-ink"
+              aria-label="הסתרת הצעדים"
+              onClick={() => {
+                setGuideHidden(true);
+                try {
+                  localStorage.setItem(`formzelo:ui:studio-guide:${id}`, '1');
+                } catch {
+                  /* per-viewer convenience only */
+                }
+              }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <ol className="mt-2 flex flex-wrap gap-1.5 text-xs">
+            {(
+              [
+                ['נוצר תהליך', true, undefined],
+                ['לוגו וצבעים', Boolean(kit?.logoAssetId) || (kit ? kit.updatedAt > workflow.createdAt : false), () => navigate('/app/brand')],
+                ['סגנון עיצוב', design.source === 'manual', () => select({ kind: 'design' })],
+                ['עריכת שלבים ושדות', past.length > 0 || workflow.updatedAt > workflow.createdAt, () => select({ kind: 'step', stepId: config.steps[0]!.id })],
+                ['תצוגה בטלפון ובמחשב', device !== 'mobile', () => setDevice('desktop')],
+                ['פרסום וקישור', published, () => setConfirmPublish(true)],
+              ] as [string, boolean, (() => void) | undefined][]
+            ).map(([label, done, action], i) => (
+              <li key={label}>
+                <button
+                  type="button"
+                  disabled={!action}
+                  onClick={action}
+                  className={cx('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition', done ? 'border-teal-50 bg-teal-50 text-teal-600' : 'border-cloud-300 text-ink-muted hover:border-ink-soft hover:text-ink')}
+                >
+                  <span className={cx('flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold', done ? 'bg-teal text-white' : 'bg-cloud-200 text-ink')} aria-hidden>
+                    {done ? '✓' : i + 1}
+                  </span>
+                  {label}
+                  <span className="sr-only">{done ? ' (בוצע)' : ''}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       {config.draftNotes && config.draftNotes.length > 0 && (

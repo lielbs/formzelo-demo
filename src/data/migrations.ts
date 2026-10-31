@@ -79,6 +79,8 @@ export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown
   let value = raw;
   if (value.schemaVersion === 1) value = v1ToV2(value);
   if (value.schemaVersion === 2) value = v2ToV3(value, now);
+  // v3 -> v4: no structural change to a workspace (new fields are optional); new demo workspaces are added at the meta level.
+  if (value.schemaVersion === 3) value = { ...value, schemaVersion: 4 };
   return { value, migrated: value !== raw };
 }
 

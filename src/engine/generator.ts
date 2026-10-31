@@ -19,8 +19,10 @@ export { normalizeHebrew };
 const KEYWORDS: Record<Exclude<TemplateKey, 'generic'>, string[]> = {
   flower_order: ['פרח', 'זר', 'זרים', 'פלורי', 'משלוח פרחים', 'חנות פרחים', 'ורד', 'סידורי'],
   garage_repairs: ['מוסך', 'רכב', 'בלמים', 'רפידות', 'מכונאי', 'צמיגים', 'טיפול שנתי', 'מגבים', 'פילטר'],
-  restaurant_event: ['מסעדה', 'אירוע', 'אורחים', 'תפריט', 'קייטרינג', 'שף', 'ארוחה', 'בר מצווה', 'בת מצווה', 'יום הולדת'],
-  table_booking: ['הזמנת שולחן', 'שולחן', 'קביעת תור', 'תור', 'תורים', 'מספרה', 'מניקור', 'קוסמטיקאית', 'פגישה', 'יומן', 'שעות פנויות', 'הזמנת מקום'],
+  restaurant_event: ['מסעדה', 'אירוע פרטי', 'אירועים פרטיים', 'אירוע', 'אורחים', 'תפריט', 'קייטרינג', 'שף', 'ארוחה', 'בר מצווה', 'בת מצווה', 'יום הולדת'],
+  table_booking: ['הזמנת שולחן', 'הזמנות שולחן', 'שולחנות', 'שולחן', 'קביעת תור', 'תור', 'תורים', 'מספרה', 'מניקור', 'קוסמטיקאית', 'פגישה', 'יומן', 'שעות פנויות', 'הזמנת מקום'],
+  // Registration prompts are composed from blocks (engine/compose), so this template is chosen explicitly, not by keywords.
+  contest_registration: [],
   document_collection: ['מסמכים', 'מסמך', 'טופס 106', 'רואה חשבון', 'הנהלת חשבונות', 'קליטת לקוח', 'אישורים', 'צילום', 'להעלות', 'העלאת'],
   quote_request: ['הצעת מחיר', 'הצעה', 'שיפוץ', 'התקנה', 'קבלן', 'אינסטלטור', 'חשמלאי', 'הערכת עלות', 'ביקור', 'עבודה'],
 };
@@ -116,7 +118,20 @@ function applyModifiers(config: WorkflowConfig, text: string, adjustments: strin
 const DAY_SLOTS = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 /** Booking template re-worded for appointments (salon, clinic, studio…) instead of a restaurant table. */
-function toAppointments(base: WorkflowConfig, title: string): WorkflowConfig {
+/** Sample services per kind of appointment business; always flagged as placeholders. */
+const SERVICES: [RegExp, string[]][] = [
+  [/(מספר|ספר |תספורת|שיער)/, ['תספורת', 'צבע', 'פן ועיצוב']],
+  [/(מניקור|פדיקור|ציפורנ|לק)/, ['מניקור', 'פדיקור', 'לק ג׳ל']],
+  [/(קוסמטיק|טיפול פנים|איפור|ספא)/, ['טיפול פנים', 'איפור', 'הסרת שיער']],
+  [/(קליניק|מרפא|רופא|פיזיותרפ|טיפול)/, ['פגישת היכרות', 'טיפול', 'ביקורת']],
+  [/(יוע|עורך דין|רואה חשבון|משרד)/, ['פגישת ייעוץ', 'פגישת המשך']],
+];
+
+export function appointmentServices(text: string): string[] {
+  return SERVICES.find(([re]) => re.test(text))?.[1] ?? ['פגישה ראשונה', 'פגישת המשך'];
+}
+
+function toAppointments(base: WorkflowConfig, title: string, text = ''): WorkflowConfig {
   const c = structuredClone(base);
   // Echoing the request ("מספרה שרוצה…") reads badly to customers; owners rename it in the studio.
   c.title = title.length <= 24 ? title || 'קביעת תור' : 'קביעת תור';
@@ -124,6 +139,11 @@ function toAppointments(base: WorkflowConfig, title: string): WorkflowConfig {
   c.branding = { ...c.branding, logoText: 'העסק שלי' };
   const first = c.steps[0]!;
   first.title = 'מתי נוח לכם?';
+  first.fields.splice(1, 0, field('service', 'איזה שירות?', 'radio', {
+    required: true,
+    appearance: 'chips',
+    options: appointmentServices(text).map((label, i) => ({ id: newId('opt'), label, value: `service_${i + 1}` })),
+  }));
   first.fields = first.fields
     .filter((f) => f.key !== 'seating')
     .map((f) => {
@@ -149,7 +169,9 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
   const detected = detectTemplate(prompt);
   const intent = analyzePrompt(prompt);
   const compose = !forcedTemplate && shouldCompose(intent);
-  const key = forcedTemplate ?? (compose ? 'generic' : detected.key);
+  let key = forcedTemplate ?? (compose ? 'generic' : detected.key);
+  // "Quote for a private event" is an event request with a price estimate, not a generic contractor quote.
+  if (!forcedTemplate && key === 'quote_request' && /אירוע/.test(text)) key = 'restaurant_event';
   const adjustments: string[] = [];
   const notes: string[] = [];
 
@@ -162,16 +184,33 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
   } else {
     config = key === 'generic' ? buildGeneric(titleFromPrompt(prompt)) : TEMPLATES[key].build();
     if (key === 'table_booking' && !/מסעד|שולחן|ארוח|קפה|בר /.test(text)) {
-      config = toAppointments(config, titleFromPrompt(prompt));
-      adjustments.push('הותאם לקביעת תור (לא מסעדה): שעות יום, ללא העדפת ישיבה');
+      config = toAppointments(config, titleFromPrompt(prompt), text);
+      adjustments.push('הותאם לקביעת תור (לא מסעדה): בחירת שירות, שעות יום, ללא העדפת ישיבה');
+      notes.push('רשימת השירותים היא לדוגמה. עדכנו אותה בסטודיו לפני הפרסום.');
     }
     if (key === 'generic') adjustments.push('לא זוהה תחום מוכר — נוצר טופס בסיסי לעריכה');
     config = applyModifiers(config, text, adjustments);
+    if (key === 'restaurant_event' && /(הצעת מחיר|הצעה)/.test(text)) {
+      config.title = 'בקשת הצעה לאירוע פרטי';
+      config.pricing.totalLabel = 'הערכת מחיר';
+      if (config.completion?.mode !== 'deposit') {
+        config.completion = { mode: 'quote' };
+        adjustments.push('סיום: הערכת מחיר — העסק שולח הצעה סופית');
+      }
+    }
+    if (intent.payment === 'deposit' && /(אופציונל|רשות|לא חובה)/.test(text) && config.completion?.mode === 'deposit') {
+      notes.push('מקדמה אופציונלית: בדמו המקדמה מתבקשת רק אחרי אישור העסק. אם לא תרצו לבקש אותה, שנו את "סיום ותשלום" ל"הצעת מחיר".');
+    }
+    if (intent.payment === 'deposit' && config.completion?.mode !== 'deposit') {
+      notes.push('התבקשה מקדמה, אבל בתהליך אין חישוב מחיר שממנו אפשר לגזור אותה. הוסיפו מחירים לאפשרויות כדי להפעיל מקדמה מדומה.');
+    }
   }
   for (const u of intent.unsupported) notes.push(`${u.requirement}: ${u.reason}`);
   config.draftNotes = notes.length ? notes.slice(0, 12) : undefined;
 
-  const { theme, recommendation } = recommendTheme({ templateKey: key, prompt, title: config.title });
+  // Appointment flows (salon, clinic…) take their look from the prompt, not from the restaurant template.
+  const appointment = key === 'table_booking' && !/מסעד|שולחן|ארוח|קפה|בר /.test(text);
+  const { theme, recommendation } = recommendTheme({ templateKey: appointment ? undefined : key, prompt, title: config.title });
   const capabilityScore = describeIntent(intent).length;
   const confidence = forcedTemplate ? 'high' : compose ? (capabilityScore >= 3 ? 'high' : 'medium') : detected.score >= 3 ? 'high' : detected.score >= 1 ? 'medium' : 'low';
   return {
@@ -200,4 +239,15 @@ export const EXAMPLE_PROMPTS = [
   'קבלן שיפוצים שרוצה לקבל בקשות להצעת מחיר עם תמונות',
   'מסעדה שרוצה לקבל בקשות להזמנת שולחן עם תאריך, שעה ומספר סועדים',
   'תהליך הרשמה לתחרות עם שלושה מסלולים, הגבלת משתתפים, אישור הורה לקטינים ותשלום אופציונלי',
+];
+
+/** Labelled reference scenarios for the creation screen (each maps to a working, tested flow). */
+export const PROMPT_EXAMPLES: { label: string; prompt: string }[] = [
+  { label: 'מסעדה · הזמנת שולחן', prompt: 'מסעדה שרוצה לקבל הזמנות שולחן עם תאריך, שעה ומספר סועדים, בלי תשלום' },
+  { label: 'פרחים · זר בהתאמה', prompt: 'חנות פרחים שהלקוח מעצב זר, בוחר צבעים וכרטיס ברכה, עם מחיר משלוח' },
+  { label: 'מוסך · אישור תיקונים', prompt: 'מוסך שהלקוח יאשר או ידחה כל תיקון ויראה את הסכום, בלי תשלום באתר' },
+  { label: 'תחרות · הרשמה', prompt: 'תהליך הרשמה לתחרות עם שלושה מסלולים, הגבלת משתתפים, אישור הורה לקטינים ותשלום אופציונלי' },
+  { label: 'מספרה · קביעת תור', prompt: 'מספרה שרוצה שלקוחות יקבעו תור לתספורת או צבע' },
+  { label: 'משרד · קליטת לקוח', prompt: 'חברה שרוצה לקלוט לקוח עסקי חדש ולאסוף מסמכים וחתימה על הסכם' },
+  { label: 'אירוע · הצעת מחיר', prompt: 'הצעת מחיר לאירוע פרטי עם מספר אורחים, תפריט ומקדמה אופציונלית' },
 ];

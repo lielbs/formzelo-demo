@@ -17,25 +17,58 @@ const ALT = 'var(--fz-surface-alt)';
 
 // ---------- option illustrations ----------
 
+/** One bloom: a ring of soft petals, an inner ring and a centre. */
+function Bloom({ x, y, r, color, turn }: { x: number; y: number; r: number; color: string; turn: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${turn})`}>
+      {[0, 60, 120, 180, 240, 300].map((a) => (
+        <ellipse key={a} cx="0" cy={-r * 0.55} rx={r * 0.42} ry={r * 0.62} fill={color} opacity={0.9} transform={`rotate(${a})`} />
+      ))}
+      {[30, 150, 270].map((a) => (
+        <ellipse key={a} cx="0" cy={-r * 0.3} rx={r * 0.3} ry={r * 0.42} fill={color} transform={`rotate(${a})`} />
+      ))}
+      <circle r={r * 0.24} fill={SURF} opacity={0.75} />
+      <circle r={r * 0.11} fill={T} opacity={0.35} />
+    </g>
+  );
+}
+
+// Dome of bloom positions, filled from the centre outwards.
+const BLOOMS: [number, number, number][] = [
+  [60, 40, 15],
+  [40, 50, 13],
+  [80, 50, 13],
+  [60, 20, 11],
+  [24, 62, 10.5],
+  [96, 62, 10.5],
+  [50, 64, 10],
+  [70, 64, 10],
+  [41, 28, 9.5],
+];
+
+/** Editorial bouquet: foliage, layered blooms and a wrapped, ribboned stem. Size = number of blooms. */
 function Bouquet({ stems }: { stems: number }) {
-  const colors = [P, A, S, A, P, S, A, P, S];
-  const spread = 14 + stems * 3;
+  const colors = [P, A, S, A, P, A, P, S, A];
+  const blooms = BLOOMS.slice(0, stems);
+  const width = 24 + stems * 2.6;
   return (
     <svg viewBox="0 0 120 120">
-      {Array.from({ length: stems }, (_, i) => {
-        const t = stems === 1 ? 0.5 : i / (stems - 1);
-        const x = 60 + (t - 0.5) * spread * 2;
-        const y = 34 + Math.abs(t - 0.5) * 26 + (i % 2) * 6;
-        return (
-          <g key={i}>
-            <path d={`M60 96 Q ${(60 + x) / 2} ${y + 30} ${x} ${y}`} stroke={S} strokeWidth="2" fill="none" />
-            <circle cx={x} cy={y} r={9 - (i % 3)} fill={colors[i]} opacity={0.92} />
-            <circle cx={x} cy={y} r={3} fill={SURF} opacity={0.55} />
-          </g>
-        );
-      })}
-      <path d="M38 78 L60 112 L82 78 Z" fill={A} opacity={0.5} />
-      <path d="M44 80 L60 104 L76 80" fill="none" stroke={P} strokeWidth="1.5" opacity={0.6} />
+      {/* foliage */}
+      {blooms.map(([x, y], i) => (
+        <ellipse key={`l${i}`} cx={x + (i % 2 ? 12 : -12)} cy={y + 11} rx="5" ry="14" fill={S} opacity={0.45} transform={`rotate(${i % 2 ? 35 : -35} ${x + (i % 2 ? 12 : -12)} ${y + 11})`} />
+      ))}
+      {stems >= 7 && [14, 106].map((x) => <path key={x} d={`M${x} 74 q ${x < 60 ? 4 : -4} -20 ${x < 60 ? 16 : -16} -34`} stroke={S} strokeWidth="1.6" fill="none" opacity={0.6} />)}
+      {blooms.map(([x, y, r], i) => (
+        <Bloom key={i} x={x} y={y} r={r} color={colors[i]!} turn={i * 17} />
+      ))}
+      {/* wrap */}
+      <path d={`M${60 - width} 68 L${60 + width} 68 L64 118 L56 118 Z`} fill={ALT} stroke={T} strokeOpacity={0.12} strokeWidth="1" />
+      <path d={`M${60 - width} 68 L60 84 L${60 + width} 68`} fill={SURF} opacity={0.55} />
+      <path d={`M${60 - width * 0.55} 68 L60 116`} stroke={T} strokeOpacity={0.08} strokeWidth="1" />
+      {/* ribbon */}
+      <path d="M52 96 q -10 -6 -12 2 q 6 4 12 -2 Z M68 96 q 10 -6 12 2 q -6 4 -12 -2 Z" fill={P} opacity={0.85} />
+      <rect x="55.5" y="93" width="9" height="6" rx="2" fill={P} />
+      <path d="M58 99 l -4 12 M62 99 l 4 12" stroke={P} strokeWidth="1.6" opacity={0.75} />
     </svg>
   );
 }
@@ -354,11 +387,14 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
     case 'expressive':
       return (
         <svg viewBox="0 0 400 300" {...common}>
-          <circle cx="300" cy="120" r="96" fill={P} />
-          <path d="M40 270 L140 90 L240 270 Z" fill={T} />
-          <rect x="250" y="210" width="110" height="110" fill={SURF} stroke={T} strokeWidth="4" transform="rotate(-12 305 265)" />
-          <path d="M20 60 q30 -40 60 0 t60 0 t60 0" fill="none" stroke={T} strokeWidth="6" strokeLinecap="round" />
-          <path d="M340 30 l10 22 24 3 -18 16 5 24 -21 -12 -21 12 5 -24 -18 -16 24 -3 Z" fill={SURF} stroke={T} strokeWidth="3" />
+          {/* Swiss-poster composition: one bold disc, a cut band, a tight dot grid and a hairline rule. */}
+          <circle cx="280" cy="128" r="104" fill={P} />
+          <path d="M-20 300 L210 30 L262 30 L32 300 Z" fill={T} />
+          <rect x="226" y="196" width="150" height="34" fill={SURF} transform="rotate(-18 301 213)" />
+          {Array.from({ length: 5 }, (_, r) =>
+            Array.from({ length: 6 }, (_, c) => <circle key={`${r}-${c}`} cx={36 + c * 18} cy={42 + r * 18} r="3.2" fill={T} />),
+          )}
+          <path d="M150 268 H392" stroke={T} strokeWidth="3" />
         </svg>
       );
     case 'minimal':

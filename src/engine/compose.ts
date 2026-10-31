@@ -35,6 +35,8 @@ export interface PromptIntent {
   wantsFiles: boolean;
   wantsEmail: boolean;
   wantsAddress: boolean;
+  /** Order details recognised for the summary chips. */
+  extras: { colors: boolean; greeting: boolean; delivery: boolean; services: boolean };
   /** Requirements the demo cannot implement safely or truthfully. */
   unsupported: { requirement: string; reason: string }[];
 }
@@ -93,7 +95,7 @@ const PURPOSES: [Purpose, RegExp][] = [
   ['registration', /(הרשמ|רישום|להירשם|נרשמ|תחרות|מרתון|טורניר|סדנ|קורס|כנס|חוג|מחנה|קייטנ|הרצא|וובינר|השתתפות|משתתפ)/],
   ['survey', /(סקר|משוב|חוות דעת|שביעות רצון)/],
   ['documents', /(מסמכ|טופס 106|העלאת קבצ)/],
-  ['booking', /(הזמנת שולחן|קביעת תור|תורים|(^| )תור( |$)|שעות פנויות)/],
+  ['booking', /(הזמנו?ת שולחן|שולחנות|קביעת תור|תורים|(^| )תור( |$)|שעות פנויות)/],
   ['quote', /(הצעת מחיר|הערכת עלות)/],
   ['order', /(הזמנ|לקנות|רכיש|משלוח)/],
   ['approval', /(לאשר|אישור|יאשר)/],
@@ -116,7 +118,7 @@ const SUBJECTS: [string, string][] = [
 
 const UNSUPPORTED: [RegExp, string, string][] = [
   [/(sms|סמס|וואטסאפ|ווטסאפ|whatsapp|הודעה אוטומטית|הודעות אוטומטיות)/, 'שליחת SMS / WhatsApp אמיתית', 'בדמו ההודעות הן תצוגה מדומה בלבד. שליחה אמיתית דורשת ספק הודעות בצד שרת.'],
-  [/(חתימה דיגיטלית|חתימה אלקטרונית|לחתום|חתימת)/, 'חתימה דיגיטלית מחייבת', 'נוסף אישור בתיבת סימון. חתימה מאומתת משפטית דורשת שירות חתימה חיצוני.'],
+  [/(חתימה|לחתום|חתימת)/, 'חתימה דיגיטלית מחייבת', 'בדמו אפשר רק אישור בתיבת סימון בסיום. חתימה מאומתת משפטית דורשת שירות חתימה חיצוני.'],
   [/(חשבונית|קבלה|קבלות)/, 'הפקת חשבונית או קבלה', 'הדמו אינו מפיק מסמכים חשבונאיים. חיבור למערכת כמו iCount או Morning מופיע כעתידי בלבד.'],
   [/(כרטיס אשראי|אשראי|סליקה|לסלוק|ביט |paybox|פייבוקס)/, 'גביית כסף אמיתית', 'כל התשלומים בדמו מדומים ואין שדות כרטיס. ספקי הסליקה מופיעים כקטלוג עתידי שאינו מחובר.'],
   [/(יומן גוגל|google calendar|סנכרון יומן|outlook|אאוטלוק)/, 'סנכרון ליומן חיצוני', 'הזמינות מחושבת מבקשות שנשמרו בדפדפן זה בלבד ואינה מסונכרנת ליומן.'],
@@ -169,12 +171,13 @@ export function analyzePrompt(prompt: string): PromptIntent {
   const parentalConsent = /(אישור הורה|אישור הורים|הסכמת הורה|הסכמת הורים|חתימת הורה|באישור הורה)/.test(text) || (minors && /(קטינ)/.test(text));
   // "אישור הורה" is a customer-side consent, not a business approval step.
   const approvalText = text.replace(/(אישור|הסכמת|חתימת) הור(ה|ים)/g, ' ');
-  const approval = /(באישור|אישור העסק|אישור ידני|נאשר|לאשר|יאשר|ממתין לאישור|אחרי אישור|לאחר אישור|מאושר)/.test(approvalText);
+  // Business approval only; "the customer approves" (יאשר / לאשר) is the customer's own decision, not an approval step.
+  const approval = /(באישור|אישור העסק|אישור ידני|נאשר|ממתין לאישור|ממתינה לאישור|אחרי אישור|לאחר אישור|אישור שלנו)/.test(approvalText);
   const unsupported = UNSUPPORTED.filter(([re]) => re.test(text)).map(([, requirement, reason]) => ({ requirement, reason }));
   return {
     purpose,
     subject,
-    audience: { minors, businesses: /(חברות|עסקים|ארגונים|לקוחות עסקיים)/.test(text) },
+    audience: { minors, businesses: /(חברות|עסקים|ארגונים|עסקי)/.test(text) },
     choices: detectChoices(tokens),
     capacity: detectCapacity(text),
     parentalConsent,
@@ -184,6 +187,7 @@ export function analyzePrompt(prompt: string): PromptIntent {
     wantsFiles: /(תמונ|צילומ|קובץ|קבצים|מסמכ|להעלות)/.test(text),
     wantsEmail: /(אימייל|מייל)/.test(text),
     wantsAddress: /כתובת/.test(text),
+    extras: { colors: /(צבעים|צבעוני)/.test(text), greeting: /(ברכה|הקדשה)/.test(text), delivery: /משלוח/.test(text), services: /(תספורת|טיפול|שירות|שירותים)/.test(text) },
     unsupported,
   };
 }
@@ -214,6 +218,10 @@ export function describeIntent(intent: PromptIntent): string[] {
   if (intent.parentalConsent) out.push('אישור הורה לקטינים');
   if (intent.approval) out.push('אישור העסק לפני סיום');
   if (intent.booking.date) out.push('בחירת תאריך');
+  if (intent.extras.colors) out.push('בחירת צבעים');
+  if (intent.extras.greeting) out.push('כרטיס ברכה');
+  if (intent.extras.delivery) out.push('מחיר משלוח');
+  if (intent.extras.services) out.push('בחירת שירות');
   if (intent.wantsFiles) out.push('העלאת קבצים');
   const pay: Record<PaymentPreference, string> = {
     none: 'ללא תשלום',

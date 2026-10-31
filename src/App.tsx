@@ -14,6 +14,7 @@ const Landing = named(() => import('./pages/Landing'), 'Landing');
 const Demo = named(() => import('./pages/Demo'), 'Demo');
 const Pricing = named(() => import('./pages/Pricing'), 'Pricing');
 const Themes = named(() => import('./pages/Themes'), 'Themes');
+const Tour = named(() => import('./pages/Tour'), 'Tour');
 const Dashboard = named(() => import('./pages/app/Dashboard'), 'Dashboard');
 const WorkflowList = named(() => import('./pages/app/WorkflowList'), 'WorkflowList');
 const WorkflowNew = named(() => import('./pages/app/WorkflowNew'), 'WorkflowNew');
@@ -42,6 +43,7 @@ export function App() {
           <Route path="/demo" element={<Demo />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/themes" element={<Themes />} />
+          <Route path="/tour" element={<Tour />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />

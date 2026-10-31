@@ -248,9 +248,16 @@ export function PriceCard({ config, price, values, title }: { config: WorkflowCo
       <div className="fz-divider my-4" />
       <div className="fz-total">
         <span className="text-sm font-semibold">{config.pricing.totalLabel}</span>
-        <span className="fz-total-amount" aria-live="polite">
-          {formatCurrency(price.total)}
-        </span>
+        {!decisions.length && price.lines.every((l) => config.pricing.fees.some((f) => f.label === l.label)) ? (
+          // Only fixed fees so far (or nothing): don't present "₪0" / "₪30" as the price.
+          <span className="fz-muted text-sm" aria-live="polite">
+            יתעדכן לפי הבחירות
+          </span>
+        ) : (
+          <span className="fz-total-amount" aria-live="polite">
+            {formatCurrency(price.total)}
+          </span>
+        )}
       </div>
       {depositNote(config, price)}
       <p className="fz-help">{NO_COLLECTION.includes(completionOf(config).mode) ? 'לא נגבה תשלום בתהליך זה.' : 'תשלומים בדמו הם סימולציה — לא מתבצע חיוב.'}</p>

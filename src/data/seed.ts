@@ -25,8 +25,8 @@ import { brandKitFromTheme, defaultBrandKit, freezeTheme } from '../theme/brand'
 import { recommendTheme } from '../theme/resolver';
 import { newId } from '../lib/id';
 
-export const DEMO_ORG_IDS = { bloom: 'org_bloom', autocare: 'org_autocare', urban: 'org_urban' } as const;
-export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events', booking: 'urban-table-booking' } as const;
+export const DEMO_ORG_IDS = { bloom: 'org_bloom', autocare: 'org_autocare', urban: 'org_urban', valley: 'org_valley' } as const;
+export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events', booking: 'urban-table-booking', contest: 'valley-run' } as const;
 /** Stable open case so the landing page can link straight to a live garage approval. */
 export const DEMO_GARAGE_CASE_ID = 'run_demo_garage_case';
 
@@ -386,6 +386,52 @@ export function appendBookingDemo(data: OrgData, now = Date.now()): OrgData {
   return ctx.data;
 }
 
+// status, hours ago, track, age (under 18 adds parental consent), pay now
+const CONTEST_PLAN: [RunStatus, number, string, number, boolean][] = [
+  ['submitted', 2, 'half_21k', 34, true],
+  ['approved', 7, 'half_21k', 41, true],
+  ['approved', 16, 'half_21k', 29, false],
+  ['approved', 30, 'half_21k', 52, true],
+  ['in_review', 40, 'half_21k', 17, false],
+  ['approved', 55, 'half_21k', 38, true],
+  ['approved', 70, 'half_21k', 45, true],
+  ['submitted', 5, 'classic_10k', 27, false],
+  ['approved', 26, 'classic_10k', 33, true],
+  ['submitted', 9, 'family_3k', 11, false],
+  ['approved', 48, 'family_3k', 39, true],
+  ['approved', 90, 'half_21k', 36, true],
+  ['rejected', 80, 'half_21k', 15, false],
+];
+
+/** Valley Run — community race registration (contest showcase). */
+function seedValley(now: number): OrgData {
+  const ctx: Ctx = { data: emptyData(org(DEMO_ORG_IDS.valley, 'valley-run', 'Valley Run', 'אירועי ספורט', 'מרוץ קהילתי לכל הגילים', '#3D3BF3', 'hello@valleyrun.example.com', now)), now, rand: rng(55) };
+  const contest = addWorkflow(ctx, { slug: DEMO_SLUGS.contest, templateKey: 'contest_registration', status: 'published', daysAgo: 18 });
+  CONTEST_PLAN.forEach(([status, hoursAgo, track, age, payNow], i) => {
+    const minor = age < 18;
+    addRun(ctx, contest, {
+      status,
+      hoursAgo,
+      payNow,
+      values: {
+        track,
+        shirt: ['s', 'm', 'l', 'm', 'xl'][i % 5],
+        name: NAMES[(i + 5) % NAMES.length],
+        age,
+        phone: phone(i + 80),
+        email: `runner${i + 1}@example.com`,
+        health: true,
+        ...(minor ? { parent_name: 'הורה (דמו)', parent_phone: phone(i + 90), parent_consent: true } : {}),
+      },
+      note: status === 'rejected' ? 'גיל מתחת למינימום לחצי מרתון — הוצע מסלול 10 ק״מ' : undefined,
+    });
+  });
+  return ctx.data;
+}
+
+/** Demo workspaces added after launch; existing browsers receive them through the v3 → v4 migration. */
+export const LATER_DEMO_ORGS: Record<string, (now: number) => OrgData> = { [DEMO_ORG_IDS.valley]: seedValley };
+
 export function buildSeed(now = Date.now()): OrgData[] {
-  return [seedBloom(now), seedAutoCare(now), seedUrban(now)];
+  return [seedBloom(now), seedAutoCare(now), seedUrban(now), seedValley(now)];
 }

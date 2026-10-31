@@ -288,7 +288,7 @@ describe('repository v3', () => {
     expect(wf.design.inheritBrand).toBe(true);
     await repo.publishWorkflow(DEMO_ORG_IDS.autocare, wf.id);
     const day = nextDay(gen.config.booking!.openWeekdays, 3);
-    const run = await repo.submitRun(wf.slug, { consent: true, values: { booking_date: day, booking_time: gen.config.booking!.slots[0]!, party_size: 2, guest_name: 'לקוחה', guest_phone: '050-555-0177' } });
+    const run = await repo.submitRun(wf.slug, { consent: true, values: { booking_date: day, booking_time: gen.config.booking!.slots[0]!, service: gen.config.steps[0]!.fields.find((f) => f.key === 'service')!.options![0]!.value, party_size: 2, guest_name: 'לקוחה', guest_phone: '050-555-0177' } });
     expect((await repo.listRuns(DEMO_ORG_IDS.autocare)).some((r) => r.id === run.id)).toBe(true);
     expect((await repo.listRuns(DEMO_ORG_IDS.bloom)).some((r) => r.id === run.id)).toBe(false);
   });

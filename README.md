@@ -29,7 +29,13 @@ Open **http://localhost:5173**.
 | `npm test` | Unit tests (Vitest) |
 | `npm run typecheck` | TypeScript only |
 
-No environment variables, API keys or cloud services are needed.
+No API keys or cloud services are needed. **Zero operating cost by design:** static hosting on GitHub Pages, data in the visitor's browser, no paid AI, database, auth, payment, SMS or asset services.
+
+Optional build-time variable:
+
+| Variable | Effect |
+| --- | --- |
+| `VITE_CONTACT_EMAIL` | If set, the "רוצים תהליך כזה לעסק שלכם?" button opens the visitor's mail app (`mailto:`) with a prepared message. If unset, it opens a **public** GitHub issue form in this repository and says so (with a warning not to post personal details). No leads are collected or stored by the demo either way. On Pages, set it as a repository variable (Settings → Secrets and variables → Actions → Variables → `VITE_CONTACT_EMAIL`); `pages.yml` already passes it to the build.
 
 ---
 
@@ -47,8 +53,9 @@ VITE_BASE=/formzelo-demo/ npm run build
 
 | Route | What to try |
 | --- | --- |
-| `/` | Landing page. Edit the prompt in the hero and press **יצירה** — the right pane is the real renderer. **צרו תהליך עכשיו** opens the builder. |
-| `/demo` | Pick one of three fictional workspaces: **Bloom Studio** (flowers), **AutoCare Garage** (repairs), **Urban Table** (private events + table booking). Also: reset demo data. |
+| `/` | Landing page. Edit the prompt in the hero and press **יצירה** — the right pane is the real renderer. **צרו תהליך עכשיו** opens the builder; **סיור מודרך** opens the guided tour. Five live examples, brand and completion showcases, interest CTA and an explicit "what the demo doesn't do" note. |
+| `/tour` | **Guided sales demo (≈2 min):** 1 choose a business type → 2 see its workflow (real renderer, phone / desktop) → 3 brand it (name, logo kept in memory only, colour, design style) → 4 fill it as a customer (a real local submission; garage opens a personal case first) → 5 see the owner view (the request, its status / payment badges, the workflow's objective metric, recent requests, buttons into the dashboard and the studio) → interest CTA. |
+| `/demo` | Pick one of four fictional workspaces: **Bloom Studio** (flowers), **AutoCare Garage** (repairs), **Urban Table** (private events + table booking), **Valley Run** (race registration). Also: reset demo data. |
 | `/app` | Dashboard: KPI cards, onboarding checklist, recent requests with filters, activity timeline, simulated notifications. |
 | `/app/workflows` | Search, filter, open, copy link, duplicate, archive/restore. |
 | `/app/workflows/new` | Describe a workflow in Hebrew (or click an example). See detected template + keywords, a live preview, then save as draft. |
@@ -58,7 +65,7 @@ VITE_BASE=/formzelo-demo/ npm run build
 | `/app/requests/:id` | Answers, booking card (request vs confirmed), completion & payment summary, price breakdown, approve / reject / request changes / complete / cancel, simulated "mark paid", internal notes, event timeline, notification previews. |
 | `/app/analytics` | Computed live from local runs: per-day chart, approval rate, response time, value per workflow. Toggle **כולל נתוני דמו** to exclude seeded data. |
 | `/app/settings` | Workspace settings, simulated team, storage usage, JSON export, reset, **payment connectors catalog** (PayPlus, Cardcom, Tranzila, Grow/Meshulam, Pelecard, HYP, SUMIT, iCount, Morning, PayMe, Z-Credit, iCredit, Other — all "not connected · future"). |
-| `/f/:slug` | Public customer flow, e.g. `/f/bloom-flowers`, `/f/urban-table-events`, `/f/urban-table-booking`, `/f/autocare-repairs?r=run_demo_garage_case`. |
+| `/f/:slug` | Public customer flow, e.g. `/f/bloom-flowers`, `/f/urban-table-events`, `/f/urban-table-booking`, `/f/valley-run`, `/f/autocare-repairs?r=run_demo_garage_case`. |
 | `/pricing` | Illustrative plans: 99 / 199 / 399 ₪ per month — no billing. |
 | `/themes` | Theme gallery: the six presets rendered live by the real engine, desktop/phone toggle, mix any theme with any sample content. |
 
@@ -72,6 +79,8 @@ VITE_BASE=/formzelo-demo/ npm run build
 6. **Brand kit** → `/app/brand` → change the primary colour / logo placement → save. Inheriting drafts update in the studio; the public link keeps the published look until you publish a new version.
 7. **Persistence / isolation** → reload any page: everything persists. Switch workspaces from the sidebar: each workspace shows only its own data and brand kit.
 8. **Composed workflow** → `/app/workflows/new` → pick the example `תהליך הרשמה לתחרות עם שלושה מסלולים, הגבלת משתתפים, אישור הורה לקטינים ותשלום אופציונלי` → the creation screen lists what was detected (registration, minors, 3 tracks, participant limit, parental consent, optional payment) and an amber **"דורש בדיקה או לא נתמך בדמו"** box → save → the studio shows the same review notes (owner-only) → publish → the public page offers three priced tracks with "נותרו N מקומות" (counted in this browser), a parent-consent step that appears only for ages under 18, and a simulated pay-now / pay-later checkout.
+10. **Contest showcase** → `/f/valley-run` → three tracks with places left (the half marathon shows "נותרו 2 מקומות", counted from this browser's registrations) → age 15 adds the parent-consent step, age 30 doesn't → simulated pay-now or pay-later → Valley Run inbox.
+11. **Guided tour** → `/tour` → pick any business → brand it → submit as a customer → the owner view shows your request; **פתיחה בלוח הבקרה** opens it in that workspace.
 9. **Booking lifecycle** → submit a table booking → the confirmation shows a progress strip (נשלחה → בבדיקה → מאושרת) and **ביטול בקשת ההזמנה** → cancel (two-step) → "ההזמנה בוטלה. המקום לא שמור." and the slot is released.
 
 ---
@@ -182,6 +191,8 @@ OrgData.brandKit: { displayName, description, logo/secondaryLogo/cover asset ids
                     typography, button, density, logoPlacement, decorations, personality }
 ```
 
+**Schema v4:** no structural change to stored workspaces (version bump only, original kept under `formzelo:v1:pre-v4:*`). On the first read of an older browser's meta, demo workspaces introduced later (currently **Valley Run**) are added alongside existing data — never replacing a workspace, and skipped if their slug is already taken by one of the owner's workflows. New template: `contest_registration`.
+
 **Schema additions after v3 (no migration needed — all optional):** `FieldOption.capacity` (places per option, counted locally), `WorkflowConfig.draftNotes` (owner-only review notes from generation). Booking runs gained a customer-side cancellation through the personal link (`cancelRunByCustomer`, booking workflows only, recorded as a customer `status_changed` event).
 
 Booking lifecycle (from run status): `submitted` → **requested**, `in_review` → **pending approval**, `changes_requested` → **update requested**, `approved` / `completed` → **confirmed**, `rejected` → **rejected**, `cancelled` → **cancelled**. Rejected and cancelled requests release their slot and option places.
@@ -241,7 +252,7 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 
 ### Prompt generator (DEMO)
 
-`engine/compose.ts` reads the prompt into a `PromptIntent`: purpose (registration, survey, order, booking, quote, documents, approval), subject (תחרות, סדנה, קורס…), audience (minors, businesses), choice groups with counts in digits or Hebrew number words ("שלושה מסלולים", "2 מועדים"), participant limits ("עד 12 משתתפים" / "הגבלת משתתפים"), parental consent (kept distinct from business approval), approval, payment preference (none / optional / required / deposit / after approval / quote), booking, files, email, address, and a list of unsupported requirements. Registration and survey intents are composed from blocks; other intents use `engine/generator.ts`, which normalizes Hebrew text (strips niqqud/punctuation), matches keyword stems allowing up to two attached prefix letters (ו/ה/ב/ל/מ/ש/כ) so "זר" does not match "עזרה", scores templates, applies modifiers (תמונות, מקדמה, משלוח, אימייל, כתובת, תאריך) and falls back to an editable generic form. Request phrasing ("תיצור לי…") is stripped from titles. Theme recommendation stays keyword-based. The UI always labels this **"יצירת דמו מקומית — ללא חיבור ל-AI"**; `engine/ai.ts` holds the inactive `AIProvider` seam for a future model that must return a schema-validated `WorkflowConfig`.
+`engine/compose.ts` reads the prompt into a `PromptIntent`: purpose (registration, survey, order, booking, quote, documents, approval), subject (תחרות, סדנה, קורס…), audience (minors, businesses), choice groups with counts in digits or Hebrew number words ("שלושה מסלולים", "2 מועדים"), participant limits ("עד 12 משתתפים" / "הגבלת משתתפים"), parental consent (kept distinct from business approval), approval, payment preference (none / optional / required / deposit / after approval / quote), booking, files, email, address, and a list of unsupported requirements. Registration and survey intents are composed from blocks; other intents use `engine/generator.ts`, which normalizes Hebrew text (strips niqqud/punctuation), matches keyword stems allowing up to two attached prefix letters (ו/ה/ב/ל/מ/ש/כ) so "זר" does not match "עזרה", scores templates, applies modifiers (תמונות, מקדמה, משלוח, אימייל, כתובת, תאריך) and falls back to an editable generic form. Request phrasing ("תיצור לי…") is stripped from titles. Reference scenarios covered by tests and offered as labelled examples on the creation screen: restaurant table reservation without payment, flower customisation with delivery pricing (colours, greeting card and delivery are listed as detected), garage approval without payment (the *customer* approves — not reported as a business-approval step), contest registration, salon appointments (sample services by business kind — hair, nails, beauty, clinic, advisory — beauty prompts get the boutique style instead of the restaurant one), corporate onboarding with documents (a requested signature becomes a review note), and private-event quotation (event template with a price estimate; "optional deposit" → deposit after approval + a review note explaining how to drop it). Theme recommendation stays keyword-based. The UI always labels this **"יצירת דמו מקומית — ללא חיבור ל-AI"**; `engine/ai.ts` holds the inactive `AIProvider` seam for a future model that must return a schema-validated `WorkflowConfig`.
 
 ---
 
@@ -251,7 +262,10 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-90 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`):
+103 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`):
+
+- **Reference prompts (`prompts.test.ts`):** the seven business scenarios above produce the expected template / completion / theme / notes; every labelled example yields a valid workflow with at least medium confidence.
+- **Valley Run & v4 migration (`valley.test.ts`):** valid seed with 8 of 10 half-marathon places held; parent consent shown and enforced only below 18; a track closes when its last places are taken; a v3 browser gains the Valley Run workspace without touching existing runs.
 
 - **Schema:** all templates and seeded workspaces validate; malformed configs and unknown operators are rejected.
 - **Pricing:** flower (budget + wrap + delivery), garage (only approved repairs), restaurant (per-guest × guests, flat extras, 20% deposit), hidden fields never charged.
@@ -292,6 +306,8 @@ Earlier browser end-to-end checks (scripted over the DevTools protocol in local 
 - The unsaved-changes guard (studio and brand kit) covers reload/close and every in-app link or workspace switch. Browser back/forward buttons are not intercepted (the app uses `BrowserRouter`, not a data router).
 - Option capacity ("נותרו N מקומות") and booking availability count submissions stored in this browser only.
 - Generated names, descriptions and sample prices of composed choices are placeholders and are flagged in the review notes.
+- The guided tour's branding (name, logo, colour, style) is a preview only; the uploaded logo lives in memory and disappears when you leave the tour. Use **ערכת מותג** to save branding.
+- There is no lead backend. The interest button uses `mailto:` (when `VITE_CONTACT_EMAIL` is configured) or a public GitHub issue form.
 - Theme selection is keyword-based; unusual wording may pick a less fitting preset — the owner can always override it.
 
 ---

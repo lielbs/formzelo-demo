@@ -69,14 +69,17 @@ function Label({ field, htmlFor }: { field: WorkflowField; htmlFor?: string }) {
   );
 }
 
-function ArtFigure({ name, className }: { name: string; className: string }) {
+/** Option artwork. The "illustrative" disclosure is shown once per field (see ArtNote), not on every tile. */
+function ArtFigure({ name, className, caption }: { name: string; className: string; caption?: boolean }) {
   return (
     <span className={className}>
       <OptionArt name={name} />
-      <span className="fz-art-caption">איור להמחשה</span>
+      {caption && <span className="fz-art-caption">איור להמחשה</span>}
     </span>
   );
 }
+
+const ArtNote = () => <p className="fz-help fz-art-note">התמונות הן איורים להמחשה, לא צילומי מוצר.</p>;
 
 function hebrewDate(iso: string): string | null {
   const d = new Date(`${iso}T12:00:00`);
@@ -311,6 +314,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
               );
             })}
           </div>
+          {kind === 'tile' && opts.some((o, i) => !(o.image?.startsWith('ast_') && assets[o.image]) && (optionArt ? inferArt(field, o, i, opts.length) : hasArt(o.image))) && <ArtNote />}
           {usage && <p className="fz-help">המקומות הפנויים מחושבים מההרשמות שנשמרו בדפדפן זה בלבד.</p>}
           <Help field={field} error={error} />
         </fieldset>
@@ -439,7 +443,7 @@ function DecisionCard({ field, value, onChange, onBlur, error, optionArt }: Omit
   return (
     <fieldset className="fz-decision fz-field" data-state={state} data-invalid={Boolean(error) || undefined} aria-labelledby={`${id}-title`} aria-describedby={describedBy(field, error)}>
       <div className="fz-decision-top">
-        {art && <ArtFigure name={art} className="fz-decision-art" />}
+        {art && <ArtFigure name={art} className="fz-decision-art" caption />}
         <div className="min-w-0 flex-1">
           <span className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
             <span id={`${id}-title`} className="fz-decision-title">

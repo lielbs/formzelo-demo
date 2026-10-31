@@ -6,6 +6,7 @@ import {
   GitBranch,
   History,
   Inbox,
+  Trophy,
   Link2,
   MessageSquareText,
   PencilRuler,
@@ -22,6 +23,7 @@ import { SiteFooter, SiteHeader } from '../components/SiteChrome';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button, ButtonLink, Card, cx, DemoBadge } from '../components/ui';
 import { useRepoQuery } from '../data/store';
+import { InterestCTA } from '../components/Interest';
 import { DEMO_GARAGE_CASE_ID, DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
 import { EXAMPLE_PROMPTS, generateWorkflowFromPrompt, type GenerationResult } from '../engine/generator';
 import { formatCurrency, formatRelative } from '../lib/format';
@@ -45,6 +47,7 @@ const EXAMPLES = [
   { icon: Car, name: 'AutoCare', title: 'אישור תיקונים לרכב', text: 'הלקוח מאשר או דוחה כל תיקון בנפרד ורואה סכום מדויק.', href: `/f/${DEMO_SLUGS.garage}?r=${DEMO_GARAGE_CASE_ID}`, preset: 'automotive_precision' as ThemePresetId },
   { icon: UtensilsCrossed, name: 'Urban Table', title: 'אירוע פרטי במסעדה', text: 'תאריך, אורחים, תפריט ותוספות, הערכת מחיר ומקדמה רק אחרי אישור.', href: `/f/${DEMO_SLUGS.events}`, preset: 'hospitality_premium' as ThemePresetId },
   { icon: UtensilsCrossed, name: 'Urban Table', title: 'הזמנת שולחן', text: 'תאריך, שעה וסועדים. בקשה עד אישור המסעדה — בלי תשלום מראש.', href: `/f/${DEMO_SLUGS.booking}`, preset: 'hospitality_premium' as ThemePresetId },
+  { icon: Trophy, name: 'Valley Run', title: 'הרשמה למרוץ', text: 'מסלולים עם מקומות שנותרו, אישור הורה רק לקטינים ותשלום מדומה אופציונלי.', href: `/f/${DEMO_SLUGS.contest}`, preset: 'creative_studio' as ThemePresetId },
 ];
 
 const BENEFITS = [
@@ -202,8 +205,8 @@ export function Landing() {
                 <ButtonLink to="/app/workflows/new" size="lg">
                   צרו תהליך עכשיו
                 </ButtonLink>
-                <ButtonLink to="/demo" size="lg" variant="secondary">
-                  לסביבות הדמו
+                <ButtonLink to="/tour" size="lg" variant="secondary">
+                  סיור מודרך · 2 דקות
                 </ButtonLink>
               </div>
               <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-ink-muted">
@@ -246,9 +249,10 @@ export function Landing() {
               </div>
               <DemoBadge className="self-start sm:self-auto" />
             </div>
-            <ul className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              {EXAMPLES.map((e) => (
-                <li key={e.title}>
+            {/* Editorial 2 + 3 grid on desktop: the two flagship flows get wider cards. */}
+            <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
+              {EXAMPLES.map((e, i) => (
+                <li key={e.title} className={i < 2 ? 'lg:col-span-3' : i === EXAMPLES.length - 1 && EXAMPLES.length % 2 === 1 ? 'sm:col-span-2 lg:col-span-2' : 'lg:col-span-2'}>
                   <Link to={e.href} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-cloud-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
                     <ThemeScope theme={buildTheme(e.preset)} className="relative h-36 overflow-hidden" style={{ background: 'var(--fz-hero-bg)', color: 'var(--fz-hero-text)' }}>
                       <HeroArt decoration={PRESETS[e.preset].theme.decoration} className="absolute inset-0 h-full w-full transition duration-500 group-hover:scale-[1.04]" />
@@ -388,15 +392,26 @@ export function Landing() {
         </section>
 
         <section className="px-4 pb-20 sm:px-6">
-          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 rounded-3xl bg-midnight px-8 py-12 text-white md:flex-row md:items-center">
-            <div>
-              <h2 className="text-2xl font-semibold">יש לכם רעיון? זה הזמן להפוך אותו לתהליך.</h2>
-              <p className="mt-2 text-white/60">שתי דקות, בלי הרשמה. הכול נשאר בדפדפן שלכם.</p>
+          <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <div className="flex flex-col justify-between gap-6 rounded-3xl border border-cloud-200 bg-cloud p-6 sm:p-8">
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight">יש לכם רעיון? זה הזמן להפוך אותו לתהליך.</h2>
+                <p className="mt-2 text-ink-muted">שתי דקות, בלי הרשמה. הכול נשאר בדפדפן שלכם.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink to="/app/workflows/new" size="lg">
+                  צרו תהליך
+                </ButtonLink>
+                <ButtonLink to="/tour" size="lg" variant="secondary">
+                  סיור מודרך
+                </ButtonLink>
+              </div>
             </div>
-            <ButtonLink to="/app/workflows/new" size="lg">
-              צרו תהליך
-            </ButtonLink>
+            <InterestCTA dark />
           </div>
+          <p className="mx-auto mt-4 max-w-6xl text-xs leading-relaxed text-ink-soft">
+            מה הדמו לא עושה: אין שרת, חשבונות או סנכרון בין מכשירים; תשלומים והודעות הם סימולציה; היצירה היא מנוע מקומי ולא AI. כך הדמו נשאר חינמי לגמרי.
+          </p>
         </section>
       </main>
       <SiteFooter />

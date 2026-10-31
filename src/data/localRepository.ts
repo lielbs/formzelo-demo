@@ -52,7 +52,7 @@ import {
   type PublicWorkflow,
   type StorageReport,
 } from './repository';
-import { buildSeed } from './seed';
+import { buildSeed, LATER_DEMO_ORGS } from './seed';
 
 /** Storage namespace. Independent of SCHEMA_VERSION so migrations happen in place. */
 const PREFIX = 'formzelo:v1:';
@@ -131,11 +131,31 @@ export class LocalStorageRepository implements FormzeloRepository {
     const { value, migrated } = migrateMeta(this.readJson(META_KEY));
     const parsed = MetaSchema.safeParse(value);
     if (parsed.success) {
-      if (migrated) this.writeMeta(parsed.data);
+      if (migrated) {
+        this.writeMeta(parsed.data);
+        return this.addLaterDemoOrgs(parsed.data);
+      }
       return parsed.data;
     }
     if (this.store.getItem(META_KEY) !== null) this.quarantine(META_KEY, 'נתוני המטא בדפדפן היו פגומים ואופסו לנתוני דמו.');
     return this.seedAll();
+  }
+
+  /** Demo workspaces introduced after a browser was seeded are added alongside existing data (never replacing it). */
+  private addLaterDemoOrgs(meta: Meta): Meta {
+    const missing = Object.entries(LATER_DEMO_ORGS).filter(([id]) => !meta.orgIds.includes(id) && this.store.getItem(orgKey(id)) === null);
+    if (!missing.length) return meta;
+    const next: Meta = { ...meta, orgIds: [...meta.orgIds], slugIndex: { ...meta.slugIndex } };
+    for (const [id, build] of missing) {
+      const data = build(Date.now());
+      // Never let a new demo slug shadow a workflow the owner already published.
+      if (data.workflows.some((w) => next.slugIndex[w.slug])) continue;
+      this.write(orgKey(id), data);
+      next.orgIds.push(id);
+      data.workflows.forEach((w) => (next.slugIndex[w.slug] = id));
+    }
+    this.writeMeta(next);
+    return next;
   }
 
   private writeMeta(meta: Meta) {

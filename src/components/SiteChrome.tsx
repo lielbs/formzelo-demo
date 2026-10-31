@@ -6,6 +6,7 @@ import { ButtonLink } from './ui';
 import { appHref } from '../lib/links';
 
 const LINKS = [
+  { href: '/tour', label: 'סיור מודרך' },
   { href: '/#how', label: 'איך זה עובד' },
   { href: '/#examples', label: 'דוגמאות' },
   { href: '/themes', label: 'עיצובים' },
@@ -84,9 +85,11 @@ export function SiteFooter() {
         <div>
           <p className="text-sm font-medium text-white">דמו</p>
           <ul className="mt-3 space-y-2 text-sm">
+            <li><Link to="/tour" className="hover:text-white">סיור מודרך</Link></li>
             <li><Link to="/demo" className="hover:text-white">סביבות עבודה</Link></li>
             <li><Link to="/f/bloom-flowers" className="hover:text-white">הזמנת פרחים</Link></li>
             <li><Link to="/f/urban-table-events" className="hover:text-white">אירוע פרטי</Link></li>
+            <li><Link to="/f/valley-run" className="hover:text-white">הרשמה למרוץ</Link></li>
           </ul>
         </div>
       </div>

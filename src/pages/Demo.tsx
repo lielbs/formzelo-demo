@@ -1,4 +1,4 @@
-import { ArrowLeft, Car, ExternalLink, Flower2, RotateCcw, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Car, ExternalLink, Flower2, RotateCcw, Trophy, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SiteFooter, SiteHeader } from '../components/SiteChrome';
@@ -20,6 +20,7 @@ const META: Record<string, { icon: typeof Flower2; scenario: string; publicHref:
     secondHref: `/f/${DEMO_SLUGS.booking}`,
     secondLabel: 'הזמנת שולחן',
   },
+  [DEMO_ORG_IDS.valley]: { icon: Trophy, scenario: 'הרשמה למרוץ: מסלולים עם מכסת מקומות, אישור הורה לקטינים ותשלום מדומה אופציונלי.', publicHref: `/f/${DEMO_SLUGS.contest}`, publicLabel: 'הרשמה כמשתתף' },
 };
 
 export function Demo() {

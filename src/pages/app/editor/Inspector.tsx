@@ -290,12 +290,6 @@ export function FieldInspector({
           <Input id={`${id}-help`} value={f.helpText ?? ''} onChange={(e) => onChange({ ...f, helpText: e.target.value || undefined })} />
         </div>
       )}
-      {['text', 'textarea', 'email', 'phone', 'number'].includes(f.type) && (
-        <div>
-          <FieldLabel htmlFor={`${id}-ph`}>טקסט מקום (placeholder)</FieldLabel>
-          <Input id={`${id}-ph`} value={f.placeholder ?? ''} onChange={(e) => onChange({ ...f, placeholder: e.target.value || undefined })} />
-        </div>
-      )}
 
       {f.type === 'highlights' && (
         <div>
@@ -370,49 +364,69 @@ export function FieldInspector({
           <Input id={`${id}-price`} type="number" min={0} dir="ltr" className="w-40" value={f.price ?? ''} onChange={(e) => onChange({ ...f, price: parseNum(e.target.value) })} />
         </div>
       )}
-      {priced && (['radio', 'select', 'multiselect', 'checkbox'] as FieldType[]).includes(f.type) && numeric.length > 0 && (
-        <div>
-          <FieldLabel htmlFor={`${id}-mult`}>הכפלת המחיר בערך של</FieldLabel>
-          <Select id={`${id}-mult`} value={f.multiplyByKey ?? ''} onChange={(e) => onChange({ ...f, multiplyByKey: e.target.value || undefined })}>
-            <option value="">ללא הכפלה</option>
-            {numeric.map((n) => (
-              <option key={n.id} value={n.key}>
-                {n.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )}
-      {(f.type === 'number' || f.type === 'date' || f.type === 'text' || f.type === 'textarea') && (
-        <div className="grid grid-cols-2 gap-3">
-          {f.type !== 'text' && f.type !== 'textarea' && (
-            <div>
-              <FieldLabel htmlFor={`${id}-min`}>{f.type === 'date' ? 'מינימום (ימים מהיום)' : 'ערך מינימלי'}</FieldLabel>
-              <Input id={`${id}-min`} type="number" dir="ltr" value={f.min ?? ''} onChange={(e) => onChange({ ...f, min: parseNum(e.target.value) })} />
-            </div>
-          )}
+      {/* Progressive disclosure: everyday settings above, rarely-needed ones here (open when one is in use). */}
+      <details className="group rounded-xl border border-cloud-200 bg-cloud/40 p-3" open={Boolean(f.condition || f.multiplyByKey) || undefined}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-ink-muted marker:hidden hover:text-ink">
+          <span>
+            הגדרות מתקדמות
+            {(f.condition || f.multiplyByKey || f.role) && (
+              <span className="text-xs font-normal text-sky-700"> · {[f.condition && 'מותנה', f.multiplyByKey && 'הכפלת מחיר', f.role && 'תיבת בקשות'].filter(Boolean).join(' · ')}</span>
+            )}
+          </span>
+          <span aria-hidden className="text-xs transition group-open:rotate-180">▾</span>
+        </summary>
+        <div className="mt-3 space-y-4">
+        {['text', 'textarea', 'email', 'phone', 'number'].includes(f.type) && (
           <div>
-            <FieldLabel htmlFor={`${id}-max`}>{f.type === 'date' ? 'מקסימום (ימים מהיום)' : f.type === 'number' ? 'ערך מקסימלי' : 'אורך מקסימלי'}</FieldLabel>
-            <Input id={`${id}-max`} type="number" dir="ltr" value={f.max ?? ''} onChange={(e) => onChange({ ...f, max: parseNum(e.target.value) })} />
+            <FieldLabel htmlFor={`${id}-ph`}>טקסט מקום (placeholder)</FieldLabel>
+            <Input id={`${id}-ph`} value={f.placeholder ?? ''} onChange={(e) => onChange({ ...f, placeholder: e.target.value || undefined })} />
           </div>
+        )}
+        {priced && (['radio', 'select', 'multiselect', 'checkbox'] as FieldType[]).includes(f.type) && numeric.length > 0 && (
+          <div>
+            <FieldLabel htmlFor={`${id}-mult`}>הכפלת המחיר בערך של</FieldLabel>
+            <Select id={`${id}-mult`} value={f.multiplyByKey ?? ''} onChange={(e) => onChange({ ...f, multiplyByKey: e.target.value || undefined })}>
+              <option value="">ללא הכפלה</option>
+              {numeric.map((n) => (
+                <option key={n.id} value={n.key}>
+                  {n.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+        {(f.type === 'number' || f.type === 'date' || f.type === 'text' || f.type === 'textarea') && (
+          <div className="grid grid-cols-2 gap-3">
+            {f.type !== 'text' && f.type !== 'textarea' && (
+              <div>
+                <FieldLabel htmlFor={`${id}-min`}>{f.type === 'date' ? 'מינימום (ימים מהיום)' : 'ערך מינימלי'}</FieldLabel>
+                <Input id={`${id}-min`} type="number" dir="ltr" value={f.min ?? ''} onChange={(e) => onChange({ ...f, min: parseNum(e.target.value) })} />
+              </div>
+            )}
+            <div>
+              <FieldLabel htmlFor={`${id}-max`}>{f.type === 'date' ? 'מקסימום (ימים מהיום)' : f.type === 'number' ? 'ערך מקסימלי' : 'אורך מקסימלי'}</FieldLabel>
+              <Input id={`${id}-max`} type="number" dir="ltr" value={f.max ?? ''} onChange={(e) => onChange({ ...f, max: parseNum(e.target.value) })} />
+            </div>
+          </div>
+        )}
+        {!display && (
+          <div>
+            <FieldLabel htmlFor={`${id}-role`}>שימוש בתיבת הבקשות</FieldLabel>
+            <Select id={`${id}-role`} value={f.role ?? ''} onChange={(e) => onChange({ ...f, role: (e.target.value || undefined) as WorkflowField['role'] })}>
+              <option value="">ללא</option>
+              <option value="customer_name">שם הלקוח</option>
+              <option value="customer_phone">טלפון הלקוח</option>
+              <option value="customer_email">אימייל הלקוח</option>
+              <option value="date">תאריך הבקשה</option>
+            </Select>
+          </div>
+        )}
+        <ConditionEditor field={f} others={others} onChange={(condition) => onChange({ ...f, condition })} />
+        <p className="text-[11px] text-ink-soft">
+          מזהה פנימי: <code dir="ltr">{f.key}</code> · חישובים ותנאים הם הצהרתיים בלבד — לעולם לא מורץ קוד מהגדרות.
+        </p>
         </div>
-      )}
-      {!display && (
-        <div>
-          <FieldLabel htmlFor={`${id}-role`}>שימוש בתיבת הבקשות</FieldLabel>
-          <Select id={`${id}-role`} value={f.role ?? ''} onChange={(e) => onChange({ ...f, role: (e.target.value || undefined) as WorkflowField['role'] })}>
-            <option value="">ללא</option>
-            <option value="customer_name">שם הלקוח</option>
-            <option value="customer_phone">טלפון הלקוח</option>
-            <option value="customer_email">אימייל הלקוח</option>
-            <option value="date">תאריך הבקשה</option>
-          </Select>
-        </div>
-      )}
-      <ConditionEditor field={f} others={others} onChange={(condition) => onChange({ ...f, condition })} />
-      <p className="text-[11px] text-ink-soft">
-        מזהה פנימי: <code dir="ltr">{f.key}</code> · חישובים ותנאים הם הצהרתיים בלבד — לעולם לא מורץ קוד מהגדרות.
-      </p>
+      </details>
     </Panel>
   );
 }

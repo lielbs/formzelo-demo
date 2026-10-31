@@ -6,7 +6,7 @@ import { LocalGenerationNotice } from '../../components/Brand';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, FieldLabel, PageHeader, Select, Textarea } from '../../components/ui';
 import { useActiveOrg, useRepo } from '../../data/store';
-import { EXAMPLE_PROMPTS, generateWorkflowFromPrompt, type GenerationResult } from '../../engine/generator';
+import { generateWorkflowFromPrompt, PROMPT_EXAMPLES, type GenerationResult } from '../../engine/generator';
 import { COMPLETION_LABELS } from '../../engine/completion';
 import { TEMPLATES, type TemplateKey } from '../../engine/templates';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
@@ -101,19 +101,21 @@ export function WorkflowNew() {
                 )}
               </div>
               <div>
-                <p className="mb-2 text-xs font-medium text-ink-muted">דוגמאות:</p>
-                <div className="flex flex-wrap gap-2">
-                  {EXAMPLE_PROMPTS.map((p) => (
+                <p className="mb-2 text-xs font-medium text-ink-muted">או התחילו מתרחיש מוכן:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PROMPT_EXAMPLES.map((ex) => (
                     <button
-                      key={p}
+                      key={ex.label}
                       type="button"
-                      onClick={() => setValue('prompt', p, { shouldValidate: true })}
-                      className="rounded-full border border-cloud-300 bg-white px-3 py-1.5 text-start text-xs text-ink-muted transition hover:border-orange hover:text-ink"
+                      title={ex.prompt}
+                      onClick={() => setValue('prompt', ex.prompt, { shouldValidate: true })}
+                      className="min-h-[36px] rounded-full border border-cloud-300 bg-white px-3 text-xs font-medium text-ink-muted transition hover:border-orange hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
                     >
-                      {p}
+                      {ex.label}
                     </button>
                   ))}
                 </div>
+                <p className="mt-2 text-[11px] text-ink-soft">אפשר לשלב: "הרשמה לסדנה עם 2 מועדים, עד 12 משתתפים, באישור ידני, ללא תשלום".</p>
               </div>
               <div>
                 <FieldLabel htmlFor="template">תבנית</FieldLabel>

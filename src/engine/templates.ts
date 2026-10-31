@@ -13,7 +13,7 @@ import type {
 } from '../domain/schema';
 import { newId } from '../lib/id';
 
-export type TemplateKey = 'flower_order' | 'garage_repairs' | 'restaurant_event' | 'table_booking' | 'document_collection' | 'quote_request' | 'generic';
+export type TemplateKey = 'flower_order' | 'garage_repairs' | 'restaurant_event' | 'table_booking' | 'contest_registration' | 'document_collection' | 'quote_request' | 'generic';
 
 type FieldExtra = Partial<Omit<WorkflowField, 'id' | 'key' | 'label' | 'type'>>;
 
@@ -373,6 +373,64 @@ function documentCollection(): WorkflowConfig {
   };
 }
 
+/** Community race registration: tracks with limited places, age-based parental consent, optional simulated payment. */
+function contestRegistration(): WorkflowConfig {
+  return {
+    title: 'הרשמה למרוץ העמק',
+    description: 'שלושה מסלולים לכל הגילים. בוחרים מסלול, ממלאים פרטים — ומשתתפים מתחת לגיל 18 מצרפים אישור הורה.',
+    mode: 'public',
+    caseFields: [],
+    steps: [
+      step('בחרו מסלול', [
+        field('race_facts', 'על המרוץ', 'highlights', {
+          items: [
+            highlight('שישי בבוקר', 'זינוק ראשון 07:00', 'clock'),
+            highlight('מקומות מוגבלים', 'לכל מסלול מכסה משלו', 'star'),
+            highlight('חולצה ומדליה', 'לכל משתתף שמסיים', 'heart'),
+          ],
+        }),
+        field('track', 'המסלול שלכם', 'radio', {
+          required: true,
+          appearance: 'tiles',
+          options: [
+            option('family_3k', 'ריצת משפחות · 3 ק״מ', { price: 40, capacity: 60, description: 'קצב חופשי, מתאים לילדים מגיל 6' }),
+            option('classic_10k', 'קלאסי · 10 ק״מ', { price: 90, capacity: 40, description: 'מסלול נוף מסביב לאגם' }),
+            option('half_21k', 'חצי מרתון · 21.1 ק״מ', { price: 150, capacity: 10, description: 'לרצים מנוסים, מגיל 16' }),
+          ],
+        }),
+        field('shirt', 'מידת חולצה', 'radio', {
+          appearance: 'chips',
+          options: ['XS', 'S', 'M', 'L', 'XL'].map((v) => option(v.toLowerCase(), v)),
+        }),
+      ]),
+      step('פרטי הרץ/ה', [
+        field('name', 'שם מלא', 'text', { required: true, role: 'customer_name' }),
+        field('age', 'גיל ביום המרוץ', 'number', { required: true, min: 6, max: 99, helpText: 'מתחת לגיל 18 יתווסף שלב אישור הורה' }),
+        field('phone', 'טלפון', 'phone', { required: true, role: 'customer_phone' }),
+        field('email', 'אימייל', 'email', { role: 'customer_email' }),
+        field('emergency', 'איש קשר לחירום', 'text', { placeholder: 'שם וטלפון' }),
+        field('health', 'אני מצהיר/ה שמצבי הבריאותי מאפשר השתתפות במרוץ', 'checkbox', { required: true }),
+      ]),
+      step(
+        'אישור הורה',
+        [
+          field('parent_info', 'למה השלב הזה מופיע', 'info', { content: 'המשתתף/ת מתחת לגיל 18, ולכן נדרש אישור של הורה או אפוטרופוס.' }),
+          field('parent_name', 'שם ההורה / האפוטרופוס', 'text', { required: true }),
+          field('parent_phone', 'טלפון ההורה', 'phone', { required: true }),
+          field('parent_consent', 'אני ההורה או האפוטרופוס ומאשר/ת את ההשתתפות', 'checkbox', { required: true }),
+        ],
+        { condition: when('age', 'lt', 18), description: 'מוצג רק למשתתפים מתחת לגיל 18.' },
+      ),
+    ],
+    pricing: { enabled: true, currency: 'ILS', fees: [], depositPercent: 0, totalLabel: 'דמי הרשמה' },
+    branding: { primaryColor: '#3D3BF3', logoText: 'Valley Run' },
+    consent: { required: true, text: `קראתי את תקנון המרוץ ואני מאשר/ת יצירת קשר. ${DEMO_CONSENT_SUFFIX}` },
+    successMessage: 'נרשמתם! מספר ההרשמה שמור כאן.',
+    completion: { mode: 'calculated', allowPayLater: true },
+    confirmation: { title: 'ההרשמה התקבלה', nextSteps: ['אישור ההרשמה יופיע כאן', 'ערכת המשתתף נאספת ביום שלפני המרוץ', 'בדמו ההודעות מדומות בלבד'] },
+  };
+}
+
 function quoteRequest(): WorkflowConfig {
   return {
     title: 'בקשה להצעת מחיר',
@@ -436,6 +494,7 @@ export const TEMPLATES: Record<TemplateKey, { label: string; description: string
   garage_repairs: { label: 'אישור תיקונים במוסך', description: 'תיק לרכב, אישור או דחייה לכל תיקון', build: garageRepairs },
   restaurant_event: { label: 'אירוע פרטי במסעדה', description: 'תאריך, אורחים, תפריט והערכת מחיר', build: restaurantEvent },
   table_booking: { label: 'הזמנת שולחן / תור', description: 'תאריך, שעה, משתתפים — בקשה עד אישור', build: tableBooking },
+  contest_registration: { label: 'הרשמה לתחרות', description: 'מסלולים עם מכסה, אישור הורה ותשלום אופציונלי', build: contestRegistration },
   document_collection: { label: 'איסוף מסמכים', description: 'פרטים, מסמכים לפי סוג לקוח', build: documentCollection },
   quote_request: { label: 'בקשה להצעת מחיר', description: 'תיאור עבודה, דחיפות ופרטי קשר', build: quoteRequest },
   generic: { label: 'טופס בסיסי', description: 'נקודת התחלה ריקה לעריכה', build: () => generic() },
