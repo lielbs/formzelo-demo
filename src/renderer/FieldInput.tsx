@@ -1,10 +1,13 @@
-import { AlertCircle, CalendarDays, Check, FileUp, Info, Minus, Plus, X } from 'lucide-react';
+import { AlertCircle, CalendarDays, Check, Clock, FileUp, Info, Minus, Plus, X } from 'lucide-react';
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import type { AnswerValue, WorkflowField } from '../domain/schema';
+import { isDisplayField, type AnswerValue, type WorkflowConfig, type WorkflowField } from '../domain/schema';
+import type { SlotAvailability } from '../engine/booking';
 import type { Values } from '../engine/conditions';
+import type { PriceResult } from '../engine/pricing';
 import { formatCurrency, isoDay } from '../lib/format';
 import { hasArt, inferArt, OptionArt } from '../theme/art';
 import { resolveAppearance } from './appearance';
+import { DisplayBlock, slotHint } from './blocks';
 
 interface Props {
   field: WorkflowField;
@@ -16,6 +19,15 @@ interface Props {
   optionArt?: boolean;
   /** All current answers — lets previews (e.g. a greeting card) show related values. */
   values?: Values;
+  /** Resolved workspace images (asset id → data URL). */
+  assets?: Record<string, string>;
+  /** Live price, for price-breakdown blocks. */
+  price?: PriceResult;
+  config?: WorkflowConfig;
+  /** Local slot usage for booking time fields (demo — not a guarantee). */
+  availability?: Record<string, SlotAvailability>;
+  /** Local places taken per option value (limited options only). */
+  usage?: Record<string, number>;
 }
 
 const inputId = (key: string) => `f-${key}`;
@@ -72,8 +84,9 @@ function hebrewDate(iso: string): string | null {
   return new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 }
 
-export function FieldInput({ field, value, onChange, onBlur, error, optionArt = true, values = {} }: Props) {
+export function FieldInput({ field, value, onChange, onBlur, error, optionArt = true, values = {}, assets = {}, price, config, availability, usage }: Props) {
   const id = inputId(field.key);
+  if (isDisplayField(field) && field.type !== 'info') return <DisplayBlock field={field} assets={assets} price={price} config={config} />;
   const appearance = resolveAppearance(field, optionArt);
   const aria = { id, onBlur, 'aria-invalid': Boolean(error) || undefined, 'aria-describedby': describedBy(field, error), 'aria-required': field.required || undefined };
   const wrap = (children: ReactNode) => <div className="fz-field">{children}</div>;
@@ -89,6 +102,50 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
           </div>
         </div>
       );
+
+    case 'time': {
+      const opts = field.options ?? [];
+      if (!opts.length) {
+        return wrap(
+          <>
+            <Label field={field} htmlFor={id} />
+            <div className="fz-input-wrap">
+              <Clock className="fz-input-icon" aria-hidden />
+              <input {...aria} type="time" dir="ltr" className="fz-control has-icon" style={{ textAlign: 'right' }} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />
+            </div>
+            <Help field={field} error={error} />
+          </>,
+        );
+      }
+      return (
+        <fieldset className="fz-field" aria-describedby={describedBy(field, error)} aria-invalid={Boolean(error) || undefined}>
+          <legend className="fz-label fz-legend">
+            {field.label}
+            {field.required && (
+              <span className="fz-req" aria-hidden>
+                *
+              </span>
+            )}
+          </legend>
+          <div className="fz-options fz-slots" data-appearance="chips" data-invalid={Boolean(error) || undefined} id={id} tabIndex={-1}>
+            {opts.map((o) => {
+              const hint = slotHint(availability?.[o.value]);
+              return (
+                <label key={o.id} className="fz-option" data-kind="chip" data-slot={availability?.[o.value]?.state} aria-disabled={hint?.disabled || undefined}>
+                  <input type="radio" name={field.key} value={o.value} checked={value === o.value} disabled={hint?.disabled} onBlur={onBlur} onChange={() => onChange(o.value)} />
+                  <span className="fz-opt-label fz-num" dir="ltr">
+                    {o.label}
+                  </span>
+                  {hint && <span className="fz-slot-hint">{hint.label}</span>}
+                </label>
+              );
+            })}
+          </div>
+          {availability && <p className="fz-help">הזמינות מחושבת מהבקשות שנשמרו בדפדפן זה בלבד — המסעדה מאשרת סופית.</p>}
+          <Help field={field} error={error} />
+        </fieldset>
+      );
+    }
 
     case 'textarea': {
       const text = String(value ?? '');
@@ -121,12 +178,16 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
           <Label field={field} htmlFor={id} />
           <select {...aria} className="fz-control" value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>
             <option value="">בחרו…</option>
-            {field.options?.map((o) => (
-              <option key={o.id} value={o.value}>
-                {o.label}
-                {o.price ? ` — ${formatCurrency(o.price)}` : ''}
-              </option>
-            ))}
+            {field.options?.map((o) => {
+              const left = o.capacity && usage ? Math.max(0, o.capacity - (usage[o.value] ?? 0)) : null;
+              return (
+                <option key={o.id} value={o.value} disabled={left === 0 && value !== o.value}>
+                  {o.label}
+                  {o.price ? ` — ${formatCurrency(o.price)}` : ''}
+                  {left === 0 ? ' (מלא)' : left !== null ? ` (נותרו ${left})` : ''}
+                </option>
+              );
+            })}
           </select>
           <Help field={field} error={error} />
         </>,
@@ -137,7 +198,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
       const multi = field.type === 'multiselect';
       const selected = multi ? (Array.isArray(value) ? value : []) : value;
       const opts = field.options ?? [];
-      const kind = appearance === 'tiles' ? 'tile' : appearance === 'chips' ? 'chip' : appearance === 'swatches' ? 'swatch' : 'row';
+      const kind = appearance === 'tiles' || appearance === 'image_cards' ? 'tile' : appearance === 'chips' ? 'chip' : appearance === 'swatches' ? 'swatch' : 'row';
       return (
         <fieldset className="fz-field" aria-describedby={describedBy(field, error)} aria-invalid={Boolean(error) || undefined}>
           <legend className="fz-label fz-legend">
@@ -162,6 +223,15 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
           >
             {opts.map((o, i) => {
               const checked = multi ? (selected as string[]).includes(o.value) : selected === o.value;
+              // Limited places: counted from submissions in this browser (see engine/capacity).
+              const left = o.capacity ? Math.max(0, o.capacity - (usage?.[o.value] ?? 0)) : null;
+              const full = left === 0 && !checked;
+              const places =
+                left === null ? null : (
+                  <span className="fz-places" data-state={left === 0 ? 'full' : left <= Math.ceil(o.capacity! * 0.2) ? 'limited' : undefined}>
+                    {left === 0 ? 'מלא' : !usage ? `${o.capacity} מקומות` : left === 1 ? 'נותר מקום אחד' : `נותרו ${left} מקומות`}
+                  </span>
+                );
               const art = kind === 'tile' ? (optionArt ? inferArt(field, o, i, opts.length) : hasArt(o.image) ? o.image : undefined) : undefined;
               const price = o.price ? (
                 <span className="fz-opt-price">
@@ -175,6 +245,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                   name={field.key}
                   value={o.value}
                   checked={checked}
+                  disabled={full}
                   onBlur={onBlur}
                   onChange={() => {
                     if (!multi) return onChange(o.value);
@@ -185,16 +256,28 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
               );
               if (kind === 'tile') {
                 return (
-                  <label key={o.id} className="fz-option" data-kind="tile">
+                  <label key={o.id} className="fz-option" data-kind="tile" aria-disabled={full || undefined}>
                     {input}
-                    {art ? <ArtFigure name={art} className="fz-tile-art" /> : null}
+                    {o.image?.startsWith('ast_') && assets[o.image] ? (
+                      // The business's own photo — not an illustration.
+                      <span className="fz-tile-art fz-tile-photo">
+                        <img src={assets[o.image]} alt="" loading="lazy" />
+                      </span>
+                    ) : art ? (
+                      <ArtFigure name={art} className="fz-tile-art" />
+                    ) : null}
                     <span className="fz-tile-check" aria-hidden>
                       <Check className="h-4 w-4" strokeWidth={3} />
                     </span>
                     <span className="fz-opt-body">
                       <span className="fz-opt-label">{o.label}</span>
                       {o.description && <span className="fz-opt-desc">{o.description}</span>}
-                      {price && <span className="fz-tile-foot">{price}</span>}
+                      {(price || places) && (
+                        <span className="fz-tile-foot">
+                          {price}
+                          {places}
+                        </span>
+                      )}
                     </span>
                   </label>
                 );
@@ -209,7 +292,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                 );
               }
               return (
-                <label key={o.id} className="fz-option" data-kind={kind}>
+                <label key={o.id} className="fz-option" data-kind={kind} aria-disabled={full || undefined}>
                   {input}
                   {kind === 'swatch' ? (
                     <span className="fz-swatch" style={{ background: o.swatch ?? 'var(--fz-surface-alt)' }} aria-hidden />
@@ -222,11 +305,13 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                       {price}
                     </span>
                     {o.description && <span className="fz-opt-desc">{o.description}</span>}
+                    {places}
                   </span>
                 </label>
               );
             })}
           </div>
+          {usage && <p className="fz-help">המקומות הפנויים מחושבים מההרשמות שנשמרו בדפדפן זה בלבד.</p>}
           <Help field={field} error={error} />
         </fieldset>
       );
@@ -294,7 +379,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                 min={field.min}
                 max={field.max}
                 value={n === undefined || Number.isNaN(n) ? '' : n}
-                placeholder={String(min)}
+                placeholder="—"
                 onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
               />
               <button type="button" aria-label={`הוספת ${field.label}`} disabled={n !== undefined && n >= max} onClick={() => set(n === undefined ? min : n + 1)}>

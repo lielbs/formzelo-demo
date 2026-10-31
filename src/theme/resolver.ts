@@ -33,6 +33,7 @@ const TEMPLATE_PRESET: Record<string, ThemePresetId> = {
   flower_order: 'floral_boutique',
   garage_repairs: 'automotive_precision',
   restaurant_event: 'hospitality_premium',
+  table_booking: 'hospitality_premium',
   document_collection: 'corporate_modern',
   quote_request: 'corporate_modern',
 };
@@ -42,7 +43,7 @@ const KEYWORDS: Record<Exclude<ThemePresetId, 'modern_minimal'>, string[]> = {
   automotive_precision: ['מוסך', 'רכב', 'בלמ', 'רפיד', 'מכונאי', 'צמיג', 'מגב', 'פילטר', 'טכנאי', 'תיקון', 'תיקונים', 'אופנוע', 'מזגן'],
   hospitality_premium: ['מסעד', 'אירוע', 'אורחים', 'תפריט', 'קייטרינג', 'שף', 'ארוח', 'בר מצווה', 'בת מצווה', 'יין', 'מלון', 'צימר', 'בית קפה'],
   corporate_modern: ['משרד', 'מסמכ', 'רואה חשבון', 'עורך דין', 'עורכת דין', 'ביטוח', 'הנהלת חשבונות', 'חברה', 'קליטת', 'גיוס', 'טופס 106', 'משכנתא', 'יועץ', 'הצעת מחיר', 'קבלן'],
-  creative_studio: ['סטודיו', 'עיצוב', 'צילום', 'צלם', 'אמנ', 'סדנ', 'קעקוע', 'מוזיק', 'ריקוד', 'תיאטרון', 'יוגה', 'פודקאסט', 'גרפי'],
+  creative_studio: ['סטודיו', 'עיצוב', 'צילום', 'צלם', 'אמנ', 'סדנ', 'קעקוע', 'מוזיק', 'ריקוד', 'תיאטרון', 'יוגה', 'פודקאסט', 'גרפי', 'תחרו', 'טורניר', 'מרתון', 'קייטנ', 'חוג'],
 };
 
 const TEMPLATE_WEIGHT = 3;

@@ -2,9 +2,9 @@
  * Design tab of the workflow editor. Edits only the draft WorkflowTheme;
  * published versions keep the design frozen with them.
  */
-import { Check, ImagePlus, RotateCcw, Sparkles, Trash2, Undo2, Wand2 } from 'lucide-react';
-import { useRef, useState, type ReactNode } from 'react';
-import { useToast } from '../../../components/Toast';
+import { Check, RotateCcw, Sparkles, Undo2, Wand2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { ImagePicker } from '../../../components/ImagePicker';
 import { Badge, Button, Card, cx, FieldLabel, Input } from '../../../components/ui';
 import {
   ASSET_LIMITS,
@@ -24,16 +24,14 @@ import {
   type ThemePalette,
   type WorkflowTheme,
 } from '../../../domain/theme';
-import { useRepo } from '../../../data/store';
-import { ImagePrepError, prepareImage } from '../../../lib/images';
 import { buildTheme, PRESET_LIST, PRESETS } from '../../../theme/presets';
 import { PresetPreview } from '../../../theme/PresetPreview';
 import type { ThemeRecommendation } from '../../../theme/resolver';
 import { themeTokens, TYPOGRAPHY } from '../../../theme/tokens';
 
-const L = {
+export const L = {
   hero: { split: 'פאנל עריכתי', banner: 'רצועה טכנית', immersive: 'אווירה מלאה', compact: 'כותרת עניינית', poster: 'פוסטר נועז', centered: 'ממורכז', none: 'ללא פתיח' },
-  composition: { centered: 'טור ממורכז', editorial_split: 'פיצול עריכתי', product_grid: 'גלריית מוצרים + סיכום', decision: 'אישור החלטות + סכום' },
+  composition: { centered: 'טור ממורכז', editorial_split: 'פיצול עריכתי', product_grid: 'מגדיר מוצר + סיכום', decision: 'אישור החלטות + סכום', booking: 'הזמנת מקום', document: 'מסמך מקצועי' },
   card: { soft: 'רך', outlined: 'קו מתאר', elevated: 'מורם', bold: 'נועז', flat: 'שטוח' },
   input: { outlined: 'מסגרת', filled: 'ממולא', underline: 'קו תחתון' },
   option: { tile: 'אריחים', row: 'שורות', chip: 'תגיות', bold: 'ניגודיות גבוהה' },
@@ -54,7 +52,7 @@ const PALETTE_FIELDS: [keyof ThemePalette, string][] = [
   ['text', 'טקסט'],
 ];
 
-function Group({ title, children, hint }: { title: string; children: ReactNode; hint?: string }) {
+export function Group({ title, children, hint }: { title: string; children: ReactNode; hint?: string }) {
   return (
     <Card as="section" className="p-5">
       <h3 className="font-semibold text-ink">{title}</h3>
@@ -64,7 +62,7 @@ function Group({ title, children, hint }: { title: string; children: ReactNode; 
   );
 }
 
-function Segmented<T extends string>({ label, value, options, labels, onChange }: { label: string; value: T; options: readonly T[]; labels: Record<T, string>; onChange: (v: T) => void }) {
+export function Segmented<T extends string>({ label, value, options, labels, onChange }: { label: string; value: T; options: readonly T[]; labels: Record<T, string>; onChange: (v: T) => void }) {
   return (
     <div>
       <p className="mb-1.5 text-sm font-medium text-ink">{label}</p>
@@ -89,7 +87,7 @@ function Segmented<T extends string>({ label, value, options, labels, onChange }
   );
 }
 
-function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+export function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
     <label className="flex cursor-pointer items-start gap-2.5 text-sm">
       <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#E96B3D]" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -98,7 +96,7 @@ function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (
   );
 }
 
-function ColorInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+export function ColorInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const [text, setText] = useState(value);
   const [focused, setFocused] = useState(false);
   const shown = focused ? text : value;
@@ -123,101 +121,6 @@ function ColorInput({ label, value, onChange }: { label: string; value: string; 
             if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onChange(e.target.value.toUpperCase());
           }}
         />
-      </div>
-    </div>
-  );
-}
-
-function ImagePicker({
-  kind,
-  label,
-  hint,
-  selected,
-  assets,
-  urls,
-  orgId,
-  onSelect,
-}: {
-  kind: Asset['kind'];
-  label: string;
-  hint: string;
-  selected?: string;
-  assets: Asset[];
-  urls: Record<string, string>;
-  orgId: string;
-  onSelect: (id: string | undefined) => void;
-}) {
-  const { repo } = useRepo();
-  const toast = useToast();
-  const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const mine = assets.filter((a) => a.kind === kind);
-  const missing = selected && !urls[selected];
-
-  const upload = async (file?: File) => {
-    if (!file) return;
-    setBusy(true);
-    try {
-      const prepared = await prepareImage(file, kind);
-      const asset = await repo.saveAsset(orgId, prepared);
-      onSelect(asset.id);
-      toast(`התמונה נשמרה מקומית (${Math.round(asset.bytes / 1024)}KB)`);
-    } catch (e) {
-      toast(e instanceof ImagePrepError || e instanceof Error ? e.message : 'שמירת התמונה נכשלה', 'error');
-    } finally {
-      setBusy(false);
-      if (input.current) input.current.value = '';
-    }
-  };
-
-  return (
-    <div>
-      <p className="text-sm font-medium text-ink">{label}</p>
-      <p className="text-xs text-ink-muted">{hint}</p>
-      {missing && <p className="mt-1 text-xs text-amber-700">התמונה שנבחרה לא נמצאה בדפדפן זה — יוצג איור במקומה.</p>}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onSelect(undefined)}
-          aria-pressed={!selected}
-          className={cx('flex h-14 w-14 items-center justify-center rounded-lg border text-[10px] text-ink-muted', !selected ? 'border-midnight ring-2 ring-midnight/20' : 'border-cloud-300')}
-        >
-          ללא
-        </button>
-        {mine.map((a) => (
-          <span key={a.id} className="group relative">
-            <button
-              type="button"
-              onClick={() => onSelect(a.id)}
-              aria-pressed={selected === a.id}
-              aria-label={`בחירת ${a.name}`}
-              className={cx('block h-14 w-14 overflow-hidden rounded-lg border bg-cloud', selected === a.id ? 'border-midnight ring-2 ring-midnight/20' : 'border-cloud-300')}
-            >
-              <img src={a.dataUrl} alt="" className={cx('h-full w-full', kind === 'logo' ? 'object-contain p-1' : 'object-cover')} />
-            </button>
-            {selected !== a.id && (
-              <button
-                type="button"
-                aria-label={`מחיקת ${a.name}`}
-                className="absolute -left-1.5 -top-1.5 hidden h-6 w-6 items-center justify-center rounded-full bg-white text-red-600 shadow ring-1 ring-cloud-300 group-hover:flex group-focus-within:flex"
-                onClick={async () => {
-                  try {
-                    await repo.deleteAsset(orgId, a.id);
-                    toast('התמונה נמחקה');
-                  } catch (e) {
-                    toast(e instanceof Error ? e.message : 'המחיקה נכשלה', 'error');
-                  }
-                }}
-              >
-                <Trash2 className="h-3 w-3" aria-hidden />
-              </button>
-            )}
-          </span>
-        ))}
-        <Button size="sm" variant="secondary" icon={ImagePlus} loading={busy} onClick={() => input.current?.click()}>
-          העלאה
-        </Button>
-        <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => upload(e.target.files?.[0])} />
       </div>
     </div>
   );

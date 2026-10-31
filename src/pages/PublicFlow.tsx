@@ -6,6 +6,7 @@ import { ButtonLink, Spinner } from '../components/ui';
 import type { WorkflowRun } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
 import { useRepo, useRepoQuery } from '../data/store';
+import { hasOptionCapacity } from '../engine/capacity';
 import { answersToValues } from '../engine/validation';
 import { Confirmation } from '../renderer/Confirmation';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
@@ -106,7 +107,21 @@ export function PublicFlow() {
   if (found && !EDITABLE.includes(found.run.status)) {
     return (
       <Shell theme={design} orgName={organization.name}>
-        <Confirmation run={found.run} config={config} theme={design} logoUrl={design.logo.assetId ? assets[design.logo.assetId] : undefined} justSubmitted={justSubmitted} />
+        <Confirmation
+          run={found.run}
+          config={config}
+          theme={design}
+          logoUrl={design.logo.assetId ? assets[design.logo.assetId] : undefined}
+          justSubmitted={justSubmitted}
+          onCancelBooking={
+            config.booking?.enabled
+              ? async () => {
+                  await repo.cancelRunByCustomer(slug, found.run.id);
+                  navigate(`/f/${slug}?r=${found.run.id}`, { replace: true });
+                }
+              : undefined
+          }
+        />
       </Shell>
     );
   }
@@ -143,8 +158,10 @@ export function PublicFlow() {
         mode="live"
         initialValues={found ? answersToValues(found.run.answers) : undefined}
         caseAnswers={found?.run.caseAnswers}
-        onSubmit={async (values, consent) => {
-          const run = await repo.submitRun(slug, { values, consent, runId: found?.run.id });
+        getAvailability={config.booking?.enabled ? (date) => repo.getBookingAvailability(slug, date) : undefined}
+        getOptionUsage={hasOptionCapacity(config) ? () => repo.getOptionUsage(slug) : undefined}
+        onSubmit={async (values, consent, { payNow }) => {
+          const run = await repo.submitRun(slug, { values, consent, runId: found?.run.id, payNow });
           navigate(`/f/${slug}?r=${run.id}&sent=1`, { replace: true });
         }}
       />

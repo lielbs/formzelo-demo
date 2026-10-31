@@ -13,6 +13,7 @@ export function resolveAppearance(field: WorkflowField, optionArt: boolean): Exc
     case 'radio':
     case 'multiselect': {
       if (opts.some((o) => o.swatch)) return 'swatches';
+      if (opts.some((o) => o.image?.startsWith('ast_'))) return 'image_cards';
       const withArt = optionArt ? opts.filter((o, i) => inferArt(field, o, i, opts.length)).length : 0;
       if (opts.length > 0 && withArt >= Math.ceil(opts.length / 2)) return 'tiles';
       const short = opts.every((o) => o.label.length <= 18 && !o.description && !o.price);

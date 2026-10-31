@@ -3,7 +3,7 @@ import { migrateOrgData } from '../data/migrations';
 import { LocalStorageRepository, type KeyValueStore } from '../data/localRepository';
 import { DomainRuleError } from '../data/repository';
 import { buildSeed, DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
-import { OrgDataSchema, type WorkflowField } from '../domain/schema';
+import { OrgDataSchema, SCHEMA_VERSION, type WorkflowField } from '../domain/schema';
 import { THEME_PRESET_IDS, WorkflowThemeSchema } from '../domain/theme';
 import { generateWorkflowFromPrompt } from '../engine/generator';
 import { field, option } from '../engine/templates';
@@ -148,7 +148,7 @@ describe('storage migration v1 → v2', () => {
     const parsed = OrgDataSchema.parse(value);
     expect(parsed.workflows.every((w) => w.design.presetId === 'automotive_precision')).toBe(true);
     expect(parsed.versions.every((v) => v.design)).toBe(true);
-    expect(JSON.stringify(parsed.runs)).toBe(JSON.stringify(v1.runs));
+    expect(parsed.runs).toEqual(v1.runs);
   });
 
   it('leaves current and unknown payloads untouched', () => {
@@ -172,9 +172,9 @@ describe('storage migration v1 → v2', () => {
     const runs = await repo.listRuns(DEMO_ORG_IDS.urban);
     expect(runs).toHaveLength(before.runs.length);
     expect((await repo.listWorkflows(DEMO_ORG_IDS.urban))[0]!.design.presetId).toBe('hospitality_premium');
-    expect(JSON.parse(store.getItem(key)!).schemaVersion).toBe(2);
-    expect(JSON.parse(store.getItem('formzelo:v1:meta')!).schemaVersion).toBe(2);
-    expect(store.keys().some((k) => k.startsWith('formzelo:v1:pre-v2:org:org_urban'))).toBe(true);
+    expect(JSON.parse(store.getItem(key)!).schemaVersion).toBe(SCHEMA_VERSION);
+    expect(JSON.parse(store.getItem('formzelo:v1:meta')!).schemaVersion).toBe(SCHEMA_VERSION);
+    expect(store.keys().some((k) => k.startsWith(`formzelo:v1:pre-v${SCHEMA_VERSION}:org:org_urban`))).toBe(true);
     expect((await repo.storageReport()).warnings).toHaveLength(0);
   });
 });

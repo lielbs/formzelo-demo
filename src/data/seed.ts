@@ -14,16 +14,19 @@ import {
   type WorkflowVersion,
 } from '../domain/schema';
 import type { Values } from '../engine/conditions';
-import { buildSubmission, referencePrefix, statusNotification, submitNotifications } from '../engine/runs';
+import { initialPayment, paymentOnApproval, simulatePaid } from '../engine/completion';
+import { computePrice } from '../engine/pricing';
+import { buildSubmission, nextReference, statusNotification, submitNotifications } from '../engine/runs';
 import { TEMPLATES, type TemplateKey } from '../engine/templates';
 import { STATUS_LABELS } from '../engine/transitions';
 import { toRunAnswers } from '../engine/validation';
 import { isoDay } from '../lib/format';
+import { brandKitFromTheme, defaultBrandKit, freezeTheme } from '../theme/brand';
 import { recommendTheme } from '../theme/resolver';
 import { newId } from '../lib/id';
 
 export const DEMO_ORG_IDS = { bloom: 'org_bloom', autocare: 'org_autocare', urban: 'org_urban' } as const;
-export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events' } as const;
+export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events', booking: 'urban-table-booking' } as const;
 /** Stable open case so the landing page can link straight to a live garage approval. */
 export const DEMO_GARAGE_CASE_ID = 'run_demo_garage_case';
 
@@ -57,6 +60,8 @@ interface Ctx {
   data: OrgData;
   now: number;
   rand: () => number;
+  /** The first workflow added defines the workspace brand kit. */
+  kitFromWorkflow?: boolean;
 }
 
 function org(id: string, slug: string, name: string, industry: string, tagline: string, color: string, email: string, now: number): Organization {
@@ -79,6 +84,7 @@ function emptyData(organization: Organization): OrgData {
     events: [],
     notifications: [],
     usage: [],
+    brandKit: defaultBrandKit(organization.name, at),
   };
 }
 
@@ -95,12 +101,17 @@ function addWorkflow(
     status: opts.status,
     templateKey: opts.templateKey,
     draft: config,
-    design: recommendTheme({ templateKey: opts.templateKey, title: config.title, description: config.description, industry: ctx.data.organization.industry }).theme,
+    design: { ...recommendTheme({ templateKey: opts.templateKey, title: config.title, description: config.description, industry: ctx.data.organization.industry }).theme, inheritBrand: true },
     hasUnpublishedChanges: false,
     isDemo: true,
     createdAt: at,
     updatedAt: at,
   };
+  if (!ctx.kitFromWorkflow) {
+    const o = ctx.data.organization;
+    ctx.data.brandKit = brandKitFromTheme(o.name, o.tagline, workflow.design, at);
+    ctx.kitFromWorkflow = true;
+  }
   ctx.data.workflows.push(workflow);
   ctx.data.usage.push({ id: newId('use'), orgId: workflow.orgId, type: 'workflow_created', workflowId: workflow.id, createdAt: at, updatedAt: at });
   if (opts.status === 'draft') return { workflow };
@@ -110,7 +121,7 @@ function addWorkflow(
     workflowId: workflow.id,
     version: 1,
     config: structuredClone(config),
-    design: structuredClone(workflow.design),
+    design: freezeTheme(workflow.design, ctx.data.brandKit),
     publishedAt: at,
     createdAt: at,
     updatedAt: at,
@@ -128,7 +139,7 @@ function event(ctx: Ctx, run: WorkflowRun, at: string, e: Pick<RunEvent, 'type' 
 function addRun(
   ctx: Ctx,
   wf: { workflow: Workflow; version?: WorkflowVersion },
-  opts: { values: Values; caseValues?: Values; status: RunStatus; hoursAgo: number; note?: string; depositPaid?: boolean; id?: string },
+  opts: { values: Values; caseValues?: Values; status: RunStatus; hoursAgo: number; note?: string; depositPaid?: boolean; payNow?: boolean; id?: string },
 ): WorkflowRun {
   const version = wf.version!;
   const config = version.config;
@@ -137,20 +148,20 @@ function addRun(
   const caseAnswers = opts.caseValues ? toRunAnswers(config.caseFields, opts.caseValues) : [];
   const isCaseOpen = opts.status === 'awaiting_customer';
   const sub = buildSubmission(config, isCaseOpen ? {} : opts.values, caseAnswers);
-  const seq = ctx.data.runs.length + 1001;
   const run: WorkflowRun = {
     id: opts.id ?? newId('run'),
     orgId: ctx.data.organization.id,
     workflowId: wf.workflow.id,
     versionId: version.id,
     versionNumber: version.version,
-    reference: `${referencePrefix(ctx.data.organization)}-${seq}`,
+    reference: nextReference(ctx.data.organization, ctx.data.runs),
     status: 'submitted',
     answers: isCaseOpen ? [] : sub.answers,
     caseAnswers,
     priceLines: isCaseOpen ? [] : sub.priceLines,
     total: isCaseOpen ? 0 : sub.total,
-    payment: { status: 'none', amount: sub.deposit },
+    payment: isCaseOpen ? { status: 'none', amount: 0 } : initialPayment(config, computePrice(config, opts.values), Boolean(opts.payNow), iso(0)),
+    completionMode: config.completion?.mode,
     customerName: sub.customerName,
     customerContact: sub.customerContact,
     consentAt: isCaseOpen ? undefined : iso(0),
@@ -178,7 +189,8 @@ function addRun(
   let h = 1 + ctx.rand() * 3;
   for (const to of PATHS[opts.status] ?? []) {
     const at = iso(Math.min(h, opts.hoursAgo - 0.1));
-    if (to === 'approved' && config.pricing.depositPercent > 0) run.payment = { status: 'deposit_requested', amount: sub.deposit };
+    if (to === 'approved') run.payment = paymentOnApproval(config, run.payment, at);
+    if (to === 'approved' && config.booking?.enabled) event(ctx, run, at, { type: 'booking_confirmed', actor: 'owner', message: 'ההזמנה אושרה — השולחן שמור (דמו מקומי)' });
     event(ctx, run, at, { type: 'status_changed', actor: 'owner', from, to, message: `הסטטוס שונה ל"${STATUS_LABELS[to]}"` });
     const n = statusNotification(ctx.data.organization, run, to, undefined, at);
     if (n) ctx.data.notifications.push(n);
@@ -188,8 +200,11 @@ function addRun(
   }
   run.status = opts.status;
   if (opts.depositPaid) {
-    run.payment = { status: 'deposit_paid_simulated', amount: sub.deposit };
-    event(ctx, run, run.updatedAt, { type: 'payment_simulated', actor: 'owner', message: 'מקדמה סומנה כשולמה (סימולציה — לא בוצע תשלום)' });
+    const paid = simulatePaid(run.payment, run.updatedAt);
+    if (paid) {
+      run.payment = paid;
+      event(ctx, run, run.updatedAt, { type: 'payment_simulated', actor: 'owner', message: 'תשלום סומן כשולם (סימולציה — לא בוצע חיוב)' });
+    }
   }
   if (opts.note) event(ctx, run, run.updatedAt, { type: 'note_added', actor: 'owner', message: opts.note, internal: true });
   return run;
@@ -226,6 +241,7 @@ function seedBloom(now: number): OrgData {
       status,
       hoursAgo,
       note,
+      payNow: status === 'completed' || i % 3 === 0,
       values: {
         budget: budgets[Math.floor(r() * budgets.length)],
         palette: palettes[i % palettes.length],
@@ -234,6 +250,7 @@ function seedBloom(now: number): OrgData {
         sender: NAMES[i % NAMES.length],
         sender_phone: phone(i),
         gift_wrap: r() > 0.5,
+        bouquet_style: ['round', 'garden', 'tall'][i % 3],
         recipient: NAMES[(i + 5) % NAMES.length],
         recipient_phone: phone(i + 40),
         address: ['הרצל 12, תל אביב', 'העצמאות 4, חיפה', 'ביאליק 30, רמת גן', 'הנביאים 8, ירושלים'][i % 4],
@@ -298,6 +315,7 @@ function seedUrban(now: number): OrgData {
     ['completed', 260, 60, true],
     ['rejected', 340, 75],
   ];
+  addBookingDemo(ctx);
   plan.forEach(([status, hoursAgo, guests, depositPaid], i) => {
     const type = types[i % types.length]!;
     addRun(ctx, events, {
@@ -320,6 +338,51 @@ function seedUrban(now: number): OrgData {
       },
     });
   });
+  return ctx.data;
+}
+
+const BOOKING_PLAN: [RunStatus, number, number, string, number][] = [
+  // status, hours ago, days ahead, time, guests
+  ['submitted', 1, 2, '20:00', 4],
+  ['approved', 9, 2, '20:00', 6],
+  ['approved', 20, 2, '20:00', 5],
+  ['in_review', 4, 3, '19:30', 2],
+  ['approved', 30, 5, '21:00', 8],
+  ['rejected', 50, 1, '18:00', 10],
+  ['completed', 120, -3, '19:00', 3],
+];
+
+/** Urban Table booking requests demo. Also used by the v2 → v3 migration for existing browsers. */
+function addBookingDemo(ctx: Ctx) {
+  const booking = addWorkflow(ctx, { slug: DEMO_SLUGS.booking, templateKey: 'table_booking', status: 'published', daysAgo: 12 });
+  const openDay = (offset: number) => {
+    // Shift forward to the next open day so seeded requests are valid.
+    let d = offset;
+    while (new Date(ctx.now + d * 86_400_000).getDay() === 0) d++;
+    return isoDay(d, new Date(ctx.now));
+  };
+  BOOKING_PLAN.forEach(([status, hoursAgo, days, time, guests], i) => {
+    addRun(ctx, booking, {
+      status,
+      hoursAgo,
+      values: {
+        booking_date: openDay(days),
+        booking_time: time,
+        party_size: guests,
+        seating: ['inside', 'bar', 'terrace', 'any'][i % 4],
+        guest_name: NAMES[(i + 3) % NAMES.length],
+        guest_phone: phone(i + 60),
+        occasion: ['none', 'birthday', 'date', 'business'][i % 4],
+        requests: i === 1 ? 'כיסא תינוק' : '',
+      },
+    });
+  });
+}
+
+/** Adds the booking demo to an existing (migrated) Urban Table workspace, without touching other data. */
+export function appendBookingDemo(data: OrgData, now = Date.now()): OrgData {
+  const ctx: Ctx = { data, now, rand: rng(44), kitFromWorkflow: true };
+  addBookingDemo(ctx);
   return ctx.data;
 }
 

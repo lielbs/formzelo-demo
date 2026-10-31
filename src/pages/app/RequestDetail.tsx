@@ -1,4 +1,4 @@
-import { ArrowRight, Copy, CreditCard, ExternalLink, StickyNote } from 'lucide-react';
+import { ArrowRight, CalendarCheck, Copy, CreditCard, ExternalLink, StickyNote } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { NotificationList, Timeline } from '../../components/Activity';
@@ -7,8 +7,10 @@ import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, cx, DemoBadge, EmptyState, ErrorState, Modal, Spinner, Textarea } from '../../components/ui';
 import type { RunAnswer, RunStatus } from '../../domain/schema';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
+import { bookingState, WEEKDAY_LABELS, weekdayOf } from '../../engine/booking';
+import { COMPLETION_LABELS, completionOf, isPaymentOutstanding } from '../../engine/completion';
 import { ownerActions, STATUS_LABELS } from '../../engine/transitions';
-import { formatCurrency, formatDateTime } from '../../lib/format';
+import { formatCurrency, formatDate, formatDateTime } from '../../lib/format';
 import { publicFlowUrl } from '../../lib/links';
 
 const NEEDS_MESSAGE: RunStatus[] = ['changes_requested', 'rejected'];
@@ -73,6 +75,12 @@ export function RequestDetail() {
   const actions = ownerActions(run.status);
   const customerLink = workflow ? publicFlowUrl(workflow.slug, run.id) : '';
   const customerCanEdit = run.status === 'awaiting_customer' || run.status === 'changes_requested';
+  const config = version?.config;
+  const booking = config?.booking?.enabled ? config.booking : undefined;
+  const bState = booking ? bookingState(run.status) : null;
+  const completion = config ? completionOf(config) : null;
+  const answer = (key?: string) => (key ? run.answers.find((a) => a.fieldKey === key) : undefined);
+  const bookingDate = booking ? String(answer(booking.dateKey)?.value ?? '') : '';
 
   const transition = async (to: RunStatus, msg?: string) => {
     setBusy(to);
@@ -115,7 +123,8 @@ export function RequestDetail() {
               {run.customerName || 'לקוח/ה'} <span className="text-lg font-normal text-ink-soft ltr">{run.reference}</span>
             </h1>
             <StatusBadge status={run.status} />
-            <PaymentBadge payment={run.payment} />
+            {bState && <Badge tone={bState.confirmed ? 'teal' : 'amber'}>{bState.label}</Badge>}
+            <PaymentBadge payment={run.payment} runStatus={run.status} />
             {run.isDemo && <DemoBadge />}
           </div>
           <p className="mt-1 text-sm text-ink-muted">
@@ -137,10 +146,10 @@ export function RequestDetail() {
               loading={busy === a.to}
               onClick={() => (NEEDS_MESSAGE.includes(a.to) ? setPending(a) : transition(a.to))}
             >
-              {a.label}
+              {booking && a.to === 'approved' ? 'אישור ההזמנה' : a.label}
             </Button>
           ))}
-          {run.payment.status === 'deposit_requested' && (
+          {isPaymentOutstanding(run.payment) && run.status !== 'cancelled' && run.status !== 'rejected' && (
             <Button
               variant="dark"
               icon={CreditCard}
@@ -148,14 +157,16 @@ export function RequestDetail() {
               onClick={async () => {
                 setBusy('pay');
                 try {
-                  await repo.markDepositPaid(org.id, run.id);
-                  toast('המקדמה סומנה כשולמה (סימולציה)');
+                  await repo.markPaymentPaid(org.id, run.id);
+                  toast(`${run.payment.status === 'deposit_requested' ? 'המקדמה' : 'התשלום'} סומן כשולם (סימולציה — לא בוצע חיוב)`);
+                } catch (e) {
+                  toast(e instanceof Error ? e.message : 'העדכון נכשל', 'error');
                 } finally {
                   setBusy(null);
                 }
               }}
             >
-              סימון מקדמה כשולמה (סימולציה)
+              סימון {run.payment.status === 'deposit_requested' ? 'מקדמה' : 'תשלום'} כשולם (סימולציה)
             </Button>
           )}
         </div>
@@ -187,6 +198,22 @@ export function RequestDetail() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {booking && (
+            <Card className="flex flex-wrap items-center gap-4 p-5">
+              <span className={cx('flex h-11 w-11 items-center justify-center rounded-xl', bState?.confirmed ? 'bg-teal-50 text-teal-600' : 'bg-amber-50 text-amber-700')}>
+                <CalendarCheck className="h-5 w-5" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{bState?.label}</p>
+                <p className="text-sm text-ink-muted">
+                  {bookingDate ? `יום ${WEEKDAY_LABELS[weekdayOf(bookingDate) ?? 0]}, ${formatDate(bookingDate)}` : '—'}
+                  {booking.timeKey && answer(booking.timeKey) ? ` · ${answer(booking.timeKey)!.displayValue}` : ''}
+                  {booking.guestsKey && answer(booking.guestsKey) ? ` · ${answer(booking.guestsKey)!.displayValue} ${booking.capacityUnit === 'guests' ? 'משתתפים' : ''}` : ''}
+                </p>
+              </div>
+              <p className="w-full text-xs text-ink-muted">אישור כאן הופך את הבקשה להזמנה מאושרת. בדמו אין יומן משותף ואין שמירת מקום בין מכשירים — הקיבולת מחושבת מבקשות בדפדפן זה.</p>
+            </Card>
+          )}
           {run.caseAnswers.length > 0 && (
             <Card className="p-5">
               <h2 className="mb-2 font-semibold">פרטי התיק</h2>
@@ -197,6 +224,28 @@ export function RequestDetail() {
             <h2 className="mb-2 font-semibold">תשובות הלקוח</h2>
             {run.answers.length ? <Answers items={run.answers} /> : <p className="py-4 text-sm text-ink-muted">הלקוח/ה עדיין לא שלח/ה תשובות.</p>}
           </Card>
+          {completion && run.submittedAt && (
+            <Card className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold">סיום ותשלום</h2>
+                <Badge tone="neutral">{COMPLETION_LABELS[run.completionMode ?? completion.mode].title}</Badge>
+              </div>
+              <p className="mt-2 text-sm text-ink-muted">
+                {run.payment.status === 'none' && run.payment.amount === 0
+                  ? 'אין תשלום בבקשה הזו — זו הגשה בלבד, לא חוב פתוח.'
+                  : run.payment.status === 'quote'
+                    ? `הלקוח ראה הערכה של ${formatCurrency(run.payment.amount)}. לא נדרש תשלום; שלחו הצעה סופית.`
+                    : run.payment.status === 'external_link'
+                      ? 'הלקוח הופנה לקישור התשלום החיצוני של העסק. Formzelo אינו יודע אם שולם — בדקו במערכת התשלום שלכם.'
+                      : run.payment.status === 'none'
+                        ? `${run.payment.kind === 'deposit' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} יתבקש רק אחרי אישור.`
+                        : isPaymentOutstanding(run.payment)
+                          ? `ממתין ל${run.payment.status === 'deposit_requested' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)}.`
+                          : `${run.payment.status === 'deposit_paid_simulated' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} סומן כשולם.`}{' '}
+                {run.payment.status !== 'none' || run.payment.amount > 0 ? 'כל התשלומים בדמו הם סימולציה — לא עבר כסף.' : ''}
+              </p>
+            </Card>
+          )}
           {version?.config.pricing.enabled && run.answers.length > 0 && (
             <Card className="p-5">
               <h2 className="mb-3 font-semibold">{version.config.pricing.totalLabel}</h2>
@@ -213,11 +262,7 @@ export function RequestDetail() {
                 <span>סה״כ</span>
                 <span className="tabular-nums">{formatCurrency(run.total)}</span>
               </div>
-              {run.payment.amount > 0 && (
-                <p className="mt-2 text-xs text-ink-muted">
-                  מקדמה: {formatCurrency(run.payment.amount)} · {run.payment.status === 'none' ? 'תידרש לאחר אישור' : run.payment.status === 'deposit_requested' ? 'ממתינה' : 'שולמה'} — סימולציה בלבד, לא נגבה כסף.
-                </p>
-              )}
+
             </Card>
           )}
           <Card className="p-5">

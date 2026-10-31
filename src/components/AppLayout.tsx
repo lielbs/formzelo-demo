@@ -1,4 +1,4 @@
-import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, Plus, Settings, Workflow, X } from 'lucide-react';
+import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, Palette, Plus, Settings, Workflow, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useRepo, useRepoQuery } from '../data/store';
@@ -11,6 +11,7 @@ const NAV = [
   { to: '/app', label: 'לוח בקרה', icon: LayoutDashboard, end: true },
   { to: '/app/workflows', label: 'תהליכים', icon: Workflow },
   { to: '/app/requests', label: 'בקשות', icon: Inbox, badge: true },
+  { to: '/app/brand', label: 'ערכת מותג', icon: Palette },
   { to: '/app/analytics', label: 'אנליטיקה', icon: BarChart3 },
   { to: '/app/settings', label: 'הגדרות', icon: Settings },
 ];
@@ -64,6 +65,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
             <li key={o.id} role="option" aria-selected={o.id === activeOrg.id}>
               <button
                 type="button"
+                data-fz-leave
                 className="flex w-full items-center gap-2.5 rounded-lg p-2 text-start hover:bg-cloud focus-visible:bg-cloud focus-visible:outline-none"
                 onClick={async () => {
                   setOpen(false);
@@ -85,7 +87,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
             </li>
           ))}
           <li className="mt-1 border-t border-cloud-200 pt-1">
-            <button type="button" onClick={() => navigate('/demo')} className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-ink-muted hover:bg-cloud">
+            <button type="button" data-fz-leave onClick={() => navigate('/demo')} className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-ink-muted hover:bg-cloud">
               <Building2 className="h-4 w-4" aria-hidden /> כל סביבות הדמו
             </button>
           </li>

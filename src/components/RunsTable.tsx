@@ -45,7 +45,7 @@ export function RunsTable({ runs, workflows }: { runs: WorkflowRun[]; workflows:
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
                     <StatusBadge status={r.status} />
-                    <PaymentBadge payment={r.payment} />
+                    <PaymentBadge payment={r.payment} runStatus={r.status} />
                   </div>
                 </td>
                 <td className="px-4 py-3 text-end tabular-nums">{r.total > 0 ? formatCurrency(r.total) : '—'}</td>

@@ -5,6 +5,7 @@ import { NotificationList, Timeline } from '../../components/Activity';
 import { RunsTable } from '../../components/RunsTable';
 import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
+import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
 import { DONE_STATUSES, PENDING_STATUSES } from '../../engine/transitions';
 import { formatCurrency, formatNumber } from '../../lib/format';
 import { appHref } from '../../lib/links';
@@ -48,12 +49,18 @@ export function Dashboard() {
     const { workflows, runs } = q.data;
     const weekAgo = Date.now() - 7 * 86_400_000;
     const done = runs.filter((r) => DONE_STATUSES.includes(r.status));
+    const decided = runs.filter((r) => DONE_STATUSES.includes(r.status) || r.status === 'rejected').length;
     return {
       active: workflows.filter((w) => w.status === 'published').length,
+      drafts: workflows.filter((w) => w.status === 'draft' || w.hasUnpublishedChanges).length,
+      approvalRate: decided ? Math.round((done.length / decided) * 100) : null,
       incoming: runs.filter((r) => r.submittedAt && new Date(r.submittedAt).getTime() > weekAgo).length,
       pending: runs.filter((r) => PENDING_STATUSES.includes(r.status)).length,
       completed: done.length,
-      value: done.reduce((s, r) => s + r.total, 0),
+      money: simulatedMoney(runs),
+      outcomes: workflows
+        .filter((w) => w.status !== 'archived')
+        .map((w) => ({ w, outcome: workflowOutcome(w.draft, runs.filter((r) => r.workflowId === w.id)) })),
       demoShare: runs.length ? runs.filter((r) => r.isDemo).length / runs.length : 0,
     };
   }, [q.data]);
@@ -144,14 +151,63 @@ export function Dashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
-        <Stat label="תהליכים פעילים" value={formatNumber(stats.active)} icon={WorkflowIcon} />
+        <Stat label="תהליכים פעילים" value={formatNumber(stats.active)} icon={WorkflowIcon} hint={stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined} />
         <Stat label="בקשות ב-7 ימים" value={formatNumber(stats.incoming)} icon={Inbox} tone="orange" />
         <Stat label="ממתינות לטיפול" value={formatNumber(stats.pending)} icon={Clock} tone="orange" />
-        <Stat label="אושרו / הושלמו" value={formatNumber(stats.completed)} icon={CheckCircle2} tone="teal" />
+        <Stat
+          label="אושרו / הושלמו"
+          value={formatNumber(stats.completed)}
+          icon={CheckCircle2}
+          tone="teal"
+          hint={stats.approvalRate !== null ? `שיעור אישור ${stats.approvalRate}% מהבקשות שהוכרעו` : undefined}
+        />
         <div className="col-span-2 md:col-span-1">
-          <Stat label="ערך להמחשה" value={formatCurrency(stats.value)} icon={Wallet} tone="teal" hint="סכום בקשות שאושרו, מחושב מנתונים מקומיים (כולל נתוני דמו)" />
+          {stats.money.paid > 0 || stats.money.outstanding > 0 ? (
+            <Stat
+              label="תשלומים מדומים"
+              value={formatCurrency(stats.money.paid)}
+              icon={Wallet}
+              tone="teal"
+              hint={`${stats.money.outstanding ? `${formatCurrency(stats.money.outstanding)} ממתינים · ` : ''}סימולציה, לא עבר כסף`}
+            />
+          ) : (
+            <Stat label="שיעור אישור" value={stats.approvalRate !== null ? `${stats.approvalRate}%` : '—'} icon={CheckCircle2} tone="teal" hint="תהליכים ללא תשלום לא מציגים הכנסות" />
+          )}
         </div>
       </div>
+
+      {stats.outcomes.length > 0 && (
+        <Card className="mt-6 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-semibold">לפי מטרת התהליך</h2>
+            <p className="text-xs text-ink-muted">כל תהליך נמדד לפי מה שהוא נועד לעשות — לא כל תהליך הוא מכירה.</p>
+          </div>
+          <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {stats.outcomes.map(({ w, outcome }) => (
+              <li key={w.id}>
+                <Link to={`/app/workflows/${w.id}`} className="block h-full rounded-xl border border-cloud-200 p-4 transition hover:border-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 truncate text-sm font-semibold">{w.draft.title}</p>
+                    <Badge tone="neutral">{outcome.objectiveLabel}</Badge>
+                  </div>
+                  <p className="mt-3 flex items-baseline gap-2">
+                    <span className="text-2xl font-semibold tabular-nums">{formatNumber(outcome.primary.value)}</span>
+                    <span className="text-sm text-ink-muted">{outcome.primary.label}</span>
+                  </p>
+                  <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+                    {outcome.secondary.map((m) => (
+                      <div key={m.label} className="flex gap-1">
+                        <dt>{m.label}:</dt>
+                        <dd className="font-medium text-ink tabular-nums">{m.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card className="overflow-hidden lg:col-span-2">

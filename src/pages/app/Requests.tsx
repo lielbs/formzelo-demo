@@ -6,6 +6,7 @@ import { RunsTable } from '../../components/RunsTable';
 import { Button, Card, cx, EmptyState, ErrorState, Input, PageHeader, Select, Spinner } from '../../components/ui';
 import { RUN_STATUSES, type RunStatus, type Workflow } from '../../domain/schema';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
+import { isPaymentOutstanding } from '../../engine/completion';
 import { STATUS_LABELS } from '../../engine/transitions';
 
 export function Requests() {
@@ -14,6 +15,8 @@ export function Requests() {
   const status = (params.get('status') ?? 'all') as RunStatus | 'all';
   const [search, setSearch] = useState('');
   const [workflowFilter, setWorkflowFilter] = useState('all');
+  const [payFilter, setPayFilter] = useState<'all' | 'none' | 'outstanding' | 'paid' | 'quote'>('all');
+  const [sort, setSort] = useState<'new' | 'old' | 'amount'>('new');
   const [caseWorkflow, setCaseWorkflow] = useState<Workflow | null>(null);
 
   const q = useRepoQuery(
@@ -35,11 +38,21 @@ export function Requests() {
 
   const needle = search.trim().toLowerCase();
   const byWorkflow = runs.filter((r) => workflowFilter === 'all' || r.workflowId === workflowFilter);
-  const list = byWorkflow.filter(
-    (r) =>
-      (status === 'all' || r.status === status) &&
-      (!needle || r.reference.toLowerCase().includes(needle) || r.customerName.toLowerCase().includes(needle) || r.customerContact.includes(needle)),
-  );
+  const payOk = (r: (typeof runs)[number]) =>
+    payFilter === 'all' ||
+    (payFilter === 'none' && r.payment.status === 'none') ||
+    (payFilter === 'outstanding' && isPaymentOutstanding(r.payment)) ||
+    (payFilter === 'paid' && r.payment.status.endsWith('_simulated')) ||
+    (payFilter === 'quote' && r.payment.status === 'quote');
+  const when = (r: (typeof runs)[number]) => r.submittedAt ?? r.createdAt;
+  const list = byWorkflow
+    .filter(
+      (r) =>
+        (status === 'all' || r.status === status) &&
+        payOk(r) &&
+        (!needle || r.reference.toLowerCase().includes(needle) || r.customerName.toLowerCase().includes(needle) || r.customerContact.includes(needle)),
+    )
+    .sort((a, b) => (sort === 'amount' ? b.total - a.total : sort === 'old' ? when(a).localeCompare(when(b)) : when(b).localeCompare(when(a))));
   const count = (s: RunStatus) => byWorkflow.filter((r) => r.status === s).length;
   const setStatus = (s: string) => setParams(s === 'all' ? {} : { status: s }, { replace: true });
   const caseTarget = caseFlows.find((c) => c.w.id === caseWorkflow?.id);
@@ -61,6 +74,18 @@ export function Requests() {
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
           <Input type="search" className="ps-9" placeholder="חיפוש לפי שם, טלפון או מספר בקשה" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="חיפוש בקשות" />
         </div>
+        <Select aria-label="סינון לפי תשלום" value={payFilter} onChange={(e) => setPayFilter(e.target.value as typeof payFilter)} className="sm:w-52">
+          <option value="all">כל מצבי התשלום</option>
+          <option value="none">ללא תשלום</option>
+          <option value="quote">הצעת מחיר</option>
+          <option value="outstanding">ממתין לתשלום (סימולציה)</option>
+          <option value="paid">שולם (סימולציה)</option>
+        </Select>
+        <Select aria-label="מיון" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="sm:w-40">
+          <option value="new">החדשות קודם</option>
+          <option value="old">הישנות קודם</option>
+          <option value="amount">לפי סכום</option>
+        </Select>
         <Select aria-label="סינון לפי תהליך" value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} className="sm:w-64">
           <option value="all">כל התהליכים</option>
           {workflows.map((w) => (

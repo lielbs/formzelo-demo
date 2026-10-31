@@ -1,4 +1,4 @@
-import { Bell, CreditCard, FilePlus2, Mail, MessageSquare, RefreshCw, Send, StickyNote, Smartphone } from 'lucide-react';
+import { Bell, CalendarCheck, CreditCard, FilePlus2, Mail, MessageSquare, RefreshCw, Send, StickyNote, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { NotificationPreview, RunEvent, WorkflowRun } from '../domain/schema';
 import { formatDateTime, formatRelative } from '../lib/format';
@@ -12,6 +12,7 @@ const EVENT_ICON = {
   note_added: StickyNote,
   notification_simulated: Bell,
   payment_simulated: CreditCard,
+  booking_confirmed: CalendarCheck,
 } as const;
 
 const ACTOR = { customer: 'לקוח/ה', owner: 'צוות', system: 'מערכת' } as const;

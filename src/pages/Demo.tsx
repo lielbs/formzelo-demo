@@ -1,6 +1,6 @@
 import { ArrowLeft, Car, ExternalLink, Flower2, RotateCcw, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SiteFooter, SiteHeader } from '../components/SiteChrome';
 import { useToast } from '../components/Toast';
 import { Badge, Button, Card, DemoBadge, ErrorState, Modal, Spinner } from '../components/ui';
@@ -9,10 +9,17 @@ import { DEMO_GARAGE_CASE_ID, DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
 import { PENDING_STATUSES } from '../engine/transitions';
 import { formatNumber } from '../lib/format';
 
-const META: Record<string, { icon: typeof Flower2; scenario: string; publicHref: string; publicLabel: string }> = {
+const META: Record<string, { icon: typeof Flower2; scenario: string; publicHref: string; publicLabel: string; secondHref?: string; secondLabel?: string }> = {
   [DEMO_ORG_IDS.bloom]: { icon: Flower2, scenario: 'הזמנות זרים עם תקציב, צבעוניות, ברכה ומשלוח.', publicHref: `/f/${DEMO_SLUGS.flowers}`, publicLabel: 'הזמנה כלקוח' },
   [DEMO_ORG_IDS.autocare]: { icon: Car, scenario: 'פתיחת תיק לרכב ואישור או דחייה של כל תיקון בנפרד.', publicHref: `/f/${DEMO_SLUGS.garage}?r=${DEMO_GARAGE_CASE_ID}`, publicLabel: 'תיק פתוח כלקוח' },
-  [DEMO_ORG_IDS.urban]: { icon: UtensilsCrossed, scenario: 'בקשות לאירועים פרטיים, הערכת מחיר ומקדמה מדומה.', publicHref: `/f/${DEMO_SLUGS.events}`, publicLabel: 'בקשה כלקוח' },
+  [DEMO_ORG_IDS.urban]: {
+    icon: UtensilsCrossed,
+    scenario: 'אירועים פרטיים עם הערכת מחיר ומקדמה מדומה אחרי אישור, והזמנת שולחן — בקשה עד אישור המסעדה.',
+    publicHref: `/f/${DEMO_SLUGS.events}`,
+    publicLabel: 'בקשת אירוע',
+    secondHref: `/f/${DEMO_SLUGS.booking}`,
+    secondLabel: 'הזמנת שולחן',
+  },
 };
 
 export function Demo() {
@@ -87,9 +94,14 @@ export function Demo() {
                         כניסה ללוח הבקרה <ArrowLeft className="h-4 w-4" aria-hidden />
                       </Button>
                       {m && (
-                        <a href={m.publicHref} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud">
+                        <Link to={m.publicHref} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud">
                           <ExternalLink className="h-4 w-4" aria-hidden /> {m.publicLabel}
-                        </a>
+                        </Link>
+                      )}
+                      {m?.secondHref && (
+                        <Link to={m.secondHref} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud">
+                          <ExternalLink className="h-4 w-4" aria-hidden /> {m.secondLabel}
+                        </Link>
                       )}
                     </div>
                   </Card>

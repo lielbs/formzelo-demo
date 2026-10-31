@@ -1,4 +1,4 @@
-import { ArrowLeft, RotateCcw, Wand2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, RotateCcw, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, FieldLabel, PageHeader, Select, Textarea } from '../../components/ui';
 import { useActiveOrg, useRepo } from '../../data/store';
 import { EXAMPLE_PROMPTS, generateWorkflowFromPrompt, type GenerationResult } from '../../engine/generator';
+import { COMPLETION_LABELS } from '../../engine/completion';
 import { TEMPLATES, type TemplateKey } from '../../engine/templates';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { buildTheme, PRESET_LIST, PRESETS } from '../../theme/presets';
@@ -95,7 +96,7 @@ export function WorkflowNew() {
                   </p>
                 ) : (
                   <p id="prompt-help" className="mt-1.5 text-xs text-ink-muted">
-                    המנוע המקומי מזהה מילות מפתח בעברית וממפה אותן לתבנית אמיתית שאפשר לערוך.
+                    המנוע המקומי (לא AI) מזהה בעברית מטרה, קהל, אפשרויות, הגבלות, אישורים ותשלום — ומרכיב תהליך אמיתי שאפשר לערוך.
                   </p>
                 )}
               </div>
@@ -144,7 +145,17 @@ export function WorkflowNew() {
                   <dt className="text-ink-muted">תבנית:</dt>
                   <dd className="font-medium">{result.templateLabel}</dd>
                 </div>
-                {result.matchedKeywords.length > 0 && (
+                {result.detected.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <dt className="text-ink-muted">זוהה:</dt>
+                    {result.detected.map((k) => (
+                      <dd key={k}>
+                        <Badge tone="blue">{k}</Badge>
+                      </dd>
+                    ))}
+                  </div>
+                )}
+                {!result.composed && result.matchedKeywords.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <dt className="text-ink-muted">מילות מפתח:</dt>
                     {result.matchedKeywords.map((k) => (
@@ -160,6 +171,13 @@ export function WorkflowNew() {
                     {result.config.steps.length} שלבים · {result.config.steps.reduce((n, s) => n + s.fields.length, 0)} שדות
                     {result.config.pricing.enabled ? ' · חישוב מחיר' : ''}
                     {result.config.mode === 'case' ? ' · מבוסס תיקים' : ''}
+                    {result.config.booking?.enabled ? ' · כללי הזמנה' : ''}
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="text-ink-muted">סיום:</dt>
+                  <dd>
+                    {COMPLETION_LABELS[result.completionMode].title} <span className="text-xs text-ink-muted">— {COMPLETION_LABELS[result.completionMode].description}</span>
                   </dd>
                 </div>
               </dl>
@@ -196,6 +214,19 @@ export function WorkflowNew() {
                     <li key={a}>{a}</li>
                   ))}
                 </ul>
+              )}
+              {result.reviewNotes.length > 0 && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900" role="note">
+                  <p className="flex items-center gap-1.5 font-semibold">
+                    <AlertTriangle className="h-4 w-4" aria-hidden /> דורש בדיקה או לא נתמך בדמו
+                  </p>
+                  <ul className="mt-1.5 list-inside list-disc space-y-1 text-[13px]">
+                    {result.reviewNotes.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-1.5 text-xs text-amber-800/80">ההערות נשמרות בטיוטה ומוצגות בסטודיו — לא ללקוחות.</p>
+                </div>
               )}
               <Button className="mt-5 w-full sm:w-auto" onClick={save} loading={saving}>
                 שמירה כטיוטה ומעבר לעריכה <ArrowLeft className="h-4 w-4" aria-hidden />

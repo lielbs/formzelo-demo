@@ -17,7 +17,9 @@ import type {
   WorkflowRun,
   WorkflowVersion,
 } from '../domain/schema';
-import type { Asset, WorkflowTheme } from '../domain/theme';
+import type { Asset, BrandKit, WorkflowTheme } from '../domain/theme';
+import type { SlotAvailability } from '../engine/booking';
+import type { OptionUsage } from '../engine/capacity';
 import type { Values } from '../engine/conditions';
 import type { FieldErrors } from '../engine/validation';
 
@@ -58,7 +60,14 @@ export interface FormzeloRepository {
 
   resolvePublic(slug: string): Promise<PublicWorkflow | null>;
   getPublicRun(slug: string, runId: string): Promise<{ run: WorkflowRun; version: WorkflowVersion } | null>;
-  submitRun(slug: string, input: { values: Values; consent: boolean; runId?: string }): Promise<WorkflowRun>;
+  /** `payNow`: the customer pressed the clearly-labelled SIMULATED payment button. No money moves. */
+  submitRun(slug: string, input: { values: Values; consent: boolean; runId?: string; payNow?: boolean }): Promise<WorkflowRun>;
+  /** Local, best-effort slot usage for a booking workflow — not a cross-device guarantee. */
+  getBookingAvailability(slug: string, date: string): Promise<SlotAvailability[]>;
+  /** Local, best-effort places taken per limited option (e.g. a track with 30 places). */
+  getOptionUsage(slug: string): Promise<OptionUsage>;
+  /** The customer withdraws their own booking request through their personal link. */
+  cancelRunByCustomer(slug: string, runId: string): Promise<WorkflowRun>;
 
   listRuns(orgId: string): Promise<WorkflowRun[]>;
   getRun(orgId: string, runId: string): Promise<WorkflowRun | null>;
@@ -66,7 +75,13 @@ export interface FormzeloRepository {
   createCase(orgId: string, workflowId: string, caseValues: Values, publicBaseUrl: string): Promise<WorkflowRun>;
   transitionRun(orgId: string, runId: string, to: RunStatus, message?: string): Promise<WorkflowRun>;
   addNote(orgId: string, runId: string, text: string): Promise<RunEvent>;
+  /** Marks an outstanding deposit / payment as paid — SIMULATION ONLY. */
+  markPaymentPaid(orgId: string, runId: string): Promise<WorkflowRun>;
   markDepositPaid(orgId: string, runId: string): Promise<WorkflowRun>;
+
+  getBrandKit(orgId: string): Promise<BrandKit>;
+  /** Updates the workspace brand kit. Published versions are never affected. */
+  updateBrandKit(orgId: string, kit: BrandKit): Promise<BrandKit>;
 
   /** Local, downscaled images for logos / covers. Production: object storage + CDN. */
   listAssets(orgId: string): Promise<Asset[]>;

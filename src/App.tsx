@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
-import { AppLayout } from './components/AppLayout';
 import { Spinner } from './components/ui';
 import { NotFound } from './pages/NotFound';
 import { PublicFlow } from './pages/PublicFlow';
@@ -10,6 +9,7 @@ import { PublicFlow } from './pages/PublicFlow';
 const named = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) =>
   lazy(() => loader().then((m) => ({ default: m[name] })));
 
+const AppLayout = named(() => import('./components/AppLayout'), 'AppLayout');
 const Landing = named(() => import('./pages/Landing'), 'Landing');
 const Demo = named(() => import('./pages/Demo'), 'Demo');
 const Pricing = named(() => import('./pages/Pricing'), 'Pricing');
@@ -22,6 +22,7 @@ const Requests = named(() => import('./pages/app/Requests'), 'Requests');
 const RequestDetail = named(() => import('./pages/app/RequestDetail'), 'RequestDetail');
 const Analytics = named(() => import('./pages/app/Analytics'), 'Analytics');
 const Settings = named(() => import('./pages/app/Settings'), 'Settings');
+const BrandKitPage = named(() => import('./pages/app/BrandKit'), 'BrandKitPage');
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -51,6 +52,7 @@ export function App() {
             <Route path="requests/:id" element={<RequestDetail />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="brand" element={<BrandKitPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

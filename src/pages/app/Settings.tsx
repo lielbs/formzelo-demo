@@ -6,6 +6,7 @@ import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, FieldLabel, Input, Modal, PageHeader, Spinner } from '../../components/ui';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { formatDate, formatNumber } from '../../lib/format';
+import { PaymentConnectors } from './PaymentConnectors';
 
 interface FormValues {
   name: string;
@@ -169,6 +170,10 @@ export function Settings() {
             </div>
           </Card>
         </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <PaymentConnectors />
       </div>
 
       <Modal

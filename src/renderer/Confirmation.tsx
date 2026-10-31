@@ -1,7 +1,10 @@
-import { CheckCircle2, Clock } from 'lucide-react';
+import { CalendarCheck, CalendarX, CheckCircle2, Clock, ExternalLink, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import { PaymentBadge, StatusBadge } from '../components/StatusBadge';
 import type { WorkflowConfig, WorkflowRun } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
+import { BOOKING_STAGES, bookingState, CUSTOMER_CANCELLABLE } from '../engine/booking';
+import { completionOf, safeExternalUrl } from '../engine/completion';
 import { formatCurrency, formatDateTime } from '../lib/format';
 import { BrandRow } from './parts';
 
@@ -9,24 +12,112 @@ const REVIEWED: WorkflowRun['status'][] = ['in_review', 'approved', 'rejected', 
 const DECIDED: WorkflowRun['status'][] = ['approved', 'rejected', 'completed', 'cancelled'];
 
 function nextSteps(run: WorkflowRun, config: WorkflowConfig) {
-  const hasDecisions = run.answers.some((a) => a.value === 'approved' || a.value === 'declined');
-  const steps = [
-    { label: 'הבקשה התקבלה ונשמרה', done: true },
-    { label: hasDecisions ? 'העסק מקבל את ההחלטות ומבצע רק את מה שאישרתם' : 'העסק בודק את הפרטים', done: REVIEWED.includes(run.status) },
-  ];
-  if (config.pricing.depositPercent > 0 && run.payment.amount > 0) {
-    steps.push({
-      label: `לאחר אישור תתבקש מקדמה של ${formatCurrency(run.payment.amount)} — סימולציה בלבד, ללא חיוב`,
-      done: run.payment.status === 'deposit_paid_simulated',
-    });
+  const custom = config.confirmation?.nextSteps;
+  const steps: { label: string; done: boolean }[] = [{ label: 'הבקשה התקבלה ונשמרה', done: true }];
+  if (custom?.length) {
+    // Owner-written steps; the first is "done" once the business starts reviewing.
+    custom.forEach((label, i) => steps.push({ label, done: i === 0 ? REVIEWED.includes(run.status) : DECIDED.includes(run.status) }));
+  } else {
+    const hasDecisions = run.answers.some((a) => a.value === 'approved' || a.value === 'declined');
+    steps.push({ label: hasDecisions ? 'העסק מקבל את ההחלטות ומבצע רק את מה שאישרתם' : 'העסק בודק את הפרטים', done: REVIEWED.includes(run.status) });
+    steps.push({ label: 'עדכון סטטוס יופיע בעמוד הזה (הודעות בדמו הן מדומות ואינן נשלחות)', done: DECIDED.includes(run.status) });
   }
-  steps.push({ label: 'עדכון סטטוס יופיע בעמוד הזה (הודעות בדמו הן מדומות ואינן נשלחות)', done: DECIDED.includes(run.status) });
+  if ((run.payment.status === 'deposit_requested' || run.payment.status === 'payment_requested') && run.status !== 'rejected' && run.status !== 'cancelled') {
+    steps.push({ label: `נדרש ${run.payment.status === 'deposit_requested' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} — סימולציה בלבד, ללא חיוב`, done: false });
+  }
   return steps;
 }
 
 /** Branded confirmation / status page, rendered with the run's own frozen version theme. */
-export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { run: WorkflowRun; config: WorkflowConfig; theme: WorkflowTheme; logoUrl?: string; justSubmitted: boolean }) {
+/** Requested → in review → confirmed, or a terminal rejected / cancelled state. */
+function BookingProgress({ status }: { status: WorkflowRun['status'] }) {
+  const state = bookingState(status);
+  if (state.stage === 'rejected' || state.stage === 'cancelled') {
+    return (
+      <p className="fz-warn mt-4 flex items-center justify-center gap-2" role="status">
+        <CalendarX className="h-4 w-4" aria-hidden /> {state.label}. המקום לא שמור.
+      </p>
+    );
+  }
+  const reached = state.stage === 'confirmed' ? 2 : state.stage === 'pending' || state.stage === 'changes' ? 1 : 0;
+  return (
+    <ol className="fz-progress-strip mt-4" aria-label="מצב ההזמנה">
+      {BOOKING_STAGES.map((s, i) => (
+        <li key={s.stage} data-state={i < reached ? 'done' : i === reached ? 'current' : undefined} aria-current={i === reached ? 'step' : undefined}>
+          {s.label}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function CancelBooking({ onCancel }: { onCancel: () => Promise<void> }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!confirming) {
+    return (
+      <button type="button" className="fz-btn fz-btn-ghost mt-4 w-full" onClick={() => setConfirming(true)}>
+        ביטול בקשת ההזמנה
+      </button>
+    );
+  }
+  return (
+    <div className="fz-panel mt-4 p-4 text-center" role="group" aria-label="אישור ביטול">
+      <p className="text-sm font-semibold">לבטל את הבקשה? המקום ישתחרר.</p>
+      {error && (
+        <p className="fz-error mt-2" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="mt-3 flex justify-center gap-2">
+        <button
+          type="button"
+          className="fz-btn fz-btn-primary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await onCancel();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : 'הביטול נכשל');
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'מבטל…' : 'כן, לבטל'}
+        </button>
+        <button type="button" className="fz-btn fz-btn-ghost" onClick={() => setConfirming(false)} disabled={busy}>
+          השארת הבקשה
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function Confirmation({
+  run,
+  config,
+  theme,
+  logoUrl,
+  justSubmitted,
+  onCancelBooking,
+}: {
+  run: WorkflowRun;
+  config: WorkflowConfig;
+  theme: WorkflowTheme;
+  logoUrl?: string;
+  justSubmitted: boolean;
+  /** Booking flows only: lets the customer withdraw their own request. */
+  onCancelBooking?: () => Promise<void>;
+}) {
   const decisions = run.answers.filter((a) => a.value === 'approved' || a.value === 'declined');
+  const booking = config.booking?.enabled ? bookingState(run.status) : null;
+  const c = completionOf(config);
+  const externalUrl = c.mode === 'external_link' ? safeExternalUrl(c.externalUrl) : null;
+  const title = justSubmitted ? (config.confirmation?.title ?? 'נשלח בהצלחה') : config.title;
+
   return (
     <div className="mx-auto w-full max-w-xl px-3 py-6 sm:py-12">
       <div className="mb-5 flex justify-center">
@@ -35,10 +126,10 @@ export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { r
       <section className="fz-card fz-pad fz-step" data-dir="fwd" aria-labelledby="fz-confirm-title">
         <div className="text-center">
           <span className="fz-confirm-icon" aria-hidden>
-            {justSubmitted ? <CheckCircle2 className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+            {booking?.confirmed ? <CalendarCheck className="h-8 w-8" /> : justSubmitted ? <CheckCircle2 className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
           </span>
           <h1 id="fz-confirm-title" className="fz-display mt-4 text-[calc(1.7rem*var(--fz-display-scale))]">
-            {justSubmitted ? 'נשלח בהצלחה' : config.title}
+            {title}
           </h1>
           <p className="fz-muted mx-auto mt-2 max-w-md text-[15px] leading-relaxed">{justSubmitted ? config.successMessage : 'זהו מצב הבקשה העדכני כפי שנשמר בדפדפן זה.'}</p>
         </div>
@@ -49,10 +140,25 @@ export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { r
             <bdi>{run.reference}</bdi>
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-            <StatusBadge status={run.status} />
-            <PaymentBadge payment={run.payment} />
+            {booking ? (
+              <span className="fz-badge" data-tone={booking.confirmed ? 'success' : 'recommended'}>
+                {booking.label}
+              </span>
+            ) : (
+              <StatusBadge status={run.status} />
+            )}
+            <PaymentBadge payment={run.payment} runStatus={run.status} />
           </div>
+          {booking && <BookingProgress status={run.status} />}
         </div>
+
+        {externalUrl && (
+          <a href={externalUrl} target="_blank" rel="noopener noreferrer nofollow" className="fz-btn fz-btn-primary mt-5 w-full">
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            {c.externalLabel || 'מעבר לעמוד התשלום של העסק'}
+          </a>
+        )}
+        {externalUrl && <p className="fz-help text-center">אתר חיצוני ({new URL(externalUrl).hostname}). Formzelo אינו מעבד את התשלום ואינו יודע אם בוצע.</p>}
 
         <div className="fz-review mt-5">
           <dl className="fz-review-section !py-2">
@@ -68,7 +174,7 @@ export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { r
                 <dd className="fz-num">{formatCurrency(run.total)}</dd>
               </div>
             )}
-            {run.payment.amount > 0 && config.pricing.depositPercent > 0 && (
+            {(run.payment.kind === 'deposit' || run.payment.status.startsWith('deposit')) && run.payment.amount > 0 && (
               <div>
                 <dt>מקדמה (סימולציה)</dt>
                 <dd className="fz-num">{formatCurrency(run.payment.amount)}</dd>
@@ -79,7 +185,9 @@ export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { r
 
         {decisions.length > 0 && (
           <section className="mt-5" aria-label="ההחלטות שנשמרו">
-            <h2 className="mb-2 text-sm font-bold">ההחלטות שנשמרו</h2>
+            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-bold">
+              <ShieldCheck className="h-4 w-4 fz-ink" aria-hidden /> רישום ההחלטות
+            </h2>
             <ul className="fz-decision-summary">
               {decisions.map((a) => (
                 <li key={a.fieldId} data-v={a.value === 'declined' ? 'declined' : 'approved'}>
@@ -90,6 +198,9 @@ export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { r
                 </li>
               ))}
             </ul>
+            <p className="fz-help">
+              {run.consentAt ? `אושר במפורש ${formatDateTime(run.consentAt)}` : 'נשמר'} · גרסת תהליך {run.versionNumber} · {decisions.filter((d) => d.value === 'approved').length} אושרו, {decisions.filter((d) => d.value === 'declined').length} נדחו. רישום מקומי לצורכי דמו — ללא תוקף משפטי.
+            </p>
           </section>
         )}
 
@@ -103,6 +214,7 @@ export function Confirmation({ run, config, theme, logoUrl, justSubmitted }: { r
             ))}
           </ol>
         </section>
+        {booking && onCancelBooking && CUSTOMER_CANCELLABLE.includes(run.status) && <CancelBooking onCancel={onCancelBooking} />}
         <p className="fz-help mt-5 text-center">אפשר לרענן את הדף — הבקשה נשמרה מקומית בדפדפן זה.</p>
       </section>
     </div>

@@ -19,7 +19,15 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   checkbox: 'תיבת סימון',
   decision: 'אישור / דחייה',
   file: 'קובץ (שם בלבד)',
+  time: 'שעה',
   info: 'הודעת מידע',
+  heading: 'כותרת וטקסט',
+  image: 'תמונה',
+  gallery: 'גלריה',
+  divider: 'קו מפריד',
+  highlights: 'יתרונות / שירותים',
+  price_breakdown: 'פירוט מחיר',
+  terms: 'תנאים',
 };
 
 const HAS_OPTIONS: FieldType[] = ['select', 'radio', 'multiselect'];
@@ -42,7 +50,7 @@ export function uniqueKey(existing: string[], base = 'field'): string {
 
 const parseNum = (v: string) => (v === '' ? undefined : Number(v));
 
-function ConditionEditor({ field, others, onChange }: { field: WorkflowField; others: WorkflowField[]; onChange: (c?: Condition) => void }) {
+export function ConditionEditor({ field, others, onChange }: { field: WorkflowField; others: WorkflowField[]; onChange: (c?: Condition) => void }) {
   const c = field.condition;
   const source = others.find((f) => f.key === c?.fieldKey);
   if (!c) {
@@ -93,7 +101,7 @@ function ConditionEditor({ field, others, onChange }: { field: WorkflowField; ot
   );
 }
 
-function OptionsEditor({ field, onChange, priced }: { field: WorkflowField; onChange: (f: WorkflowField) => void; priced: boolean }) {
+export function OptionsEditor({ field, onChange, priced }: { field: WorkflowField; onChange: (f: WorkflowField) => void; priced: boolean }) {
   const options = field.options ?? [];
   const set = (opts: WorkflowField['options']) => onChange({ ...field, options: opts });
   return (

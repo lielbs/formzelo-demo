@@ -5,6 +5,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { Badge, Card, cx, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
 import { RUN_STATUSES } from '../../domain/schema';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
+import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
 import { DONE_STATUSES } from '../../engine/transitions';
 import { formatCurrency, formatNumber, formatShortDate, isoDay } from '../../lib/format';
 
@@ -26,7 +27,6 @@ export function Analytics() {
     if (!q.data) return null;
     const since = new Date(isoDay(-(range - 1)) + 'T00:00:00').getTime();
     const runs = q.data.runs.filter((r) => r.submittedAt && (includeDemo || !r.isDemo) && new Date(r.submittedAt).getTime() >= since);
-    const done = runs.filter((r) => DONE_STATUSES.includes(r.status));
     const decided = runs.filter((r) => ['approved', 'completed', 'rejected'].includes(r.status));
 
     const days = Array.from({ length: range }, (_, i) => isoDay(i - (range - 1)));
@@ -49,7 +49,7 @@ export function Analytics() {
       .map((w) => {
         const list = runs.filter((r) => r.workflowId === w.id);
         const ok = list.filter((r) => DONE_STATUSES.includes(r.status));
-        return { w, count: list.length, approved: ok.length, value: ok.reduce((s, r) => s + r.total, 0) };
+        return { w, count: list.length, approved: ok.length, outcome: workflowOutcome(w.draft, list) };
       })
       .filter((x) => x.count > 0)
       .sort((a, b) => b.count - a.count);
@@ -57,8 +57,7 @@ export function Analytics() {
     return {
       total: runs.length,
       approvalRate: decided.length ? Math.round((runs.filter((r) => DONE_STATUSES.includes(r.status)).length / decided.length) * 100) : null,
-      value: done.reduce((s, r) => s + r.total, 0),
-      avgOrder: done.length ? Math.round(done.reduce((s, r) => s + r.total, 0) / done.length) : 0,
+      money: simulatedMoney(runs),
       avgResponse: responseHours.length ? responseHours.reduce((a, b) => a + b, 0) / responseHours.length : null,
       perDay,
       statuses: RUN_STATUSES.map((s) => ({ s, n: runs.filter((r) => r.status === s).length })).filter((x) => x.n > 0),
@@ -107,7 +106,7 @@ export function Analytics() {
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
             <Stat label="בקשות שנשלחו" value={formatNumber(metrics.total)} icon={Inbox} tone="orange" />
             <Stat label="שיעור אישור" value={metrics.approvalRate === null ? '—' : `${metrics.approvalRate}%`} icon={CheckCircle2} tone="teal" hint="מתוך בקשות שהוכרעו" />
-            <Stat label="ערך להמחשה" value={formatCurrency(metrics.value)} icon={Wallet} tone="teal" hint={`ממוצע ${formatCurrency(metrics.avgOrder)} לבקשה מאושרת`} />
+            <Stat label="תשלומים מדומים" value={formatCurrency(metrics.money.paid)} icon={Wallet} tone="teal" hint={`${metrics.money.outstanding ? `${formatCurrency(metrics.money.outstanding)} ממתינים · ` : ''}רק תהליכים עם תשלום. סימולציה — לא עבר כסף`} />
             <Stat label="זמן תגובה ממוצע" value={metrics.avgResponse === null ? '—' : `${metrics.avgResponse.toFixed(1)} ש׳`} icon={Clock} hint="עד שינוי הסטטוס הראשון" />
           </div>
 
@@ -152,16 +151,18 @@ export function Analytics() {
                   <th className="px-5 py-2 text-start font-medium">תהליך</th>
                   <th className="px-5 py-2 text-end font-medium">בקשות</th>
                   <th className="px-5 py-2 text-end font-medium">אושרו</th>
-                  <th className="px-5 py-2 text-end font-medium">ערך להמחשה</th>
+                  <th className="px-5 py-2 text-end font-medium">מדד המטרה</th>
                 </tr>
               </thead>
               <tbody>
-                {metrics.byWorkflow.map(({ w, count, approved, value }) => (
+                {metrics.byWorkflow.map(({ w, count, approved, outcome }) => (
                   <tr key={w.id} className="border-b border-cloud-200 last:border-0">
                     <td className="px-5 py-3 font-medium">{w.draft.title}</td>
                     <td className="px-5 py-3 text-end tabular-nums">{formatNumber(count)}</td>
                     <td className="px-5 py-3 text-end tabular-nums">{formatNumber(approved)}</td>
-                    <td className="px-5 py-3 text-end tabular-nums">{formatCurrency(value)}</td>
+                    <td className="px-5 py-3 text-end">
+                      <span className="tabular-nums font-medium">{formatNumber(outcome.primary.value)}</span> <span className="text-xs text-ink-muted">{outcome.primary.label}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -6,13 +6,14 @@
 import type {
   Condition,
   FieldOption,
+  HighlightItem,
   WorkflowConfig,
   WorkflowField,
   WorkflowStep,
 } from '../domain/schema';
 import { newId } from '../lib/id';
 
-export type TemplateKey = 'flower_order' | 'garage_repairs' | 'restaurant_event' | 'document_collection' | 'quote_request' | 'generic';
+export type TemplateKey = 'flower_order' | 'garage_repairs' | 'restaurant_event' | 'table_booking' | 'document_collection' | 'quote_request' | 'generic';
 
 type FieldExtra = Partial<Omit<WorkflowField, 'id' | 'key' | 'label' | 'type'>>;
 
@@ -39,6 +40,8 @@ export const step = (title: string, fields: WorkflowField[], extra: Partial<Omit
   ...extra,
 });
 
+export const highlight = (title: string, text?: string, icon?: HighlightItem['icon']): HighlightItem => ({ id: newId('hl'), title, text, icon });
+
 const when = (fieldKey: string, operator: Condition['operator'], value?: string | number): Condition => ({ fieldKey, operator, value });
 
 const DEMO_CONSENT_SUFFIX = 'זהו דמו מקומי — לא מתבצע תשלום ולא נשלחת הודעה אמיתית.';
@@ -51,6 +54,22 @@ function flowerOrder(): WorkflowConfig {
     caseFields: [],
     steps: [
       step('הזר שלכם', [
+        field('why_bloom', 'למה אצלנו', 'highlights', {
+          items: [
+            highlight('פרחים טריים מהשוק', 'נבחרים בכל בוקר', 'leaf'),
+            highlight('משלוח באותו יום', 'בהזמנה עד 12:00, בתוך העיר', 'truck'),
+            highlight('כרטיס בכתב יד', 'הברכה שלכם, בכתב יד', 'heart'),
+          ],
+        }),
+        field('bouquet_style', 'סגנון הזר', 'radio', {
+          appearance: 'tiles',
+          helpText: 'אופציונלי — אם לא תבחרו, המעצבת תחליט לפי האירוע',
+          options: [
+            option('round', 'קלאסי עגול', { description: 'מהודק, אלגנטי ומסודר', image: 'bouquet_m' }),
+            option('garden', 'גינה פראית', { description: 'חופשי, עם ירק ועשבי תיבול', image: 'bouquet_l' }),
+            option('tall', 'גבוה לאגרטל', { description: 'גבעולים ארוכים ודרמטיים', image: 'bouquet_xl' }),
+          ],
+        }),
         field('budget', 'תקציב לזר', 'radio', {
           required: true,
           appearance: 'tiles',
@@ -110,6 +129,11 @@ function flowerOrder(): WorkflowConfig {
     branding: { primaryColor: '#B84C6E', logoText: 'Bloom Studio' },
     consent: { required: true, text: `אני מאשר/ת שפרטי ההזמנה נכונים. ${DEMO_CONSENT_SUFFIX}` },
     successMessage: 'ההזמנה התקבלה! הסטודיו יבדוק את המועד ויאשר בהקדם.',
+    completion: { mode: 'calculated', allowPayLater: true },
+    confirmation: {
+      title: 'הזר בדרך לתכנון',
+      nextSteps: ['המעצבת בודקת זמינות פרחים ומועד משלוח', 'תקבלו אישור עם שעת משלוח משוערת (בדמו: הודעה מדומה)', 'ביום המשלוח — הזר יוצא אל המקבל/ת'],
+    },
   };
 }
 
@@ -168,6 +192,11 @@ function garageRepairs(): WorkflowConfig {
     disclaimer:
       'החלטות הנוגעות לבטיחות הרכב מחייבות התייעצות עם איש מקצוע מוסמך. זהו דמו: האישורים נשמרים בדפדפן בלבד ואינם מהווים חתימה אלקטרונית או התחייבות משפטית.',
     successMessage: 'ההחלטות נשמרו. המוסך יבצע רק את מה שאישרתם ויעדכן כשהרכב מוכן.',
+    completion: { mode: 'request' },
+    confirmation: {
+      title: 'ההחלטות נרשמו',
+      nextSteps: ['המוסך מבצע רק את התיקונים שאישרתם', 'תיקון שנדחה לא יבוצע ולא יחויב', 'נעדכן כשהרכב מוכן לאיסוף (בדמו: הודעה מדומה)'],
+    },
   };
 }
 
@@ -179,6 +208,13 @@ function restaurantEvent(): WorkflowConfig {
     caseFields: [],
     steps: [
       step('פרטי האירוע', [
+        field('event_why', 'אירוע אצלנו', 'highlights', {
+          items: [
+            highlight('חדר פרטי עד 80 סועדים', undefined, 'star'),
+            highlight('שף מלווה לאירוע', undefined, 'chef'),
+            highlight('מקדמה רק אחרי אישור', 'אין חיוב בשליחת הבקשה', 'shield'),
+          ],
+        }),
         field('event_date', 'תאריך האירוע', 'date', { required: true, min: 7, max: 365, role: 'date' }),
         field('guests', 'מספר אורחים', 'number', { required: true, min: 10, max: 80, helpText: 'בין 10 ל-80 אורחים', appearance: 'stepper' }),
         field('event_type', 'סוג האירוע', 'radio', {
@@ -236,6 +272,68 @@ function restaurantEvent(): WorkflowConfig {
     },
     disclaimer: 'מקדמה וסטטוס תשלום בדמו הם סימולציה בלבד. לא נגבה כסף אמיתי.',
     successMessage: 'הבקשה נשלחה! צוות האירועים יחזור אליכם עם אישור והצעה סופית.',
+    completion: { mode: 'deposit', depositPercent: 20, depositTiming: 'after_approval' },
+    confirmation: {
+      title: 'בקשת האירוע התקבלה',
+      nextSteps: ['צוות האירועים בודק זמינות ותפריט', 'תקבלו הצעה סופית ואישור', 'רק אחרי אישור תתבקש מקדמה של 20% (בדמו: סימולציה)'],
+    },
+  };
+}
+
+const BOOKING_SLOTS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'];
+
+function tableBooking(): WorkflowConfig {
+  return {
+    title: 'הזמנת שולחן',
+    description: 'בחרו ערב, שעה ומספר סועדים. הבקשה נשמרת עד שהמסעדה מאשרת אותה.',
+    mode: 'public',
+    caseFields: [],
+    steps: [
+      step('מתי מגיעים?', [
+        field('booking_notes', 'לפני שמתחילים', 'highlights', {
+          items: [
+            highlight('בקשה — לא הזמנה סופית', 'המסעדה מאשרת כל בקשה', 'calendar'),
+            highlight('עד 10 סועדים', 'לקבוצות גדולות — אירוע פרטי', 'chef'),
+            highlight('ללא תשלום מראש', 'לא נדרשים פרטי אשראי', 'shield'),
+          ],
+        }),
+        field('booking_date', 'תאריך', 'date', { required: true, min: 0, max: 60, role: 'date', helpText: 'סגור בימי ראשון' }),
+        field('booking_time', 'שעה', 'time', { required: true, options: BOOKING_SLOTS.map((t) => option(t, t)) }),
+        field('party_size', 'מספר סועדים', 'number', { required: true, min: 1, max: 10, appearance: 'stepper' }),
+        field('seating', 'העדפת ישיבה', 'radio', {
+          appearance: 'chips',
+          options: [option('inside', 'בפנים'), option('bar', 'ליד הבר'), option('terrace', 'מרפסת'), option('any', 'לא משנה')],
+        }),
+      ]),
+      step('פרטי ההזמנה', [
+        field('guest_name', 'שם מלא', 'text', { required: true, role: 'customer_name' }),
+        field('guest_phone', 'טלפון', 'phone', { required: true, role: 'customer_phone' }),
+        field('occasion', 'אירוע מיוחד?', 'radio', {
+          appearance: 'chips',
+          options: [option('none', 'סתם ערב טוב'), option('birthday', 'יום הולדת'), option('date', 'ערב זוגי'), option('business', 'ארוחה עסקית')],
+        }),
+        field('requests', 'בקשות מיוחדות', 'textarea', { placeholder: 'כיסא תינוק, נגישות, אלרגיות…', max: 300 }),
+      ]),
+    ],
+    pricing: { enabled: false, currency: 'ILS', fees: [], depositPercent: 0, totalLabel: 'סה״כ' },
+    branding: { primaryColor: '#A9502F', logoText: 'Urban Table' },
+    consent: { required: true, text: `ידוע לי שזו בקשה להזמנה ושהיא סופית רק לאחר אישור המסעדה. ${DEMO_CONSENT_SUFFIX}` },
+    successMessage: 'בקשת ההזמנה נשלחה. זו עדיין בקשה — נעדכן ברגע שהמסעדה תאשר.',
+    completion: { mode: 'request' },
+    booking: {
+      enabled: true,
+      dateKey: 'booking_date',
+      timeKey: 'booking_time',
+      guestsKey: 'party_size',
+      openWeekdays: [1, 2, 3, 4, 5, 6],
+      slots: BOOKING_SLOTS,
+      capacityPerSlot: 16,
+      capacityUnit: 'guests',
+    },
+    confirmation: {
+      title: 'בקשת ההזמנה התקבלה',
+      nextSteps: ['המסעדה בודקת את הזמינות בשעה שבחרתם', 'תקבלו עדכון כשהבקשה תאושר או תידחה (בדמו: הודעה מדומה)', 'השולחן שמור רק לאחר אישור'],
+    },
   };
 }
 
@@ -271,6 +369,7 @@ function documentCollection(): WorkflowConfig {
     branding: { primaryColor: '#18212D', logoText: 'המשרד שלי' },
     consent: { required: true, text: 'אני מאשר/ת שהמסמכים שייכים לי ושהפרטים נכונים. אין להעלות מידע רגיש אמיתי לדמו.' },
     successMessage: 'המסמכים התקבלו. נעדכן אם חסר משהו.',
+    completion: { mode: 'request' },
   };
 }
 
@@ -306,6 +405,7 @@ function quoteRequest(): WorkflowConfig {
     branding: { primaryColor: '#E96B3D', logoText: 'העסק שלי' },
     consent: { required: false, text: 'אני מאשר/ת יצירת קשר בנוגע לבקשה.' },
     successMessage: 'הבקשה התקבלה! נחזור עם הצעת מחיר.',
+    completion: { mode: 'quote' },
   };
 }
 
@@ -327,6 +427,7 @@ function generic(title = 'טופס פנייה'): WorkflowConfig {
     branding: { primaryColor: '#E96B3D', logoText: 'העסק שלי' },
     consent: { required: false, text: 'אני מאשר/ת יצירת קשר בנוגע לפנייה.' },
     successMessage: 'הפנייה התקבלה. נחזור אליכם בהקדם.',
+    completion: { mode: 'request' },
   };
 }
 
@@ -334,6 +435,7 @@ export const TEMPLATES: Record<TemplateKey, { label: string; description: string
   flower_order: { label: 'הזמנת פרחים', description: 'תקציב, צבעוניות, ברכה ומשלוח', build: flowerOrder },
   garage_repairs: { label: 'אישור תיקונים במוסך', description: 'תיק לרכב, אישור או דחייה לכל תיקון', build: garageRepairs },
   restaurant_event: { label: 'אירוע פרטי במסעדה', description: 'תאריך, אורחים, תפריט והערכת מחיר', build: restaurantEvent },
+  table_booking: { label: 'הזמנת שולחן / תור', description: 'תאריך, שעה, משתתפים — בקשה עד אישור', build: tableBooking },
   document_collection: { label: 'איסוף מסמכים', description: 'פרטים, מסמכים לפי סוג לקוח', build: documentCollection },
   quote_request: { label: 'בקשה להצעת מחיר', description: 'תיאור עבודה, דחיפות ופרטי קשר', build: quoteRequest },
   generic: { label: 'טופס בסיסי', description: 'נקודת התחלה ריקה לעריכה', build: () => generic() },

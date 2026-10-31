@@ -7,14 +7,17 @@
  * data interpreted by pure functions in src/engine. Nothing here is ever eval'd.
  */
 import { z } from 'zod';
-import { WorkflowThemeSchema } from './theme';
+import { BrandKitSchema, WorkflowThemeSchema } from './theme';
 
 /**
- * Data schema version. v2 added Workflow.design / WorkflowVersion.design and
- * optional field presentation hints; v1 payloads are migrated on read
- * (src/data/migrations.ts). The localStorage key namespace stays `formzelo:v1:`.
+ * Data schema version, migrated on read (src/data/migrations.ts). The
+ * localStorage key namespace stays `formzelo:v1:`.
+ *  v2: Workflow.design / WorkflowVersion.design + field presentation hints.
+ *  v3: per-workspace brand kit, content blocks, optional booking rules and an
+ *      explicit completion (payment) mode. New config fields are optional, so
+ *      published versions are never rewritten.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const id = z.string().min(1);
 const timestamp = z.string().min(1); // ISO-8601
@@ -34,10 +37,35 @@ export const FIELD_TYPES = [
   'checkbox',
   'decision',
   'file',
+  'time',
+  // Presentation blocks: shown to the customer, never answered or validated.
   'info',
+  'heading',
+  'image',
+  'gallery',
+  'divider',
+  'highlights',
+  'price_breakdown',
+  'terms',
 ] as const;
 export const FieldTypeSchema = z.enum(FIELD_TYPES);
 export type FieldType = z.infer<typeof FieldTypeSchema>;
+
+export const DISPLAY_FIELD_TYPES: readonly FieldType[] = ['info', 'heading', 'image', 'gallery', 'divider', 'highlights', 'price_breakdown', 'terms'];
+/** Blocks that only present content — excluded from answers, validation and pricing. */
+export const isDisplayField = (f: { type: FieldType }) => DISPLAY_FIELD_TYPES.includes(f.type);
+
+/** Local illustration key (see theme/art) or a workspace asset id. Never a URL. */
+export const MediaRefSchema = z.string().regex(/^([a-z][a-z0-9_]{1,40}|ast_[a-z0-9]+)$/, 'מקור תמונה לא חוקי');
+
+export const HIGHLIGHT_ICONS = ['sparkles', 'truck', 'leaf', 'shield', 'clock', 'heart', 'star', 'check', 'wrench', 'chef', 'calendar', 'phone'] as const;
+export const HighlightItemSchema = z.object({
+  id,
+  title: z.string().min(1).max(60),
+  text: z.string().max(160).optional(),
+  icon: z.enum(HIGHLIGHT_ICONS).optional(),
+});
+export type HighlightItem = z.infer<typeof HighlightItemSchema>;
 
 export const CONDITION_OPERATORS = [
   'equals',
@@ -67,10 +95,12 @@ export const FieldOptionSchema = z.object({
   image: z.string().optional(),
   /** Visual swatch for palette-style options (hex color). */
   swatch: z.string().optional(),
+  /** Places for this option (radio / select). Counted locally from submissions in this browser. */
+  capacity: z.number().int().min(1).max(10000).optional(),
 });
 export type FieldOption = z.infer<typeof FieldOptionSchema>;
 
-export const FIELD_APPEARANCES = ['auto', 'tiles', 'list', 'chips', 'swatches', 'stepper', 'card_preview'] as const;
+export const FIELD_APPEARANCES = ['auto', 'tiles', 'image_cards', 'list', 'chips', 'swatches', 'stepper', 'card_preview'] as const;
 export type FieldAppearance = (typeof FIELD_APPEARANCES)[number];
 
 export const WorkflowFieldSchema = z.object({
@@ -98,6 +128,12 @@ export const WorkflowFieldSchema = z.object({
   appearance: z.enum(FIELD_APPEARANCES).optional(),
   /** Urgency of a decision item (e.g. a repair). Business data, shown as a badge. */
   priority: z.enum(['critical', 'recommended', 'optional']).optional(),
+  /** Plain-text body for heading / terms / info blocks. Rendered as text, never HTML. */
+  content: z.string().max(4000).optional(),
+  /** Images for image / gallery blocks: local illustration keys or workspace asset ids. */
+  media: z.array(MediaRefSchema).max(12).optional(),
+  /** Service highlight items. */
+  items: z.array(HighlightItemSchema).max(8).optional(),
   /** Marks the field that holds the customer's display name / contact in the inbox. */
   role: z.enum(['customer_name', 'customer_phone', 'customer_email', 'date']).optional(),
 });
@@ -137,6 +173,58 @@ export const BrandingSchema = z.object({
 });
 export type Branding = z.infer<typeof BrandingSchema>;
 
+/**
+ * How a submission completes. Price calculation (pricing) is independent:
+ * a workflow can show a price and still collect nothing.
+ *  request            – no money involved
+ *  quote              – show an estimate; the business sends a final quote
+ *  fixed              – a fixed amount (simulated payment in the demo)
+ *  calculated         – the calculated total (simulated)
+ *  deposit            – a percentage of the total, on submit or after approval (simulated)
+ *  pay_after_approval – the full total is requested only after approval (simulated)
+ *  external_link      – the business's own payment page (https), opened by the customer
+ */
+export const COMPLETION_MODES = ['request', 'quote', 'fixed', 'calculated', 'deposit', 'pay_after_approval', 'external_link'] as const;
+export const CompletionSchema = z.object({
+  mode: z.enum(COMPLETION_MODES),
+  fixedAmount: z.number().min(0).max(1_000_000).optional(),
+  depositPercent: z.number().min(1).max(100).optional(),
+  depositTiming: z.enum(['on_submit', 'after_approval']).optional(),
+  /** Calculated / fixed: let the customer choose "pay later" instead of the simulated payment. */
+  allowPayLater: z.boolean().optional(),
+  externalUrl: z
+    .string()
+    .max(500)
+    .regex(/^https:\/\/[^\s<>"']+$/, 'קישור חייב להתחיל ב-https://')
+    .optional(),
+  externalLabel: z.string().max(60).optional(),
+  /** Preferred future provider id (catalog only — no live integration in the demo). */
+  providerId: z.string().max(40).optional(),
+});
+export type Completion = z.infer<typeof CompletionSchema>;
+export type CompletionMode = Completion['mode'];
+
+/** Booking request rules. Availability is evaluated locally and is NOT a guarantee. */
+export const BookingSchema = z.object({
+  enabled: z.boolean(),
+  dateKey: z.string().min(1),
+  timeKey: z.string().optional(),
+  guestsKey: z.string().optional(),
+  /** Open weekdays, 0 = Sunday … 6 = Saturday. */
+  openWeekdays: z.array(z.number().int().min(0).max(6)).min(1),
+  /** Offered start times, HH:MM. */
+  slots: z.array(z.string().regex(/^\d{2}:\d{2}$/)).max(48),
+  /** Capacity per slot, counted locally from requests in this browser. */
+  capacityPerSlot: z.number().int().min(1).max(1000),
+  capacityUnit: z.enum(['bookings', 'guests']),
+});
+export type Booking = z.infer<typeof BookingSchema>;
+
+export const ConfirmationSchema = z.object({
+  title: z.string().max(80).optional(),
+  nextSteps: z.array(z.string().min(1).max(160)).max(6).optional(),
+});
+
 export const WorkflowConfigSchema = z.object({
   title: z.string().min(1),
   description: z.string().default(''),
@@ -150,6 +238,12 @@ export const WorkflowConfigSchema = z.object({
   consent: z.object({ required: z.boolean(), text: z.string() }),
   disclaimer: z.string().optional(),
   successMessage: z.string().default('הבקשה התקבלה. נחזור אליכם בהקדם.'),
+  /** Optional; absent on legacy versions, derived by engine/completion.ts. */
+  completion: CompletionSchema.optional(),
+  booking: BookingSchema.optional(),
+  confirmation: ConfirmationSchema.optional(),
+  /** Owner-only notes from generation: requirements that need review or are not supported. Never shown to customers. */
+  draftNotes: z.array(z.string().min(1).max(300)).max(12).optional(),
 });
 export type WorkflowConfig = z.infer<typeof WorkflowConfigSchema>;
 
@@ -246,9 +340,22 @@ export const RUN_STATUSES = [
 export const RunStatusSchema = z.enum(RUN_STATUSES);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
+export const PAYMENT_STATUSES = [
+  'none',
+  'quote',
+  'payment_requested',
+  'deposit_requested',
+  'paid_simulated',
+  'deposit_paid_simulated',
+  'external_link',
+] as const;
+/** Payment state of a run. "*_simulated" means a demo button was pressed — no money moved. */
 export const PaymentSchema = z.object({
-  status: z.enum(['none', 'deposit_requested', 'deposit_paid_simulated']),
+  status: z.enum(PAYMENT_STATUSES),
   amount: z.number().min(0),
+  /** What the amount refers to; absent on legacy runs (deposit). */
+  kind: z.enum(['none', 'estimate', 'full', 'deposit', 'external']).optional(),
+  updatedAt: z.string().optional(),
 });
 export type Payment = z.infer<typeof PaymentSchema>;
 
@@ -271,6 +378,8 @@ export const WorkflowRunSchema = z.object({
   payment: PaymentSchema,
   customerName: z.string().default(''),
   customerContact: z.string().default(''),
+  /** Completion mode in effect when the run was submitted (frozen from its version). */
+  completionMode: z.enum(COMPLETION_MODES).optional(),
   consentAt: z.string().optional(),
   submittedAt: z.string().optional(),
   isDemo: z.boolean(),
@@ -291,6 +400,7 @@ export const RunEventSchema = z.object({
     'note_added',
     'notification_simulated',
     'payment_simulated',
+    'booking_confirmed',
   ]),
   actor: z.enum(['customer', 'owner', 'system']),
   message: z.string(),
@@ -348,6 +458,7 @@ export const OrgDataSchema = z.object({
   events: z.array(RunEventSchema),
   notifications: z.array(NotificationPreviewSchema),
   usage: z.array(UsageEventSchema),
+  brandKit: BrandKitSchema,
 });
 export type OrgData = z.infer<typeof OrgDataSchema>;
 

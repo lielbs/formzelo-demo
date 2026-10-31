@@ -48,26 +48,31 @@ VITE_BASE=/formzelo-demo/ npm run build
 | Route | What to try |
 | --- | --- |
 | `/` | Landing page. Edit the prompt in the hero and press **יצירה** — the right pane is the real renderer. **צרו תהליך עכשיו** opens the builder. |
-| `/demo` | Pick one of three fictional workspaces: **Bloom Studio** (flowers), **AutoCare Garage** (repairs), **Urban Table** (private events). Also: reset demo data. |
+| `/demo` | Pick one of three fictional workspaces: **Bloom Studio** (flowers), **AutoCare Garage** (repairs), **Urban Table** (private events + table booking). Also: reset demo data. |
 | `/app` | Dashboard: KPI cards, onboarding checklist, recent requests with filters, activity timeline, simulated notifications. |
 | `/app/workflows` | Search, filter, open, copy link, duplicate, archive/restore. |
 | `/app/workflows/new` | Describe a workflow in Hebrew (or click an example). See detected template + keywords, a live preview, then save as draft. |
-| `/app/workflows/:id` | Editor: title/description, mode (public / personal case), case fields, steps & fields (type, required, options, prices, order, conditions, min/max), pricing (fees, deposit %), branding, consent. Live preview, versions (view / restore), share link, open case. |
-| `/app/requests` | Inbox with status tabs, search, workflow filter, **תיק חדש** (garage case). |
-| `/app/requests/:id` | Answers, price breakdown, approve / reject / request changes / complete / cancel, simulated deposit, internal notes, event timeline, notification previews. |
+| `/app/workflows/:id` | **Design studio**: structure pane (steps & blocks, reorder, add from the block library) · live canvas (phone / tablet / desktop; click a block to select it) · inspector (block properties, step conditions, workflow details, design, completion & payment, booking rules, versions & share). Undo / redo (Ctrl+Z / Ctrl+Shift+Z), revert, save draft, versioned publish, unsaved-changes guard. |
+| `/app/brand` | **Brand kit**: display name, description, logo + secondary logo + cover (local upload), 4 brand colors with local colour extraction from the logo, typography, button shape, density, logo placement, decorations on/off, default design personality. Live preview on a real workflow. |
+| `/app/requests` | Inbox with status tabs, search, workflow filter, payment-state filter (none / quote / outstanding / paid — all simulated), sorting, **תיק חדש** (garage case). |
+| `/app/requests/:id` | Answers, booking card (request vs confirmed), completion & payment summary, price breakdown, approve / reject / request changes / complete / cancel, simulated "mark paid", internal notes, event timeline, notification previews. |
 | `/app/analytics` | Computed live from local runs: per-day chart, approval rate, response time, value per workflow. Toggle **כולל נתוני דמו** to exclude seeded data. |
-| `/app/settings` | Workspace brand, simulated team, storage usage, JSON export, reset. |
-| `/f/:slug` | Public customer flow, e.g. `/f/bloom-flowers`, `/f/urban-table-events`, `/f/autocare-repairs?r=run_demo_garage_case`. |
+| `/app/settings` | Workspace settings, simulated team, storage usage, JSON export, reset, **payment connectors catalog** (PayPlus, Cardcom, Tranzila, Grow/Meshulam, Pelecard, HYP, SUMIT, iCount, Morning, PayMe, Z-Credit, iCredit, Other — all "not connected · future"). |
+| `/f/:slug` | Public customer flow, e.g. `/f/bloom-flowers`, `/f/urban-table-events`, `/f/urban-table-booking`, `/f/autocare-repairs?r=run_demo_garage_case`. |
 | `/pricing` | Illustrative plans: 99 / 199 / 399 ₪ per month — no billing. |
 | `/themes` | Theme gallery: the six presets rendered live by the real engine, desktop/phone toggle, mix any theme with any sample content. |
 
 ### Scripted walkthroughs (all verified in a browser)
 
-1. **Flower order** → `/f/bloom-flowers` → budget 350, pastel, birthday → greeting, sender, gift wrap (+20) → recipient, address, date → summary shows 350 + 20 + 30 delivery = **₪400** → consent → submit. Open `/demo` → Bloom Studio: the request is first in the dashboard; approve it in the request page.
+1. **Flower order** → `/f/bloom-flowers` → bouquet style, budget 350, pastel, birthday → greeting (live card preview), sender, gift wrap (+20) → recipient, address, date → summary shows 350 + 20 + 30 delivery = **₪400** → choose **תשלום מדומה עכשיו** or **מאוחר יותר** (no card fields, nothing charged) → consent → submit. Open `/demo` → Bloom Studio: the request is first in the dashboard.
 2. **Garage** → `/f/autocare-repairs?r=run_demo_garage_case` → approve brake pads (650) and wipers (140), decline cabin filter (180) → **₪790** → consent → submit. The AutoCare inbox shows each decision separately. To start another case: AutoCare → **בקשות → תיק חדש**.
 3. **Builder** → `/app/workflows/new` → type e.g. `סטודיו ליוגה שרוצה טופס הרשמה לשיעור ניסיון עם תאריך ואימייל` → create → save → edit title / add a field → **פרסום** → **שיתוף → פתיחה כלקוח** → submit.
-4. **Restaurant** → `/f/urban-table-events` → 20 guests, chef menu (240/guest), wine (65/guest), cake (450) = **₪6,550**, deposit 20% = **₪1,310** (simulated). Pick "אירוע עסקי" to see the conditional company field. Approve in Urban Table → "ממתין למקדמה" → mark deposit paid (simulation).
-5. **Persistence / isolation** → reload any page: everything persists. Switch workspaces from the sidebar: each workspace shows only its own data.
+4. **Restaurant event** → `/f/urban-table-events` → 20 guests, chef menu (240/guest), wine (65/guest), cake (450) = **₪6,550**; the 20% deposit (**₪1,310**) is requested only after approval (simulated). Pick "אירוע עסקי" to see the conditional company field. Approve in Urban Table → "ממתין למקדמה" → mark paid (simulation).
+5. **Table booking** → `/f/urban-table-booking` → Sundays are rejected; slots show "מקומות אחרונים" / "מלא" from requests stored in this browser → submit → confirmation says **בקשת הזמנה — טרם אושרה** → approve in Urban Table (**אישור ההזמנה**) → the customer link now shows **הזמנה מאושרת**.
+6. **Brand kit** → `/app/brand` → change the primary colour / logo placement → save. Inheriting drafts update in the studio; the public link keeps the published look until you publish a new version.
+7. **Persistence / isolation** → reload any page: everything persists. Switch workspaces from the sidebar: each workspace shows only its own data and brand kit.
+8. **Composed workflow** → `/app/workflows/new` → pick the example `תהליך הרשמה לתחרות עם שלושה מסלולים, הגבלת משתתפים, אישור הורה לקטינים ותשלום אופציונלי` → the creation screen lists what was detected (registration, minors, 3 tracks, participant limit, parental consent, optional payment) and an amber **"דורש בדיקה או לא נתמך בדמו"** box → save → the studio shows the same review notes (owner-only) → publish → the public page offers three priced tracks with "נותרו N מקומות" (counted in this browser), a parent-consent step that appears only for ages under 18, and a simulated pay-now / pay-later checkout.
+9. **Booking lifecycle** → submit a table booking → the confirmation shows a progress strip (נשלחה → בבדיקה → מאושרת) and **ביטול בקשת ההזמנה** → cancel (two-step) → "ההזמנה בוטלה. המקום לא שמור." and the slot is released.
 
 ---
 
@@ -81,26 +86,40 @@ src/
     presets.ts            Six art-directed presets + buildTheme()
     resolver.ts           ThemeResolver interface + deterministic KeywordThemeResolver (not AI)
     tokens.ts             Theme → CSS custom properties + data-* attributes, contrast repair/warnings
+    brand.ts              Brand kit → effective theme; freezeTheme() for publishing
+    PresetPreview.tsx     Miniature built from real tokens (gallery / pickers)
     color.ts              WCAG contrast helpers
     art.tsx               Original local SVG artwork (hero art, option illustrations) + inference
     theme.css             All themed component styles; container queries for layout
     ThemeScope.tsx        Applies a theme to a subtree; bundles local @fontsource fonts
   engine/                 Pure, framework-free business logic (unit-tested)
     conditions.ts         Declarative condition evaluation (closed operator set)
-    pricing.ts            Option prices, add-ons, per-unit multipliers, fees, deposit
+    pricing.ts            Option prices, add-ons, per-unit multipliers, fees (price calculation only)
+    completion.ts         Completion / payment modes, payment plans and simulated states (independent from pricing)
+    booking.ts            Booking rules: open days, slots, local capacity, request vs confirmed; AvailabilityProvider seam
+    ai.ts                 AIProvider interface — inactive; only the local deterministic provider exists
     validation.ts         Builds Zod validators per field; display formatting
     transitions.ts        Run state machine + owner actions
     templates.ts          Real WorkflowConfig templates
-    generator.ts          DEMO Hebrew keyword → template mapper (not AI)
+    compose.ts            DEMO intent analysis (purpose, audience, choices, capacity, consent, approval, payment, booking,
+                          unsupported requirements) + composition of registration / survey flows from reusable blocks
+    generator.ts          DEMO entry point: composes or adapts the closest template, attaches owner-only review notes (not AI)
+    capacity.ts           Limited places per option (e.g. 30 per track), counted locally — not a cross-device guarantee
+    metrics.ts            Objective-aware metrics (bookings, approvals, quotes, registrations, simulated payments)
     runs.ts               Builds a run submission + simulated notification previews
   data/
     repository.ts         Async FormzeloRepository interface (storage-agnostic contract)
     localRepository.ts    localStorage implementation: versioned keys, Zod-validated reads, quarantine/recovery, local image assets
-    migrations.ts         Pure forward migrations (v1 → v2 adds designs) applied on read
+    migrations.ts         Pure forward migrations applied on read (v1 → v2 designs, v2 → v3 brand kit + booking demo)
     seed.ts               Fictional demo workspaces
     store.tsx             React context + useRepoQuery hook (refetch on writes, cross-tab via `storage` event)
-  renderer/               The ONE universal workflow renderer: field controls, hero, stepper, price summary, review, confirmation
-  pages/app/editor/       Field editor, Design tab (DesignPanel) and phone/desktop DevicePreview
+  integrations/payments.ts  PaymentProviderAdapter interface, provider catalog, simulated adapter (no live integrations)
+  renderer/               The ONE universal workflow renderer: field controls, content blocks, hero, stepper, price summary,
+                          checkout (simulated), reservation card, review, confirmation
+  pages/app/WorkflowEditor.tsx  Design studio shell (structure · canvas · inspector, undo/redo, drag-and-drop reordering)
+  hooks/useUnsavedGuard.ts      Unsaved-change protection: beforeunload + capture-phase guard on in-app links / workspace switches
+  pages/app/editor/       Block library, inspectors, Design panel, device previews
+  pages/app/BrandKit.tsx  Workspace brand kit
   components/             UI primitives, layout, timeline, tables, modals
   pages/                  Marketing pages, public flow, /app pages (code-split)
   test/                   Vitest suites
@@ -114,7 +133,13 @@ Key decisions:
 - **Immutable versions.** Publishing snapshots the draft into a `WorkflowVersion`. A run stores `versionId` and is always rendered and priced with that version, even after re-publishing.
 - **No arbitrary code.** Conditions use a fixed operator enum; pricing is declarative. Nothing from configuration is ever evaluated as JavaScript.
 - **Design is separate from business data.** `Workflow.design` (draft) and `WorkflowVersion.design` (frozen at publish) hold a `WorkflowTheme`; `WorkflowConfig` stays purely business. Old runs render with the exact config **and** design of their version.
-- **Performance.** The public flow is bundled eagerly; owner pages and Recharts are lazy-loaded chunks. Fonts are local (`@fontsource`, OFL) and only downloaded when a theme uses them.
+- **Payment is optional and separate from pricing.** `WorkflowConfig.completion.mode` is one of `request`, `quote`, `fixed`, `calculated`, `deposit` (on submit / after approval), `pay_after_approval`, `external_link` (https only). Request / quote runs have payment status `none` / `quote` and never appear as outstanding. Every "paid" state is suffixed `_simulated`; the demo never shows card fields and never contacts a provider. Legacy versions without `completion` keep their original behaviour (derived in `engine/completion.ts`).
+- **Booking requests are not confirmations.** A booking stays "בקשת הזמנה — טרם אושרה" until the business approves it. Availability is computed from requests in this browser only and is explicitly not a guarantee; production capacity enforcement belongs server-side behind `AvailabilityProvider`.
+- **Brand kit + per-workflow override.** Workflows with `design.inheritBrand` take colours, type, button shape, density, logo and cover from the workspace brand kit; publishing stores the *resolved* theme with inheritance off, so brand edits never alter published versions.
+- **Content is data, never markup.** Blocks (heading, text, terms, highlights, image, gallery, divider, price breakdown) render user text as React text nodes; images are local illustration keys or workspace asset ids (regex-validated, never URLs).
+- **Performance.** The public flow is bundled eagerly; owner pages, the app shell (`AppLayout`) and Recharts are lazy-loaded chunks. Vendor code is split into stable chunks (`vendor-react`, `vendor-router`, `vendor-zod`, `vendor-forms`) so deploys don't invalidate them and they download in parallel. Fonts are local (`@fontsource`, OFL) and only downloaded when a theme uses them.
+- **Composition before templates.** The generator first builds a structured `PromptIntent`; registration and survey requests are assembled from blocks (choice tiles with per-option capacity, participant details, conditional parent-consent step, completion mode), domain requests adapt the closest template. Anything the demo can't do safely (real SMS, signatures, invoices, card charging, calendar sync, ID numbers…) becomes an owner-only `draftNotes` entry, never a fake feature.
+- **Measure by objective.** Dashboard and analytics classify each workflow (`booking`, `approval`, `quote`, `payment`, `registration`, `request`) and only payment workflows report (simulated) money. Garage approvals count approved items, not revenue; rejected / cancelled requests never show an open payment.
 
 ### Theme engine
 
@@ -140,6 +165,28 @@ All variation flows through CSS custom properties + `data-*` attributes set by `
 **Local images**: uploads are decoded and re-encoded on a canvas (strips EXIF), downscaled and compressed (logo ≤ 80 KB, cover ≤ 320 KB, ≤ 1.2 MB per workspace) and stored under `formzelo:v1:assets:<orgId>` — never inside versions. Images used by a published version can't be deleted; missing/corrupt assets fall back to the illustration.
 
 **Migration**: data schema v2 (namespace stays `formzelo:v1:`). On first read, v1 workspaces get a resolver-chosen design on every workflow and the same design frozen onto existing versions; runs, answers and statuses are untouched. The original payload is kept under `formzelo:v1:pre-v2:*`.
+
+### Completion modes, booking and blocks (schema v3)
+
+```ts
+completion?: { mode: 'request'|'quote'|'fixed'|'calculated'|'deposit'|'pay_after_approval'|'external_link',
+               fixedAmount?, depositPercent?, depositTiming?: 'on_submit'|'after_approval',
+               allowPayLater?, externalUrl? /* https only */, externalLabel?, providerId? /* future, catalog only */ }
+booking?:    { enabled, dateKey, timeKey?, guestsKey?, openWeekdays: number[], slots: 'HH:MM'[],
+               capacityPerSlot, capacityUnit: 'bookings'|'guests' }
+confirmation?: { title?, nextSteps?: string[] }
+WorkflowField += time | heading | image | gallery | divider | highlights | price_breakdown | terms,
+                 content?, media?: (artKey|assetId)[], items?: {title, text?, icon?}[], appearance: …|image_cards
+Payment.status: none | quote | payment_requested | deposit_requested | paid_simulated | deposit_paid_simulated | external_link
+OrgData.brandKit: { displayName, description, logo/secondaryLogo/cover asset ids, palette{primary,secondary,accent,background},
+                    typography, button, density, logoPlacement, decorations, personality }
+```
+
+**Schema additions after v3 (no migration needed — all optional):** `FieldOption.capacity` (places per option, counted locally), `WorkflowConfig.draftNotes` (owner-only review notes from generation). Booking runs gained a customer-side cancellation through the personal link (`cancelRunByCustomer`, booking workflows only, recorded as a customer `status_changed` event).
+
+Booking lifecycle (from run status): `submitted` → **requested**, `in_review` → **pending approval**, `changes_requested` → **update requested**, `approved` / `completed` → **confirmed**, `rejected` → **rejected**, `cancelled` → **cancelled**. Rejected and cancelled requests release their slot and option places.
+
+**Migration v2 → v3** (on first read, original kept under `formzelo:v1:pre-v3:*`): creates each workspace's brand kit from its main workflow design, marks workflows that already match it as inheriting (no visual change), leaves published versions byte-for-byte unchanged, and adds the new **Urban Table booking** demo (workflow + sample requests) to existing Urban Table workspaces without touching their runs. Run references are now "highest + 1", so added runs never collide. No data reset is required; **/demo → איפוס** gives the newest seeds (e.g. Bloom's bouquet-style tiles and highlights appear only in fresh seeds, because published versions are immutable).
 
 ### Data model
 
@@ -194,7 +241,7 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 
 ### Prompt generator (DEMO)
 
-`engine/generator.ts` normalizes Hebrew text (strips niqqud/punctuation), matches keyword stems allowing up to two attached prefix letters (ו/ה/ב/ל/מ/ש/כ) so "זר" does not match "עזרה", scores templates, and falls back to an editable generic form. Modifiers add fields/fees for words such as תמונות, מקדמה, משלוח, אימייל, כתובת, תאריך. The UI always labels this **"יצירת דמו מקומית — ללא חיבור ל-AI"**.
+`engine/compose.ts` reads the prompt into a `PromptIntent`: purpose (registration, survey, order, booking, quote, documents, approval), subject (תחרות, סדנה, קורס…), audience (minors, businesses), choice groups with counts in digits or Hebrew number words ("שלושה מסלולים", "2 מועדים"), participant limits ("עד 12 משתתפים" / "הגבלת משתתפים"), parental consent (kept distinct from business approval), approval, payment preference (none / optional / required / deposit / after approval / quote), booking, files, email, address, and a list of unsupported requirements. Registration and survey intents are composed from blocks; other intents use `engine/generator.ts`, which normalizes Hebrew text (strips niqqud/punctuation), matches keyword stems allowing up to two attached prefix letters (ו/ה/ב/ל/מ/ש/כ) so "זר" does not match "עזרה", scores templates, applies modifiers (תמונות, מקדמה, משלוח, אימייל, כתובת, תאריך) and falls back to an editable generic form. Request phrasing ("תיצור לי…") is stripped from titles. Theme recommendation stays keyword-based. The UI always labels this **"יצירת דמו מקומית — ללא חיבור ל-AI"**; `engine/ai.ts` holds the inactive `AIProvider` seam for a future model that must return a schema-validated `WorkflowConfig`.
 
 ---
 
@@ -204,7 +251,7 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-50 unit tests in `src/test/`:
+90 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`):
 
 - **Schema:** all templates and seeded workspaces validate; malformed configs and unknown operators are rejected.
 - **Pricing:** flower (budget + wrap + delivery), garage (only approved repairs), restaurant (per-guest × guests, flat extras, 20% deposit), hidden fields never charged.
@@ -214,7 +261,16 @@ npm test
 - **Repository (in-memory store):** workspace isolation, persistence across instances, consent enforcement, garage decisions & total, version binding after re-publish, restaurant approval + simulated deposit, generated workflow publish, corrupt-storage recovery.
 - **Themes (`theme.test.ts`):** resolver mapping for all six presets + fallback + stem false positives; six structurally distinct valid presets; schema rejects bad colors/presets/remote images; contrast of buttons/links for every preset; contrast repair; appearance and illustration inference; v1→v2 migration (pure and in-place with backup, runs preserved); draft design persistence; version immutability (old version + old run keep their design, restore brings it back); asset size limits, missing-asset rejection, in-use deletion refusal, workspace scoping, corrupt asset fallback.
 
-Browser end-to-end checks (scripted over the DevTools protocol in local headless Edge against the dev server, fresh profiles): A flower order ₪400 → appears in the Bloom inbox; B garage approve 2 / decline 1 → ₪790 with per-item decisions; C restaurant 30 guests, chef menu, wine, cake → ₪9,600, deposit ₪1,920, conditional company field enforced, owner approval → simulated deposit paid; D Hebrew prompt → auto theme (creative) → override at creation → override + custom color + undo in the Design tab → publish → public page uses the frozen design → submit; E reload keeps data and design, later draft edits don't touch the published version; F workspace isolation; G no horizontal overflow at 375 px (landing, three flows, dashboard, editor) and in the 1440 px editor; console free of errors.
+- **v3 (`v3.test.ts`):** completion modes (legacy derivation, request/quote never outstanding, deposit on submit / after approval, pay after approval, fixed, calculated with pay-later, safe external links), booking (closed days, unoffered slots, local capacity, rejected requests free the slot), content blocks never become answers / validation errors and reject remote media, brand kit effective/frozen theme, brand kit persistence & per-workspace isolation, workflow override of the brand kit, upload removal blocked while referenced, flower pay-now / pay-later + simulated mark-paid, garage no-payment submission (₪790), booking request → approval → `booking_confirmed`, restaurant ₪9,600 + deposit after approval, conditional company field, custom prompt → create → publish → submit → correct inbox, v2 → v3 migration (pure, in place, booking demo appended, unique references).
+
+- **Composition (`v4.test.ts`):** the contest prompt yields purpose, subject, 3 tracks, capacity, parental consent and optional payment (and no business approval); it is composed from blocks with priced tracks, 30 places each, calculated completion with pay-later, review notes, creative theme; the parent step shows only under 18; price follows the chosen track; explicit numbers / approval / no-payment wording; unsupported requirements (signature, SMS, invoice) become notes; domain prompts keep their templates; surveys compose without payment.
+- **Lifecycle (`lifecycle.test.ts`):** every run status maps to a booking stage; requested → pending → confirmed → cancelled; rejection frees places; customer self-cancellation (once, booking flows only); option capacity counted from holding runs and enforced on submit; objective classification; garage approvals never reported as payments.
+
+Browser end-to-end checks after the v4 polish (local headless Edge, fresh profiles, console clean): contest prompt → detected chips + review notes → save → studio banner → publish → public page with priced tracks and places left → age 12 shows the parent step → simulated checkout → submit → places drop to "נותר מקום אחד"; table booking → progress strip → customer cancel → "ההזמנה בוטלה"; studio drag-and-drop reorder, undo, redo, leave-guard blocks sidebar navigation until confirmed; long Hebrew title stays clear of hero artwork; 3,000-character greeting and empty-step validation (3 errors, focus to first); zero horizontal overflow on 15 routes at 375 / 390 / 768 / 1024 / 1440 px and in the studio at 375 / 768 / 1024 / 1440 px.
+
+Browser end-to-end checks for v3 (local headless Edge over the DevTools protocol, fresh profiles, console clean): flower calculated total ₪400 with simulated pay-now → "שולם (סימולציה)"; garage 2 approved / 1 declined → ₪790 with "no payment" checkout and audit-style confirmation; restaurant ₪9,600, deposit ₪1,920 requested only after approval; table booking rejects Sunday, shows local slot availability, confirmation "בקשת הזמנה — טרם אושרה", owner approval → customer page "הזמנה מאושרת"; brand kit edit → live preview → saved, published flower page unchanged until republish; custom prompt (salon) → booking flow without restaurant wording → studio add block → publish → submit → inbox shows it with no payment; zero horizontal overflow on 13 routes at 390 / 768 / 1024 / 1440 px.
+
+Earlier browser end-to-end checks (scripted over the DevTools protocol in local headless Edge against the dev server, fresh profiles): A flower order ₪400 → appears in the Bloom inbox; B garage approve 2 / decline 1 → ₪790 with per-item decisions; C restaurant 30 guests, chef menu, wine, cake → ₪9,600, deposit ₪1,920, conditional company field enforced, owner approval → simulated deposit paid; D Hebrew prompt → auto theme (creative) → override at creation → override + custom color + undo in the Design tab → publish → public page uses the frozen design → submit; E reload keeps data and design, later draft edits don't touch the published version; F workspace isolation; G no horizontal overflow at 375 px (landing, three flows, dashboard, editor) and in the 1440 px editor; console free of errors.
 
 ---
 
@@ -230,6 +286,12 @@ Browser end-to-end checks (scripted over the DevTools protocol in local headless
 - Uploaded images live only in this browser and count toward the localStorage quota (capped at 1.2 MB per workspace). In production they'd go to object storage.
 - Option illustrations are generic local SVGs, inferred by keywords; they are labelled as illustrative and are not product photos.
 - Browsers that ran the earlier demo keep their data after the upgrade (migrated in place). Their stored demo workflows predate the new presentation hints, so some fields fall back to inferred styling (e.g. a dropdown instead of chips); **/demo → איפוס נתוני הדמו** loads the fully art-directed seeds.
+- **Payments are simulated.** No provider is connected; "paid" means a labelled demo button was pressed. External payment links open the business's own page and their outcome is unknown to the app.
+- **Booking availability is local.** It counts requests stored in this browser; two devices can request the same slot. Nothing is reserved until the business approves, and even then only in this browser.
+- **Generation is deterministic keyword matching, not AI.** Unknown prompts produce an editable generic form; the `AIProvider` interface is inactive.
+- The unsaved-changes guard (studio and brand kit) covers reload/close and every in-app link or workspace switch. Browser back/forward buttons are not intercepted (the app uses `BrowserRouter`, not a data router).
+- Option capacity ("נותרו N מקומות") and booking availability count submissions stored in this browser only.
+- Generated names, descriptions and sample prices of composed choices are placeholders and are flagged in the review notes.
 - Theme selection is keyword-based; unusual wording may pick a less fitting preset — the owner can always override it.
 
 ---
@@ -239,11 +301,13 @@ Browser end-to-end checks (scripted over the DevTools protocol in local headless
 1. **Backend & database:** Postgres (e.g. Supabase) with tables mirroring `schema.ts`; implement `SupabaseRepository` behind the same interface; DB migrations; row-level security per organization.
 2. **Server auth:** real accounts, organization membership & roles enforced server-side; signed, expiring personal case links.
 3. **Server-side validation:** reuse `engine/` (pure TS) in API routes / edge functions so pricing and validation can't be bypassed by the client.
-4. **Theme resolver:** optionally implement `ThemeResolver` with a model that returns a preset + token overrides validated by `WorkflowThemeSchema`, keeping the keyword resolver as fallback.
-5. **Genuine AI provider:** replace `generator.ts` with a model call that returns JSON validated by `WorkflowConfigSchema`; keep the deterministic generator as fallback; bound tokens, cost, rate and retries; human review before publish.
-6. **Billing:** subscription plans via a licensed payment provider; real deposits via hosted checkout with webhooks.
-7. **Messaging & jobs:** queue + workers for email/SMS/WhatsApp with templates, retries and opt-out.
-8. **Audit log:** append-only event store for every state change and admin action.
-9. **Secure storage:** object storage for uploads with virus scanning, size limits and signed URLs; data retention policy.
-10. **Rate limits & abuse protection** on public links and submissions; bot protection.
-11. **Backups & recovery:** automated DB backups, point-in-time restore, tested restore runbook; monitoring and alerting.
+4. **Payments:** implement `PaymentProviderAdapter` server-side for the chosen Israeli provider (hosted checkout, signed webhooks, provider transaction ids); the client never marks payments as paid.
+5. **Bookings:** server-side transactional capacity (`AvailabilityProvider`, e.g. Postgres exclusion constraints) and optional calendar sync; confirmations only after a successful hold.
+6. **Theme resolver:** optionally implement `ThemeResolver` with a model that returns a preset + token overrides validated by `WorkflowThemeSchema`, keeping the keyword resolver as fallback.
+7. **Genuine AI provider:** replace `generator.ts` with a model call that returns JSON validated by `WorkflowConfigSchema`; keep the deterministic generator as fallback; bound tokens, cost, rate and retries; human review before publish.
+8. **Billing:** subscription plans via a licensed payment provider; real deposits via hosted checkout with webhooks.
+9. **Messaging & jobs:** queue + workers for email/SMS/WhatsApp with templates, retries and opt-out.
+10. **Audit log:** append-only event store for every state change and admin action.
+11. **Secure storage:** object storage for uploads with virus scanning, size limits and signed URLs; data retention policy.
+12. **Rate limits & abuse protection** on public links and submissions; bot protection.
+13. **Backups & recovery:** automated DB backups, point-in-time restore, tested restore runbook; monitoring and alerting.

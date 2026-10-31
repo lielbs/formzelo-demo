@@ -8,6 +8,9 @@ import type { PriceResult } from '../engine/pricing';
 import { displayValue } from '../engine/validation';
 import { formatCurrency } from '../lib/format';
 import { hasArt, HeroArt, inferArt, OptionArt } from '../theme/art';
+import { bookingState, WEEKDAY_LABELS, weekdayOf } from '../engine/booking';
+import { COMPLETION_LABELS, completionOf, NO_COLLECTION, paymentPlan, safeExternalUrl } from '../engine/completion';
+import { formatDate } from '../lib/format';
 import { resolveAppearance } from './appearance';
 
 // ---------- brand & hero ----------
@@ -56,11 +59,20 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
       {art && layout !== 'none' && <HeroArt decoration={theme.decoration} className="fz-hero-art" />}
       <div className="fz-hero-content fz-anim-hero">
         <div className="flex items-center justify-between gap-3">
-          <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} />
+          {theme.logo.placement !== 'hidden' ? (
+            <div className={theme.logo.placement === 'center' ? 'flex flex-1 justify-center' : undefined}>
+              <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} />
+            </div>
+          ) : (
+            <span />
+          )}
           {preview && <span className="fz-fact shrink-0">תצוגה מקדימה</span>}
         </div>
         {theme.hero.eyebrow && !condensed && <p className="fz-hero-eyebrow mt-5">{theme.hero.eyebrow}</p>}
-        <h1 className="fz-display fz-hero-title">{config.title}</h1>
+        {/* Long owner-written titles step down a size so they never run under the artwork. */}
+        <h1 className="fz-display fz-hero-title" data-length={config.title.length > 56 ? 'xl' : config.title.length > 30 ? 'long' : undefined}>
+          {config.title}
+        </h1>
         {config.description && <p className="fz-hero-desc">{config.description}</p>}
         {layout !== 'none' && facts.length > 0 && !showSpecs && (
           <ul className="fz-hero-facts" aria-label="על התהליך">
@@ -197,12 +209,18 @@ export function DecisionTally({ fields, values }: { fields: WorkflowField[]; val
 }
 
 function depositNote(config: WorkflowConfig, price: PriceResult) {
-  if (!(config.pricing.depositPercent > 0 && price.total > 0)) return null;
-  return (
-    <p className="fz-help">
-      מקדמה לאחר אישור העסק: <strong className="fz-num">{formatCurrency(price.deposit)}</strong> ({config.pricing.depositPercent}%) — סימולציה בלבד, ללא חיוב.
-    </p>
-  );
+  const plan = paymentPlan(config, price);
+  if (price.total <= 0) return null;
+  if (plan.mode === 'deposit' && plan.dueAfterApproval > 0) {
+    return (
+      <p className="fz-help">
+        מקדמה רק אחרי אישור העסק: <strong className="fz-num">{formatCurrency(plan.dueAfterApproval)}</strong> — סימולציה בלבד, ללא חיוב.
+      </p>
+    );
+  }
+  if (plan.mode === 'pay_after_approval') return <p className="fz-help">אין חיוב בשליחה. התשלום יתבקש רק אם העסק יאשר (סימולציה).</p>;
+  if (plan.mode === 'quote') return <p className="fz-help">הערכה בלבד — העסק ישלח הצעת מחיר סופית.</p>;
+  return null;
 }
 
 export function PriceCard({ config, price, values, title }: { config: WorkflowConfig; price: PriceResult; values: Values; title?: string }) {
@@ -235,7 +253,7 @@ export function PriceCard({ config, price, values, title }: { config: WorkflowCo
         </span>
       </div>
       {depositNote(config, price)}
-      <p className="fz-help">המחיר הוא הערכה. לא מתבצע תשלום בדמו.</p>
+      <p className="fz-help">{NO_COLLECTION.includes(completionOf(config).mode) ? 'לא נגבה תשלום בתהליך זה.' : 'תשלומים בדמו הם סימולציה — לא מתבצע חיוב.'}</p>
     </section>
   );
 }
@@ -245,6 +263,8 @@ export function PriceBar({ config, price, values, hasAside, staticBar }: { confi
   const id = useId();
   const decisions = decisionFields(config);
   const approved = decisions.filter((f) => values[f.key] === 'approved').length;
+  // Fixed fees alone (e.g. delivery) aren't a price yet — don't show "₪30" before anything is chosen.
+  const nothingChosen = price.lines.every((l) => config.pricing.fees.some((f) => f.label === l.label));
   return (
     <div className="fz-bar" data-aside={hasAside || undefined} data-static={staticBar || undefined}>
       <div className="fz-bar-inner">
@@ -271,9 +291,15 @@ export function PriceBar({ config, price, values, hasAside, staticBar }: { confi
             {config.pricing.totalLabel}
             {decisions.length > 0 && <span className="fz-muted font-normal"> · {approved}/{decisions.length} אושרו</span>}
           </button>
-          <span className="fz-total-amount" aria-live="polite">
-            {formatCurrency(price.total)}
-          </span>
+          {nothingChosen && decisions.length === 0 ? (
+            <span className="fz-muted text-sm" aria-live="polite">
+              המחיר יופיע אחרי הבחירה
+            </span>
+          ) : (
+            <span className="fz-total-amount" aria-live="polite">
+              {formatCurrency(price.total)}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -396,5 +422,118 @@ export function Review({
         </section>
       )}
     </div>
+  );
+}
+
+// ---------- booking & checkout ----------
+
+/** Live summary of a booking request. Always says it is a request until approved. */
+export function ReservationCard({ config, values }: { config: WorkflowConfig; values: Values }) {
+  const b = config.booking;
+  if (!b?.enabled) return null;
+  const date = typeof values[b.dateKey] === 'string' ? (values[b.dateKey] as string) : '';
+  const time = b.timeKey && typeof values[b.timeKey] === 'string' ? (values[b.timeKey] as string) : '';
+  const guests = b.guestsKey ? Number(values[b.guestsKey]) || 0 : 0;
+  const wd = date ? weekdayOf(date) : null;
+  return (
+    <section className="fz-card fz-pad fz-reservation" aria-label="פרטי ההזמנה">
+      <p className="fz-hero-eyebrow !text-[color:var(--fz-muted)]">ההזמנה שלכם</p>
+      <dl className="mt-3 space-y-2.5 text-sm">
+        <div className="flex justify-between gap-3">
+          <dt className="fz-muted">יום</dt>
+          <dd className="font-semibold">{date ? `${wd !== null ? `יום ${WEEKDAY_LABELS[wd]}, ` : ''}${formatDate(date)}` : '—'}</dd>
+        </div>
+        {b.timeKey && (
+          <div className="flex justify-between gap-3">
+            <dt className="fz-muted">שעה</dt>
+            <dd className="fz-num font-semibold" dir="ltr">
+              {time || '—'}
+            </dd>
+          </div>
+        )}
+        {b.guestsKey && (
+          <div className="flex justify-between gap-3">
+            <dt className="fz-muted">סועדים</dt>
+            <dd className="fz-num font-semibold">{guests || '—'}</dd>
+          </div>
+        )}
+      </dl>
+      <div className="fz-divider my-4" />
+      <p className="fz-badge" data-tone="recommended">
+        {bookingState('submitted').label}
+      </p>
+      <p className="fz-help">ימי פעילות: {b.openWeekdays.map((d) => WEEKDAY_LABELS[d]).join(', ')}. הזמינות מחושבת מקומית ואינה שמירה של מקום.</p>
+    </section>
+  );
+}
+
+/** How the flow completes. Simulated payments never ask for card details. */
+export function CheckoutPanel({ config, price, payNow, onPayNow }: { config: WorkflowConfig; price: PriceResult; payNow: boolean; onPayNow: (v: boolean) => void }) {
+  const plan = paymentPlan(config, price);
+  const c = completionOf(config);
+  const meta = COMPLETION_LABELS[plan.mode];
+  if (plan.mode === 'request') {
+    return (
+      <section className="fz-checkout" data-mode="request" aria-label="סיום">
+        <p className="font-semibold">אין תשלום בתהליך הזה</p>
+        <p className="fz-help !mt-1">הבקשה תגיע לעסק לבדיקה ואישור.</p>
+      </section>
+    );
+  }
+  if (plan.mode === 'external_link') {
+    const url = safeExternalUrl(c.externalUrl);
+    return (
+      <section className="fz-checkout" data-mode="external" aria-label="תשלום">
+        <p className="font-semibold">{meta.title}</p>
+        <p className="fz-help !mt-1">
+          אחרי השליחה יוצג קישור לעמוד התשלום של העסק{url ? ` (${new URL(url).hostname})` : ''}. Formzelo אינו גובה ואינו רואה את פרטי התשלום.
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section className="fz-checkout" data-mode={plan.mode} aria-label="תשלום">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold">{meta.title}</p>
+          <p className="fz-help !mt-1">{plan.headline}</p>
+        </div>
+        <span className="fz-badge shrink-0" data-tone="recommended">
+          סימולציה · ללא חיוב
+        </span>
+      </div>
+      {plan.dueNow > 0 && (
+        <>
+          <div className="fz-total mt-4">
+            <span className="text-sm font-semibold">לתשלום עכשיו</span>
+            <span className="fz-total-amount">{formatCurrency(plan.dueNow)}</span>
+          </div>
+          {plan.choice && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="מועד תשלום">
+              {[
+                [true, 'תשלום מדומה עכשיו', 'לחיצה תסמן כשולם — לא יבוצע חיוב'],
+                [false, 'תשלום מאוחר יותר', 'העסק יפנה אליכם להשלמה'],
+              ].map(([v, label, desc]) => (
+                <label key={String(v)} className="fz-option" data-kind="row">
+                  <input type="radio" name="fz-pay-now" checked={payNow === v} onChange={() => onPayNow(v as boolean)} />
+                  <span className="fz-indicator" aria-hidden />
+                  <span className="fz-opt-body">
+                    <span className="fz-opt-label">{label as string}</span>
+                    <span className="fz-opt-desc">{desc as string}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+          <p className="fz-help">בדמו אין סליקה: לא מוזנים פרטי אשראי ולא עובר כסף. בגרסת ייצור התשלום יתבצע אצל ספק סליקה מורשה.</p>
+        </>
+      )}
+      {plan.dueNow === 0 && plan.dueAfterApproval > 0 && (
+        <div className="fz-total mt-4">
+          <span className="text-sm font-semibold">יתבקש רק אחרי אישור</span>
+          <span className="fz-total-amount">{formatCurrency(plan.dueAfterApproval)}</span>
+        </div>
+      )}
+    </section>
   );
 }

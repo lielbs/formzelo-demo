@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AnswerValue, RunAnswer, WorkflowConfig, WorkflowField } from '../domain/schema';
+import { isDisplayField, type AnswerValue, type RunAnswer, type WorkflowConfig, type WorkflowField } from '../domain/schema';
 import { formatCurrency, formatDate, isoDay } from '../lib/format';
 import { allVisibleFields, isFieldVisible, type Values } from './conditions';
 
@@ -14,9 +14,14 @@ const PHONE_RE = /^0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}$/;
  */
 export function fieldValidator(field: WorkflowField, today = new Date()): z.ZodType<unknown> {
   const req = field.required;
+  if (isDisplayField(field)) return z.any();
   switch (field.type) {
-    case 'info':
-      return z.any();
+    case 'time': {
+      const allowed = (field.options ?? []).map((o) => o.value);
+      let s = z.string().regex(/^\d{2}:\d{2}$/, 'יש לבחור שעה');
+      if (allowed.length) s = s.refine((v) => allowed.includes(v), 'השעה אינה ברשימת השעות האפשריות');
+      return req ? s : z.union([z.literal(''), s]).optional();
+    }
     case 'email': {
       const s = z.string().trim().email('כתובת אימייל לא תקינה');
       return req ? s : z.union([z.literal(''), s]).optional();
@@ -78,7 +83,7 @@ export function fieldValidator(field: WorkflowField, today = new Date()): z.ZodT
 export function validateFields(fields: WorkflowField[], values: Values, today = new Date()): FieldErrors {
   const errors: FieldErrors = {};
   for (const field of fields) {
-    if (field.type === 'info' || !isFieldVisible(field, values)) continue;
+    if (isDisplayField(field) || !isFieldVisible(field, values)) continue;
     const raw = values[field.key];
     if (field.required && (raw === undefined || raw === null || raw === '')) {
       errors[field.key] = field.type === 'decision' ? 'יש לאשר או לדחות' : field.type === 'checkbox' ? 'יש לסמן כדי להמשיך' : REQUIRED;
@@ -112,6 +117,10 @@ export function displayValue(field: WorkflowField, value: AnswerValue | undefine
       return value === 'approved' ? 'אושר' : value === 'declined' ? 'נדחה' : '—';
     case 'date':
       return formatDate(String(value));
+    case 'time': {
+      const o = field.options?.find((x) => x.value === value);
+      return o?.label ?? String(value);
+    }
     default:
       return String(value);
   }
@@ -120,7 +129,7 @@ export function displayValue(field: WorkflowField, value: AnswerValue | undefine
 /** Serializes visible answers into RunAnswer records with human-readable values. */
 export function toRunAnswers(fields: WorkflowField[], values: Values): RunAnswer[] {
   return fields
-    .filter((f) => f.type !== 'info' && isFieldVisible(f, values))
+    .filter((f) => !isDisplayField(f) && isFieldVisible(f, values))
     .map((f) => {
       const v = values[f.key];
       return {

@@ -29,6 +29,7 @@ import { PLANS } from '../lib/plans';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import type { ThemePresetId } from '../domain/theme';
 import { HeroArt } from '../theme/art';
+import { BrandShowcase, CompletionShowcase } from './LandingShowcase';
 import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
 
@@ -42,7 +43,8 @@ const STEPS = [
 const EXAMPLES = [
   { icon: Flower2, name: 'Bloom Studio', title: 'הזמנת זר פרחים', text: 'תקציב, צבעוניות, ברכה עם תצוגת כרטיס, אריזה ומשלוח — עם סכום מחושב.', href: `/f/${DEMO_SLUGS.flowers}`, preset: 'floral_boutique' as ThemePresetId },
   { icon: Car, name: 'AutoCare', title: 'אישור תיקונים לרכב', text: 'הלקוח מאשר או דוחה כל תיקון בנפרד ורואה סכום מדויק.', href: `/f/${DEMO_SLUGS.garage}?r=${DEMO_GARAGE_CASE_ID}`, preset: 'automotive_precision' as ThemePresetId },
-  { icon: UtensilsCrossed, name: 'Urban Table', title: 'אירוע פרטי במסעדה', text: 'תאריך, אורחים, תפריט ותוספות, הערכת מחיר ומקדמה מדומה.', href: `/f/${DEMO_SLUGS.events}`, preset: 'hospitality_premium' as ThemePresetId },
+  { icon: UtensilsCrossed, name: 'Urban Table', title: 'אירוע פרטי במסעדה', text: 'תאריך, אורחים, תפריט ותוספות, הערכת מחיר ומקדמה רק אחרי אישור.', href: `/f/${DEMO_SLUGS.events}`, preset: 'hospitality_premium' as ThemePresetId },
+  { icon: UtensilsCrossed, name: 'Urban Table', title: 'הזמנת שולחן', text: 'תאריך, שעה וסועדים. בקשה עד אישור המסעדה — בלי תשלום מראש.', href: `/f/${DEMO_SLUGS.booking}`, preset: 'hospitality_premium' as ThemePresetId },
 ];
 
 const BENEFITS = [
@@ -179,8 +181,23 @@ export function Landing() {
           <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:py-20">
             <div>
               <p className="text-sm font-medium text-orange">מתארים. יוצרים. שולחים.</p>
-              <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-midnight sm:text-5xl lg:text-[56px]">כל רעיון הופך לתהליך.</h1>
-              <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-muted">תארו מה אתם צריכים, קבלו תהליך דיגיטלי מוכן ושלחו אותו ללקוחות בלינק אחד.</p>
+              <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-midnight sm:text-5xl lg:text-[54px]">תהליך עסקי יפה, מתיאור של משפט אחד.</h1>
+              <ol className="mt-6 max-w-md space-y-3 text-[17px] leading-snug text-ink">
+                {[
+                  ['תארו', 'במילים שלכם מה הלקוחות צריכים למלא, לבחור או לאשר.'],
+                  ['קבלו', 'תהליך אינטראקטיבי ממותג — הזמנה, אישור, הרשמה או תור.'],
+                  ['שלחו קישור אחד', 'ונהלו את כל הבקשות, האישורים וההזמנות במקום אחד.'],
+                ].map(([b, t], i) => (
+                  <li key={b} className="flex gap-3">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-midnight text-xs font-semibold text-white tabular-nums" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <span>
+                      <strong className="font-semibold">{b}</strong> <span className="text-ink-muted">{t}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink to="/app/workflows/new" size="lg">
                   צרו תהליך עכשיו
@@ -189,9 +206,9 @@ export function Landing() {
                   לסביבות הדמו
                 </ButtonLink>
               </div>
-              <ul className="mt-8 space-y-2 text-sm text-ink-muted">
-                {['רץ מקומית בדפדפן — בלי חשבון ובלי כרטיס אשראי', 'מנוע אחד לכל סוג עסק, מונע סכמה', 'כל סימולציה מסומנת בבירור'].map((t) => (
-                  <li key={t} className="flex items-center gap-2">
+              <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-ink-muted">
+                {['בלי חשבון ובלי כרטיס אשראי', 'רץ מקומית בדפדפן', 'כל סימולציה מסומנת בבירור'].map((t) => (
+                  <li key={t} className="flex items-center gap-1.5">
                     <Check className="h-4 w-4 text-teal" aria-hidden /> {t}
                   </li>
                 ))}
@@ -224,18 +241,19 @@ export function Landing() {
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
-                <h2 className="text-3xl font-semibold tracking-tight text-midnight">שלוש דוגמאות חיות</h2>
-                <p className="mt-2 text-ink-muted">אותו מנוע, שלושה עסקים — וכל אחד בשפה העיצובית שלו. מלאו ושלחו, והבקשה תופיע בלוח הבקרה.</p>
+                <h2 className="text-3xl font-semibold tracking-tight text-midnight">דוגמאות חיות</h2>
+                <p className="mt-2 text-ink-muted">אותו מנוע — הזמנה, אישור תיקונים, אירוע והזמנת שולחן — כל אחד בשפה העיצובית שלו. מלאו ושלחו, והבקשה תופיע בלוח הבקרה.</p>
               </div>
               <DemoBadge className="self-start sm:self-auto" />
             </div>
-            <ul className="mt-10 grid gap-5 md:grid-cols-3">
+            <ul className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
               {EXAMPLES.map((e) => (
                 <li key={e.title}>
                   <Link to={e.href} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-cloud-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
                     <ThemeScope theme={buildTheme(e.preset)} className="relative h-36 overflow-hidden" style={{ background: 'var(--fz-hero-bg)', color: 'var(--fz-hero-text)' }}>
                       <HeroArt decoration={PRESETS[e.preset].theme.decoration} className="absolute inset-0 h-full w-full transition duration-500 group-hover:scale-[1.04]" />
-                      <div className="relative flex h-full flex-col justify-end p-5">
+                      {/* Scrim: the artwork never sits behind the title text. */}
+                      <div className="relative flex h-full flex-col justify-end p-5" style={{ background: 'linear-gradient(to top, var(--fz-hero-bg) 34%, color-mix(in srgb, var(--fz-hero-bg) 70%, transparent) 62%, transparent)' }}>
                         <span className="text-[11px] font-medium opacity-75">{e.name}</span>
                         <span className="fz-display mt-0.5 text-[calc(1.35rem*var(--fz-display-scale))] leading-tight">{e.title}</span>
                       </div>
@@ -272,6 +290,18 @@ export function Landing() {
                 </span>
               </span>
             </Link>
+          </div>
+        </section>
+
+        <section aria-label="ערכת מותג" className="border-y border-cloud-200 bg-white py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <BrandShowcase />
+          </div>
+        </section>
+
+        <section aria-label="אופן סיום ותשלום" className="py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <CompletionShowcase />
           </div>
         </section>
 

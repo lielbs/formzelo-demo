@@ -4,19 +4,22 @@
  * driven entirely by WorkflowConfig (business data) and WorkflowTheme
  * (design tokens). No per-business pages exist.
  */
-import { AlertCircle, AlertTriangle, ArrowLeft, ArrowRight, Send, ShieldCheck } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ArrowLeft, ArrowRight, CreditCard, Send, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import type { RunAnswer, WorkflowConfig } from '../domain/schema';
+import { isDisplayField, type RunAnswer, type WorkflowConfig } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
 import { ValidationFailedError } from '../data/repository';
 import { visibleFields, visibleSteps, type Values } from '../engine/conditions';
+import { validateBooking, type SlotAvailability } from '../engine/booking';
+import { validateOptionCapacity, type OptionUsage } from '../engine/capacity';
+import { paymentPlan } from '../engine/completion';
 import { computePrice } from '../engine/pricing';
 import { validateFields, type FieldErrors } from '../engine/validation';
 import { ThemeScope } from '../theme/ThemeScope';
 import { recommendTheme } from '../theme/resolver';
 import { fieldDomId, FieldInput } from './FieldInput';
-import { decisionFields, Hero, PriceBar, PriceCard, Review, Stepper } from './parts';
+import { CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
 
 export interface RendererProps {
   config: WorkflowConfig;
@@ -27,14 +30,39 @@ export interface RendererProps {
   assets?: Record<string, string>;
   initialValues?: Values;
   caseAnswers?: RunAnswer[];
-  onSubmit?: (values: Values, consent: boolean) => Promise<void>;
+  /** `payNow`: the customer chose the simulated payment (no money moves). */
+  onSubmit?: (values: Values, consent: boolean, opts: { payNow: boolean }) => Promise<void>;
+  /** Local slot usage for booking workflows (demo only, see engine/booking.ts). */
+  getAvailability?: (date: string) => Promise<SlotAvailability[]>;
+  /** Live runs only: local places taken per limited option. */
+  getOptionUsage?: () => Promise<OptionUsage>;
+  /** Studio: jump the preview to the step that contains this step id. */
+  focusStepId?: string;
+  /** Studio: highlight a block and let clicks in the canvas select blocks. */
+  selectedFieldId?: string;
+  onSelectField?: (fieldId: string) => void;
   /** Rendered inside another page (editor, landing) rather than as the whole page. */
   embedded?: boolean;
   /** The renderer sits in its own scroll container marked data-fz-scroll (device previews). */
   scrollFrame?: boolean;
 }
 
-export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, initialValues, caseAnswers = [], onSubmit, embedded, scrollFrame }: RendererProps) {
+export function WorkflowRenderer({
+  config,
+  mode,
+  theme: themeProp,
+  assets = {},
+  initialValues,
+  caseAnswers = [],
+  onSubmit,
+  embedded,
+  scrollFrame,
+  getAvailability,
+  getOptionUsage,
+  focusStepId,
+  selectedFieldId,
+  onSelectField,
+}: RendererProps) {
   const theme = useMemo(() => themeProp ?? recommendTheme({ title: config.title, description: config.description }).theme, [themeProp, config.title, config.description]);
   const { control, watch, getValues, setError, clearErrors, formState } = useForm<Values>({ defaultValues: initialValues ?? {} });
   const values = watch();
@@ -46,6 +74,9 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
+  const [payNow, setPayNow] = useState(true);
+  const [availability, setAvailability] = useState<Record<string, SlotAvailability> | undefined>();
+  const [usage, setUsage] = useState<OptionUsage | undefined>();
   const topRef = useRef<HTMLDivElement>(null);
 
   const steps = visibleSteps(config, values);
@@ -55,6 +86,70 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
   const price = useMemo(() => computePrice(config, values), [config, values]);
   const errors = formState.errors as Record<string, { message?: string } | undefined>;
   const hasDecisions = decisionFields(config).length > 0;
+
+  const plan = paymentPlan(config, price);
+  const bookingDate = config.booking?.enabled ? values[config.booking.dateKey] : undefined;
+
+  // Booking: refresh local slot usage when the date changes. The callback is read
+  // through a ref so an inline function from the parent doesn't refetch every render.
+  const availabilityRef = useRef(getAvailability);
+  availabilityRef.current = getAvailability;
+  const hasAvailability = Boolean(getAvailability);
+  useEffect(() => {
+    const fetchSlots = availabilityRef.current;
+    if (!fetchSlots || typeof bookingDate !== 'string' || !bookingDate) {
+      setAvailability(undefined);
+      return;
+    }
+    let cancelled = false;
+    fetchSlots(bookingDate)
+      .then((slots) => !cancelled && setAvailability(Object.fromEntries(slots.map((s) => [s.time, s]))))
+      .catch(() => !cancelled && setAvailability(undefined));
+    return () => {
+      cancelled = true;
+    };
+  }, [hasAvailability, bookingDate]);
+
+  // Limited options (e.g. 30 places per track): load local usage once per mount.
+  const usageRef = useRef(getOptionUsage);
+  usageRef.current = getOptionUsage;
+  const hasUsage = Boolean(getOptionUsage);
+  useEffect(() => {
+    const load = usageRef.current;
+    if (!load) return;
+    let cancelled = false;
+    load()
+      .then((u) => !cancelled && setUsage(u))
+      .catch(() => !cancelled && setUsage(undefined));
+    return () => {
+      cancelled = true;
+    };
+  }, [hasUsage]);
+
+  // Studio: selecting a block in the structure pane jumps the canvas to its step.
+  useEffect(() => {
+    if (!focusStepId) return;
+    const i = steps.findIndex((s) => s.id === focusStepId);
+    if (i >= 0 && i !== stepIndex) {
+      setDir(i > stepIndex ? 'fwd' : 'back');
+      setStepIndex(i);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusStepId]);
+
+  // Studio: bring the selected block into view inside the (scaled) device frame.
+  useEffect(() => {
+    if (!selectedFieldId) return;
+    const raf = requestAnimationFrame(() => {
+      const el = topRef.current?.querySelector<HTMLElement>(`[data-fz-field-id="${selectedFieldId}"]`);
+      const frame = topRef.current?.closest<HTMLElement>('[data-fz-scroll]');
+      if (!el || !frame) return;
+      const scale = frame.getBoundingClientRect().height / frame.offsetHeight || 1;
+      const delta = (el.getBoundingClientRect().top - frame.getBoundingClientRect().top) / scale;
+      frame.scrollTo({ top: frame.scrollTop + delta - frame.clientHeight / 4, behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedFieldId, stepIndex]);
 
   // Keep the cursor valid when the editor removes steps or a condition hides one.
   useEffect(() => {
@@ -83,9 +178,29 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
     return keys.length === 0;
   };
 
+  /** Field rules + booking rules (open days, offered slots, locally-known full slots) for some fields. */
+  const stepErrors = (fields: ReturnType<typeof visibleFields>, all: Values): FieldErrors => {
+    const errs = validateFields(fields, all);
+    if (usage) {
+      const keys = new Set(fields.map((f) => f.key));
+      for (const [k, msg] of Object.entries(validateOptionCapacity(config, all, usage))) if (keys.has(k) && !errs[k]) errs[k] = msg;
+    }
+    const b = config.booking;
+    if (b?.enabled) {
+      const keys = new Set(fields.map((f) => f.key));
+      const booking = validateBooking(config, all, []);
+      const time = b.timeKey ? all[b.timeKey] : undefined;
+      if (b.timeKey && typeof time === 'string' && availability?.[time]?.state === 'full' && !booking[b.timeKey]) {
+        booking[b.timeKey] = 'המועד מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו שעה אחרת.';
+      }
+      for (const [k, msg] of Object.entries(booking)) if (keys.has(k) && !errs[k]) errs[k] = msg;
+    }
+    return errs;
+  };
+
   const goNext = () => {
     if (!current) return;
-    if (!applyErrors(validateFields(visibleFields(current, getValues()), getValues()))) return;
+    if (!applyErrors(stepErrors(visibleFields(current, getValues()), getValues()))) return;
     go(stepIndex + 1);
   };
 
@@ -93,7 +208,7 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
     // Re-validate all steps: values may have changed after visiting the summary.
     const all = getValues();
     for (let i = 0; i < steps.length; i++) {
-      const errs = validateFields(visibleFields(steps[i]!, all), all);
+      const errs = stepErrors(visibleFields(steps[i]!, all), all);
       if (Object.keys(errs).length) {
         go(i);
         applyErrors(errs);
@@ -112,7 +227,8 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await onSubmit(all, consent);
+      // Nothing due now → no payment; due with no choice → the simulated pay button is the submit.
+      await onSubmit(all, consent, { payNow: plan.dueNow > 0 && (plan.choice ? payNow : true) });
     } catch (err) {
       if (err instanceof ValidationFailedError) {
         const target = steps.findIndex((s) => s.fields.some((f) => err.errors[f.key]));
@@ -131,13 +247,21 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
   const composition = theme.composition;
   const editorial = composition === 'editorial_split';
   const pricing = config.pricing.enabled;
-  const hasAside = pricing && !editorial;
+  const booking = Boolean(config.booking?.enabled);
+  const hasAside = (pricing || booking) && !editorial;
   const stickyBar = pricing && theme.mobile.stickySummary;
   const logoUrl = theme.logo.assetId ? assets[theme.logo.assetId] : undefined;
   const coverUrl = theme.hero.coverAssetId ? assets[theme.hero.coverAssetId] : undefined;
   const caseInHero = theme.hero.layout === 'banner';
   const titles = [...steps.map((s) => s.title), 'סיכום ואישור'];
-  const fieldsCount = steps.reduce((n, s) => n + s.fields.filter((f) => f.type !== 'info').length, 0);
+  const fieldsCount = steps.reduce((n, s) => n + s.fields.filter((f) => !isDisplayField(f)).length, 0);
+  const submitLabel = hasDecisions
+    ? 'שליחת ההחלטות'
+    : plan.dueNow > 0 && (!plan.choice || payNow)
+      ? 'תשלום מדומה ושליחה'
+      : booking
+        ? 'שליחת בקשת הזמנה'
+        : 'שליחה';
   const lastBeforeSummary = stepIndex === summaryIndex - 1;
 
   return (
@@ -161,7 +285,7 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
             condensed={stepIndex > 0}
             preview={mode === 'preview'}
           >
-            {editorial && pricing ? <PriceCard config={config} price={price} values={values} /> : null}
+            {editorial && booking ? <ReservationCard config={config} values={values} /> : editorial && pricing ? <PriceCard config={config} price={price} values={values} /> : null}
           </Hero>
         </div>
 
@@ -214,8 +338,24 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
                   {current.description && <p className="fz-muted mb-5 text-[15px] leading-relaxed">{current.description}</p>}
                   <div className="fz-fields">
                     {visibleFields(current, values).map((f) => (
-                      <Controller
+                      <div
                         key={f.id}
+                        className="fz-block"
+                        data-fz-field-id={f.id}
+                        data-selected={selectedFieldId === f.id || undefined}
+                        data-selectable={onSelectField ? true : undefined}
+                        onClickCapture={
+                          onSelectField
+                            ? (e) => {
+                                // In the studio a click selects the block instead of answering it.
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSelectField(f.id);
+                              }
+                            : undefined
+                        }
+                      >
+                      <Controller
                         name={f.key}
                         control={control}
                         render={({ field: rhf }) => (
@@ -223,6 +363,11 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
                             field={f}
                             value={rhf.value}
                             values={values}
+                            assets={assets}
+                            price={price}
+                            config={config}
+                            availability={config.booking?.timeKey === f.key ? availability : undefined}
+                            usage={usage?.[f.key]}
                             optionArt={theme.optionArt}
                             onChange={(v) => {
                               rhf.onChange(v);
@@ -236,6 +381,7 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
                           />
                         )}
                       />
+                      </div>
                     ))}
                     {current.fields.length === 0 && <p className="fz-muted text-sm">אין שדות בשלב זה עדיין.</p>}
                   </div>
@@ -245,6 +391,12 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
               {isSummary && (
                 <div key="summary" className="fz-step space-y-5" data-dir={dir}>
                   <Review config={config} steps={steps} values={values} visible={(s) => visibleFields(s, values)} onEdit={go} price={price} optionArt={theme.optionArt} />
+                  {booking && (
+                    <div className="fz-inline-price">
+                      <ReservationCard config={config} values={values} />
+                    </div>
+                  )}
+                  <CheckoutPanel config={config} price={price} payNow={payNow} onPayNow={setPayNow} />
 
                   {config.consent.text && (
                     <div>
@@ -304,8 +456,8 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
               </button>
               {isSummary ? (
                 <button type="submit" className="fz-btn fz-btn-primary" disabled={submitting} aria-busy={submitting || undefined}>
-                  {submitting ? <span className="fz-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-                  {submitting ? 'שולח…' : hasDecisions ? 'שליחת ההחלטות' : 'שליחה'}
+                  {submitting ? <span className="fz-spin" aria-hidden /> : plan.dueNow > 0 && (!plan.choice || payNow) ? <CreditCard className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
+                  {submitting ? 'שולח…' : submitLabel}
                 </button>
               ) : (
                 <button type="submit" className="fz-btn fz-btn-primary">
@@ -317,10 +469,11 @@ export function WorkflowRenderer({ config, mode, theme: themeProp, assets = {}, 
           </div>
         </form>
 
-        {pricing && (
-          <aside className="fz-aside" aria-label="סיכום מחיר">
-            <div className="fz-aside-inner">
-              <PriceCard config={config} price={price} values={values} />
+        {(pricing || booking) && (
+          <aside className="fz-aside" aria-label={booking ? 'פרטי ההזמנה' : 'סיכום מחיר'}>
+            <div className="fz-aside-inner space-y-4">
+              {booking && <ReservationCard config={config} values={values} />}
+              {pricing && <PriceCard config={config} price={price} values={values} />}
             </div>
           </aside>
         )}

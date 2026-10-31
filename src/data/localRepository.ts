@@ -30,11 +30,16 @@ import {
   type WorkflowRun,
   type WorkflowVersion,
 } from '../domain/schema';
-import { ASSET_LIMITS, AssetSchema, WorkflowThemeSchema, type Asset, type WorkflowTheme } from '../domain/theme';
+import { ASSET_LIMITS, AssetSchema, BrandKitSchema, WorkflowThemeSchema, type Asset, type BrandKit, type WorkflowTheme } from '../domain/theme';
+import { CUSTOMER_CANCELLABLE, slotAvailability, validateBooking } from '../engine/booking';
+import { optionUsage, validateOptionCapacity } from '../engine/capacity';
+import { initialPayment, paymentOnApproval, simulatePaid } from '../engine/completion';
+import { computePrice } from '../engine/pricing';
+import { freezeTheme } from '../theme/brand';
 import { recommendTheme } from '../theme/resolver';
 import { migrateMeta, migrateOrgData } from './migrations';
 import type { Values } from '../engine/conditions';
-import { buildSubmission, caseLinkNotification, referencePrefix, statusNotification, submitNotifications } from '../engine/runs';
+import { buildSubmission, caseLinkNotification, nextReference, statusNotification, submitNotifications } from '../engine/runs';
 import { assertTransition, STATUS_LABELS } from '../engine/transitions';
 import { toRunAnswers, validateFields, validateRun } from '../engine/validation';
 import { newId, nowIso, slugify } from '../lib/id';
@@ -143,8 +148,10 @@ export class LocalStorageRepository implements FormzeloRepository {
     if (parsed.success) {
       if (migrated) {
         // Keep the original payload until the migrated one is safely written.
-        this.backup(orgKey(orgId), 'pre-v2');
+        this.backup(orgKey(orgId), `pre-v${SCHEMA_VERSION}`);
         this.write(orgKey(orgId), parsed.data);
+        // Migrations may add workflows (e.g. new demo flows) — keep public slugs resolvable.
+        this.reindexSlugs();
         console.info(`[formzelo] migrated workspace ${orgId} to schema v${SCHEMA_VERSION}`);
       }
       return parsed.data;
@@ -186,7 +193,7 @@ export class LocalStorageRepository implements FormzeloRepository {
     if (!meta.success) return;
     const slugIndex: Record<string, string> = {};
     for (const id of meta.data.orgIds) {
-      const d = OrgDataSchema.safeParse(this.readJson(orgKey(id)));
+      const d = OrgDataSchema.safeParse(migrateOrgData(this.readJson(orgKey(id))).value);
       if (d.success) d.data.workflows.forEach((w) => (slugIndex[w.slug] = id));
     }
     this.writeMeta({ ...meta.data, slugIndex });
@@ -275,10 +282,12 @@ export class LocalStorageRepository implements FormzeloRepository {
   async createWorkflow(orgId: string, input: { config: WorkflowConfig; templateKey: string; sourcePrompt?: string; design?: WorkflowTheme }) {
     const config = WorkflowConfigSchema.parse(input.config);
     const organization = this.readOrg(orgId).organization;
-    const design = WorkflowThemeSchema.parse(
-      input.design ??
-        recommendTheme({ templateKey: input.templateKey, title: config.title, description: config.description, prompt: input.sourcePrompt, industry: organization.industry }).theme,
-    );
+    // New workflows inherit the workspace brand kit unless a design says otherwise.
+    const design = WorkflowThemeSchema.parse({
+      inheritBrand: true,
+      ...(input.design ??
+        recommendTheme({ templateKey: input.templateKey, title: config.title, description: config.description, prompt: input.sourcePrompt, industry: organization.industry }).theme),
+    });
     const slug = this.uniqueSlug(slugify(organization.slug, 'flow'));
     const wf = this.mutate(orgId, (d) => {
       const at = nowIso();
@@ -330,8 +339,9 @@ export class LocalStorageRepository implements FormzeloRepository {
         workflowId: wf.id,
         version: previous.length + 1,
         config: structuredClone(WorkflowConfigSchema.parse(wf.draft)),
-        // The design is frozen with the version; later draft edits never reach it.
-        design: structuredClone(WorkflowThemeSchema.parse(wf.design)),
+        // The RESOLVED design (brand kit applied) is frozen with the version;
+        // later draft or brand-kit edits never reach it.
+        design: freezeTheme(WorkflowThemeSchema.parse(wf.design), d.brandKit),
         publishedAt: at,
         createdAt: at,
         updatedAt: at,
@@ -428,7 +438,7 @@ export class LocalStorageRepository implements FormzeloRepository {
     return run && version ? { run, version } : null;
   }
 
-  async submitRun(slug: string, input: { values: Values; consent: boolean; runId?: string }) {
+  async submitRun(slug: string, input: { values: Values; consent: boolean; runId?: string; payNow?: boolean }) {
     const pub = await this.resolvePublic(slug);
     if (!pub) throw new NotFoundError('Workflow');
     return this.mutate(pub.organization.id, (d) => {
@@ -442,12 +452,19 @@ export class LocalStorageRepository implements FormzeloRepository {
       const version = existing ? d.versions.find((v) => v.id === existing.versionId)! : this.publishedVersion(d, wf);
       const config = version.config;
 
-      const errors = validateRun(config, input.values);
+      const errors = {
+        ...validateRun(config, input.values),
+        // Local, best-effort availability — see engine/booking.ts for the limits.
+        ...validateBooking(config, input.values, d.runs.filter((r) => r.workflowId === wf.id), existing?.id),
+        ...validateOptionCapacity(config, input.values, optionUsage(config, d.runs.filter((r) => r.workflowId === wf.id), existing?.id)),
+      };
       if (Object.keys(errors).length) throw new ValidationFailedError(errors);
       if (config.consent.required && !input.consent) throw new ValidationFailedError({ __consent: 'יש לאשר כדי לשלוח' });
 
       const sub = buildSubmission(config, input.values, existing?.caseAnswers ?? []);
       const at = nowIso();
+      // Price is recomputed here from the version's config, never trusted from the client.
+      const payment = initialPayment(config, computePrice(config, input.values), Boolean(input.payNow), at);
       let run: WorkflowRun;
       if (existing) {
         const from = existing.status;
@@ -457,7 +474,8 @@ export class LocalStorageRepository implements FormzeloRepository {
           answers: sub.answers,
           priceLines: sub.priceLines,
           total: sub.total,
-          payment: { status: 'none', amount: sub.deposit },
+          payment,
+          completionMode: config.completion?.mode,
           customerName: sub.customerName || existing.customerName,
           customerContact: sub.customerContact || existing.customerContact,
           consentAt: input.consent ? at : undefined,
@@ -479,13 +497,14 @@ export class LocalStorageRepository implements FormzeloRepository {
           workflowId: wf.id,
           versionId: version.id,
           versionNumber: version.version,
-          reference: `${referencePrefix(d.organization)}-${d.runs.length + 1001}`,
+          reference: nextReference(d.organization, d.runs),
           status: 'submitted',
           answers: sub.answers,
           caseAnswers: [],
           priceLines: sub.priceLines,
           total: sub.total,
-          payment: { status: 'none', amount: sub.deposit },
+          payment,
+          completionMode: config.completion?.mode,
           customerName: sub.customerName,
           customerContact: sub.customerContact,
           consentAt: input.consent ? at : undefined,
@@ -496,6 +515,9 @@ export class LocalStorageRepository implements FormzeloRepository {
         };
         d.runs.push(run);
         this.event(d, run, { type: 'submitted', actor: 'customer', to: 'submitted', message: 'הלקוח/ה שלח/ה את הבקשה' });
+      }
+      if (payment.status === 'paid_simulated' || payment.status === 'deposit_paid_simulated') {
+        this.event(d, run, { type: 'payment_simulated', actor: 'customer', message: 'הלקוח/ה לחץ/ה על תשלום מדומה — לא בוצע חיוב' });
       }
       d.notifications.push(...submitNotifications(d.organization, run, config.title));
       this.usage(d, 'run_submitted', wf.id);
@@ -531,7 +553,7 @@ export class LocalStorageRepository implements FormzeloRepository {
         workflowId: wf.id,
         versionId: version.id,
         versionNumber: version.version,
-        reference: `${referencePrefix(d.organization)}-${d.runs.length + 1001}`,
+        reference: nextReference(d.organization, d.runs),
         status: 'awaiting_customer',
         answers: [],
         caseAnswers,
@@ -562,9 +584,7 @@ export class LocalStorageRepository implements FormzeloRepository {
       const version = d.versions.find((v) => v.id === run.versionId);
       run.status = to;
       run.updatedAt = nowIso();
-      if (to === 'approved' && version && version.config.pricing.depositPercent > 0 && run.payment.amount > 0) {
-        run.payment = { ...run.payment, status: 'deposit_requested' };
-      }
+      if (to === 'approved' && version) run.payment = paymentOnApproval(version.config, run.payment, run.updatedAt);
       this.event(d, run, {
         type: 'status_changed',
         actor: 'owner',
@@ -572,6 +592,9 @@ export class LocalStorageRepository implements FormzeloRepository {
         to,
         message: `הסטטוס שונה מ"${STATUS_LABELS[from]}" ל"${STATUS_LABELS[to]}"${message ? ` — ${message}` : ''}`,
       });
+      if (to === 'approved' && version?.config.booking?.enabled) {
+        this.event(d, run, { type: 'booking_confirmed', actor: 'owner', message: 'ההזמנה אושרה — השולחן/התור שמור (דמו מקומי)' });
+      }
       const n = statusNotification(d.organization, run, to, message);
       if (n) {
         d.notifications.push(n);
@@ -588,14 +611,74 @@ export class LocalStorageRepository implements FormzeloRepository {
     return this.mutate(orgId, (d) => this.event(d, this.findRun(d, runId), { type: 'note_added', actor: 'owner', message: trimmed, internal: true }));
   }
 
-  async markDepositPaid(orgId: string, runId: string) {
+  async markPaymentPaid(orgId: string, runId: string) {
     return this.mutate(orgId, (d) => {
       const run = this.findRun(d, runId);
-      if (run.payment.status !== 'deposit_requested') throw new DomainRuleError('לא נדרשה מקדמה עבור בקשה זו');
-      run.payment = { ...run.payment, status: 'deposit_paid_simulated' };
-      run.updatedAt = nowIso();
-      this.event(d, run, { type: 'payment_simulated', actor: 'owner', message: 'מקדמה סומנה כשולמה (סימולציה — לא בוצע תשלום)' });
+      const at = nowIso();
+      const paid = simulatePaid(run.payment, at);
+      if (!paid) throw new DomainRuleError('אין תשלום פתוח עבור בקשה זו');
+      const wasDeposit = run.payment.status === 'deposit_requested';
+      run.payment = paid;
+      run.updatedAt = at;
+      this.event(d, run, { type: 'payment_simulated', actor: 'owner', message: `${wasDeposit ? 'מקדמה' : 'תשלום'} סומן כשולם (סימולציה — לא בוצע חיוב)` });
       return run;
+    });
+  }
+
+  /** @deprecated kept for older callers; use markPaymentPaid. */
+  async markDepositPaid(orgId: string, runId: string) {
+    return this.markPaymentPaid(orgId, runId);
+  }
+
+  async getBookingAvailability(slug: string, date: string) {
+    const pub = await this.resolvePublic(slug);
+    const booking = pub?.version.config.booking;
+    if (!pub || !booking?.enabled) return [];
+    const runs = this.readOrg(pub.organization.id).runs.filter((r) => r.workflowId === pub.workflow.id);
+    return slotAvailability(booking, date, runs);
+  }
+
+  async getOptionUsage(slug: string) {
+    const pub = await this.resolvePublic(slug);
+    if (!pub) return {};
+    const runs = this.readOrg(pub.organization.id).runs.filter((r) => r.workflowId === pub.workflow.id);
+    return optionUsage(pub.version.config, runs);
+  }
+
+  async cancelRunByCustomer(slug: string, runId: string) {
+    const pub = await this.resolvePublic(slug);
+    if (!pub) throw new NotFoundError('Workflow');
+    return this.mutate(pub.organization.id, (d) => {
+      const run = this.findRun(d, runId);
+      if (run.workflowId !== pub.workflow.id) throw new NotFoundError('Run');
+      const version = d.versions.find((v) => v.id === run.versionId);
+      if (!version?.config.booking?.enabled) throw new DomainRuleError('אפשר לבטל דרך הקישור רק בקשות הזמנה');
+      if (!CUSTOMER_CANCELLABLE.includes(run.status)) throw new DomainRuleError('לא ניתן לבטל את הבקשה במצב הנוכחי');
+      const from = run.status;
+      assertTransition(from, 'cancelled');
+      run.status = 'cancelled';
+      run.updatedAt = nowIso();
+      this.event(d, run, { type: 'status_changed', actor: 'customer', from, to: 'cancelled', message: 'הלקוח ביטל את בקשת ההזמנה דרך הקישור האישי' });
+      return run;
+    });
+  }
+
+  // ---------- brand kit ----------
+
+  async getBrandKit(orgId: string): Promise<BrandKit> {
+    return this.readOrg(orgId).brandKit;
+  }
+
+  async updateBrandKit(orgId: string, kit: BrandKit) {
+    const valid = BrandKitSchema.parse({ ...kit, updatedAt: nowIso() });
+    const ids = new Set(this.readAssets(orgId).map((a) => a.id));
+    for (const id of [valid.logoAssetId, valid.secondaryLogoAssetId, valid.coverAssetId]) {
+      if (id && !ids.has(id)) throw new DomainRuleError('תמונה שנבחרה לערכת המותג לא נמצאה. בחרו אותה מחדש.');
+    }
+    // Published versions keep their frozen design; only drafts that inherit see the change.
+    return this.mutate(orgId, (d) => {
+      d.brandKit = valid;
+      return valid;
     });
   }
 
@@ -649,6 +732,11 @@ export class LocalStorageRepository implements FormzeloRepository {
     // Published versions are immutable, so an image they reference can't be removed.
     if (d.versions.some((v) => uses(v.design))) throw new DomainRuleError('התמונה משמשת גרסה שפורסמה ולכן לא ניתן למחוק אותה.');
     if (d.workflows.some((w) => uses(w.design))) throw new DomainRuleError('התמונה משמשת טיוטה שמורה. הסירו אותה מהעיצוב ושמרו לפני מחיקה.');
+    const k = d.brandKit;
+    if ([k.logoAssetId, k.secondaryLogoAssetId, k.coverAssetId].includes(assetId)) throw new DomainRuleError('התמונה משמשת בערכת המותג. הסירו אותה משם ושמרו לפני מחיקה.');
+    const inBlocks = (cfg: WorkflowConfig) => cfg.steps.some((st) => st.fields.some((f) => f.media?.includes(assetId) || f.options?.some((o) => o.image === assetId)));
+    if (d.versions.some((v) => inBlocks(v.config))) throw new DomainRuleError('התמונה משמשת גרסה שפורסמה ולכן לא ניתן למחוק אותה.');
+    if (d.workflows.some((w) => inBlocks(w.draft))) throw new DomainRuleError('התמונה משמשת בתוכן של טיוטה שמורה. הסירו אותה ושמרו לפני מחיקה.');
     this.write(assetKey(orgId), { assets: this.readAssets(orgId).filter((a) => a.id !== assetId) });
     this.emit();
   }

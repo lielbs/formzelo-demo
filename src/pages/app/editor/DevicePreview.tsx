@@ -1,20 +1,23 @@
-import { Monitor, Smartphone } from 'lucide-react';
+import { Monitor, Smartphone, Tablet } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from '../../../components/ui';
 
-export type Device = 'mobile' | 'desktop';
+export type Device = 'mobile' | 'tablet' | 'desktop';
 
-const WIDTH: Record<Device, number> = { mobile: 390, desktop: 1280 };
+const WIDTH: Record<Device, number> = { mobile: 390, tablet: 768, desktop: 1280 };
 
-export function DeviceToggle({ device, onChange }: { device: Device; onChange: (d: Device) => void }) {
+export function DeviceToggle({ device, onChange, tablet = false }: { device: Device; onChange: (d: Device) => void; tablet?: boolean }) {
   return (
     <div className="inline-flex rounded-lg bg-cloud-200 p-0.5" role="radiogroup" aria-label="גודל תצוגה">
       {(
         [
           ['mobile', 'טלפון', Smartphone],
+          ['tablet', 'טאבלט', Tablet],
           ['desktop', 'מחשב', Monitor],
         ] as const
-      ).map(([d, label, Icon]) => (
+      )
+        .filter(([d]) => tablet || d !== 'tablet')
+        .map(([d, label, Icon]) => (
         <button
           key={d}
           type="button"
@@ -65,7 +68,7 @@ export function DevicePreview({ device, height = 720, children }: { device: Devi
         </div>
       </div>
       <p className="mt-1.5 text-center text-[11px] text-ink-soft">
-        {device === 'mobile' ? 'רוחב טלפון 390px' : `רוחב מחשב 1280px · מוקטן ל-${Math.round(scale * 100)}%`}
+        {device === 'mobile' ? 'רוחב טלפון 390px' : `רוחב ${device === 'tablet' ? 'טאבלט 768px' : 'מחשב 1280px'}${scale < 1 ? ` · מוקטן ל-${Math.round(scale * 100)}%` : ''}`}
       </p>
     </div>
   );

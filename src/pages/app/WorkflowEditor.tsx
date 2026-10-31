@@ -1,33 +1,70 @@
-import { ArrowDown, ArrowUp, Copy, Eye, FilePlus2, History, Link2, Palette, PenLine, Plus, RotateCcw, Rocket, Save, Trash2, Undo2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+/**
+ * Visual design studio. Structure pane (steps & blocks) · live canvas (the
+ * real generic renderer) · contextual inspector. Every action edits the draft
+ * WorkflowConfig / WorkflowTheme; publishing snapshots both into an immutable
+ * version (with the brand kit resolved).
+ */
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  CalendarClock,
+  Copy,
+  CreditCard,
+  Eye,
+  GripVertical,
+  Lightbulb,
+  X,
+  FilePlus2,
+  History,
+  Layers,
+  MousePointerClick,
+  Palette,
+  PenLine,
+  Plus,
+  Redo2,
+  RotateCcw,
+  Rocket,
+  Save,
+  Settings2,
+  Undo2,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CreateCaseModal } from '../../components/CreateCaseModal';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, cx, DemoBadge, EmptyState, ErrorState, FieldLabel, Input, Modal, Select, Spinner, Textarea } from '../../components/ui';
-import { WorkflowConfigSchema, type Condition, type WorkflowConfig, type WorkflowVersion } from '../../domain/schema';
+import { isDisplayField, WorkflowConfigSchema, type WorkflowConfig, type WorkflowField, type WorkflowVersion } from '../../domain/schema';
 import type { WorkflowTheme } from '../../domain/theme';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
-import { OPERATOR_LABELS } from '../../engine/conditions';
+import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
+import { COMPLETION_LABELS, completionOf } from '../../engine/completion';
+import { fieldHasPrice } from '../../engine/pricing';
 import { formatDateTime, formatNumber } from '../../lib/format';
 import { newId } from '../../lib/id';
 import { publicFlowUrl } from '../../lib/links';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
+import { effectiveTheme } from '../../theme/brand';
 import { PRESETS } from '../../theme/presets';
 import { themeResolver } from '../../theme/resolver';
-import { DesignPanel } from './editor/DesignPanel';
+import { BLOCK_GROUPS, BLOCKS, blockIcon, createBlock } from './editor/blockLibrary';
+import { DesignPanel, Toggle } from './editor/DesignPanel';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
-import { FieldListEditor, move } from './editor/FieldEditor';
+import { FIELD_TYPE_LABELS, FieldListEditor, move } from './editor/FieldEditor';
+import { BookingInspector, CompletionInspector, FieldInspector, NextStepsEditor, Panel, StepInspector } from './editor/Inspector';
 
-type Panel = 'preview' | 'versions' | 'share';
+type Selection =
+  | { kind: 'workflow' }
+  | { kind: 'design' }
+  | { kind: 'completion' }
+  | { kind: 'booking' }
+  | { kind: 'publish' }
+  | { kind: 'step'; stepId: string }
+  | { kind: 'field'; fieldId: string };
 
-function Section({ title, children, description }: { title: string; children: ReactNode; description?: string }) {
-  return (
-    <Card as="section" className="p-5">
-      <h2 className="font-semibold text-ink">{title}</h2>
-      {description && <p className="mt-0.5 text-xs text-ink-muted">{description}</p>}
-      <div className="mt-4 space-y-4">{children}</div>
-    </Card>
-  );
+interface Snapshot {
+  config: WorkflowConfig;
+  design: WorkflowTheme;
 }
 
 function schemaIssues(config: WorkflowConfig): string[] {
@@ -35,11 +72,32 @@ function schemaIssues(config: WorkflowConfig): string[] {
   if (r.success) return [];
   return r.error.issues.slice(0, 5).map((i) => {
     const path = i.path.join('.');
-    if (path.endsWith('label') || path.endsWith('title')) return 'יש שדה, שלב או אפשרות ללא שם';
+    if (path.endsWith('label') || path.endsWith('title')) return 'יש רכיב, שלב או אפשרות ללא שם';
     if (path.startsWith('steps') && i.code === 'too_small') return 'נדרש לפחות שלב אחד';
-    if (path.includes('primaryColor')) return 'צבע המותג אינו תקין (#RRGGBB)';
+    if (path.includes('externalUrl')) return 'קישור התשלום החיצוני חייב להתחיל ב-https://';
+    if (path.includes('slots')) return 'שעות הזמנה חייבות להיות בפורמט HH:MM';
     return `${path}: ${i.message}`;
   });
+}
+
+const isTyping = (el: EventTarget | null) => el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+
+function NavItem({ active, icon: Icon, children, onClick, badge }: { active: boolean; icon: typeof Eye; children: ReactNode; onClick: () => void; badge?: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active || undefined}
+      className={cx(
+        'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
+        active ? 'bg-midnight text-white' : 'text-ink hover:bg-cloud',
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+      {badge}
+    </button>
+  );
 }
 
 export function WorkflowEditor() {
@@ -58,87 +116,120 @@ export function WorkflowEditor() {
     },
     [org.id, id],
   );
-  const assetsQ = useRepoQuery((r) => r.listAssets(org.id), [org.id]);
-  const assets = useMemo(() => assetsQ.data ?? [], [assetsQ.data]);
+  const side = useRepoQuery(async (r) => ({ assets: await r.listAssets(org.id), kit: await r.getBrandKit(org.id) }), [org.id]);
+  const assets = useMemo(() => side.data?.assets ?? [], [side.data?.assets]);
   const assetUrls = useMemo(() => Object.fromEntries(assets.map((a) => [a.id, a.dataUrl])), [assets]);
+  const kit = side.data?.kit;
 
-  const [config, setConfig] = useState<WorkflowConfig | null>(null);
-  const [savedJson, setSavedJson] = useState('');
-  const [design, setDesignState] = useState<WorkflowTheme | null>(null);
-  const [savedDesignJson, setSavedDesignJson] = useState('');
-  const [designHistory, setDesignHistory] = useState<WorkflowTheme[]>([]);
-  const [leftTab, setLeftTab] = useState<'content' | 'design'>('content');
+  const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [saved, setSaved] = useState('');
+  const [past, setPast] = useState<Snapshot[]>([]);
+  const [future, setFuture] = useState<Snapshot[]>([]);
+  const lastEdit = useRef<{ key: string; at: number }>({ key: '', at: 0 });
+  const [sel, setSel] = useState<Selection>({ kind: 'workflow' });
   const [device, setDevice] = useState<Device>('mobile');
-  const [panel, setPanel] = useState<Panel>('preview');
-  const [mobileView, setMobileView] = useState<'edit' | 'panel'>('edit');
+  const [pickMode, setPickMode] = useState(true);
+  const [mobilePane, setMobilePane] = useState<'structure' | 'canvas' | 'inspector'>('canvas');
+  const [library, setLibrary] = useState<{ stepId: string } | null>(null);
   const [busy, setBusy] = useState<'save' | 'publish' | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [viewVersion, setViewVersion] = useState<WorkflowVersion | null>(null);
   const [caseOpen, setCaseOpen] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<{ stepId: string; index: number } | null>(null);
 
   // Load the draft once per workflow; later refetches must not clobber local edits.
   const loadedId = q.data?.workflow.id;
   useEffect(() => {
     if (q.data?.workflow) {
-      setConfig(structuredClone(q.data.workflow.draft));
-      setSavedJson(JSON.stringify(q.data.workflow.draft));
-      setDesignState(structuredClone(q.data.workflow.design));
-      setSavedDesignJson(JSON.stringify(q.data.workflow.design));
-      setDesignHistory([]);
+      const s = { config: structuredClone(q.data.workflow.draft), design: structuredClone(q.data.workflow.design) };
+      setSnap(s);
+      setSaved(JSON.stringify(s));
+      setPast([]);
+      setFuture([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedId]);
 
-  const designDirty = design !== null && JSON.stringify(design) !== savedDesignJson;
-  const dirty = (config !== null && JSON.stringify(config) !== savedJson) || designDirty;
+  const dirty = snap !== null && JSON.stringify(snap) !== saved;
+  const issues = useMemo(() => (snap ? schemaIssues(snap.config) : []), [snap]);
+
+  /** Applies an edit and records undo history; rapid edits to the same thing (typing) coalesce. */
+  const apply = useCallback((fn: (s: Snapshot) => void, key = 'edit') => {
+    setSnap((cur) => {
+      if (!cur) return cur;
+      const next = structuredClone(cur);
+      fn(next);
+      const now = Date.now();
+      const coalesce = lastEdit.current.key === key && now - lastEdit.current.at < 700;
+      lastEdit.current = { key, at: now };
+      if (!coalesce) setPast((p) => [...p.slice(-59), cur]);
+      setFuture([]);
+      return next;
+    });
+  }, []);
+  const update = useCallback((fn: (d: WorkflowConfig) => void, key = 'cfg') => apply((s) => fn(s.config), key), [apply]);
+
+  const undo = useCallback(() => {
+    setPast((p) => {
+      const prev = p[p.length - 1];
+      if (!prev) return p;
+      setSnap((cur) => {
+        if (cur) setFuture((f) => [cur, ...f].slice(0, 60));
+        return prev;
+      });
+      lastEdit.current = { key: '', at: 0 };
+      return p.slice(0, -1);
+    });
+  }, []);
+  const redo = useCallback(() => {
+    setFuture((f) => {
+      const nxt = f[0];
+      if (!nxt) return f;
+      setSnap((cur) => {
+        if (cur) setPast((p) => [...p, cur]);
+        return nxt;
+      });
+      lastEdit.current = { key: '', at: 0 };
+      return f.slice(1);
+    });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || isTyping(e.target)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((k === 'z' && e.shiftKey) || k === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
+
+  useUnsavedGuard(dirty);
+
   const recommendation = useMemo(
     () =>
       themeResolver.resolve({
         templateKey: q.data?.workflow.templateKey,
-        title: config?.title,
-        description: config?.description,
+        title: snap?.config.title,
+        description: snap?.config.description,
         prompt: q.data?.workflow.sourcePrompt,
         industry: org.industry,
       }),
-    [q.data?.workflow.templateKey, q.data?.workflow.sourcePrompt, config?.title, config?.description, org.industry],
+    [q.data?.workflow.templateKey, q.data?.workflow.sourcePrompt, snap?.config.title, snap?.config.description, org.industry],
   );
+  const previewTheme = useMemo(() => (snap ? effectiveTheme(snap.design, kit) : null), [snap, kit]);
 
-  const setDesign = useCallback((next: WorkflowTheme) => {
-    setDesignState((prev) => {
-      if (prev) setDesignHistory((h) => [...h.slice(-29), prev]);
-      return next;
-    });
-  }, []);
-
-  const loadSaved = (draft: WorkflowConfig, theme: WorkflowTheme) => {
-    setConfig(structuredClone(draft));
-    setSavedJson(JSON.stringify(draft));
-    setDesignState(structuredClone(theme));
-    setSavedDesignJson(JSON.stringify(theme));
-    setDesignHistory([]);
-  };
-  const issues = useMemo(() => (config ? schemaIssues(config) : []), [config]);
-
-  useEffect(() => {
-    if (!dirty) return;
-    const h = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener('beforeunload', h);
-    return () => window.removeEventListener('beforeunload', h);
-  }, [dirty]);
-
-  const update = useCallback((fn: (draft: WorkflowConfig) => void) => {
-    setConfig((c) => {
-      if (!c) return c;
-      const next = structuredClone(c);
-      fn(next);
-      return next;
-    });
-  }, []);
-
-  if (q.loading || (q.data && (!config || !design))) return <Spinner />;
+  if (q.loading || (q.data && !snap)) return <Spinner />;
   if (q.error) return <ErrorState error={q.error} onRetry={q.reload} />;
-  if (!q.data || !config || !design) {
+  if (!q.data || !snap || !previewTheme) {
     return (
       <EmptyState icon={FilePlus2} title="התהליך לא נמצא בסביבת עבודה זו" action={<Link className="text-sm font-medium text-orange" to="/app/workflows">חזרה לתהליכים</Link>}>
         ייתכן שהוא שייך לסביבת עבודה אחרת.
@@ -147,18 +238,33 @@ export function WorkflowEditor() {
   }
 
   const { workflow, versions, runCount } = q.data;
+  const { config, design } = snap;
   const allFields = config.steps.flatMap((s) => s.fields);
   const link = publicFlowUrl(workflow.slug);
   const published = workflow.status === 'published';
+  const completion = completionOf(config);
+  const savedSnap = JSON.parse(saved) as Snapshot;
+
+  const locate = (fieldId: string) => {
+    const si = config.steps.findIndex((s) => s.fields.some((f) => f.id === fieldId));
+    return si < 0 ? null : { si, fi: config.steps[si]!.fields.findIndex((f) => f.id === fieldId) };
+  };
+  const selectedField = sel.kind === 'field' ? allFields.find((f) => f.id === sel.fieldId) : undefined;
+  const focusStepId = sel.kind === 'field' ? config.steps[locate(sel.fieldId)?.si ?? -1]?.id : sel.kind === 'step' ? sel.stepId : undefined;
+
+  const select = (s: Selection) => {
+    setSel(s);
+    // On narrow screens selecting something opens its properties.
+    if (window.matchMedia('(max-width: 1279px)').matches) setMobilePane('inspector');
+  };
 
   const save = async () => {
     if (issues.length) return toast('יש לתקן שגיאות לפני שמירה', 'error');
     setBusy('save');
     try {
       const wf = await repo.saveDraft(org.id, workflow.id, config, design);
-      setSavedJson(JSON.stringify(wf.draft));
-      setSavedDesignJson(JSON.stringify(wf.design));
-      toast('הטיוטה נשמרה — כולל העיצוב');
+      setSaved(JSON.stringify({ config: wf.draft, design: wf.design }));
+      toast('הטיוטה נשמרה — תוכן ועיצוב');
     } catch (e) {
       toast(e instanceof Error ? e.message : 'השמירה נכשלה', 'error');
     } finally {
@@ -173,12 +279,11 @@ export function WorkflowEditor() {
     try {
       if (dirty) {
         const wf = await repo.saveDraft(org.id, workflow.id, config, design);
-        setSavedJson(JSON.stringify(wf.draft));
-        setSavedDesignJson(JSON.stringify(wf.design));
+        setSaved(JSON.stringify({ config: wf.draft, design: wf.design }));
       }
       const v = await repo.publishWorkflow(org.id, workflow.id);
       toast(`גרסה ${v.version} פורסמה — הקישור פעיל`);
-      setPanel('share');
+      setSel({ kind: 'publish' });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'הפרסום נכשל', 'error');
     } finally {
@@ -186,40 +291,501 @@ export function WorkflowEditor() {
     }
   };
 
-  const copyLink = async () => {
-    const ok = await copyText(link);
-    await repo.trackUsage(org.id, 'link_copied', workflow.id);
-    toast(ok ? 'הקישור הועתק' : 'סמנו והעתיקו ידנית', ok ? 'success' : 'error');
+  const addBlock = (stepId: string, defId: string) => {
+    const def = BLOCKS.find((b) => b.id === defId)!;
+    const block = createBlock(def, allFields.map((f) => f.key));
+    apply((s) => {
+      const step = s.config.steps.find((x) => x.id === stepId)!;
+      const after = sel.kind === 'field' ? step.fields.findIndex((f) => f.id === sel.fieldId) : -1;
+      step.fields.splice(after >= 0 ? after + 1 : step.fields.length, 0, block);
+    }, `add-${block.id}`);
+    setLibrary(null);
+    setSel({ kind: 'field', fieldId: block.id });
+    toast(`נוסף: ${def.label}`);
   };
 
-  const setFee = (i: number, patch: Partial<WorkflowConfig['pricing']['fees'][number]>) =>
-    update((d) => {
-      d.pricing.fees[i] = { ...d.pricing.fees[i]!, ...patch };
-    });
+  const changeField = (f: WorkflowField) =>
+    apply((s) => {
+      for (const st of s.config.steps) {
+        const i = st.fields.findIndex((x) => x.id === f.id);
+        if (i >= 0) st.fields[i] = f;
+      }
+    }, `field-${f.id}`);
+
+  const deleteField = (f: WorkflowField) => {
+    const dependents = allFields.filter((x) => x.condition?.fieldKey === f.key || x.multiplyByKey === f.key);
+    const usedByBooking = config.booking?.enabled && [config.booking.dateKey, config.booking.timeKey, config.booking.guestsKey].includes(f.key);
+    const msg = usedByBooking
+      ? `"${f.label}" משמש את כללי ההזמנה. למחוק בכל זאת? (כללי ההזמנה ייכבו)`
+      : dependents.length
+        ? `"${f.label}" משמש בתנאים או בחישוב של: ${dependents.map((d) => d.label).join(', ')}. למחוק בכל זאת?`
+        : `למחוק את "${f.label}"?`;
+    if (!window.confirm(msg)) return;
+    apply((s) => {
+      s.config.steps.forEach((st) => (st.fields = st.fields.filter((x) => x.id !== f.id)));
+      if (usedByBooking && s.config.booking) s.config.booking.enabled = false;
+    }, `del-${f.id}`);
+    setSel({ kind: 'workflow' });
+  };
+
+  /** Drag-and-drop: place a block at an index of any step. */
+  const moveFieldTo = (fieldId: string, stepId: string, index: number) => {
+    const pos = locate(fieldId);
+    if (!pos) return;
+    apply((s) => {
+      const from = s.config.steps[pos.si]!;
+      const to = s.config.steps.find((x) => x.id === stepId);
+      if (!to) return;
+      const [f] = from.fields.splice(pos.fi, 1);
+      const at = from === to && index > pos.fi ? index - 1 : index;
+      to.fields.splice(Math.max(0, Math.min(at, to.fields.length)), 0, f!);
+    }, `drag-${fieldId}-${Date.now()}`);
+  };
+
+  const moveField = (fieldId: string, dir: -1 | 1) => {
+    const pos = locate(fieldId);
+    if (!pos) return;
+    apply((s) => {
+      const steps = s.config.steps;
+      const st = steps[pos.si]!;
+      const target = pos.fi + dir;
+      if (target >= 0 && target < st.fields.length) st.fields = move(st.fields, pos.fi, dir);
+      else {
+        // Moving past the edge moves the block into the neighbouring step.
+        const ns = steps[pos.si + dir];
+        if (!ns) return;
+        const [f] = st.fields.splice(pos.fi, 1);
+        if (dir === 1) ns.fields.unshift(f!);
+        else ns.fields.push(f!);
+      }
+    }, `move-${fieldId}-${Date.now()}`);
+  };
+
+  // ---------- panes ----------
+
+  const structure = (
+    <nav aria-label="מבנה התהליך" className="space-y-4">
+      <div className="space-y-1">
+        <p className="px-2.5 text-[11px] font-semibold tracking-wide text-ink-soft">הגדרות</p>
+        <NavItem active={sel.kind === 'workflow'} icon={Settings2} onClick={() => select({ kind: 'workflow' })}>
+          פרטי התהליך
+        </NavItem>
+        <NavItem active={sel.kind === 'design'} icon={Palette} onClick={() => select({ kind: 'design' })} badge={<span className="text-[10px] opacity-70">{PRESETS[design.presetId].meta.nameHe}</span>}>
+          עיצוב
+        </NavItem>
+        <NavItem active={sel.kind === 'completion'} icon={CreditCard} onClick={() => select({ kind: 'completion' })} badge={<span className="text-[10px] opacity-70">{COMPLETION_LABELS[completion.mode].title}</span>}>
+          סיום ותשלום
+        </NavItem>
+        <NavItem active={sel.kind === 'booking'} icon={CalendarClock} onClick={() => select({ kind: 'booking' })} badge={config.booking?.enabled ? <Badge tone="teal">פעיל</Badge> : undefined}>
+          הזמנות ושעות
+        </NavItem>
+        <NavItem active={sel.kind === 'publish'} icon={History} onClick={() => select({ kind: 'publish' })} badge={<span className="text-[10px] opacity-70">{versions.length} גרסאות</span>}>
+          גרסאות ושיתוף
+        </NavItem>
+      </div>
+
+      <div className="space-y-2">
+        <p className="flex items-center gap-1.5 px-2.5 text-[11px] font-semibold tracking-wide text-ink-soft">
+          <Layers className="h-3.5 w-3.5" aria-hidden /> שלבים ורכיבים
+        </p>
+        <p className="px-2.5 text-[11px] text-ink-soft">גררו רכיב כדי לשנות סדר, גם בין שלבים. במקלדת: חיצי ההעלאה וההורדה.</p>
+        {config.steps.map((st, si) => (
+          <div
+            key={st.id}
+            className={cx('rounded-xl border bg-white transition', dropAt?.stepId === st.id ? 'border-orange ring-2 ring-orange/20' : 'border-cloud-200')}
+            onDragOver={(e) => {
+              if (!dragId) return;
+              e.preventDefault();
+              if (dropAt?.stepId !== st.id) setDropAt({ stepId: st.id, index: st.fields.length });
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragId && dropAt) moveFieldTo(dragId, dropAt.stepId, dropAt.index);
+              setDragId(null);
+              setDropAt(null);
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => select({ kind: 'step', stepId: st.id })}
+              aria-current={(sel.kind === 'step' && sel.stepId === st.id) || undefined}
+              className={cx('flex w-full items-center gap-2 rounded-t-xl px-2.5 py-2 text-start text-sm font-semibold', sel.kind === 'step' && sel.stepId === st.id ? 'bg-midnight text-white' : 'hover:bg-cloud')}
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-cloud-200 text-[11px] text-ink">{si + 1}</span>
+              <span className="min-w-0 flex-1 truncate">{st.title || 'שלב ללא שם'}</span>
+              {st.condition && <Badge tone="blue">מותנה</Badge>}
+            </button>
+            <ul className="space-y-0.5 p-1.5">
+              {st.fields.map((f, fi) => {
+                const Icon = blockIcon(f);
+                const active = sel.kind === 'field' && sel.fieldId === f.id;
+                const dropHere = dropAt?.stepId === st.id && dropAt.index === fi && dragId !== f.id;
+                return (
+                  <li
+                    key={f.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragId(f.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', f.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setDropAt(null);
+                    }}
+                    onDragOver={(e) => {
+                      if (!dragId) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const r = e.currentTarget.getBoundingClientRect();
+                      const index = e.clientY > r.top + r.height / 2 ? fi + 1 : fi;
+                      if (dropAt?.stepId !== st.id || dropAt.index !== index) setDropAt({ stepId: st.id, index });
+                    }}
+                    className={cx(
+                      'group relative flex items-center gap-1 rounded-lg',
+                      active ? 'bg-orange-50 ring-1 ring-orange/40' : 'hover:bg-cloud',
+                      dragId === f.id && 'opacity-40',
+                      dropHere && 'before:absolute before:inset-x-1 before:-top-[3px] before:h-[3px] before:rounded-full before:bg-orange',
+                      dropAt?.stepId === st.id && dropAt.index === fi + 1 && fi === st.fields.length - 1 && dragId !== f.id && 'after:absolute after:inset-x-1 after:-bottom-[3px] after:h-[3px] after:rounded-full after:bg-orange',
+                    )}
+                  >
+                    <GripVertical className="h-3.5 w-3.5 shrink-0 cursor-grab text-ink-soft/60 group-hover:text-ink-soft" aria-hidden />
+                    <button type="button" onClick={() => select({ kind: 'field', fieldId: f.id })} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+                      <Icon className={cx('h-3.5 w-3.5 shrink-0', isDisplayField(f) ? 'text-teal-600' : 'text-ink-soft')} aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] text-ink">{f.label}</span>
+                        <span className="block truncate text-[10.5px] text-ink-soft">
+                          {FIELD_TYPE_LABELS[f.type]}
+                          {f.required && <span className="text-orange-600"> · חובה</span>}
+                          {fieldHasPrice(f) && <span className="text-teal-600"> · ₪</span>}
+                          {f.condition && <span className="text-sky-700"> · מותנה</span>}
+                        </span>
+                      </span>
+                    </button>
+                    <span className="flex opacity-60 group-hover:opacity-100">
+                      <button type="button" aria-label={`העלאת ${f.label}`} disabled={si === 0 && fi === 0} onClick={() => moveField(f.id, -1)} className="rounded p-1 hover:bg-white disabled:opacity-30">
+                        <ArrowUp className="h-3 w-3" />
+                      </button>
+                      <button type="button" aria-label={`הורדת ${f.label}`} disabled={si === config.steps.length - 1 && fi === st.fields.length - 1} onClick={() => moveField(f.id, 1)} className="rounded p-1 hover:bg-white disabled:opacity-30">
+                        <ArrowDown className="h-3 w-3" />
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+              {st.fields.length === 0 && <li className="px-2 py-2 text-xs text-ink-muted">שלב ריק — הוסיפו רכיב ראשון.</li>}
+            </ul>
+            <div className="border-t border-cloud-200 p-1.5">
+              <Button size="sm" variant="ghost" icon={Plus} className="w-full !justify-start" onClick={() => setLibrary({ stepId: st.id })}>
+                הוספת רכיב
+              </Button>
+            </div>
+          </div>
+        ))}
+        <Button
+          variant="secondary"
+          icon={Plus}
+          className="w-full"
+          onClick={() => {
+            const stepId = newId('stp');
+            apply((s) => void s.config.steps.push({ id: stepId, title: `שלב ${s.config.steps.length + 1}`, fields: [] }), `step-${stepId}`);
+            setSel({ kind: 'step', stepId });
+          }}
+        >
+          שלב חדש
+        </Button>
+      </div>
+    </nav>
+  );
+
+  const stepIndex = sel.kind === 'step' ? config.steps.findIndex((s) => s.id === sel.stepId) : -1;
+  const inspector = (() => {
+    switch (sel.kind) {
+      case 'field':
+        return selectedField ? (
+          <FieldInspector
+            f={selectedField}
+            allFields={allFields}
+            priced={config.pricing.enabled}
+            images={assets.filter((a) => a.kind === 'image')}
+            orgId={org.id}
+            onChange={changeField}
+            onDelete={() => deleteField(selectedField)}
+            onDuplicate={() => {
+              const pos = locate(selectedField.id)!;
+              const copy = { ...structuredClone(selectedField), id: newId('fld'), key: `${selectedField.key}_copy${allFields.length}`, label: `${selectedField.label} (עותק)` };
+              apply((s) => void s.config.steps[pos.si]!.fields.splice(pos.fi + 1, 0, copy), `dup-${copy.id}`);
+              setSel({ kind: 'field', fieldId: copy.id });
+            }}
+          />
+        ) : (
+          <p className="text-sm text-ink-muted">הרכיב נמחק.</p>
+        );
+      case 'step':
+        return stepIndex >= 0 ? (
+          <StepInspector
+            step={config.steps[stepIndex]!}
+            index={stepIndex}
+            count={config.steps.length}
+            allFields={allFields}
+            onChange={(st) => update((d) => void (d.steps[stepIndex] = st), `step-${st.id}`)}
+            onMove={(dir) => update((d) => void (d.steps = move(d.steps, stepIndex, dir)), `stepmove-${Date.now()}`)}
+            onDelete={() => {
+              const st = config.steps[stepIndex]!;
+              if (!window.confirm(`למחוק את השלב "${st.title}" וכל ${st.fields.length} הרכיבים בו?`)) return;
+              update((d) => void d.steps.splice(stepIndex, 1), `stepdel-${st.id}`);
+              setSel({ kind: 'workflow' });
+            }}
+          />
+        ) : null;
+      case 'design':
+        return (
+          <div className="space-y-4">
+            <Card className="p-4">
+              <Toggle checked={design.inheritBrand === true} onChange={(v) => apply((s) => void (s.design.inheritBrand = v), 'inherit')}>
+                <span className="font-medium">ירושה מערכת המותג</span>
+                <span className="block text-xs text-ink-muted">
+                  צבעים, גופן, כפתורים, צפיפות, לוגו ותמונת כיסוי מגיעים מ
+                  <Link className="text-orange-600 underline" to="/app/brand">
+                    ערכת המותג
+                  </Link>
+                  . כבוי = עיצוב עצמאי לתהליך הזה.
+                </span>
+              </Toggle>
+              {design.inheritBrand && <p className="mt-2 rounded-lg bg-cloud p-2 text-xs text-ink-muted">בזמן ירושה, ערכי צבע/גופן/כפתור/צפיפות למטה נדרסים ע״י ערכת המותג. הפריסה, הפתיח והרכיבים נשלטים מכאן.</p>}
+            </Card>
+            <DesignPanel
+              design={design}
+              onChange={(d) => apply((s) => void (s.design = d), 'design')}
+              recommendation={recommendation}
+              orgId={org.id}
+              orgBrandColor={kit?.palette.primary ?? org.brand.primaryColor}
+              assets={assets}
+              assetUrls={assetUrls}
+              canUndo={past.length > 0}
+              onUndo={undo}
+              designDirty={JSON.stringify(design) !== JSON.stringify(savedSnap.design)}
+              onRevert={() => apply((s) => void (s.design = structuredClone(savedSnap.design)), 'design-revert')}
+            />
+          </div>
+        );
+      case 'completion':
+        return <CompletionInspector config={config} update={(fn) => update(fn, 'completion')} />;
+      case 'booking':
+        return <BookingInspector config={config} update={(fn) => update(fn, 'booking')} />;
+      case 'publish':
+        return (
+          <Panel title="גרסאות ושיתוף">
+            {published ? (
+              <div className="space-y-3">
+                <FieldLabel htmlFor="share-link">{config.mode === 'case' ? 'כתובת התהליך (נדרש תיק אישי)' : 'קישור ציבורי'}</FieldLabel>
+                <div className="flex gap-2">
+                  <input id="share-link" readOnly dir="ltr" value={link} onFocus={(e) => e.target.select()} className="fz-input min-w-0 flex-1 rounded-xl border border-cloud-300 bg-cloud px-3 py-2 text-sm" />
+                  <Button
+                    variant="secondary"
+                    icon={Copy}
+                    onClick={async () => {
+                      const ok = await copyText(link);
+                      await repo.trackUsage(org.id, 'link_copied', workflow.id);
+                      toast(ok ? 'הקישור הועתק' : 'סמנו והעתיקו ידנית', ok ? 'success' : 'error');
+                    }}
+                  >
+                    העתקה
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-midnight px-4 text-sm font-medium text-white hover:bg-midnight-700">
+                    <Eye className="h-4 w-4" aria-hidden /> פתיחה כלקוח
+                  </a>
+                  {versions.find((v) => v.id === workflow.publishedVersionId)?.config.mode === 'case' && (
+                    <Button icon={FilePlus2} onClick={() => setCaseOpen(true)}>
+                      פתיחת תיק ללקוח
+                    </Button>
+                  )}
+                </div>
+                <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">הקישור עובד בדפדפן הזה בלבד: הנתונים נשמרים ב-localStorage ואינם מסתנכרנים בין מכשירים. בגרסת ייצור הקישור יעבוד מכל מקום.</p>
+              </div>
+            ) : (
+              <p className="rounded-xl bg-cloud p-4 text-sm text-ink-muted">{workflow.status === 'archived' ? 'התהליך בארכיון. שחזרו אותו מרשימת התהליכים.' : 'הקישור נוצר ברגע הפרסום הראשון.'}</p>
+            )}
+            <div>
+              <p className="mb-2 text-sm font-medium">גרסאות שפורסמו</p>
+              <p className="mb-2 text-xs text-ink-muted">כל פרסום יוצר תמונת מצב קבועה של התוכן והעיצוב (כולל ערכת המותג באותו רגע). בקשות נשארות מקושרות לגרסה שבה נשלחו.</p>
+              {versions.length === 0 ? (
+                <p className="rounded-xl bg-cloud p-3 text-center text-sm text-ink-muted">עוד לא פורסמה גרסה.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {versions.map((v) => (
+                    <li key={v.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-cloud-200 p-3">
+                      <span className="font-semibold">גרסה {v.version}</span>
+                      {v.id === workflow.publishedVersionId && <Badge tone="teal">פעילה</Badge>}
+                      <Badge tone="neutral">{PRESETS[v.design.presetId].meta.nameHe}</Badge>
+                      <span className="text-xs text-ink-muted">{formatDateTime(v.publishedAt)}</span>
+                      <div className="ms-auto flex gap-1">
+                        <Button size="sm" variant="ghost" icon={Eye} onClick={() => setViewVersion(v)}>
+                          צפייה
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={RotateCcw}
+                          onClick={async () => {
+                            if (dirty && !window.confirm('השינויים שלא נשמרו יוחלפו בגרסה זו. להמשיך?')) return;
+                            const wf = await repo.restoreVersionToDraft(org.id, workflow.id, v.id);
+                            const s = { config: structuredClone(wf.draft), design: structuredClone(wf.design) };
+                            setSnap(s);
+                            setSaved(JSON.stringify(s));
+                            setPast([]);
+                            setFuture([]);
+                            toast(`גרסה ${v.version} שוחזרה לטיוטה`);
+                          }}
+                        >
+                          שחזור לטיוטה
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </Panel>
+        );
+      default:
+        return (
+          <Panel title="פרטי התהליך">
+            <div>
+              <FieldLabel htmlFor="wf-title" required>
+                כותרת
+              </FieldLabel>
+              <Input id="wf-title" value={config.title} invalid={!config.title.trim()} onChange={(e) => update((d) => void (d.title = e.target.value), 'title')} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="wf-desc">תיאור ללקוח</FieldLabel>
+              <Textarea id="wf-desc" rows={2} value={config.description} onChange={(e) => update((d) => void (d.description = e.target.value), 'desc')} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="wf-logo">שם העסק בטופס</FieldLabel>
+              <Input id="wf-logo" maxLength={40} value={config.branding.logoText} onChange={(e) => update((d) => void (d.branding.logoText = e.target.value), 'logo')} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="wf-mode">אופן פתיחה</FieldLabel>
+              <Select id="wf-mode" value={config.mode} onChange={(e) => update((d) => void (d.mode = e.target.value as WorkflowConfig['mode']))}>
+                <option value="public">קישור ציבורי — כל אחד יכול להתחיל</option>
+                <option value="case">תיק אישי — העסק פותח ושולח קישור</option>
+              </Select>
+            </div>
+            {config.mode === 'case' && (
+              <div>
+                <p className="mb-2 text-sm font-medium">שדות התיק (העסק ממלא, הלקוח רואה)</p>
+                <FieldListEditor fields={config.caseFields} allFields={config.caseFields} priced={false} onChange={(fields) => update((d) => void (d.caseFields = fields), 'case')} />
+              </div>
+            )}
+            <div>
+              <FieldLabel htmlFor="wf-disc">אזהרה / הבהרה (אופציונלי)</FieldLabel>
+              <Textarea id="wf-disc" rows={2} value={config.disclaimer ?? ''} onChange={(e) => update((d) => void (d.disclaimer = e.target.value || undefined), 'disc')} />
+            </div>
+            <div className="space-y-3 border-t border-cloud-200 pt-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={config.consent.required} onChange={(e) => update((d) => void (d.consent.required = e.target.checked))} />
+                נדרש אישור מפורש לפני שליחה
+              </label>
+              <div>
+                <FieldLabel htmlFor="wf-consent">נוסח האישור</FieldLabel>
+                <Textarea id="wf-consent" rows={2} value={config.consent.text} onChange={(e) => update((d) => void (d.consent.text = e.target.value), 'consent')} />
+              </div>
+            </div>
+            <div className="space-y-3 border-t border-cloud-200 pt-4">
+              <div>
+                <FieldLabel htmlFor="wf-ctitle">כותרת מסך הסיום</FieldLabel>
+                <Input id="wf-ctitle" maxLength={80} placeholder="נשלח בהצלחה" value={config.confirmation?.title ?? ''} onChange={(e) => update((d) => void (d.confirmation = { ...d.confirmation, title: e.target.value || undefined }), 'ctitle')} />
+              </div>
+              <div>
+                <FieldLabel htmlFor="wf-success">הודעת הצלחה</FieldLabel>
+                <Input id="wf-success" value={config.successMessage} onChange={(e) => update((d) => void (d.successMessage = e.target.value), 'success')} />
+              </div>
+              <NextStepsEditor steps={config.confirmation?.nextSteps ?? []} onChange={(nextSteps) => update((d) => void (d.confirmation = { ...d.confirmation, nextSteps: nextSteps.length ? nextSteps : undefined }), 'next')} />
+            </div>
+          </Panel>
+        );
+    }
+  })();
+
+  const canvas = (
+    <div data-fz-canvas>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <DeviceToggle device={device} onChange={setDevice} tablet />
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            aria-pressed={pickMode}
+            onClick={() => setPickMode((m) => !m)}
+            className={cx('inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium', pickMode ? 'bg-midnight text-white' : 'bg-cloud-200 text-ink-muted')}
+            title="במצב בחירה, לחיצה על רכיב בתצוגה פותחת את המאפיינים שלו"
+          >
+            <MousePointerClick className="h-3.5 w-3.5" aria-hidden /> {pickMode ? 'מצב בחירה' : 'מצב מילוי'}
+          </button>
+          <button type="button" className="h-8 rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange" onClick={() => setPreviewKey((k) => k + 1)}>
+            איפוס תצוגה
+          </button>
+        </div>
+      </div>
+      {issues.length ? (
+        <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">התצוגה תחזור אחרי תיקון השגיאות.</p>
+      ) : (
+        <DevicePreview device={device} height={device === 'desktop' ? 600 : 760}>
+          <WorkflowRenderer
+            key={`${previewKey}-${device}`}
+            config={config}
+            theme={previewTheme}
+            assets={assetUrls}
+            mode="preview"
+            embedded
+            scrollFrame
+            focusStepId={focusStepId}
+            selectedFieldId={sel.kind === 'field' ? sel.fieldId : undefined}
+            onSelectField={pickMode ? (fieldId) => select({ kind: 'field', fieldId }) : undefined}
+          />
+        </DevicePreview>
+      )}
+    </div>
+  );
 
   return (
     <>
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-4 flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
         <div className="min-w-0">
-          <Link to="/app/workflows" className="text-xs font-medium text-ink-muted hover:text-orange">
-            ← תהליכים
+          <Link to="/app/workflows" className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-orange">
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden /> תהליכים
           </Link>
           <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight">{config.title || 'ללא שם'}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
             <Badge tone={published ? 'teal' : workflow.status === 'archived' ? 'neutral' : 'amber'}>
-              {published ? `פורסם · גרסה ${versions[0]?.version ?? 1}` : workflow.status === 'archived' ? 'בארכיון' : 'טיוטה'}
+              {published ? `פורסם · גרסה ${versions.find((v) => v.id === workflow.publishedVersionId)?.version ?? versions[0]?.version ?? 1}` : workflow.status === 'archived' ? 'בארכיון' : 'טיוטה'}
             </Badge>
             {(dirty || (workflow.hasUnpublishedChanges && published)) && <Badge tone="amber">{dirty ? 'שינויים שלא נשמרו' : 'טיוטה שלא פורסמה'}</Badge>}
             {workflow.isDemo && <DemoBadge />}
             <span>{formatNumber(runCount)} בקשות</span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl border border-cloud-300 bg-white">
+            <Button variant="ghost" aria-label="ביטול פעולה (Ctrl+Z)" title="ביטול פעולה (Ctrl+Z)" disabled={!past.length} onClick={undo}>
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" aria-label="ביצוע מחדש (Ctrl+Shift+Z)" title="ביצוע מחדש (Ctrl+Shift+Z)" disabled={!future.length} onClick={redo}>
+              <Redo2 className="h-4 w-4" />
+            </Button>
+          </div>
           <Button
             variant="ghost"
             icon={RotateCcw}
             disabled={!dirty}
-            onClick={() => window.confirm('לבטל את כל השינויים שלא נשמרו (תוכן ועיצוב)?') && loadSaved(JSON.parse(savedJson), JSON.parse(savedDesignJson))}
+            onClick={() => {
+              if (!window.confirm('לבטל את כל השינויים שלא נשמרו (תוכן ועיצוב)?')) return;
+              setSnap(structuredClone(savedSnap));
+              setPast([]);
+              setFuture([]);
+            }}
           >
             ביטול שינויים
           </Button>
@@ -244,7 +810,7 @@ export function WorkflowEditor() {
       </div>
 
       {issues.length > 0 && (
-        <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           <p className="font-medium">לא ניתן לשמור עד שיתוקנו:</p>
           <ul className="mt-1 list-inside list-disc">
             {[...new Set(issues)].map((i) => (
@@ -254,335 +820,82 @@ export function WorkflowEditor() {
         </div>
       )}
 
-      <div className="mb-4 flex gap-1 rounded-xl bg-white p-1 shadow-card xl:hidden" role="tablist" aria-label="תצוגה">
-        {(['edit', 'panel'] as const).map((v) => (
-          <button key={v} role="tab" aria-selected={mobileView === v} onClick={() => setMobileView(v)} className={cx('flex-1 rounded-lg py-2 text-sm font-medium', mobileView === v ? 'bg-midnight text-white' : 'text-ink-muted')}>
-            {v === 'edit' ? 'עריכה' : 'תצוגה, גרסאות ושיתוף'}
+      {config.draftNotes && config.draftNotes.length > 0 && (
+        <section aria-label="הערות מהיצירה" className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
+          <div className="flex items-start justify-between gap-3">
+            <p className="flex items-center gap-1.5 font-semibold">
+              <Lightbulb className="h-4 w-4" aria-hidden /> לבדיקה לפני פרסום
+            </p>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium hover:bg-amber-100"
+              onClick={() => update((d) => void (d.draftNotes = undefined), 'notes')}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden /> סימון כנבדק
+            </button>
+          </div>
+          <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-[13px]">
+            {config.draftNotes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-xs text-amber-800/80">ההערות גלויות רק לכם, לא ללקוחות.</p>
+        </section>
+      )}
+
+      <div className="mb-3 flex gap-1 rounded-xl bg-white p-1 shadow-card xl:hidden" role="tablist" aria-label="חלוניות הסטודיו">
+        {(
+          [
+            ['structure', 'מבנה', Layers],
+            ['canvas', 'תצוגה', Eye],
+            ['inspector', 'מאפיינים', PenLine],
+          ] as const
+        ).map(([k, label, Icon]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={mobilePane === k}
+            onClick={() => setMobilePane(k)}
+            className={cx('flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium', mobilePane === k ? 'bg-midnight text-white' : 'text-ink-muted')}
+          >
+            <Icon className="h-4 w-4" aria-hidden /> {label}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className={cx('space-y-5', mobileView !== 'edit' && 'hidden xl:block')}>
-          <div className="flex gap-1 rounded-xl bg-white p-1 shadow-card" role="tablist" aria-label="עריכה">
-            {(
-              [
-                ['content', 'תוכן ושדות', PenLine],
-                ['design', 'עיצוב', Palette],
-              ] as const
-            ).map(([k, label, Icon]) => (
-              <button
-                key={k}
-                role="tab"
-                aria-selected={leftTab === k}
-                onClick={() => setLeftTab(k)}
-                className={cx('flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition', leftTab === k ? 'bg-midnight text-white' : 'text-ink-muted hover:text-ink')}
-              >
-                <Icon className="h-4 w-4" aria-hidden /> {label}
-                {k === 'design' && designDirty && <span className="h-1.5 w-1.5 rounded-full bg-orange" aria-label="שינויים שלא נשמרו" />}
-              </button>
-            ))}
-          </div>
-
-          {leftTab === 'design' && (
-            <DesignPanel
-              design={design}
-              onChange={setDesign}
-              recommendation={recommendation}
-              orgId={org.id}
-              orgBrandColor={org.brand.primaryColor}
-              assets={assets}
-              assetUrls={assetUrls}
-              canUndo={designHistory.length > 0}
-              onUndo={() => {
-                const prev = designHistory[designHistory.length - 1];
-                if (!prev) return;
-                setDesignHistory((h) => h.slice(0, -1));
-                setDesignState(prev);
-              }}
-              designDirty={designDirty}
-              onRevert={() => setDesign(JSON.parse(savedDesignJson))}
-            />
-          )}
-
-          {leftTab === 'content' && (
-          <>
-          <Section title="פרטים כלליים">
-            <div>
-              <FieldLabel htmlFor="wf-title" required>
-                כותרת
-              </FieldLabel>
-              <Input id="wf-title" value={config.title} invalid={!config.title.trim()} onChange={(e) => update((d) => void (d.title = e.target.value))} />
-            </div>
-            <div>
-              <FieldLabel htmlFor="wf-desc">תיאור ללקוח</FieldLabel>
-              <Textarea id="wf-desc" rows={2} value={config.description} onChange={(e) => update((d) => void (d.description = e.target.value))} />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <FieldLabel htmlFor="wf-mode">אופן פתיחה</FieldLabel>
-                <Select id="wf-mode" value={config.mode} onChange={(e) => update((d) => void (d.mode = e.target.value as WorkflowConfig['mode']))}>
-                  <option value="public">קישור ציבורי — כל אחד יכול להתחיל</option>
-                  <option value="case">תיק אישי — העסק פותח ושולח קישור</option>
-                </Select>
-              </div>
-              <div>
-                <FieldLabel htmlFor="wf-success">הודעת הצלחה</FieldLabel>
-                <Input id="wf-success" value={config.successMessage} onChange={(e) => update((d) => void (d.successMessage = e.target.value))} />
-              </div>
-            </div>
-            <div>
-              <FieldLabel htmlFor="wf-disc">אזהרה / הבהרה (אופציונלי)</FieldLabel>
-              <Textarea id="wf-disc" rows={2} value={config.disclaimer ?? ''} onChange={(e) => update((d) => void (d.disclaimer = e.target.value || undefined))} />
-            </div>
-          </Section>
-
-          {config.mode === 'case' && (
-            <Section title="שדות התיק" description="ממולאים על ידי העסק בפתיחת התיק ומוצגים ללקוח לקריאה בלבד.">
-              <FieldListEditor fields={config.caseFields} allFields={config.caseFields} priced={false} onChange={(fields) => update((d) => void (d.caseFields = fields))} />
-            </Section>
-          )}
-
-          <Section title="שלבים ושדות" description="סדר השלבים הוא סדר המסכים אצל הלקוח. שלב הסיכום וההסכמה מתווסף אוטומטית.">
-            {config.steps.map((s, i) => (
-              <div key={s.id} className="rounded-2xl border border-cloud-200 bg-cloud/50 p-4">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-midnight text-xs font-semibold text-white">{i + 1}</span>
-                  <Input aria-label={`שם שלב ${i + 1}`} value={s.title} invalid={!s.title.trim()} onChange={(e) => update((d) => void (d.steps[i]!.title = e.target.value))} className="flex-1 font-medium" />
-                  <Button size="sm" variant="ghost" aria-label="העלאת שלב" disabled={i === 0} onClick={() => update((d) => void (d.steps = move(d.steps, i, -1)))}>
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="sm" variant="ghost" aria-label="הורדת שלב" disabled={i === config.steps.length - 1} onClick={() => update((d) => void (d.steps = move(d.steps, i, 1)))}>
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`מחיקת שלב ${s.title}`}
-                    disabled={config.steps.length <= 1}
-                    onClick={() => window.confirm(`למחוק את השלב "${s.title}" וכל השדות בו?`) && update((d) => void d.steps.splice(i, 1))}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                <Input
-                  aria-label={`תיאור שלב ${i + 1}`}
-                  placeholder="תיאור קצר לשלב (אופציונלי)"
-                  value={s.description ?? ''}
-                  onChange={(e) => update((d) => void (d.steps[i]!.description = e.target.value || undefined))}
-                  className="mt-2 text-sm"
-                />
-                <div className="mt-3">
-                  <FieldListEditor fields={s.fields} allFields={allFields} priced={config.pricing.enabled} onChange={(fields) => update((d) => void (d.steps[i]!.fields = fields))} />
-                </div>
-              </div>
-            ))}
-            <Button variant="secondary" icon={Plus} onClick={() => update((d) => void d.steps.push({ id: newId('stp'), title: `שלב ${d.steps.length + 1}`, fields: [] }))}>
-              הוספת שלב
-            </Button>
-          </Section>
-
-          <Section title="מחיר" description="חישוב דקלרטיבי: מחירי אפשרויות, תוספות, עמלות קבועות ומקדמה מדומה.">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={config.pricing.enabled} onChange={(e) => update((d) => void (d.pricing.enabled = e.target.checked))} />
-              הצגת חישוב מחיר ללקוח
-            </label>
-            {config.pricing.enabled && (
-              <>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <FieldLabel htmlFor="wf-total">כותרת הסכום</FieldLabel>
-                    <Input id="wf-total" value={config.pricing.totalLabel} onChange={(e) => update((d) => void (d.pricing.totalLabel = e.target.value))} />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor="wf-dep">מקדמה מדומה לאחר אישור (%)</FieldLabel>
-                    <Input
-                      id="wf-dep"
-                      type="number"
-                      min={0}
-                      max={100}
-                      dir="ltr"
-                      value={config.pricing.depositPercent}
-                      onChange={(e) => update((d) => void (d.pricing.depositPercent = Math.min(100, Math.max(0, Number(e.target.value) || 0))))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-2 text-sm font-medium">עמלות קבועות</p>
-                  <ul className="space-y-2">
-                    {config.pricing.fees.map((f, i) => (
-                      <li key={f.id} className="rounded-xl border border-cloud-200 p-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Input aria-label="שם העמלה" value={f.label} onChange={(e) => setFee(i, { label: e.target.value })} className="min-w-0 flex-1" />
-                          <Input aria-label="סכום העמלה" type="number" min={0} dir="ltr" value={f.amount} onChange={(e) => setFee(i, { amount: Number(e.target.value) || 0 })} className="w-28" />
-                          <Button size="sm" variant="ghost" aria-label={`מחיקת ${f.label}`} onClick={() => update((d) => void d.pricing.fees.splice(i, 1))}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                          <span>חלה רק אם</span>
-                          <Select
-                            aria-label="תנאי לעמלה"
-                            className="w-auto py-1.5 text-xs"
-                            value={f.condition ? `${f.condition.fieldKey}|${f.condition.operator}` : ''}
-                            onChange={(e) => {
-                              const [fieldKey, operator] = e.target.value.split('|');
-                              setFee(i, { condition: fieldKey ? ({ fieldKey, operator } as Condition) : undefined });
-                            }}
-                          >
-                            <option value="">תמיד</option>
-                            {allFields
-                              .filter((x) => x.type === 'checkbox' || x.type === 'decision')
-                              .map((x) => (
-                                <option key={x.id} value={`${x.key}|isTrue`}>
-                                  {x.label} — {OPERATOR_LABELS.isTrue}
-                                </option>
-                              ))}
-                          </Select>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button size="sm" variant="secondary" icon={Plus} className="mt-2" onClick={() => update((d) => void d.pricing.fees.push({ id: newId('fee'), label: 'עמלה', amount: 0 }))}>
-                    עמלה
-                  </Button>
-                </div>
-              </>
-            )}
-          </Section>
-
-          <Section title="שם העסק והסכמה" description="צבעים, גופנים, לוגו ותמונות נמצאים בלשונית ״עיצוב״.">
-            <div>
-              <FieldLabel htmlFor="wf-logo">שם העסק בטופס</FieldLabel>
-              <Input id="wf-logo" maxLength={40} value={config.branding.logoText} onChange={(e) => update((d) => void (d.branding.logoText = e.target.value))} />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={config.consent.required} onChange={(e) => update((d) => void (d.consent.required = e.target.checked))} />
-              נדרשת הסכמה מפורשת לפני שליחה
-            </label>
-            <div>
-              <FieldLabel htmlFor="wf-consent">נוסח ההסכמה</FieldLabel>
-              <Textarea id="wf-consent" rows={2} value={config.consent.text} onChange={(e) => update((d) => void (d.consent.text = e.target.value))} />
-            </div>
-          </Section>
-          </>
-          )}
-        </div>
-
-        <div className={cx('xl:sticky xl:top-6 xl:self-start', mobileView !== 'panel' && 'hidden xl:block')}>
-          <div className="mb-3 flex gap-1 rounded-xl bg-white p-1 shadow-card" role="tablist" aria-label="לוח צד">
-            {(
-              [
-                ['preview', 'תצוגה מקדימה', Eye],
-                ['versions', `גרסאות (${versions.length})`, History],
-                ['share', 'שיתוף', Link2],
-              ] as const
-            ).map(([k, label, Icon]) => (
-              <button
-                key={k}
-                role="tab"
-                aria-selected={panel === k}
-                onClick={() => setPanel(k)}
-                className={cx('flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition', panel === k ? 'bg-midnight text-white' : 'text-ink-muted hover:text-ink')}
-              >
-                <Icon className="h-4 w-4" aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-
-          {panel === 'preview' && (
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
-                <DeviceToggle device={device} onChange={setDevice} />
-                <span>מתעדכן בזמן אמת · שליחה בתצוגה לא נשמרת</span>
-                <button type="button" className="font-medium hover:text-orange" onClick={() => setPreviewKey((k) => k + 1)}>
-                  איפוס התצוגה
-                </button>
-              </div>
-              {issues.length ? (
-                <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">התצוגה תחזור אחרי תיקון השגיאות.</p>
-              ) : (
-                <DevicePreview device={device} height={device === 'mobile' ? 720 : 560}>
-                  <WorkflowRenderer key={`${previewKey}-${device}`} config={config} theme={design} assets={assetUrls} mode="preview" embedded scrollFrame />
-                </DevicePreview>
-              )}
-            </div>
-          )}
-
-          {panel === 'versions' && (
-            <Card className="p-5">
-              <p className="text-sm text-ink-muted">כל פרסום יוצר גרסה קבועה. בקשות נשארות מקושרות לגרסה שבה נשלחו.</p>
-              {versions.length === 0 ? (
-                <p className="mt-4 rounded-xl bg-cloud p-4 text-center text-sm text-ink-muted">עוד לא פורסמה גרסה.</p>
-              ) : (
-                <ol className="mt-4 space-y-2">
-                  {versions.map((v) => (
-                    <li key={v.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-cloud-200 p-3">
-                      <span className="font-semibold">גרסה {v.version}</span>
-                      {v.id === workflow.publishedVersionId && <Badge tone="teal">פעילה</Badge>}
-                      <span className="text-xs text-ink-muted">{formatDateTime(v.publishedAt)}</span>
-                      <Badge tone="neutral">{PRESETS[v.design.presetId].meta.nameHe}</Badge>
-                      <div className="ms-auto flex gap-1">
-                        <Button size="sm" variant="ghost" icon={Eye} onClick={() => setViewVersion(v)}>
-                          צפייה
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          icon={Undo2}
-                          onClick={async () => {
-                            if (dirty && !window.confirm('השינויים שלא נשמרו יוחלפו בגרסה זו. להמשיך?')) return;
-                            const wf = await repo.restoreVersionToDraft(org.id, workflow.id, v.id);
-                            loadSaved(wf.draft, wf.design);
-                            toast(`גרסה ${v.version} שוחזרה לטיוטה`);
-                          }}
-                        >
-                          שחזור לטיוטה
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </Card>
-          )}
-
-          {panel === 'share' && (
-            <Card className="space-y-4 p-5">
-              {published ? (
-                <>
-                  <div>
-                    <FieldLabel htmlFor="share-link">{config.mode === 'case' ? 'כתובת התהליך (נדרש תיק אישי)' : 'קישור ציבורי'}</FieldLabel>
-                    <div className="flex gap-2">
-                      <input id="share-link" readOnly dir="ltr" value={link} onFocus={(e) => e.target.select()} className="fz-input min-w-0 flex-1 rounded-xl border border-cloud-300 bg-cloud px-3 py-2 text-sm" />
-                      <Button variant="secondary" icon={Copy} onClick={copyLink}>
-                        העתקה
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-midnight px-4 text-sm font-medium text-white hover:bg-midnight-700">
-                      <Eye className="h-4 w-4" aria-hidden /> פתיחה כלקוח
-                    </a>
-                    {versions[0]?.config.mode === 'case' && (
-                      <Button icon={FilePlus2} onClick={() => setCaseOpen(true)}>
-                        פתיחת תיק ללקוח
-                      </Button>
-                    )}
-                  </div>
-                  <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-                    הקישור עובד בדפדפן הזה בלבד: הנתונים נשמרים ב-localStorage ואינם מסתנכרנים בין מכשירים או דפדפנים. בגרסת ייצור הקישור יעבוד מכל מקום.
-                  </p>
-                </>
-              ) : (
-                <EmptyState icon={Rocket} title="פרסמו כדי לקבל קישור" action={<Button icon={Rocket} onClick={() => setConfirmPublish(true)} disabled={workflow.status === 'archived'}>פרסום</Button>}>
-                  {workflow.status === 'archived' ? 'התהליך בארכיון. שחזרו אותו מרשימת התהליכים.' : 'הקישור נוצר ברגע הפרסום הראשון.'}
-                </EmptyState>
-              )}
-            </Card>
-          )}
-        </div>
+      <div className="grid gap-5 xl:grid-cols-[250px_minmax(0,1fr)_360px] 2xl:grid-cols-[270px_minmax(0,1fr)_400px]">
+        <aside className={cx('xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto xl:pe-1', mobilePane !== 'structure' && 'hidden xl:block')}>{structure}</aside>
+        <section aria-label="תצוגה חיה" className={cx('min-w-0 xl:sticky xl:top-4 xl:self-start', mobilePane !== 'canvas' && 'hidden xl:block')}>
+          {canvas}
+        </section>
+        <aside aria-label="מאפיינים" className={cx('min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto', mobilePane !== 'inspector' && 'hidden xl:block')}>
+          <Card className="p-4">{inspector}</Card>
+        </aside>
       </div>
+
+      <Modal open={Boolean(library)} onClose={() => setLibrary(null)} title="הוספת רכיב">
+        <div className="space-y-5">
+          {BLOCK_GROUPS.map((g) => (
+            <section key={g.id}>
+              <h3 className="mb-2 text-xs font-semibold text-ink-muted">{g.label}</h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {BLOCKS.filter((b) => b.group === g.id).map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => library && addBlock(library.stepId, b.id)}
+                    className="flex min-h-[64px] flex-col items-start gap-1.5 rounded-xl border border-cloud-200 bg-white p-3 text-start text-sm transition hover:border-orange hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+                  >
+                    <b.icon className="h-4 w-4 text-ink-muted" aria-hidden />
+                    <span className="font-medium">{b.label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+          <p className="text-xs text-ink-muted">רכיבי תוכן (כותרות, תמונות, יתרונות) רק מוצגים ללקוח. אפשר למחוק כל רכיב דקורטיבי — תהליך יכול להיות אלגנטי גם בלי תמונות.</p>
+        </div>
+      </Modal>
 
       <Modal
         open={confirmPublish}
@@ -600,7 +913,8 @@ export function WorkflowEditor() {
         }
       >
         <p className="text-sm text-ink-muted">
-          {dirty ? 'השינויים יישמרו ו' : ''}תיווצר תמונת מצב קבועה של התהליך והעיצוב ({PRESETS[design.presetId].meta.nameHe}). לקוחות חדשים יראו את הגרסה החדשה; בקשות קיימות ({formatNumber(runCount)}) נשארות מקושרות לגרסה שבה נשלחו.
+          {dirty ? 'השינויים יישמרו ו' : ''}תיווצר תמונת מצב קבועה של התהליך והעיצוב ({PRESETS[design.presetId].meta.nameHe}
+          {design.inheritBrand ? ' + ערכת המותג הנוכחית' : ''}). סיום: {COMPLETION_LABELS[completion.mode].title}. בקשות קיימות ({formatNumber(runCount)}) נשארות מקושרות לגרסה שבה נשלחו.
         </p>
       </Modal>
 

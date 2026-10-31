@@ -54,7 +54,8 @@ const preview = (
 /** Simulated notifications. Nothing is ever sent — these are previews stored locally. */
 export function submitNotifications(org: Organization, run: WorkflowRun, workflowTitle: string, at?: string): NotificationPreview[] {
   const name = run.customerName || 'לקוח/ה';
-  const totalText = run.total > 0 ? ` סכום: ${formatCurrency(run.total)}.` : '';
+  // A request with no payment never mentions an amount due.
+  const totalText = run.total > 0 && run.payment.status !== 'none' ? ` סכום: ${formatCurrency(run.total)}.` : run.total > 0 && run.payment.kind !== 'none' ? ` הערכה: ${formatCurrency(run.total)}.` : '';
   const list: NotificationPreview[] = [
     preview(org, run, {
       channel: 'email',
@@ -84,7 +85,9 @@ export function statusNotification(org: Organization, run: WorkflowRun, to: RunS
   const extra =
     to === 'approved' && run.payment.status === 'deposit_requested'
       ? ` להשלמת ההזמנה נדרשת מקדמה של ${formatCurrency(run.payment.amount)} (סימולציה).`
-      : '';
+      : to === 'approved' && run.payment.status === 'payment_requested'
+        ? ` להשלמה נדרש תשלום של ${formatCurrency(run.payment.amount)} (סימולציה).`
+        : '';
   return preview(org, run, {
     channel: run.customerContact.includes('@') ? 'email' : 'whatsapp',
     audience: 'customer',
@@ -103,4 +106,14 @@ export function caseLinkNotification(org: Organization, run: WorkflowRun, link: 
     subject: 'קישור אישי לאישור',
     body: `היי ${run.customerName || ''}, ${org.name} שלחו לך קישור אישי לצפייה ולאישור: ${link}`,
   }, at);
+}
+
+/** Next human-readable reference (e.g. "BS-1013"): highest existing number + 1, never reused. */
+export function nextReference(org: Organization, runs: Pick<WorkflowRun, 'reference'>[]): string {
+  const prefix = referencePrefix(org);
+  const max = runs.reduce((m, r) => {
+    const n = Number(r.reference.split('-').pop());
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 1000);
+  return `${prefix}-${max + 1}`;
 }

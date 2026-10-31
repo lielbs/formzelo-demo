@@ -134,6 +134,9 @@ describe('local prompt generator', () => {
       'restaurant_event',
       'document_collection',
       'quote_request',
+      'table_booking',
+      // Registration prompts have no domain template — the composer builds them from blocks.
+      'generic',
     ]);
   });
 
@@ -141,9 +144,18 @@ describe('local prompt generator', () => {
     expect(detectTemplate('צריך עזרה עם טופס').key).toBe('generic');
   });
 
-  it('falls back to an editable generic form and applies modifiers', () => {
+  it('composes registration prompts with the requested fields', () => {
     const r = generateWorkflowFromPrompt('סטודיו ליוגה, רוצה טופס הרשמה עם תאריך ואימייל');
     expect(r.templateKey).toBe('generic');
+    expect(r.composed).toBe(true);
+    const keys = r.config.steps.flatMap((s) => s.fields.map((f) => f.key));
+    expect(keys).toEqual(expect.arrayContaining(['preferred_date', 'email']));
+  });
+
+  it('falls back to an editable generic form and applies modifiers', () => {
+    const r = generateWorkflowFromPrompt('צריך טופס פנייה כללי עם תאריך ואימייל');
+    expect(r.templateKey).toBe('generic');
+    expect(r.composed).toBe(false);
     const keys = r.config.steps.flatMap((s) => s.fields.map((f) => f.key));
     expect(keys).toEqual(expect.arrayContaining(['requested_date', 'email']));
   });

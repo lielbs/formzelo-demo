@@ -38,7 +38,7 @@ export type ThemePalette = z.infer<typeof ThemePaletteSchema>;
 
 export const TYPOGRAPHY_PRESETS = ['editorial', 'technical', 'warm', 'corporate', 'display', 'neutral'] as const;
 export const HERO_LAYOUTS = ['split', 'banner', 'immersive', 'compact', 'poster', 'centered', 'none'] as const;
-export const COMPOSITIONS = ['centered', 'editorial_split', 'product_grid', 'decision'] as const;
+export const COMPOSITIONS = ['centered', 'editorial_split', 'product_grid', 'decision', 'booking', 'document'] as const;
 export const DECORATIONS = ['organic', 'technical', 'atmospheric', 'structured', 'expressive', 'minimal', 'none'] as const;
 export const CARD_VARIANTS = ['soft', 'outlined', 'elevated', 'bold', 'flat'] as const;
 export const INPUT_VARIANTS = ['outlined', 'filled', 'underline'] as const;
@@ -92,15 +92,42 @@ export const WorkflowThemeSchema = z.object({
     assetId: ThemeAssetRefSchema.optional(),
     /** Show the business name next to (or instead of) the logo image. */
     showName: z.boolean(),
+    /** Where the identity row sits in the hero. */
+    placement: z.enum(['start', 'center', 'hidden']).optional(),
   }),
+  /**
+   * Draft only: take colors, type, button shape, density, logo and cover from the
+   * workspace brand kit. Published versions store the resolved theme with this off.
+   */
+  inheritBrand: z.boolean().optional(),
 });
 export type WorkflowTheme = z.infer<typeof WorkflowThemeSchema>;
+
+/** Workspace-level visual identity; workflows inherit it unless they override. */
+export const BrandKitSchema = z.object({
+  displayName: z.string().min(1).max(60),
+  description: z.string().max(240).default(''),
+  logoAssetId: ThemeAssetRefSchema.optional(),
+  secondaryLogoAssetId: ThemeAssetRefSchema.optional(),
+  coverAssetId: ThemeAssetRefSchema.optional(),
+  palette: z.object({ primary: hex, secondary: hex, accent: hex, background: hex }),
+  typography: z.enum(TYPOGRAPHY_PRESETS),
+  button: z.enum(BUTTON_VARIANTS),
+  density: z.enum(DENSITIES),
+  logoPlacement: z.enum(['start', 'center', 'hidden']),
+  /** Decorative artwork in heroes (off = clean, image-free look). */
+  decorations: z.boolean(),
+  /** Default design personality for new workflows. */
+  personality: ThemePresetIdSchema,
+  updatedAt: z.string().min(1),
+});
+export type BrandKit = z.infer<typeof BrandKitSchema>;
 
 /** Uploaded local image. Stored in its own localStorage key per workspace, never inside versions. */
 export const AssetSchema = z.object({
   id: ThemeAssetRefSchema,
   orgId: z.string().min(1),
-  kind: z.enum(['logo', 'cover']),
+  kind: z.enum(['logo', 'cover', 'image']),
   name: z.string().max(120),
   mime: z.enum(['image/webp', 'image/jpeg', 'image/png']),
   /** Downscaled data URL produced in the browser. */
@@ -116,6 +143,8 @@ export type Asset = z.infer<typeof AssetSchema>;
 export const ASSET_LIMITS = {
   logo: { maxEdge: 320, maxBytes: 80 * 1024 },
   cover: { maxEdge: 1400, maxBytes: 320 * 1024 },
+  /** Content images (image / gallery blocks, image option cards). */
+  image: { maxEdge: 900, maxBytes: 160 * 1024 },
   /** Total per workspace. */
   totalBytes: 1.2 * 1024 * 1024,
   /** Original file size accepted before downscaling. */
