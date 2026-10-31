@@ -29,7 +29,7 @@ jobs:
       - run: npm run build
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Optional sales contact for the interest button (repository variable; empty = GitHub issue fallback).
+          # Optional override of the interest-button address (repository variable; empty = default in src/lib/links.ts).
           VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
       # SPA fallback: deep links such as /f/<slug> load the app instead of a 404.
       - run: cp dist/index.html dist/404.html

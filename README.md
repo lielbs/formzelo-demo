@@ -35,7 +35,7 @@ Optional build-time variable:
 
 | Variable | Effect |
 | --- | --- |
-| `VITE_CONTACT_EMAIL` | If set, the "רוצים תהליך כזה לעסק שלכם?" button opens the visitor's mail app (`mailto:`) with a prepared message. If unset, it opens a **public** GitHub issue form in this repository and says so (with a warning not to post personal details). No leads are collected or stored by the demo either way. On Pages, set it as a repository variable (Settings → Secrets and variables → Actions → Variables → `VITE_CONTACT_EMAIL`); `pages.yml` already passes it to the build.
+| `VITE_CONTACT_EMAIL` | The "רוצים תהליך כזה לעסק שלכם?" button opens the visitor's mail app (`mailto:`) with a prepared message to **contact@rockstackds.com** (default in `src/lib/links.ts`). Setting this variable overrides the address. No leads are collected or stored by the demo. On Pages, set it as a repository variable (Settings → Secrets and variables → Actions → Variables → `VITE_CONTACT_EMAIL`); `pages.yml` already passes it to the build.
 
 ---
 
@@ -307,7 +307,7 @@ Earlier browser end-to-end checks (scripted over the DevTools protocol in local 
 - Option capacity ("נותרו N מקומות") and booking availability count submissions stored in this browser only.
 - Generated names, descriptions and sample prices of composed choices are placeholders and are flagged in the review notes.
 - The guided tour's branding (name, logo, colour, style) is a preview only; the uploaded logo lives in memory and disappears when you leave the tour. Use **ערכת מותג** to save branding.
-- There is no lead backend. The interest button uses `mailto:` (when `VITE_CONTACT_EMAIL` is configured) or a public GitHub issue form.
+- There is no lead backend. The interest button opens a `mailto:` to contact@rockstackds.com; nothing is sent unless the visitor sends the email from their own mail app.
 - Theme selection is keyword-based; unusual wording may pick a less fitting preset — the owner can always override it.
 
 ---

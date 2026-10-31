@@ -13,5 +13,6 @@ export const publicFlowUrl = (slug: string, runId?: string) => `${publicBaseUrl(
 
 /** Public repository of this demo (issues double as a zero-cost, clearly public contact form). */
 export const REPO_URL = 'https://github.com/lielbs/formzelo-demo';
-/** Optional sales contact, set at build time (VITE_CONTACT_EMAIL). Never hard-coded. */
-export const CONTACT_EMAIL: string | undefined = (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || undefined;
+/** Public sales contact for the interest button. VITE_CONTACT_EMAIL (build time) overrides it. */
+export const DEFAULT_CONTACT_EMAIL = 'contact@rockstackds.com';
+export const CONTACT_EMAIL: string | undefined = (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || DEFAULT_CONTACT_EMAIL;
