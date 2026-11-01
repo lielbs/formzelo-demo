@@ -4,7 +4,7 @@
  * engine/presence before they get here; text is rendered as text, never HTML.
  */
 import { CalendarDays, Facebook, Globe, Instagram, Link2, Linkedin, Mail, MapPin, MessageCircle, Music2, Phone, ShoppingBag, Star, Youtube, type LucideIcon } from 'lucide-react';
-import type { ReactElement, SVGProps } from 'react';
+import { useEffect, useState, type ReactElement, type SVGProps } from 'react';
 import type { PresenceSettings, WorkflowTheme } from '../domain/theme';
 import { linksForWorkflow, presenceOf, reviewLink, showsIn, type PresenceSlot, type ResolvedLink } from '../engine/presence';
 
@@ -70,7 +70,7 @@ export function PresenceIcon({ link, className = 'h-4 w-4' }: { link: { platform
   return <Icon className={className} aria-hidden />;
 }
 
-function LinkItem({ link, style, interactive }: { link: ResolvedLink; style: PresenceSettings['style']; interactive: boolean }) {
+function LinkItem({ link, style, interactive , onSample }: { link: ResolvedLink; style: PresenceSettings['style']; interactive: boolean ; onSample?: (label: string) => void }) {
   const body = (
     <>
       <span className="fz-presence-icon">
@@ -85,12 +85,20 @@ function LinkItem({ link, style, interactive }: { link: ResolvedLink; style: Pre
     </>
   );
   const name = style === 'icons' ? link.label : undefined;
-  // Sample (fictional) links and editor previews never navigate.
-  if (link.sample || !interactive) {
+  // Editor previews never navigate.
+  if (!interactive) {
     return (
-      <span className="fz-presence-item" data-inert aria-label={name ? `${name}${link.sample ? ' (קישור לדוגמה)' : ''}` : undefined} title={link.sample ? 'קישור לדוגמה — לא פעיל בדמו' : link.display} role={name ? 'img' : undefined}>
+      <span className="fz-presence-item" data-inert aria-label={name} title={link.display} role={name ? 'img' : undefined}>
         {body}
       </span>
+    );
+  }
+  // A demo business's links look like the real thing; a tap explains instead of navigating.
+  if (link.sample) {
+    return (
+      <button type="button" className="fz-presence-item" aria-label={name} onClick={() => onSample?.(link.label)}>
+        {body}
+      </button>
     );
   }
   return (
@@ -108,7 +116,24 @@ function LinkItem({ link, style, interactive }: { link: ResolvedLink; style: Pre
 }
 
 /** Links for one slot of a workflow, or nothing. */
+/** Short note shown after tapping a demo business's link (it never navigates). */
+function useSampleNote() {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!label) return;
+    const t = setTimeout(() => setLabel(null), 3200);
+    return () => clearTimeout(t);
+  }, [label]);
+  const note = label ? (
+    <p className="fz-presence-note" role="status">
+      זה עסק לדוגמה בדמו. אצל עסק אמיתי הכפתור פותח את {label}.
+    </p>
+  ) : null;
+  return [note, setLabel] as const;
+}
+
 export function DigitalPresence({ theme, slot, interactive = true, title }: { theme: WorkflowTheme; slot: PresenceSlot; interactive?: boolean; title?: string }) {
+  const [note, onSample] = useSampleNote();
   const settings = presenceOf(theme.presence);
   if (!showsIn(settings.placement, slot)) return null;
   const links = linksForWorkflow(theme.presence?.links ?? [], settings);
@@ -121,20 +146,21 @@ export function DigitalPresence({ theme, slot, interactive = true, title }: { th
       <ul>
         {links.map((l) => (
           <li key={l.id}>
-            <LinkItem link={l} style={style} interactive={interactive} />
+            <LinkItem link={l} style={style} interactive={interactive} onSample={onSample} />
           </li>
         ))}
       </ul>
-      {links.some((l) => l.sample) && <p className="fz-presence-note">קישורי דוגמה של עסק בדיוני — לא פעילים בדמו.</p>}
+      {note}
     </nav>
   );
 }
 
 /** Neutral review request. The caller decides eligibility (engine/presence shouldAskForReview). */
 export function ReviewRequest({ theme, interactive = true }: { theme: WorkflowTheme; interactive?: boolean }) {
+  const [note, onSample] = useSampleNote();
   const link = reviewLink(theme.presence?.links ?? []);
   if (!link) return null;
-  const inert = link.sample || !interactive;
+  const inert = !interactive;
   const inner = (
     <>
       <Star className="h-4 w-4" aria-hidden /> שתפו את החוויה שלכם בגוגל
@@ -144,16 +170,20 @@ export function ReviewRequest({ theme, interactive = true }: { theme: WorkflowTh
     <section className="fz-review-cta" aria-label="ביקורת בגוגל">
       <p className="fz-muted text-sm">אם תרצו, אפשר לספר לאחרים איך היה — כל ביקורת, בכל דירוג.</p>
       {inert ? (
-        <span className="fz-btn fz-btn-ghost mt-2" data-inert title="קישור לדוגמה — לא פעיל בדמו">
+        <span className="fz-btn fz-btn-ghost mt-2" data-inert>
           {inner}
         </span>
+      ) : link.sample ? (
+        <button type="button" className="fz-btn fz-btn-ghost mt-2" onClick={() => onSample('דף הביקורות בגוגל')}>
+          {inner}
+        </button>
       ) : (
         <a className="fz-btn fz-btn-ghost mt-2" href={link.href} target="_blank" rel="noopener noreferrer">
           {inner}
           <span className="fz-sr"> (נפתח בחלון חדש)</span>
         </a>
       )}
-      {link.sample && <p className="fz-presence-note">קישור לדוגמה — לא פעיל בדמו.</p>}
+      {note}
     </section>
   );
 }

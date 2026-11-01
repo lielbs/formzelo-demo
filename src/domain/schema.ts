@@ -17,8 +17,9 @@ import { BrandKitSchema, WorkflowThemeSchema } from './theme';
  *      explicit completion (payment) mode. New config fields are optional, so
  *      published versions are never rewritten.
  *  v7: Formangle Actions (`actions`): structured owner → customer decisions and updates.
+ *  v8: demo businesses gain their showcase identity (logo, photos, contact details). No structural change.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 const id = z.string().min(1);
 const timestamp = z.string().min(1); // ISO-8601

@@ -6,6 +6,7 @@
  */
 import { ImagePlus } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import type { WorkflowConfig } from '../domain/schema';
 import type { MediaSettings, WorkflowTheme } from '../domain/theme';
 
 export type ResolvedMedia = Required<Omit<MediaSettings, 'gallery' | 'galleryTitle'>> & Pick<MediaSettings, 'gallery' | 'galleryTitle'>;
@@ -67,6 +68,22 @@ export function BusinessGallery({ theme, assets, slot, studio }: { theme: Workfl
       </ul>
     </section>
   );
+}
+
+/** Every workspace image a version shows: logo, opening, gallery, owner photo, option photos and image blocks. */
+export function referencedAssets(theme: WorkflowTheme, config: WorkflowConfig): string[] {
+  const ids = new Set<string>();
+  const add = (id?: string) => id?.startsWith('ast_') && ids.add(id);
+  add(theme.logo.assetId);
+  add(theme.hero.coverAssetId);
+  theme.media?.gallery?.forEach(add);
+  add(theme.extras?.welcome?.photoAssetId);
+  for (const step of config.steps)
+    for (const f of step.fields) {
+      f.options?.forEach((o) => add(o.image));
+      f.media?.forEach(add);
+    }
+  return [...ids];
 }
 
 /** Ambience behind the whole page (cover style "page"). */

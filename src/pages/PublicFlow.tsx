@@ -11,6 +11,7 @@ import { answersToValues } from '../engine/validation';
 import { workflowTitle } from '../lib/meta';
 import { RequestActions } from '../renderer/actions';
 import { Confirmation } from '../renderer/Confirmation';
+import { referencedAssets } from '../renderer/media';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { buildTheme } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
@@ -67,7 +68,7 @@ export function PublicFlow() {
   // A run is rendered with the exact version (config + design) it is bound to.
   const version = runQ.data?.version ?? pub.data?.version;
   const assetsQ = useRepoQuery(
-    (r) => (pub.data && version ? r.getAssetUrls(pub.data.organization.id, [version.design.logo.assetId, version.design.hero.coverAssetId]) : Promise.resolve({} as Record<string, string>)),
+    (r) => (pub.data && version ? r.getAssetUrls(pub.data.organization.id, referencedAssets(version.design, version.config)) : Promise.resolve({} as Record<string, string>)),
     [pub.data?.organization.id, version?.id],
   );
 

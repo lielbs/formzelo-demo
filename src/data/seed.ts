@@ -27,6 +27,7 @@ import { brandKitFromTheme, defaultBrandKit, freezeTheme } from '../theme/brand'
 import { recommendTheme } from '../theme/resolver';
 import { newId } from '../lib/id';
 import { actionSummary, buildAction, respond, type ActionInput } from '../engine/actions';
+import { applyShowcase } from './showcase';
 
 export const DEMO_ORG_IDS = { bloom: 'org_bloom', autocare: 'org_autocare', urban: 'org_urban', valley: 'org_valley' } as const;
 export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events', booking: 'urban-table-booking', contest: 'valley-run' } as const;
@@ -553,5 +554,5 @@ export function appendDemoActions(data: OrgData, now = Date.now()): OrgData {
 }
 
 export function buildSeed(now = Date.now()): OrgData[] {
-  return [seedBloom(now), seedAutoCare(now), seedUrban(now), seedValley(now)].map((d) => appendDemoActions(d, now));
+  return [seedBloom(now), seedAutoCare(now), seedUrban(now), seedValley(now)].map((d) => applyShowcase(appendDemoActions(d, now)));
 }

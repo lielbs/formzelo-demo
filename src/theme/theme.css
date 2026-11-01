@@ -2276,7 +2276,11 @@ img.fz-gallery-item {
 a.fz-presence-item:hover {
   border-color: var(--fz-primary);
 }
-a.fz-presence-item:focus-visible {
+button.fz-presence-item {
+  font: inherit;
+  cursor: pointer;
+}
+:is(a, button).fz-presence-item:focus-visible {
   outline: 2px solid var(--fz-primary);
   outline-offset: 2px;
 }

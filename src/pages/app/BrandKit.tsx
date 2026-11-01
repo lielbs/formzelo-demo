@@ -205,9 +205,9 @@ export function BrandKitPage() {
         <strong className="font-medium text-ink">גרסאות שכבר פורסמו לא משתנות</strong> — השינוי יופיע בקישור הציבורי רק אחרי פרסום גרסה חדשה. התמונות נשמרות בדפדפן זה בלבד ואינן נשלחות לשום מקום.
       </p>
 
-      <div className={cx('grid gap-6', tab !== 'preview' && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]')}>
+      <div className={cx('grid grid-cols-[minmax(0,1fr)] gap-6', tab !== 'preview' && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]')}>
         {tab !== 'preview' && (
-        <div className="space-y-5" role="tabpanel" id={`bk-panel-${tab}`} aria-labelledby={`bk-tab-${tab}`}>
+        <div className="min-w-0 space-y-5" role="tabpanel" id={`bk-panel-${tab}`} aria-labelledby={`bk-tab-${tab}`}>
           {tab === 'details' && (
           <>
           <Group title="זהות">
@@ -330,7 +330,7 @@ export function BrandKitPage() {
         </div>
         )}
 
-        <div className={tab === 'preview' ? 'grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : 'xl:sticky xl:top-6 xl:self-start'} role={tab === 'preview' ? 'tabpanel' : undefined} id={tab === 'preview' ? 'bk-panel-preview' : undefined} aria-labelledby={tab === 'preview' ? 'bk-tab-preview' : undefined}>
+        <div className={tab === 'preview' ? 'grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : 'min-w-0 xl:sticky xl:top-6 xl:self-start'} role={tab === 'preview' ? 'tabpanel' : undefined} id={tab === 'preview' ? 'bk-panel-preview' : undefined} aria-labelledby={tab === 'preview' ? 'bk-tab-preview' : undefined}>
           <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
             <span className="inline-flex items-center gap-1.5">

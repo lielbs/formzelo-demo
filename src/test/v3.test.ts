@@ -235,7 +235,7 @@ describe('repository v3', () => {
     await expect(repo.deleteAsset(DEMO_ORG_IDS.bloom, logo.id)).rejects.toBeInstanceOf(DomainRuleError);
     await repo.updateBrandKit(DEMO_ORG_IDS.bloom, { ...kit, logoAssetId: undefined });
     await repo.deleteAsset(DEMO_ORG_IDS.bloom, logo.id);
-    expect(await repo.listAssets(DEMO_ORG_IDS.bloom)).toEqual([]);
+    expect((await repo.listAssets(DEMO_ORG_IDS.bloom)).filter((a) => !a.id.startsWith('ast_sh'))).toEqual([]);
     await expect(repo.updateBrandKit(DEMO_ORG_IDS.bloom, { ...kit, logoAssetId: 'ast_missing' })).rejects.toBeInstanceOf(DomainRuleError);
   });
 

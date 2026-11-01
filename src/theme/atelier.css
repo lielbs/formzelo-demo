@@ -834,3 +834,10 @@
 .fz[data-illustrated='false'][data-decor='none'] .fz-layout:is([data-flow='focus'], [data-flow='console']) .fz-hero {
   background-image: none;
 }
+
+/* Photo cards read as a catalogue: a row of two or three, never one huge photo per line. */
+@container fz (min-width: 420px) {
+  .fz[data-illustrated] .fz-options[data-appearance='image_cards'] {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  }
+}

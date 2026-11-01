@@ -52,7 +52,7 @@ export function BrandShowcase() {
   const theme = effectiveTheme({ ...buildTheme('floral_boutique'), inheritBrand: true }, kit);
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
       <div>
         <h2 className="text-3xl font-semibold tracking-tight text-midnight">המותג שלכם, בכל תהליך</h2>
         <p className="mt-3 max-w-md leading-relaxed text-ink-muted">ערכת מותג אחת לעסק — צבעים, גופן, לוגו, כפתורים ותמונות — וכל תהליך יורש אותה. גרסאות שכבר פורסמו לא משתנות עד הפרסום הבא.</p>
@@ -134,7 +134,7 @@ export function CompletionShowcase() {
   const [payNow, setPayNow] = useState(true);
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2">
       <div>
         <h2 className="text-3xl font-semibold tracking-tight text-midnight">לא כל תהליך הוא תשלום</h2>
         <p className="mt-3 max-w-md leading-relaxed text-ink-muted">חישוב המחיר ואיסוף הכסף נפרדים. בקשה בלי תשלום לא נראית כמו חשבונית פתוחה, ואישור עסק יכול לבוא לפני כל חיוב.</p>

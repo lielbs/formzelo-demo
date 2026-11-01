@@ -310,10 +310,11 @@ export function Landing() {
                 <span className="block font-semibold text-ink">{PRESET_LIST.length} עיצובים ו-{TEMPLATE_LIBRARY.length} תבניות מוכנות</span>
                 <span className="mt-0.5 block text-sm text-ink-muted">בוטיק, מקצועי, פרימיום, חגיגי, רפואי, יוקרה כהה ועוד — מפרחים ומוסכים ועד קליניקות, קייטנות ועמותות. הכול ניתן לעריכה.</span>
               </span>
-              <span className="flex shrink-0 items-center gap-3">
-                <span className="flex -space-x-1.5 space-x-reverse" aria-hidden>
-                  {PRESET_LIST.map((p) => (
-                    <span key={p.id} className="h-6 w-6 rounded-full ring-2 ring-white" style={{ background: PRESETS[p.id].theme.palette.primary }} />
+              <span className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:flex-nowrap">
+                <span className="flex min-w-0 -space-x-1.5 space-x-reverse" aria-hidden>
+                  {/* Phones show the first 12 swatches so the row never runs past the card. */}
+                  {PRESET_LIST.map((p, i) => (
+                    <span key={p.id} className={cx('h-6 w-6 shrink-0 rounded-full ring-2 ring-white', i >= 12 && 'hidden sm:block')} style={{ background: PRESETS[p.id].theme.palette.primary }} />
                   ))}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-700">

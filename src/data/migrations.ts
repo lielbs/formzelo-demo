@@ -12,6 +12,7 @@ import { buildTheme, DEFAULT_PRESET, PRESETS, SIGNATURES } from '../theme/preset
 import { DEMO_EXTRAS } from './demoExtras';
 import { recommendTheme } from '../theme/resolver';
 import { appendBookingDemo, appendDemoActions, DEMO_LINKS, DEMO_ORG_IDS, DEMO_SLUGS } from './seed';
+import { applyShowcase } from './showcase';
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -146,6 +147,23 @@ function v6ToV7(input: Json, now = Date.now()): Json {
   return data;
 }
 
+/**
+ * v7 -> v8: the fictional demo businesses get their showcase identity — logo, photos on the opening,
+ * gallery and choice cards, and realistic contact details — on the brand kit, drafts and published
+ * versions. Real workspaces only get the version bump. Runs, answers and statuses are untouched.
+ */
+function v7ToV8(input: Json): Json {
+  const data = structuredClone(input);
+  data.schemaVersion = 8;
+  const org = isObj(data.organization) ? data.organization : {};
+  if (org.isDemo !== true) return data;
+  try {
+    return applyShowcase(data as unknown as OrgData) as unknown as Json;
+  } catch {
+    return data;
+  }
+}
+
 export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown; migrated: boolean } {
   if (!isObj(raw) || typeof raw.schemaVersion !== 'number' || raw.schemaVersion >= SCHEMA_VERSION) return { value: raw, migrated: false };
   let value = raw;
@@ -156,6 +174,7 @@ export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown
   if (value.schemaVersion === 4) value = v4ToV5(value);
   if (value.schemaVersion === 5) value = v5ToV6(value);
   if (value.schemaVersion === 6) value = v6ToV7(value, now);
+  if (value.schemaVersion === 7) value = v7ToV8(value);
   return { value, migrated: value !== raw };
 }
 

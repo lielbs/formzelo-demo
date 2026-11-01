@@ -271,9 +271,12 @@ export const AssetSchema = z.object({
   orgId: z.string().min(1),
   kind: z.enum(['logo', 'cover', 'image']),
   name: z.string().max(120),
-  mime: z.enum(['image/webp', 'image/jpeg', 'image/png']),
-  /** Downscaled data URL produced in the browser. */
-  dataUrl: z.string().regex(/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/),
+  mime: z.enum(['image/webp', 'image/jpeg', 'image/png', 'image/svg+xml']),
+  /**
+   * Downscaled data URL produced in the browser, or — for the demo businesses' showcase library
+   * (data/showcase.ts, never stored) — a site-relative path under showcase/.
+   */
+  dataUrl: z.union([z.string().regex(/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/), z.string().regex(/^showcase\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|svg)$/)]),
   bytes: z.number().int().positive(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),

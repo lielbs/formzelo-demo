@@ -267,6 +267,6 @@ describe('design persistence and version immutability', () => {
   it('ignores corrupt asset entries so the renderer can fall back to illustrations', async () => {
     store.setItem(`formzelo:v1:assets:${DEMO_ORG_IDS.bloom}`, JSON.stringify({ assets: [{ id: 'ast_x', dataUrl: 'javascript:alert(1)' }] }));
     expect(await repo.getAssetUrls(DEMO_ORG_IDS.bloom, ['ast_x'])).toEqual({});
-    expect(await repo.listAssets(DEMO_ORG_IDS.bloom)).toEqual([]);
+    expect((await repo.listAssets(DEMO_ORG_IDS.bloom)).filter((a) => !a.id.startsWith('ast_sh'))).toEqual([]);
   });
 });

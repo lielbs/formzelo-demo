@@ -56,6 +56,8 @@ import {
   type StorageReport,
 } from './repository';
 import { buildSeed, LATER_DEMO_ORGS } from './seed';
+import { isShowcaseId, showcaseAssets } from './showcase';
+import { appHref } from '../lib/links';
 
 /** Storage namespace. Independent of SCHEMA_VERSION so migrations happen in place. */
 // Historical namespace from the product's previous name (Formzelo). Kept on purpose: renaming it would orphan every
@@ -713,7 +715,12 @@ export class LocalStorageRepository implements FormangleRepository {
 
   // ---------- assets (local images) ----------
 
+  /** Uploaded assets plus, for demo workspaces, the showcase library (static files, never stored). */
   private readAssets(orgId: string): Asset[] {
+    return [...this.readStoredAssets(orgId), ...showcaseAssets(orgId)];
+  }
+
+  private readStoredAssets(orgId: string): Asset[] {
     const raw = this.readJson(assetKey(orgId));
     if (raw === undefined) return [];
     const list = raw && typeof raw === 'object' && Array.isArray((raw as { assets?: unknown }).assets) ? (raw as { assets: unknown[] }).assets : [];
@@ -738,7 +745,7 @@ export class LocalStorageRepository implements FormangleRepository {
   async getAssetUrls(orgId: string, ids: (string | undefined)[]): Promise<Record<string, string>> {
     const wanted = new Set(ids.filter(Boolean));
     if (!wanted.size) return {};
-    return Object.fromEntries(this.readAssets(orgId).filter((a) => wanted.has(a.id)).map((a) => [a.id, a.dataUrl]));
+    return Object.fromEntries(this.readAssets(orgId).filter((a) => wanted.has(a.id)).map((a) => [a.id, a.dataUrl.startsWith('data:') ? a.dataUrl : appHref(`/${a.dataUrl}`)]));
   }
 
   async saveAsset(orgId: string, input: Pick<Asset, 'kind' | 'name' | 'mime' | 'dataUrl' | 'width' | 'height'>) {
@@ -746,7 +753,7 @@ export class LocalStorageRepository implements FormangleRepository {
     const bytes = Math.ceil((input.dataUrl.length - input.dataUrl.indexOf(',') - 1) * 0.75);
     const limit = ASSET_LIMITS[input.kind].maxBytes;
     if (bytes > limit) throw new DomainRuleError(`התמונה גדולה מדי גם לאחר הקטנה (${Math.round(bytes / 1024)}KB). המקסימום הוא ${Math.round(limit / 1024)}KB.`);
-    const assets = this.readAssets(orgId);
+    const assets = this.readStoredAssets(orgId);
     const total = assets.reduce((s, a) => s + a.bytes, 0);
     if (total + bytes > ASSET_LIMITS.totalBytes) throw new DomainRuleError('נגמר המקום לתמונות בסביבת עבודה זו בדמו. מחקו תמונות שאינן בשימוש.');
     const asset = AssetSchema.parse({ ...input, id: newId('ast'), orgId, bytes, createdAt: nowIso() });
@@ -756,6 +763,7 @@ export class LocalStorageRepository implements FormangleRepository {
   }
 
   async deleteAsset(orgId: string, assetId: string) {
+    if (isShowcaseId(assetId)) throw new DomainRuleError('תמונות של עסק הדמו הן חלק מהדמו ולא ניתן למחוק אותן.');
     const d = this.readOrg(orgId);
     const uses = (t: WorkflowTheme) => t.logo.assetId === assetId || t.hero.coverAssetId === assetId;
     // Published versions are immutable, so an image they reference can't be removed.
@@ -766,7 +774,7 @@ export class LocalStorageRepository implements FormangleRepository {
     const inBlocks = (cfg: WorkflowConfig) => cfg.steps.some((st) => st.fields.some((f) => f.media?.includes(assetId) || f.options?.some((o) => o.image === assetId)));
     if (d.versions.some((v) => inBlocks(v.config))) throw new DomainRuleError('התמונה משמשת גרסה שפורסמה ולכן לא ניתן למחוק אותה.');
     if (d.workflows.some((w) => inBlocks(w.draft))) throw new DomainRuleError('התמונה משמשת בתוכן של טיוטה שמורה. הסירו אותה ושמרו לפני מחיקה.');
-    this.write(assetKey(orgId), { assets: this.readAssets(orgId).filter((a) => a.id !== assetId) });
+    this.write(assetKey(orgId), { assets: this.readStoredAssets(orgId).filter((a) => a.id !== assetId) });
     this.emit();
   }
 
