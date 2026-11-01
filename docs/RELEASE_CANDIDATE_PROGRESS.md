@@ -66,7 +66,7 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 | 0 | Audit + progress doc | done |
 | 1 | Publish success + share (QR PNG/SVG, WhatsApp, embed, demo-vs-local link honesty) | done |
 | 2 | External payment link experience (preview, fixed vs dynamic, status) | done |
-| 3 | Formangle Actions — domain, repository, tests | pending |
+| 3 | Formangle Actions — domain, repository, tests | done |
 | 4 | Formangle Actions — owner UI (request detail, timeline) | pending |
 | 5 | Customer status page with actions + updates, "צפייה כלקוח" | pending |
 | 6 | Dashboard / inbox: awaiting-decision visibility | pending |
@@ -78,11 +78,13 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 ## Files modified
 - M1: `src/lib/share.ts`, `src/components/SharePanel.tsx`, `src/pages/app/WorkflowEditor.tsx`, `src/test/share.test.ts`, deps `qrcode-generator@2.0.4` (MIT), dev `jsqr@1.4.0` (Apache-2.0, tests only).
 - M2: `domain/schema.ts` (`completion.externalTiming`, optional), `engine/completion.ts`, `components/StatusBadge.tsx`, `renderer/Confirmation.tsx`, `pages/app/RequestDetail.tsx`, `pages/app/editor/Inspector.tsx`, `test/v3.test.ts`.
+- M3: `domain/schema.ts` (v7, `CustomerActionSchema`, `actions[]`, `RunEvent.actionId`, 3 event types), `engine/actions.ts`, `data/repository.ts` (+5 methods), `data/localRepository.ts`, `data/migrations.ts` (v6→v7), `data/seed.ts` (`appendDemoActions`), `components/Activity.tsx`, `test/actions.test.ts`.
 
 ## Validation results
 - Baseline: tsc OK, 186/186 tests.
 - M1: tsc OK, 192/192 tests; QR round-trip decoded with jsQR; publish modal checked in browser.
 - M2: tsc OK, 193/193 tests; inspector preview checked in browser.
+- M3: tsc OK, 202/202 tests (9 new: two-option rule, single answer, expiry, cancel, duplicates, persistence, timeline, migration).
 
 ## Known defects
 - none recorded yet
@@ -91,7 +93,7 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 - Live: https://lielbs.github.io/formzelo-demo/ = `f69e11c` (pre-RC). RC not deployed.
 
 ## Exact next action
-Milestone 3: Formangle Actions domain (schema v7 `actions[]`, repository methods, tests).
+Milestone 4: owner UI — "פעולה חדשה ללקוח" composer on RequestDetail, actions list with status/cancel, "צפייה כלקוח".
 
 ## How to resume
 1. Read this file. 2. `git status && git log --oneline main..rc-v1`.

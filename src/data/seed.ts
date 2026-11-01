@@ -26,6 +26,7 @@ import { isoDay } from '../lib/format';
 import { brandKitFromTheme, defaultBrandKit, freezeTheme } from '../theme/brand';
 import { recommendTheme } from '../theme/resolver';
 import { newId } from '../lib/id';
+import { actionSummary, buildAction, respond, type ActionInput } from '../engine/actions';
 
 export const DEMO_ORG_IDS = { bloom: 'org_bloom', autocare: 'org_autocare', urban: 'org_urban', valley: 'org_valley' } as const;
 export const DEMO_SLUGS = { flowers: 'bloom-flowers', garage: 'autocare-repairs', events: 'urban-table-events', booking: 'urban-table-booking', contest: 'valley-run' } as const;
@@ -128,6 +129,7 @@ function emptyData(organization: Organization): OrgData {
     notifications: [],
     usage: [],
     brandKit: defaultBrandKit(organization.name, at),
+    actions: [],
   };
 }
 
@@ -506,6 +508,50 @@ function seedValley(now: number): OrgData {
 /** Demo workspaces added after launch; existing browsers receive them through the v3 → v4 migration. */
 export const LATER_DEMO_ORGS: Record<string, (now: number) => OrgData> = { [DEMO_ORG_IDS.valley]: seedValley };
 
+type DemoAction = { slug: string; status: RunStatus; input: ActionInput; hoursAgo: number; answer?: 'a' | 'b'; answeredHoursAgo?: number };
+
+/** Formangle Actions on the demo requests, so the inbox shows open and answered decisions. */
+const DEMO_ACTIONS: Record<string, DemoAction[]> = {
+  [DEMO_ORG_IDS.autocare]: [
+    { slug: DEMO_SLUGS.garage, status: 'submitted', hoursAgo: 1, input: { kind: 'approval', title: 'בדיקת מערכת המיזוג', description: 'ביקשתם שנבדוק גם את המזגן. הבדיקה כוללת לחץ גז ואיתור נזילות. האם לאשר?', amount: 180, note: 'המחיר כולל מע״מ. אם יידרש תיקון, נשלח בקשת אישור נפרדת.' } },
+    { slug: DEMO_SLUGS.garage, status: 'in_review', hoursAgo: 20, answer: 'a', answeredHoursAgo: 19, input: { kind: 'approval', title: 'החלפת רפידות בלם', description: 'בבדיקה נמצא שרפידות הבלם הקדמיות שחוקות. האם לאשר את העבודה?', amount: 480 } },
+    { slug: DEMO_SLUGS.garage, status: 'in_review', hoursAgo: 18, answer: 'b', answeredHoursAgo: 17, input: { kind: 'choice', title: 'איך תרצו לקבל את הרכב?', description: 'הרכב יהיה מוכן מחר אחרי 14:00.', options: ['איסוף מהמוסך', 'החזרה עד הבית (₪60)'] } },
+  ],
+  [DEMO_ORG_IDS.bloom]: [
+    { slug: DEMO_SLUGS.flowers, status: 'submitted', hoursAgo: 2, input: { kind: 'choice', title: 'איך תרצו לקבל את הזר?', description: 'הזר יהיה מוכן מחר מ-10:00.', options: ['משלוח', 'איסוף עצמי'] } },
+    { slug: DEMO_SLUGS.flowers, status: 'approved', hoursAgo: 5, input: { kind: 'update', title: 'הזר מוכן לאיסוף', description: 'אפשר לאסוף היום עד 19:00 מהסטודיו.' } },
+  ],
+  [DEMO_ORG_IDS.urban]: [
+    { slug: DEMO_SLUGS.booking, status: 'approved', hoursAgo: 3, input: { kind: 'update', title: 'השולחן שמור', description: 'נשמח לראותכם. אם מתעכבים, נשמור את השולחן 15 דקות.' } },
+  ],
+};
+
+/**
+ * Adds the demo actions to a demo workspace that has none (fresh seed, or the v6 -> v7 migration).
+ * Each goes on the most recent request of its workflow in the given status.
+ */
+export function appendDemoActions(data: OrgData, now = Date.now()): OrgData {
+  const plan = DEMO_ACTIONS[data.organization.id];
+  if (!plan || data.actions.length) return data;
+  plan.forEach((p, i) => {
+    const wf = data.workflows.find((w) => w.slug === p.slug);
+    const run = data.runs
+      .filter((r) => r.workflowId === wf?.id && r.status === p.status && r.id !== DEMO_GARAGE_CASE_ID)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (!run) return;
+    const at = new Date(now - p.hoursAgo * 3_600_000).toISOString();
+    let action = buildAction(p.input, run, { id: `act_demo_${data.organization.id.slice(4)}_${i + 1}` }, at);
+    data.events.push({ id: newId('evt'), orgId: run.orgId, runId: run.id, actionId: action.id, type: 'action_created', actor: 'owner', message: `${action.kind === 'update' ? 'עדכון ללקוח' : 'נשלחה ללקוח בקשה'}: ${actionSummary(action)}`, internal: false, createdAt: at, updatedAt: at });
+    if (p.answer) {
+      const answeredAt = new Date(now - (p.answeredHoursAgo ?? p.hoursAgo) * 3_600_000).toISOString();
+      action = respond(action, p.answer, answeredAt);
+      data.events.push({ id: newId('evt'), orgId: run.orgId, runId: run.id, actionId: action.id, type: 'action_responded', actor: 'customer', message: `הלקוח/ה בחר/ה "${action.response!.label}" — ${actionSummary(action)}`, internal: false, createdAt: answeredAt, updatedAt: answeredAt });
+    }
+    data.actions.push(action);
+  });
+  return data;
+}
+
 export function buildSeed(now = Date.now()): OrgData[] {
-  return [seedBloom(now), seedAutoCare(now), seedUrban(now), seedValley(now)];
+  return [seedBloom(now), seedAutoCare(now), seedUrban(now), seedValley(now)].map((d) => appendDemoActions(d, now));
 }

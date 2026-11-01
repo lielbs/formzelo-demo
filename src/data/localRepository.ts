@@ -19,6 +19,7 @@ import {
   OrgDataSchema,
   SCHEMA_VERSION,
   WorkflowConfigSchema,
+  type CustomerAction,
   type Meta,
   type OrgData,
   type Organization,
@@ -31,6 +32,7 @@ import {
   type WorkflowVersion,
 } from '../domain/schema';
 import { ASSET_LIMITS, AssetSchema, BrandKitSchema, WorkflowThemeSchema, type Asset, type BrandKit, type WorkflowTheme } from '../domain/theme';
+import { actionSummary, buildAction, cancel as cancelAct, isDuplicate, respond as respondAct, type ActionInput } from '../engine/actions';
 import { CUSTOMER_CANCELLABLE, slotAvailability, validateBooking } from '../engine/booking';
 import { normalizeLink } from '../engine/presence';
 import { optionUsage, validateOptionCapacity } from '../engine/capacity';
@@ -769,6 +771,81 @@ export class LocalStorageRepository implements FormangleRepository {
   }
 
   // ---------- activity ----------
+
+  // ---------- Formangle Actions ----------
+
+  async listActions(orgId: string, runId?: string) {
+    return this.readOrg(orgId)
+      .actions.filter((a) => !runId || a.runId === runId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async createAction(orgId: string, runId: string, input: ActionInput) {
+    return this.mutate(orgId, (d) => {
+      const run = this.findRun(d, runId);
+      let action: CustomerAction;
+      try {
+        action = buildAction(input, run, { id: newId('act') }, nowIso());
+      } catch (e) {
+        if (e instanceof Error && e.name === 'ZodError') throw new ValidationFailedError({ action: 'פרטי הפעולה אינם תקינים' });
+        throw new DomainRuleError(e instanceof Error ? e.message : 'לא ניתן ליצור את הפעולה');
+      }
+      if (isDuplicate(d.actions, action)) throw new DomainRuleError('פעולה זהה כבר נשלחה ללקוח וממתינה. אם משהו השתנה, בטלו אותה ושלחו חדשה');
+      d.actions.push(action);
+      run.updatedAt = action.createdAt;
+      this.event(d, run, {
+        type: 'action_created',
+        actor: 'owner',
+        actionId: action.id,
+        message: `${action.kind === 'update' ? 'עדכון ללקוח' : 'נשלחה ללקוח בקשה'}: ${actionSummary(action)}`,
+      });
+      return action;
+    });
+  }
+
+  async cancelAction(orgId: string, actionId: string) {
+    return this.mutate(orgId, (d) => {
+      const i = d.actions.findIndex((a) => a.id === actionId);
+      if (i < 0) throw new NotFoundError('Action');
+      let next: CustomerAction;
+      try {
+        next = cancelAct(d.actions[i]!, nowIso());
+      } catch (e) {
+        throw new DomainRuleError(e instanceof Error ? e.message : 'לא ניתן לבטל');
+      }
+      d.actions[i] = next;
+      this.event(d, this.findRun(d, next.runId), { type: 'action_cancelled', actor: 'owner', actionId: next.id, message: `הבקשה ללקוח בוטלה: ${actionSummary(next)}` });
+      return next;
+    });
+  }
+
+  async getPublicActions(slug: string, runId: string) {
+    const found = await this.getPublicRun(slug, runId);
+    if (!found) return [];
+    return this.readOrg(found.run.orgId)
+      .actions.filter((a) => a.runId === runId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  async respondToAction(slug: string, runId: string, actionId: string, optionId: string) {
+    const found = await this.getPublicRun(slug, runId);
+    if (!found) throw new NotFoundError('Run');
+    return this.mutate(found.run.orgId, (d) => {
+      const i = d.actions.findIndex((a) => a.id === actionId && a.runId === runId);
+      if (i < 0) throw new NotFoundError('Action');
+      let next: CustomerAction;
+      try {
+        next = respondAct(d.actions[i]!, optionId, nowIso());
+      } catch (e) {
+        throw new DomainRuleError(e instanceof Error ? e.message : 'לא ניתן לשמור את התשובה');
+      }
+      d.actions[i] = next;
+      const run = this.findRun(d, runId);
+      run.updatedAt = next.updatedAt;
+      this.event(d, run, { type: 'action_responded', actor: 'customer', actionId: next.id, message: `הלקוח/ה בחר/ה "${next.response!.label}" — ${actionSummary(next)}` });
+      return next;
+    });
+  }
 
   async listEvents(orgId: string, runId?: string) {
     return this.readOrg(orgId)

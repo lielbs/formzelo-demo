@@ -11,7 +11,7 @@ import { brandKitFromTheme } from '../theme/brand';
 import { buildTheme, DEFAULT_PRESET, PRESETS, SIGNATURES } from '../theme/presets';
 import { DEMO_EXTRAS } from './demoExtras';
 import { recommendTheme } from '../theme/resolver';
-import { appendBookingDemo, DEMO_LINKS, DEMO_ORG_IDS, DEMO_SLUGS } from './seed';
+import { appendBookingDemo, appendDemoActions, DEMO_LINKS, DEMO_ORG_IDS, DEMO_SLUGS } from './seed';
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -126,6 +126,26 @@ function v5ToV6(input: Json): Json {
   return data;
 }
 
+/**
+ * v6 -> v7: Formangle Actions. Every workspace gains an empty `actions` list; the fictional demo
+ * workspaces also receive their sample actions (added to existing requests, nothing replaced).
+ */
+function v6ToV7(input: Json, now = Date.now()): Json {
+  const data = structuredClone(input);
+  if (!Array.isArray(data.actions)) data.actions = [];
+  data.schemaVersion = 7;
+  const org = isObj(data.organization) ? data.organization : {};
+  // Only safe on an otherwise valid payload; the caller re-validates the result.
+  if (org.isDemo === true && Array.isArray(data.runs) && Array.isArray(data.workflows) && Array.isArray(data.events)) {
+    try {
+      return appendDemoActions(data as unknown as OrgData, now) as unknown as Json;
+    } catch {
+      return data;
+    }
+  }
+  return data;
+}
+
 export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown; migrated: boolean } {
   if (!isObj(raw) || typeof raw.schemaVersion !== 'number' || raw.schemaVersion >= SCHEMA_VERSION) return { value: raw, migrated: false };
   let value = raw;
@@ -135,6 +155,7 @@ export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown
   if (value.schemaVersion === 3) value = { ...value, schemaVersion: 4 };
   if (value.schemaVersion === 4) value = v4ToV5(value);
   if (value.schemaVersion === 5) value = v5ToV6(value);
+  if (value.schemaVersion === 6) value = v6ToV7(value, now);
   return { value, migrated: value !== raw };
 }
 

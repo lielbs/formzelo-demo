@@ -16,8 +16,9 @@ import { BrandKitSchema, WorkflowThemeSchema } from './theme';
  *  v3: per-workspace brand kit, content blocks, optional booking rules and an
  *      explicit completion (payment) mode. New config fields are optional, so
  *      published versions are never rewritten.
+ *  v7: Formangle Actions (`actions`): structured owner → customer decisions and updates.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const id = z.string().min(1);
 const timestamp = z.string().min(1); // ISO-8601
@@ -407,8 +408,13 @@ export const RunEventSchema = z.object({
     'notification_simulated',
     'payment_simulated',
     'booking_confirmed',
+    'action_created',
+    'action_responded',
+    'action_cancelled',
   ]),
   actor: z.enum(['customer', 'owner', 'system']),
+  /** The Formangle Action this event belongs to. */
+  actionId: z.string().optional(),
   message: z.string(),
   from: RunStatusSchema.optional(),
   to: RunStatusSchema.optional(),
@@ -453,6 +459,55 @@ export const UsageEventSchema = z.object({
 });
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
 
+// ---------- Formangle Actions ----------
+
+/**
+ * A structured request from the business to the customer about one request (run):
+ *  approval – approve / decline, e.g. an extra repair with its price
+ *  choice   – one of exactly two options, e.g. delivery or pickup
+ *  update   – information only, no response
+ * An action is immutable once created: the owner can cancel a pending one, never edit it.
+ * A changed amount or condition means a new action, so every answer keeps the terms it answered.
+ */
+export const ACTION_KINDS = ['approval', 'choice', 'update'] as const;
+export type ActionKind = (typeof ACTION_KINDS)[number];
+/** `posted` is an update shown to the customer (no response). `expired` is derived from expiresAt. */
+export const ACTION_STATUSES = ['pending', 'responded', 'expired', 'cancelled', 'posted'] as const;
+export type ActionStatus = (typeof ACTION_STATUSES)[number];
+export const ActionOptionIdSchema = z.enum(['a', 'b']);
+
+export const CustomerActionSchema = z
+  .object({
+    id,
+    orgId: id,
+    runId: id,
+    workflowId: id,
+    /** The workflow version the request was bound to when the action was created. */
+    versionId: id,
+    versionNumber: z.number().int().positive(),
+    kind: z.enum(ACTION_KINDS),
+    title: z.string().min(1).max(120),
+    description: z.string().max(1000).default(''),
+    amount: z.number().min(0).max(1_000_000).optional(),
+    /** Small print under the details, e.g. "המחיר כולל מע״מ". */
+    note: z.string().max(300).optional(),
+    /** Exactly two for approval / choice, none for an update. Labels are frozen at creation. */
+    options: z.array(z.object({ id: ActionOptionIdSchema, label: z.string().min(1).max(40) })).max(2),
+    expiresAt: z.string().optional(),
+    status: z.enum(ACTION_STATUSES),
+    response: z.object({ optionId: ActionOptionIdSchema, label: z.string(), at: timestamp }).optional(),
+    cancelledAt: z.string().optional(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+  .superRefine((a, ctx) => {
+    const n = a.kind === 'update' ? 0 : 2;
+    if (a.options.length !== n) ctx.addIssue({ code: 'custom', path: ['options'], message: n ? 'נדרשות בדיוק שתי אפשרויות תשובה' : 'עדכון אינו כולל אפשרויות תשובה' });
+    if (n && a.options[0]?.id === a.options[1]?.id) ctx.addIssue({ code: 'custom', path: ['options'], message: 'אפשרויות כפולות' });
+    if (a.status === 'responded' && !a.response) ctx.addIssue({ code: 'custom', path: ['response'], message: 'חסרה תשובה' });
+  });
+export type CustomerAction = z.infer<typeof CustomerActionSchema>;
+
 /** Everything stored for one workspace under its own localStorage key. */
 export const OrgDataSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
@@ -465,6 +520,7 @@ export const OrgDataSchema = z.object({
   notifications: z.array(NotificationPreviewSchema),
   usage: z.array(UsageEventSchema),
   brandKit: BrandKitSchema,
+  actions: z.array(CustomerActionSchema).default([]),
 });
 export type OrgData = z.infer<typeof OrgDataSchema>;
 

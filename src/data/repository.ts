@@ -5,6 +5,7 @@
  * method is async even though localStorage is synchronous.
  */
 import type {
+  CustomerAction,
   Membership,
   NotificationPreview,
   OrgData,
@@ -18,6 +19,7 @@ import type {
   WorkflowVersion,
 } from '../domain/schema';
 import type { Asset, BrandKit, WorkflowTheme } from '../domain/theme';
+import type { ActionInput } from '../engine/actions';
 import type { SlotAvailability } from '../engine/booking';
 import type { OptionUsage } from '../engine/capacity';
 import type { Values } from '../engine/conditions';
@@ -88,6 +90,18 @@ export interface FormangleRepository {
   getAssetUrls(orgId: string, ids: (string | undefined)[]): Promise<Record<string, string>>;
   saveAsset(orgId: string, input: Pick<Asset, 'kind' | 'name' | 'mime' | 'dataUrl' | 'width' | 'height'>): Promise<Asset>;
   deleteAsset(orgId: string, assetId: string): Promise<void>;
+
+  // ---------- Formangle Actions ----------
+  /** Owner: all actions of the workspace, or of one request. Newest first. */
+  listActions(orgId: string, runId?: string): Promise<CustomerAction[]>;
+  /** Owner: creates an immutable action on a request. Identical open actions are refused (double submit). */
+  createAction(orgId: string, runId: string, input: ActionInput): Promise<CustomerAction>;
+  /** Owner: withdraws an action the customer has not answered. Answered ones never change. */
+  cancelAction(orgId: string, actionId: string): Promise<CustomerAction>;
+  /** Customer (personal request link): the request's actions, oldest first. */
+  getPublicActions(slug: string, runId: string): Promise<CustomerAction[]>;
+  /** Customer: one answer per action. Production: authorised by a signed request token. */
+  respondToAction(slug: string, runId: string, actionId: string, optionId: string): Promise<CustomerAction>;
 
   listEvents(orgId: string, runId?: string): Promise<RunEvent[]>;
   listNotifications(orgId: string, runId?: string): Promise<NotificationPreview[]>;
