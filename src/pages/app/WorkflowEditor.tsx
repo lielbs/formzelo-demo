@@ -38,10 +38,12 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CreateCaseModal } from '../../components/CreateCaseModal';
-import { copyText, useToast } from '../../components/Toast';
+import { SharePanel } from '../../components/SharePanel';
+import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, cx, DemoBadge, EmptyState, ErrorState, FieldLabel, Input, Modal, Select, Spinner, Textarea } from '../../components/ui';
 import { isDisplayField, WorkflowConfigSchema, type WorkflowConfig, type WorkflowField, type WorkflowVersion } from '../../domain/schema';
 import type { WorkflowTheme } from '../../domain/theme';
+import { DEMO_SLUGS } from '../../data/seed';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
 import { COMPLETION_LABELS, completionOf } from '../../engine/completion';
@@ -49,6 +51,7 @@ import { fieldHasPrice } from '../../engine/pricing';
 import { formatDateTime, formatNumber } from '../../lib/format';
 import { newId } from '../../lib/id';
 import { publicFlowUrl } from '../../lib/links';
+import { linkReach } from '../../lib/share';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { effectiveTheme } from '../../theme/brand';
 import { PRESETS } from '../../theme/presets';
@@ -255,6 +258,19 @@ export function WorkflowEditor() {
   const { config, design } = snap;
   const allFields = config.steps.flatMap((s) => s.fields);
   const link = publicFlowUrl(workflow.slug);
+  const publishedVersion = versions.find((v) => v.id === workflow.publishedVersionId);
+  const share = workflow.status === 'published' ? (
+    <SharePanel
+      url={link}
+      slug={workflow.slug}
+      business={org.name}
+      title={publishedVersion?.config.title ?? config.title}
+      color={publishedVersion?.config.branding.primaryColor ?? config.branding.primaryColor}
+      reach={linkReach(workflow, publishedVersion?.version, Object.values(DEMO_SLUGS))}
+      caseMode={publishedVersion?.config.mode === 'case'}
+      onCopied={() => void repo.trackUsage(org.id, 'link_copied', workflow.id)}
+    />
+  ) : null;
   const isPublished = workflow.status === 'published';
   const studioMode = previewMode ? 'preview' : sel.kind === 'design' || sel.kind === 'presence' ? 'design' : sel.kind === 'logic' ? 'logic' : 'content';
   const readiness = publishReadiness(config);
@@ -631,32 +647,12 @@ export function WorkflowEditor() {
           <Panel title="גרסאות ושיתוף">
             {isPublished ? (
               <div className="space-y-3">
-                <FieldLabel htmlFor="share-link">{config.mode === 'case' ? 'כתובת התהליך (נדרש תיק אישי)' : 'קישור ציבורי'}</FieldLabel>
-                <div className="flex gap-2">
-                  <input id="share-link" readOnly dir="ltr" value={link} onFocus={(e) => e.target.select()} className="fz-input min-w-0 flex-1 rounded-xl border border-cloud-300 bg-cloud px-3 py-2 text-sm" />
-                  <Button
-                    variant="secondary"
-                    icon={Copy}
-                    onClick={async () => {
-                      const ok = await copyText(link);
-                      await repo.trackUsage(org.id, 'link_copied', workflow.id);
-                      toast(ok ? 'הקישור הועתק' : 'סמנו והעתיקו ידנית', ok ? 'success' : 'error');
-                    }}
-                  >
-                    העתקה
+                {share}
+                {publishedVersion?.config.mode === 'case' && (
+                  <Button icon={FilePlus2} onClick={() => setCaseOpen(true)}>
+                    פתיחת תיק ללקוח
                   </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-midnight px-4 text-sm font-medium text-white hover:bg-midnight-700">
-                    <Eye className="h-4 w-4" aria-hidden /> פתיחה כלקוח
-                  </a>
-                  {versions.find((v) => v.id === workflow.publishedVersionId)?.config.mode === 'case' && (
-                    <Button icon={FilePlus2} onClick={() => setCaseOpen(true)}>
-                      פתיחת תיק ללקוח
-                    </Button>
-                  )}
-                </div>
-                <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">הקישור עובד בדפדפן הזה בלבד: הנתונים נשמרים ב-localStorage ואינם מסתנכרנים בין מכשירים. בגרסת ייצור הקישור יעבוד מכל מקום.</p>
+                )}
               </div>
             ) : (
               <p className="rounded-xl bg-cloud p-4 text-sm text-ink-muted">{workflow.status === 'archived' ? 'התהליך בארכיון. שחזרו אותו מרשימת התהליכים.' : 'הקישור נוצר ברגע הפרסום הראשון.'}</p>
@@ -1045,10 +1041,12 @@ export function WorkflowEditor() {
       <Modal
         open={confirmPublish}
         onClose={() => setConfirmPublish(false)}
-        title={published ? `גרסה ${published.version} פורסמה` : `פרסום גרסה ${versions.length + 1}`}
+        title={published ? 'התהליך פורסם בהצלחה' : `פרסום גרסה ${versions.length + 1}`}
         footer={
           published ? (
-            <Button onClick={() => setConfirmPublish(false)}>סיום</Button>
+            <Button variant="secondary" onClick={() => setConfirmPublish(false)}>
+              חזרה לעורך
+            </Button>
           ) : (
             <>
               <Button variant="ghost" onClick={() => setConfirmPublish(false)}>
@@ -1062,45 +1060,25 @@ export function WorkflowEditor() {
         }
       >
         {published ? (
-          <div className="space-y-4" role="status">
-            <p className="flex items-center gap-2 rounded-xl bg-teal-50 p-3 text-sm font-medium text-teal-600">
-              <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /> הגרסה נשמרה כתמונת מצב קבועה והקישור פעיל.
-            </p>
-            <div>
-              <FieldLabel htmlFor="pub-link">{config.mode === 'case' ? 'כתובת התהליך (נשלחת עם תיק אישי)' : 'הקישור ללקוחות'}</FieldLabel>
-              <div className="flex gap-2">
-                <input id="pub-link" readOnly dir="ltr" value={link} onFocus={(e) => e.target.select()} className="fz-input min-w-0 flex-1 rounded-xl border border-cloud-300 bg-cloud px-3 py-2 text-sm" />
-                <Button
-                  variant="secondary"
-                  icon={Copy}
-                  onClick={async () => {
-                    const ok = await copyText(link);
-                    await repo.trackUsage(org.id, 'link_copied', workflow.id);
-                    toast(ok ? 'הקישור הועתק' : 'סמנו והעתיקו ידנית', ok ? 'success' : 'error');
-                  }}
-                >
-                  העתקה
-                </Button>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-2xl bg-teal-50 p-4" role="status">
+              <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-teal-600" aria-hidden />
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">{config.title}</p>
+                <p className="mt-0.5 text-sm text-ink-muted">
+                  פורסם · גרסה {published.version} · {formatDateTime(publishedVersion?.publishedAt ?? new Date().toISOString())}
+                </p>
+                <p className="mt-1 text-xs text-ink-muted">הגרסה נשמרה כתמונת מצב קבועה. שינויים בסטודיו לא ישפיעו על הלקוחות עד הפרסום הבא.</p>
               </div>
             </div>
-            <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-midnight px-4 text-sm font-medium text-white hover:bg-midnight-700">
-              <Eye className="h-4 w-4" aria-hidden /> פתיחה כלקוח
-            </a>
-            <div className="rounded-xl border border-cloud-200 p-3 text-sm">
-              <p className="font-medium">מה עכשיו?</p>
-              <ul className="mt-1.5 list-inside list-disc space-y-1 text-ink-muted">
-                <li>שלחו את הקישור ללקוח, או פתחו אותו ונסו בעצמכם.</li>
-                <li>
-                  כל בקשה שנשלחת מופיעה ב
-                  <Link className="font-medium text-orange-700 underline" to="/app/requests">
-                    תיבת הבקשות
-                  </Link>
-                  .
-                </li>
-                <li>שינויים נוספים בסטודיו לא ישפיעו על הקישור עד הפרסום הבא.</li>
-              </ul>
-            </div>
-            <p className="text-xs text-ink-soft">בדמו הקישור עובד בדפדפן הזה בלבד (localStorage).</p>
+            {share}
+            <p className="text-sm text-ink-muted">
+              כל בקשה שנשלחת מופיעה ב
+              <Link className="font-medium text-orange-700 underline" to="/app/requests">
+                תיבת הבקשות
+              </Link>
+              .
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
