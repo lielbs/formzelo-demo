@@ -23,6 +23,7 @@ import '@fontsource/david-libre/700.css';
 import './theme.css';
 import './premium.css';
 import './signature.css';
+import './media.css';
 import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import type { WorkflowTheme } from '../domain/theme';
 import { themeTokens } from './tokens';

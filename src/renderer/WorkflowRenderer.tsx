@@ -22,6 +22,7 @@ import { recommendTheme } from '../theme/resolver';
 import { fieldDomId, FieldInput } from './FieldInput';
 import { DigitalPresence } from './presence';
 import { Promises, Ribbon, Welcome } from './extras';
+import { BusinessGallery, PagePhoto } from './media';
 import { CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
 
 export interface RendererProps {
@@ -314,6 +315,7 @@ export function WorkflowRenderer({
   return (
     <ThemeScope theme={theme} className={embedded ? 'fz-frame' : undefined}>
       <Ribbon text={extras?.ribbon} />
+      <PagePhoto theme={theme} assets={assets} />
       <div
         ref={topRef}
         className="fz-layout scroll-mt-2"
@@ -335,6 +337,8 @@ export function WorkflowRenderer({
             coverUrl={coverUrl}
             caseAnswers={caseAnswers}
             badge={extras?.badge}
+            assets={assets}
+            studio={Boolean(onSelectField)}
             condensed={stepIndex > 0}
             preview={mode === 'preview'}
           >
@@ -370,6 +374,7 @@ export function WorkflowRenderer({
 
             <div className="space-y-4">
               {stepIndex === 0 && firstScreen && <Welcome welcome={extras?.welcome} assets={assets} />}
+              {stepIndex === 0 && firstScreen && <BusinessGallery theme={theme} assets={assets} slot="intro" studio={Boolean(onSelectField)} />}
 
               {config.disclaimer && ((stepIndex === 0 && firstScreen) || isSummary) && (
                 <div role="note" className="fz-warn">

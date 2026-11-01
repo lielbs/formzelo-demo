@@ -119,6 +119,7 @@ export function PublicFlow() {
           config={config}
           theme={design}
           logoUrl={design.logo.assetId ? assets[design.logo.assetId] : undefined}
+          assets={assets}
           justSubmitted={justSubmitted}
           onCancelBooking={
             config.booking?.enabled

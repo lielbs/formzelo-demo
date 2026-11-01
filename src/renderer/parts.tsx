@@ -12,12 +12,13 @@ import { bookingState, WEEKDAY_LABELS, weekdayOf } from '../engine/booking';
 import { COMPLETION_LABELS, completionOf, NO_COLLECTION, paymentPlan, safeExternalUrl } from '../engine/completion';
 import { formatDate } from '../lib/format';
 import { resolveAppearance } from './appearance';
+import { BusinessGallery, Photo, resolveMedia, type ResolvedMedia } from './media';
 
 // ---------- brand & hero ----------
 
-export function BrandRow({ name, logoUrl, showName }: { name: string; logoUrl?: string; showName: boolean }) {
+export function BrandRow({ name, logoUrl, showName, logoStyle = 'plain' }: { name: string; logoUrl?: string; showName: boolean; logoStyle?: ResolvedMedia['logoStyle'] }) {
   return (
-    <div className="fz-brandrow">
+    <div className="fz-brandrow" data-logo={logoStyle}>
       {logoUrl ? <img src={logoUrl} alt={showName ? '' : name} className="fz-logo-img" /> : <span className="fz-monogram" aria-hidden>{name.trim().slice(0, 1) || '•'}</span>}
       {(showName || !logoUrl) && <span className="truncate text-sm font-semibold">{name}</span>}
     </div>
@@ -36,10 +37,14 @@ export interface HeroProps {
   preview: boolean;
   /** The business's sticker on the opening (theme.extras.badge). */
   badge?: string;
+  /** Workspace images (for the gallery placed in the opening). */
+  assets?: Record<string, string>;
+  /** Studio canvas: empty image slots show where the business's photos will sit. */
+  studio?: boolean;
   children?: ReactNode;
 }
 
-export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl, caseAnswers, condensed, preview, badge, children }: HeroProps) {
+export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl, caseAnswers, condensed, preview, badge, assets = {}, studio, children }: HeroProps) {
   const layout = theme.hero.layout;
   const minutes = Math.max(1, Math.round(fieldsCount * 0.35));
   const facts = [
@@ -48,13 +53,27 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
     config.mode === 'case' && { icon: Lock, label: 'קישור אישי' },
   ].filter(Boolean) as { icon: typeof Clock; label: string }[];
   const showSpecs = layout === 'banner' && caseAnswers.length > 0;
-  const art = theme.decoration !== 'none' && !coverUrl;
+  const media = resolveMedia(theme);
+  const cover = media.coverStyle;
+  // Panel, frame and band put the business's photo inside the opening (a placeholder in the studio).
+  const slot = layout !== 'none' && ['panel', 'frame', 'band'].includes(cover) && (Boolean(coverUrl) || Boolean(studio));
+  const art = theme.decoration !== 'none' && !(coverUrl && cover !== 'page') && !slot;
+  const seal = media.logoStyle === 'seal';
 
   return (
-    <header className="fz-hero" data-layout={layout} data-condensed={condensed || undefined} data-mobile-compact={theme.mobile.compactHero || undefined} aria-label={config.title}>
-      {coverUrl && layout !== 'none' && (
+    <header
+      className="fz-hero"
+      data-layout={layout}
+      data-cover={slot || (coverUrl && cover === 'backdrop') ? cover : undefined}
+      data-tone={media.tone}
+      data-condensed={condensed || undefined}
+      data-mobile-compact={theme.mobile.compactHero || undefined}
+      aria-label={config.title}
+    >
+      {coverUrl && cover === 'backdrop' && layout !== 'none' && (
         <>
           <img src={coverUrl} alt="" className="fz-hero-cover" />
+          <span className="fz-hero-tint" aria-hidden />
           <span className="fz-hero-scrim" aria-hidden />
         </>
       )}
@@ -68,8 +87,8 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
       <div className="fz-hero-content fz-anim-hero">
         <div className="flex items-center justify-between gap-3">
           {theme.logo.placement !== 'hidden' ? (
-            <div className={theme.logo.placement === 'center' ? 'flex flex-1 justify-center' : undefined}>
-              <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} />
+            <div className={theme.logo.placement === 'center' || seal ? 'flex flex-1 justify-center' : undefined}>
+              <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} logoStyle={media.logoStyle} />
             </div>
           ) : (
             <span />
@@ -82,6 +101,7 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
           {config.title}
         </h1>
         {config.description && <p className="fz-hero-desc">{config.description}</p>}
+        {slot && cover === 'band' && <Photo className="fz-hero-band" src={coverUrl} tone={media.tone} empty="תמונת העסק — רצועה רחבה" />}
         {layout !== 'none' && facts.length > 0 && !showSpecs && (
           <ul className="fz-hero-facts" aria-label="על התהליך">
             {facts.map(({ icon: Icon, label }) => (
@@ -104,7 +124,11 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
           </dl>
         )}
         {children && <div className="fz-hero-summary mt-8">{children}</div>}
+        <BusinessGallery theme={theme} assets={assets} slot="hero" studio={studio} />
       </div>
+      {slot && (cover === 'panel' || cover === 'frame') && (
+        <Photo className="fz-hero-photo" src={coverUrl} tone={media.tone} shape={cover === 'frame' ? media.frame : undefined} empty="תמונת העסק" />
+      )}
     </header>
   );
 }

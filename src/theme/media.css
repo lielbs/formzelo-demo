@@ -1,0 +1,450 @@
+/*
+ * The business's own images inside a design (theme.media): the photo of the place in five
+ * placements, frame shapes, colour treatments that tie any photo to the palette, the business
+ * gallery, logo styles and product photos on choice cards. Loaded after signature.css.
+ * Animations live in the reduced-motion guard at the end.
+ */
+
+/* ---------- the photo primitive ---------- */
+
+.fz-photo {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--fz-surface-alt);
+}
+.fz-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.fz-photo-tint,
+.fz-hero-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: none;
+  pointer-events: none;
+}
+.fz-hero-tint {
+  z-index: -2;
+}
+
+/* Colour treatments: natural (as shot), brand (duotone in the design's colours), mono, warm, soft. */
+:is(.fz-photo, .fz-page-photo)[data-tone='mono'] img,
+.fz-hero[data-tone='mono'] .fz-hero-cover {
+  filter: grayscale(1) contrast(1.08);
+}
+:is(.fz-photo, .fz-page-photo)[data-tone='warm'] img,
+.fz-hero[data-tone='warm'] .fz-hero-cover {
+  filter: sepia(0.28) saturate(1.12) brightness(1.03);
+}
+:is(.fz-photo, .fz-page-photo)[data-tone='soft'] img,
+.fz-hero[data-tone='soft'] .fz-hero-cover {
+  filter: saturate(0.78) contrast(0.9) brightness(1.06);
+}
+:is(.fz-photo, .fz-page-photo)[data-tone='soft'] .fz-photo-tint,
+.fz-hero[data-tone='soft'] .fz-hero-tint {
+  display: block;
+  background: color-mix(in srgb, var(--fz-bg) 24%, transparent);
+}
+:is(.fz-photo, .fz-page-photo)[data-tone='brand'] img,
+.fz-hero[data-tone='brand'] .fz-hero-cover {
+  filter: grayscale(1) contrast(1.12) brightness(1.04);
+}
+:is(.fz-photo, .fz-page-photo)[data-tone='brand'] .fz-photo-tint,
+.fz-hero[data-tone='brand'] .fz-hero-tint {
+  display: block;
+  background: linear-gradient(140deg, var(--fz-primary), var(--fz-accent));
+  mix-blend-mode: color;
+  opacity: 0.88;
+}
+
+/* Frame shapes. */
+.fz-photo[data-shape='rounded'] {
+  border-radius: calc(var(--fz-r) * 1.25 + 4px);
+}
+.fz-photo[data-shape='arch'] {
+  border-radius: 999px 999px calc(var(--fz-r) + 4px) calc(var(--fz-r) + 4px);
+}
+.fz-photo[data-shape='circle'] {
+  border-radius: 50%;
+  aspect-ratio: 1 !important;
+}
+.fz-photo[data-shape='organic'] {
+  border-radius: 62% 38% 55% 45% / 48% 58% 42% 52%;
+}
+
+/* Studio placeholder: shows where the image will sit until one is uploaded. */
+.fz-photo-empty {
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed color-mix(in srgb, currentColor 40%, transparent);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: inherit;
+}
+.fz-photo-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.75;
+}
+
+/* The opening measures itself: side-by-side placements depend on the opening's own width
+   (a narrow editorial column stays stacked even on a wide screen). */
+.fz-hero[data-cover] {
+  container: fzhero / inline-size;
+}
+
+/* ---------- placement: backdrop (behind the opening) ---------- */
+
+.fz-hero[data-cover='backdrop'][data-tone='brand'] .fz-hero-scrim {
+  background: linear-gradient(to top, color-mix(in srgb, var(--fz-hero-bg) 88%, transparent) 20%, color-mix(in srgb, var(--fz-hero-bg) 35%, transparent));
+}
+
+/* ---------- placement: panel (half of the opening) ---------- */
+
+.fz-hero[data-cover='panel'] .fz-hero-content {
+  position: relative;
+  z-index: 1;
+  /* narrow openings: the photo is a band across the top */
+  margin-top: 210px;
+}
+.fz-hero[data-cover='panel'] .fz-hero-photo {
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto 0;
+  height: 210px;
+  border-radius: 0;
+}
+@container fzhero (min-width: 640px) {
+  .fz-hero[data-cover='panel'] .fz-hero-content {
+    margin-top: 0;
+    max-width: 52%;
+    min-height: 330px;
+  }
+  .fz-hero[data-cover='panel'] .fz-hero-photo {
+    inset: 0 auto 0 0;
+    width: 44%;
+    height: auto;
+  }
+  /* A soft seam where the photo meets the colour of the opening. */
+  .fz-hero[data-cover='panel'] .fz-hero-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 22%;
+    z-index: 2;
+    background: linear-gradient(to left, var(--fz-hero-bg), transparent);
+    pointer-events: none;
+  }
+}
+
+/* ---------- placement: frame (a shaped picture on the opening) ---------- */
+
+.fz-hero[data-cover='frame'] {
+  --fz-frame-w: clamp(170px, 34cqi, 320px);
+}
+.fz-hero[data-cover='frame'] .fz-hero-content {
+  position: relative;
+  z-index: 1;
+}
+.fz-hero[data-cover='frame'] .fz-hero-photo {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 360px);
+  aspect-ratio: 4 / 3;
+  margin: 22px auto 0;
+  box-shadow:
+    0 0 0 6px var(--fz-hero-bg),
+    0 0 0 7.5px color-mix(in srgb, var(--fz-accent) 70%, transparent),
+    0 30px 60px -24px rgb(0 0 0 / 0.5);
+}
+.fz-hero[data-cover='frame'] .fz-hero-photo:is([data-shape='arch'], [data-shape='organic']) {
+  aspect-ratio: 4 / 5;
+  width: min(72%, 280px);
+}
+.fz-hero[data-cover='frame'] .fz-hero-photo[data-shape='circle'] {
+  width: min(64%, 240px);
+}
+@container fzhero (min-width: 640px) {
+  .fz-hero[data-cover='frame'] .fz-hero-content {
+    max-width: calc(100% - var(--fz-frame-w) - 56px);
+    min-height: calc(var(--fz-frame-w) * 1.25);
+  }
+  .fz-hero[data-cover='frame'] .fz-hero-photo {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: clamp(24px, 5cqi, 64px);
+    translate: 0 -50%;
+    margin: 0;
+    width: var(--fz-frame-w) !important;
+  }
+}
+
+/* ---------- placement: band (a wide strip under the title) ---------- */
+
+.fz-hero-band {
+  margin-top: 22px;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--fz-r) + 2px);
+  box-shadow: 0 24px 50px -28px rgb(0 0 0 / 0.55);
+}
+@container fzhero (min-width: 640px) {
+  .fz-hero-band {
+    aspect-ratio: 21 / 8;
+  }
+}
+.fz-layout[data-flow='editorial'] .fz-hero-band,
+.fz-layout[data-flow='console'] .fz-hero-band {
+  border-radius: var(--fz-r-sm);
+}
+
+/* ---------- placement: page (ambience behind everything) ---------- */
+
+.fz:has(> .fz-page-photo) {
+  position: relative;
+}
+.fz:has(> .fz-page-photo) > .fz-layout {
+  position: relative;
+  z-index: 1;
+}
+.fz-page-photo {
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto 0;
+  height: min(80vh, 780px);
+  overflow: hidden;
+  pointer-events: none;
+}
+.fz-page-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.04);
+  filter: blur(1.5px);
+}
+.fz-page-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--fz-bg) 38%, transparent), color-mix(in srgb, var(--fz-bg) 70%, transparent) 55%, var(--fz-bg) 97%);
+}
+
+/* ---------- the business gallery ---------- */
+
+.fz-gallery-biz {
+  margin: 4px 0 6px;
+}
+.fz-hero .fz-gallery-biz {
+  margin-top: 22px;
+}
+.fz-gallery-title {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--fz-primary-ink);
+}
+.fz-hero .fz-gallery-title {
+  color: var(--fz-hero-muted);
+}
+.fz-gallery-biz ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fz-gallery-biz .fz-photo {
+  width: 100%;
+  height: 100%;
+}
+/* strip: an even row, scrolling on a phone */
+.fz-gallery-biz[data-style='strip'] ul {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(118px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fz-gallery-biz[data-style='strip'] li {
+  aspect-ratio: 1;
+}
+.fz-gallery-biz[data-style='strip'] .fz-photo {
+  border-radius: var(--fz-r-sm);
+}
+/* mosaic: one lead picture and its companions */
+.fz-gallery-biz[data-style='mosaic'] ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: clamp(84px, 16cqi, 150px);
+  gap: 8px;
+}
+.fz-gallery-biz[data-style='mosaic'] li:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.fz-gallery-biz[data-style='mosaic'] ul[data-count='1'] li:first-child {
+  grid-column: span 3;
+}
+.fz-gallery-biz[data-style='mosaic'] ul[data-count='2'] li:first-child {
+  grid-row: span 1;
+}
+.fz-gallery-biz[data-style='mosaic'] .fz-photo {
+  border-radius: var(--fz-r-sm);
+}
+/* polaroid: printed photos on the table */
+.fz-gallery-biz[data-style='polaroid'] ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 10px;
+  padding: 6px 0;
+}
+.fz-gallery-biz[data-style='polaroid'] li {
+  width: clamp(104px, 28%, 170px);
+  padding: 7px 7px 24px;
+  background: #fff;
+  box-shadow: 0 14px 28px -16px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(0 0 0 / 0.06);
+  rotate: calc((var(--i) - 1) * 2.4deg);
+}
+.fz-gallery-biz[data-style='polaroid'] li:nth-child(even) {
+  rotate: calc(var(--i) * -1.6deg);
+}
+.fz-gallery-biz[data-style='polaroid'] .fz-photo {
+  aspect-ratio: 1;
+  height: auto;
+}
+/* stack: a fanned pile */
+.fz-gallery-biz[data-style='stack'] ul {
+  position: relative;
+  height: clamp(170px, 34cqi, 260px);
+}
+.fz-gallery-biz[data-style='stack'] li {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(120px, 34%, 210px);
+  aspect-ratio: 4 / 5;
+  translate: calc(-50% + (var(--i) - 1) * 38%) -50%;
+  rotate: calc((var(--i) - 1) * 6deg);
+  z-index: calc(10 - var(--i));
+  filter: drop-shadow(0 16px 24px rgb(0 0 0 / 0.28));
+}
+.fz-gallery-biz[data-style='stack'] .fz-photo {
+  border-radius: calc(var(--fz-r) + 2px);
+  outline: 4px solid var(--fz-surface);
+  outline-offset: -1px;
+}
+.fz-gallery-biz[data-style='stack'] ul[data-count='1'] li {
+  translate: -50% -50%;
+  rotate: 0deg;
+}
+
+/* ---------- logo styles ---------- */
+
+.fz-brandrow[data-logo='badge'] {
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 16px 6px 6px;
+  border-radius: 999px;
+  background: var(--fz-surface);
+  color: var(--fz-text);
+  box-shadow: 0 10px 26px -14px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+.fz-brandrow[data-logo='badge'] .fz-logo-img {
+  height: 34px;
+}
+.fz-brandrow[data-logo='seal'] {
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+.fz-brandrow[data-logo='seal'] .fz-logo-img,
+.fz-brandrow[data-logo='seal'] .fz-monogram {
+  width: 86px;
+  height: 86px;
+  max-width: none;
+  padding: 12px;
+  border-radius: 50%;
+  background: var(--fz-surface);
+  object-fit: contain;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--fz-hero-bg) 80%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--fz-accent) 75%, transparent),
+    0 18px 34px -18px rgb(0 0 0 / 0.55);
+}
+.fz-brandrow[data-logo='seal'] .fz-monogram {
+  background: var(--fz-primary);
+  color: var(--fz-on-primary);
+  font-size: 34px;
+}
+.fz-brandrow[data-logo='wordmark'] .fz-logo-img {
+  height: clamp(46px, 8cqi, 74px);
+  max-width: min(320px, 72%);
+}
+.fz-brandrow[data-logo='wordmark'] .fz-monogram {
+  width: 56px;
+  height: 56px;
+  font-size: 26px;
+  border-radius: var(--fz-r);
+}
+
+/* ---------- product photos on choice cards (dishes, haircuts, work) ---------- */
+
+.fz-option[data-kind='tile'] .fz-tile-photo {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: calc(var(--fz-r-sm) - 2px);
+  background: var(--fz-surface-alt);
+}
+.fz-option[data-kind='tile'] .fz-tile-photo img {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fz-option[data-kind='tile']:has(input:checked) .fz-tile-photo {
+  box-shadow: inset 0 0 0 3px var(--fz-primary);
+}
+
+/* ---------- motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .fz:not([data-motion='none']) .fz-hero-photo,
+  .fz:not([data-motion='none']) .fz-hero-band {
+    animation: fz-media-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+  }
+  .fz:not([data-motion='none']) .fz-gallery-biz li {
+    animation: fz-media-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(0.25s + var(--i, 0) * 0.08s);
+  }
+  .fz:not([data-motion='none']) .fz-option[data-kind='tile']:hover .fz-tile-photo img {
+    transform: scale(1.05);
+  }
+}
+@keyframes fz-media-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fz-media-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

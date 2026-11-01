@@ -6,7 +6,7 @@
 import { THEME_PRESET_IDS, WorkflowThemeSchema, type FLOWS, type PATTERNS, type ThemeExtras, type ThemePresetId, type WorkflowTheme } from '../domain/theme';
 import { LIBRARY_PRESETS, type PresetEntry, type PresetMeta, type PresetTheme } from './presetLibrary';
 
-type Keep = Pick<WorkflowTheme, 'hero' | 'logo'> & Pick<Partial<WorkflowTheme>, 'presence' | 'extras'>;
+type Keep = Pick<WorkflowTheme, 'hero' | 'logo'> & Pick<Partial<WorkflowTheme>, 'presence' | 'extras' | 'media'>;
 
 export type { PresetCategory, PresetMeta } from './presetLibrary';
 export { PRESET_CATEGORIES } from './presetLibrary';
@@ -297,7 +297,7 @@ export const PRESET_LIST: PresetMeta[] = THEME_PRESET_IDS.map((id) => PRESETS[id
 /** A complete, validated theme for a preset. Uploaded assets can be carried over. */
 /**
  * A complete, validated theme for a preset. `keep` carries the business's own content across a
- * style change: uploads, links and add-ons stay; the texture follows the new style.
+ * style change: uploads, image placements, links and add-ons stay; the texture follows the new style.
  */
 export function buildTheme(presetId: ThemePresetId, opts: { source?: WorkflowTheme['source']; keep?: Keep } = {}): WorkflowTheme {
   const preset = structuredClone(PRESETS[presetId].theme);
@@ -310,6 +310,7 @@ export function buildTheme(presetId: ThemePresetId, opts: { source?: WorkflowThe
     hero: { ...preset.hero, eyebrow: opts.keep?.hero.eyebrow, coverAssetId: opts.keep?.hero.coverAssetId },
     logo: { ...preset.logo, ...(opts.keep?.logo ?? {}) },
     ...(opts.keep?.presence ? { presence: structuredClone(opts.keep.presence) } : {}),
+    ...(opts.keep?.media ? { media: structuredClone(opts.keep.media) } : {}),
     ...(Object.keys(extras).length ? { extras } : {}),
   };
   if (!Object.keys(extras).length) delete theme.extras;

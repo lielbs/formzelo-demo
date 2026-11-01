@@ -71,3 +71,9 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Placement diagrams in the Design Studio (pages/app/editor/MediaPanel.tsx). */
+.fz-diagram .bg { fill: #e8eaee; }
+.fz-diagram .ph { fill: #f0b79c; }
+.fz-diagram .tx { fill: #18212d; }
+.fz-diagram .card { fill: #fff; stroke: #d9dde3; stroke-width: 0.8; }

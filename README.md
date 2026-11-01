@@ -222,6 +222,16 @@ Designs now differ in how the customer walks through the form, not only in how i
 
 Both fields are optional: designs saved before them render exactly as before (`card`, no add-ons). Schema v6 migrates only the fictional demo workspaces, giving each demo business its experience and add-ons on the draft and the published version (`data/demoExtras.ts`); business config, runs and answers are untouched.
 
+### The business's own images
+
+`theme.media` (optional) decides how the business's photos and logo sit in a design — edited under **Design Studio → תמונות העסק ולוגו**, kept when the style changes (`renderer/media.tsx`, `theme/media.css`):
+
+- **Photo of the place** (`hero.coverAssetId`) in five placements: behind the opening (the original behaviour), half of the opening, a shaped frame (rounded, arch, circle, organic — the default follows the design's artwork), a wide band under the title, or soft ambience behind the whole page. Side-by-side placements measure the opening itself (a container query), so a narrow editorial column stays stacked.
+- **Colour treatment:** natural, in the brand colours (duotone from primary and accent), black-and-white, warm or soft — so a phone photo still belongs to the page. Product photos on choice cards always stay natural.
+- **Gallery** of up to six business photos (the place, dishes, haircuts, work) as a strip, mosaic, polaroids or a fanned stack, placed in the opening, at the start of the form or on the confirmation. The default layout follows the experience (magazine → mosaic, playful → polaroid, focus → stack).
+- **Logo styles:** plain, on a badge, a centred seal, or a large wordmark.
+- In the studio, an empty placement shows a labelled frame where the photo will sit; customers never see empty slots. Images are local workspace assets only (the schema rejects URLs and data: values).
+
 ### Design library and template library
 
 - **26 designs** (`theme/presets.ts` core six + `theme/presetLibrary.ts`), grouped in 9 categories (יופי וטיפוח, אוכל ואירוח, אירועים וחגיגות, שירותים מקצועיים, בריאות וכושר, בית/רכב/שירותי שטח, חינוך וילדים, פנאי/טבע/תיירות, כללי). Each one is a full art direction — palette, typography, hero layout, composition, decoration, card / input / option / button shapes, radius, depth, density, progress and motion — including two dark designs (יוקרה כהה, ניאון לילה). Every design has a one-word *experience* name (שליו, זוהר, מתוק, חגיגי, אמין, אנרגטי…), a description and "best for".
@@ -319,7 +329,7 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-181 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`, `signature.test.ts`):
+186 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`, `signature.test.ts`, `media.test.ts`):
 
 - **Builder (`builder.test.ts`):** only implemented creation paths; blank workflow valid and publishable; every template, seeded draft and published version passes the logic checker; generated workflows valid; library groups and required entries; unavailable signature; every library entry yields schema-valid fields with unique keys; customer-details roles; insertion position; duplication (ids, key, options, role); key sanitizing; undo / redo semantics; configuration survives a schema round-trip; plain-language conditions; earlier-only condition sources; circular / forward / self / missing references; stale values, missing values, bad multipliers, conditional first step; duplicate keys, inverted limits, broken booking references; operators by type; readiness errors vs warnings; price integrity.
 - **Design and template libraries (`theme.test.ts`, `library.test.ts`):** at least 24 valid designs, each structurally unique and with a unique palette, ≥10 typographies and ≥12 decorations in use, every category with a real choice, contrast for every design (text ≥7:1, buttons and links ≥4.5:1), dark designs readable; at least 45 templates with unique ids and titles, every topic covered, every template schema-valid, logic-clean, publishable, with unique keys and fresh ids per build, paired with a valid design (≥20 different designs in use); library prices / conditional fees / multipliers compute correctly; search by text and category; demo-only capabilities labelled.

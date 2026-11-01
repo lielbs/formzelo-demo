@@ -109,6 +109,34 @@ export const ThemeExtrasSchema = z.object({
 });
 export type ThemeExtras = z.infer<typeof ThemeExtrasSchema>;
 
+// ---------- the business's own images ----------
+
+/**
+ * How the business's photo (hero.coverAssetId) sits in the design.
+ * backdrop: behind the opening, under a scrim · panel: half of the opening · frame: a shaped
+ * picture on the opening · band: a wide strip under the title · page: soft ambience behind the page.
+ */
+export const COVER_STYLES = ['backdrop', 'panel', 'frame', 'band', 'page'] as const;
+export const FRAME_SHAPES = ['rounded', 'arch', 'circle', 'organic'] as const;
+/** Colour treatment so any photo belongs to the palette. Product photos (options) stay natural. */
+export const PHOTO_TONES = ['natural', 'brand', 'mono', 'warm', 'soft'] as const;
+export const GALLERY_STYLES = ['strip', 'mosaic', 'polaroid', 'stack'] as const;
+export const GALLERY_PLACEMENTS = ['hero', 'intro', 'completion'] as const;
+export const LOGO_STYLES = ['plain', 'badge', 'seal', 'wordmark'] as const;
+
+export const MediaSettingsSchema = z.object({
+  coverStyle: z.enum(COVER_STYLES).optional(),
+  frame: z.enum(FRAME_SHAPES).optional(),
+  tone: z.enum(PHOTO_TONES).optional(),
+  /** The business's photos: its place, dishes, haircuts, work. Local workspace assets only. */
+  gallery: z.array(ThemeAssetRefSchema).max(6).optional(),
+  galleryTitle: z.string().max(40).optional(),
+  galleryStyle: z.enum(GALLERY_STYLES).optional(),
+  galleryPlacement: z.enum(GALLERY_PLACEMENTS).optional(),
+  logoStyle: z.enum(LOGO_STYLES).optional(),
+});
+export type MediaSettings = z.infer<typeof MediaSettingsSchema>;
+
 // ---------- Business Engagement Kit (digital presence links) ----------
 
 export const PRESENCE_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'whatsapp', 'waze', 'google_maps', 'google_review', 'website', 'youtube', 'linkedin', 'phone', 'email', 'custom'] as const;
@@ -201,6 +229,8 @@ export const WorkflowThemeSchema = z.object({
   flow: z.enum(FLOWS).optional(),
   /** The business's own touches (announcement, sticker, owner note, promises, texture, sign-off). */
   extras: ThemeExtrasSchema.optional(),
+  /** How the business's photos and logo sit in the design. Absent = photo behind the opening, plain logo. */
+  media: MediaSettingsSchema.optional(),
 });
 export type WorkflowTheme = z.infer<typeof WorkflowThemeSchema>;
 

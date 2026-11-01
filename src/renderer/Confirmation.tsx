@@ -9,6 +9,7 @@ import { formatCurrency, formatDateTime } from '../lib/format';
 import { BrandRow } from './parts';
 import { DigitalPresence, ReviewRequest } from './presence';
 import { Signoff } from './extras';
+import { BusinessGallery, resolveMedia } from './media';
 import { presenceOf, reviewLink, shouldAskForReview } from '../engine/presence';
 
 /** Pieces of the completion burst: end offset (px) and spin, spread evenly around the mark. */
@@ -111,6 +112,7 @@ export function Confirmation({
   config,
   theme,
   logoUrl,
+  assets = {},
   justSubmitted,
   onCancelBooking,
 }: {
@@ -118,6 +120,8 @@ export function Confirmation({
   config: WorkflowConfig;
   theme: WorkflowTheme;
   logoUrl?: string;
+  /** Workspace images (the business's gallery when it is placed on the confirmation). */
+  assets?: Record<string, string>;
   justSubmitted: boolean;
   /** Booking flows only: lets the customer withdraw their own request. */
   onCancelBooking?: () => Promise<void>;
@@ -131,7 +135,7 @@ export function Confirmation({
   return (
     <div className="mx-auto w-full max-w-xl px-3 py-6 sm:py-12">
       <div className="mb-5 flex justify-center">
-        <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} />
+        <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} logoStyle={resolveMedia(theme).logoStyle} />
       </div>
       <section className="fz-card fz-pad fz-step" data-dir="fwd" aria-labelledby="fz-confirm-title">
         <div className="text-center">
@@ -232,6 +236,7 @@ export function Confirmation({
           </ol>
         </section>
         <Signoff signoff={theme.extras?.signoff} />
+        <BusinessGallery theme={theme} assets={assets} slot="completion" />
         {booking && onCancelBooking && CUSTOMER_CANCELLABLE.includes(run.status) && <CancelBooking onCancel={onCancelBooking} />}
         {/* Engagement comes after the confirmation details, never instead of them. */}
         <DigitalPresence theme={theme} slot="completion" title={booking && !booking.confirmed ? 'בינתיים, אפשר להכיר אותנו' : 'נשארים בקשר'} />
