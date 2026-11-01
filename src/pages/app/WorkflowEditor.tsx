@@ -9,6 +9,8 @@ import {
   ArrowDown,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   GitBranch,
   Play,
@@ -158,6 +160,8 @@ export function WorkflowEditor() {
   const [pickMode, setPickMode] = useState(true);
   const [mobilePane, setMobilePane] = useState<'structure' | 'canvas' | 'inspector'>('canvas');
   const [library, setLibrary] = useState<{ stepId: string } | null>(null);
+  /** The step expanded in the structure list and shown in the preview when nothing in it is selected. */
+  const [openStepId, setOpenStepId] = useState<string | null>(null);
   const [busy, setBusy] = useState<'save' | 'publish' | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [viewVersion, setViewVersion] = useState<WorkflowVersion | null>(null);
@@ -283,7 +287,18 @@ export function WorkflowEditor() {
     return si < 0 ? null : { si, fi: config.steps[si]!.fields.findIndex((f) => f.id === fieldId) };
   };
   const selectedField = sel.kind === 'field' ? allFields.find((f) => f.id === sel.fieldId) : undefined;
-  const focusStepId = sel.kind === 'field' ? config.steps[locate(sel.fieldId)?.si ?? -1]?.id : sel.kind === 'step' ? sel.stepId : undefined;
+  const selectedStepId = sel.kind === 'field' ? config.steps[locate(sel.fieldId)?.si ?? -1]?.id : sel.kind === 'step' ? sel.stepId : undefined;
+  const focusStepId = selectedStepId ?? (openStepId && config.steps.some((s) => s.id === openStepId) ? openStepId : undefined);
+  // One step is open at a time in the structure list, so moving between steps needs no long scroll.
+  const expandedStepId = focusStepId ?? config.steps[0]?.id;
+  /** Show a step in the preview (from its top) and open it in the structure list. */
+  const showStep = (stepId: string, fromStructure = false) => {
+    setOpenStepId(stepId);
+    // From the canvas switcher the owner stays on the preview (narrow screens included).
+    if (fromStructure) select({ kind: 'step', stepId });
+    else setSel({ kind: 'step', stepId });
+    requestAnimationFrame(() => document.querySelector('[data-fz-canvas] [data-fz-scroll]')?.scrollTo({ top: 0 }));
+  };
 
   const select = (s: Selection) => {
     setSel(s);
@@ -466,14 +481,18 @@ export function WorkflowEditor() {
           >
             <button
               type="button"
-              onClick={() => select({ kind: 'step', stepId: st.id })}
+              onClick={() => showStep(st.id, true)}
               aria-current={(sel.kind === 'step' && sel.stepId === st.id) || undefined}
-              className={cx('flex w-full items-center gap-2 rounded-t-xl px-2.5 py-2 text-start text-sm font-semibold', sel.kind === 'step' && sel.stepId === st.id ? 'bg-midnight text-white' : 'hover:bg-cloud')}
+              aria-expanded={st.id === expandedStepId || Boolean(dragId)}
+              className={cx('flex w-full items-center gap-2 px-2.5 py-2 text-start text-sm font-semibold', st.id === expandedStepId || dragId ? 'rounded-t-xl' : 'rounded-xl', sel.kind === 'step' && sel.stepId === st.id ? 'bg-midnight text-white' : 'hover:bg-cloud')}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-cloud-200 text-[11px] text-ink">{si + 1}</span>
               <span className="min-w-0 flex-1 truncate">{st.title || 'שלב ללא שם'}</span>
               {st.condition && <Badge tone="blue">מותנה</Badge>}
+              {st.id !== expandedStepId && !dragId && <span className="shrink-0 text-[11px] font-normal text-ink-soft">{st.fields.length} רכיבים</span>}
             </button>
+            {(st.id === expandedStepId || Boolean(dragId)) && (
+            <>
             <ul className="space-y-0.5 p-1.5">
               {st.fields.map((f, fi) => {
                 const Icon = blockIcon(f);
@@ -545,6 +564,8 @@ export function WorkflowEditor() {
                 הוספת שדה
               </Button>
             </div>
+            </>
+            )}
           </div>
         ))}
         <Button variant="secondary" icon={Plus} className="w-full" onClick={addStep}>
@@ -776,6 +797,42 @@ export function WorkflowEditor() {
           </button>
         </div>
       </div>
+      {!previewMode && config.steps.length > 1 && (
+        <div className="mb-2 flex items-center gap-1.5" role="group" aria-label="מעבר בין שלבים בתצוגה">
+          <button
+            type="button"
+            aria-label="השלב הקודם"
+            disabled={config.steps.findIndex((s) => s.id === expandedStepId) <= 0}
+            onClick={() => showStep(config.steps[config.steps.findIndex((s) => s.id === expandedStepId) - 1]!.id)}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-cloud-200 text-ink-muted hover:text-ink disabled:opacity-40"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
+            {config.steps.map((st, si) => (
+              <button
+                key={st.id}
+                type="button"
+                aria-pressed={st.id === expandedStepId}
+                onClick={() => showStep(st.id)}
+                className={cx('inline-flex h-8 max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition', st.id === expandedStepId ? 'bg-midnight text-white' : 'bg-white text-ink-muted ring-1 ring-cloud-300 hover:text-ink')}
+              >
+                <span className="tabular-nums opacity-70">{si + 1}</span>
+                <span className="truncate">{st.title || 'שלב ללא שם'}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-label="השלב הבא"
+            disabled={config.steps.findIndex((s) => s.id === expandedStepId) >= config.steps.length - 1}
+            onClick={() => showStep(config.steps[config.steps.findIndex((s) => s.id === expandedStepId) + 1]!.id)}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-cloud-200 text-ink-muted hover:text-ink disabled:opacity-40"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      )}
       {previewMode && (
         <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900" role="note">
           מצב בדיקה: מלאו כמו לקוח — מעבר בין שלבים, שגיאות, תנאים וחישוב מחיר עובדים כמו בקישור הציבורי. שליחה כאן לא נשמרת כבקשה.
