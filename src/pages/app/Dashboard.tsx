@@ -219,7 +219,7 @@ export function Dashboard() {
       <Card className="mt-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold">החלטות לקוחות</h2>
-          <p className="text-xs text-ink-muted">פעולות מובנות שנשלחו מתוך בקשות: אישורים, בחירות ועדכונים.</p>
+          <p className="text-xs text-ink-muted">פעולות מובנות שנפתחו מתוך בקשות: אישורים, בחירות ועדכונים.</p>
         </div>
         {actions.length ? (
           <div className="mt-4 grid gap-5 md:grid-cols-2">

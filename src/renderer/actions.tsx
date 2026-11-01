@@ -107,7 +107,7 @@ export function ActionCard({
               </>
             )}
             {' · '}
-            {formatDateTime(action.createdAt)}
+            <bdi>{formatDateTime(action.createdAt)}</bdi>
           </span>
         </span>
       </header>

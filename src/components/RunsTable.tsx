@@ -10,7 +10,7 @@ export type RunActionInfo = Map<string, { awaiting: number; answered: number }>;
 /** Formangle Actions state of a request, next to its status. */
 function DecisionBadge({ info }: { info?: { awaiting: number; answered: number } }) {
   if (!info) return null;
-  if (info.awaiting) return <Badge tone="amber">{info.awaiting > 1 ? `${info.awaiting} ממתינות להחלטת לקוח` : 'ממתין להחלטת לקוח'}</Badge>;
+  if (info.awaiting) return <Badge tone="amber">{info.awaiting > 1 ? `${info.awaiting} החלטות ממתינות` : 'ממתין להחלטה'}</Badge>;
   return info.answered ? <Badge tone="teal">הלקוח השיב</Badge> : null;
 }
 
