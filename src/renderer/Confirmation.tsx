@@ -1,5 +1,5 @@
 import { CalendarCheck, CalendarX, CheckCircle2, Clock, ExternalLink, ShieldCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { PaymentBadge, StatusBadge } from '../components/StatusBadge';
 import type { WorkflowConfig, WorkflowRun } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
@@ -9,6 +9,13 @@ import { formatCurrency, formatDateTime } from '../lib/format';
 import { BrandRow } from './parts';
 import { DigitalPresence, ReviewRequest } from './presence';
 import { presenceOf, reviewLink, shouldAskForReview } from '../engine/presence';
+
+/** Pieces of the completion burst: end offset (px) and spin, spread evenly around the mark. */
+const BURST: [number, number, number][] = Array.from({ length: 14 }, (_, i) => {
+  const a = (i / 14) * Math.PI * 2;
+  const d = 58 + (i % 3) * 16;
+  return [Math.round(Math.cos(a) * d), Math.round(Math.sin(a) * d), (i % 2 ? 1 : -1) * (120 + i * 12)];
+});
 
 const REVIEWED: WorkflowRun['status'][] = ['in_review', 'approved', 'rejected', 'completed', 'cancelled'];
 const DECIDED: WorkflowRun['status'][] = ['approved', 'rejected', 'completed', 'cancelled'];
@@ -128,6 +135,13 @@ export function Confirmation({
       <section className="fz-card fz-pad fz-step" data-dir="fwd" aria-labelledby="fz-confirm-title">
         <div className="text-center">
           <span className="fz-confirm-icon" aria-hidden>
+            {justSubmitted && (
+              <span className="fz-burst">
+                {BURST.map(([x, y, r], i) => (
+                  <i key={i} style={{ '--x': `${x}px`, '--y': `${y}px`, '--r': `${r}deg` } as CSSProperties} />
+                ))}
+              </span>
+            )}
             {booking?.confirmed ? <CalendarCheck className="h-8 w-8" /> : justSubmitted ? <CheckCircle2 className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
           </span>
           <h1 id="fz-confirm-title" className="fz-display mt-4 text-[calc(1.7rem*var(--fz-display-scale))]">

@@ -271,6 +271,8 @@ export function WorkflowRenderer({
         ref={topRef}
         className="fz-layout scroll-mt-2"
         data-composition={composition}
+        // Stage: the hero's colour runs edge to edge and the form card rests on it (not for the side-by-side editorial layout).
+        data-stage={(composition !== 'editorial_split' && ['banner', 'immersive', 'centered', 'compact'].includes(theme.hero.layout)) || undefined}
         data-aside={hasAside || undefined}
         data-inline-summary={(pricing && !theme.mobile.stickySummary) || undefined}
       >

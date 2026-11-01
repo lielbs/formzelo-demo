@@ -56,6 +56,7 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
           <span className="fz-hero-scrim" aria-hidden />
         </>
       )}
+      {layout !== 'none' && <span className="fz-hero-glow" aria-hidden />}
       {art && layout !== 'none' && <HeroArt decoration={theme.decoration} className="fz-hero-art" />}
       <div className="fz-hero-content fz-anim-hero">
         <div className="flex items-center justify-between gap-3">

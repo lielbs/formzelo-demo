@@ -195,6 +195,17 @@ OrgData.brandKit: { displayName, description, logo/secondaryLogo/cover asset ids
                     typography, button, density, logoPlacement, decorations, personality }
 ```
 
+### Premium layer (stage, display type, living artwork, motion)
+
+`theme/premium.css` sits on top of the theme layer and lifts every design through the same tokens:
+
+- **Stage:** for banner, immersive, centered and compact heroes (not the side-by-side editorial layout or posters) the hero colour runs edge to edge and continues under the top of the form card, which floats on it with a soft shadow (true black on dark designs). The art's sides fade into the band.
+- **Display type** at real display sizes (≈56px desktop), tighter leading, larger step titles and card padding.
+- **Living artwork:** each of the 12 hero illustrations has its own slow motion — petals sway, candles flicker and glow, a gauge needle sweeps, waves travel, the sun rises behind arches, confetti drifts, leaves turn, stars twinkle — plus a drifting ambient light on atmospheric designs. Only real heroes move; gallery thumbnails stay still.
+- **Choreography:** hero parts enter one after another, the card settles into place (motion only, never hidden), fields rise in sequence, steps slide; the completion mark lands with a ring and a burst.
+- **Tactile controls:** options lift on hover, press down, and their check lands with a spring; inputs glow on focus; the primary button lifts, its arrow moves, and luxury / glam / hospitality / wedding / tech / night designs get a light sweep. Night designs add neon light; luxury and wedding cards carry a fine inner frame.
+- **Accessibility:** all motion is transform / opacity only, follows the theme's motion level, and is removed for `prefers-reduced-motion` (hover travel included), `motion: none` and print. Tests (`premium.test.ts`) check the guard, the thumbnail scoping and the keyframe properties.
+
 ### Design library and template library
 
 - **26 designs** (`theme/presets.ts` core six + `theme/presetLibrary.ts`), grouped in 9 categories (יופי וטיפוח, אוכל ואירוח, אירועים וחגיגות, שירותים מקצועיים, בריאות וכושר, בית/רכב/שירותי שטח, חינוך וילדים, פנאי/טבע/תיירות, כללי). Each one is a full art direction — palette, typography, hero layout, composition, decoration, card / input / option / button shapes, radius, depth, density, progress and motion — including two dark designs (יוקרה כהה, ניאון לילה). Every design has a one-word *experience* name (שליו, זוהר, מתוק, חגיגי, אמין, אנרגטי…), a description and "best for".
@@ -292,7 +303,7 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-165 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`):
+169 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`):
 
 - **Builder (`builder.test.ts`):** only implemented creation paths; blank workflow valid and publishable; every template, seeded draft and published version passes the logic checker; generated workflows valid; library groups and required entries; unavailable signature; every library entry yields schema-valid fields with unique keys; customer-details roles; insertion position; duplication (ids, key, options, role); key sanitizing; undo / redo semantics; configuration survives a schema round-trip; plain-language conditions; earlier-only condition sources; circular / forward / self / missing references; stale values, missing values, bad multipliers, conditional first step; duplicate keys, inverted limits, broken booking references; operators by type; readiness errors vs warnings; price integrity.
 - **Design and template libraries (`theme.test.ts`, `library.test.ts`):** at least 24 valid designs, each structurally unique and with a unique palette, ≥10 typographies and ≥12 decorations in use, every category with a real choice, contrast for every design (text ≥7:1, buttons and links ≥4.5:1), dark designs readable; at least 45 templates with unique ids and titles, every topic covered, every template schema-valid, logic-clean, publishable, with unique keys and fresh ids per build, paired with a valid design (≥20 different designs in use); library prices / conditional fees / multipliers compute correctly; search by text and category; demo-only capabilities labelled.

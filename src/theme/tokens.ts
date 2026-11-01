@@ -59,6 +59,11 @@ export function heroBackground(theme: WorkflowTheme): string {
       return p.accent;
     case 'split':
       return p.surfaceAlt;
+    // A soft tint of the brand, so light heroes still read as a stage rather than empty page.
+    case 'centered':
+      return mix(p.background, p.primary, 0.13);
+    case 'compact':
+      return mix(p.background, p.secondary, 0.2);
     default:
       return p.background;
   }
@@ -125,6 +130,12 @@ export function themeTokens(theme: WorkflowTheme): ThemeTokens {
     '--fz-field-gap': `${d.field}px`,
     '--fz-control-h': `${d.control}px`,
     '--fz-dur': `${m.dur}ms`,
+    '--fz-glow': mix(heroBg, p.accent, 0.55),
+    // Floating card on the hero stage; on dark designs the shadow is true black, never a light haze.
+    '--fz-float-shadow': (() => {
+      const t = readableOn(p.background) === '#FFFFFF' ? '#000000' : shadowTint;
+      return `0 1px 2px ${t}10, 0 24px 60px -18px ${t}${t === '#000000' ? '99' : '40'}, 0 8px 22px -12px ${t}24`;
+    })(),
     '--fz-shift': `${m.shift}px`,
     // Backwards compatibility with the shared brand-* utility classes.
     '--brand': p.primary,

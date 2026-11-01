@@ -3,7 +3,7 @@
  * images, no stock photos. Colors come from theme tokens, so the same art
  * adapts to every palette. Option art is labeled as illustrative in the UI.
  */
-import { useId, type ReactElement } from 'react';
+import { useId, type CSSProperties, type ReactElement } from 'react';
 import type { FieldOption, WorkflowField } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
 import { normalizeHebrew } from '../engine/hebrew';
@@ -278,15 +278,15 @@ export function inferArt(field: WorkflowField, option?: FieldOption, index = 0, 
 export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['decoration']; className?: string }) {
   // Unique ids: several heroes (e.g. the preset gallery) can be on one page.
   const uid = useId().replace(/:/g, '');
-  const common = { className, 'aria-hidden': true, preserveAspectRatio: 'xMidYMid slice' } as const;
+  const common = { className, 'aria-hidden': true, preserveAspectRatio: 'xMidYMid slice', 'data-art': decoration } as const;
   switch (decoration) {
     case 'organic':
       return (
         <svg viewBox="0 0 400 480" {...common}>
-          <path d="M-20 120 C 80 40 200 90 260 30 S 420 20 440 120 L 440 -20 L -20 -20 Z" fill={A} opacity={0.35} />
-          <path d="M300 520 C 260 400 380 360 340 260 S 440 200 460 260 L 460 520 Z" fill={S} opacity={0.3} />
-          <circle cx="90" cy="360" r="70" fill={A} opacity={0.22} />
-          <g fill="none" stroke={S} strokeWidth="2.2" strokeLinecap="round">
+          <path className="fz-m-drift" d="M-20 120 C 80 40 200 90 260 30 S 420 20 440 120 L 440 -20 L -20 -20 Z" fill={A} opacity={0.35} />
+          <path className="fz-m-drift fz-m-rev" d="M300 520 C 260 400 380 360 340 260 S 440 200 460 260 L 460 520 Z" fill={S} opacity={0.3} />
+          <circle className="fz-m-breathe" cx="90" cy="360" r="70" fill={A} opacity={0.22} />
+          <g className="fz-m-sway fz-m-base" fill="none" stroke={S} strokeWidth="2.2" strokeLinecap="round">
             <path d="M200 470 C 200 380 170 320 130 250" />
             <path d="M200 470 C 205 370 240 300 285 230" />
             <path d="M200 470 C 198 360 200 260 205 170" />
@@ -300,7 +300,7 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             [165, 205, 18, A],
             [248, 180, 16, S],
           ].map(([x, y, r, c], i) => (
-            <g key={i}>
+            <g key={i} className="fz-m-bloom" style={{ '--i': i } as CSSProperties}>
               {Array.from({ length: 6 }, (_, k) => {
                 const a = (k / 6) * Math.PI * 2;
                 return <ellipse key={k} cx={(x as number) + Math.cos(a) * (r as number) * 0.5} cy={(y as number) + Math.sin(a) * (r as number) * 0.5} rx={(r as number) * 0.55} ry={(r as number) * 0.36} transform={`rotate(${(a * 180) / Math.PI} ${(x as number) + Math.cos(a) * (r as number) * 0.5} ${(y as number) + Math.sin(a) * (r as number) * 0.5})`} fill={c as string} opacity={0.85} />;
@@ -321,15 +321,15 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
           <rect width="600" height="220" fill={`url(#g${uid})`} />
           <g fill="none" stroke="currentColor" strokeOpacity={0.35} strokeWidth="1.5">
             <circle cx="110" cy="150" r="90" />
-            <circle cx="110" cy="150" r="64" strokeDasharray="2 6" />
+            <circle className="fz-m-spin" cx="110" cy="150" r="64" strokeDasharray="2 6" />
             <path d="M20 150 H200 M110 60 V240" strokeOpacity={0.18} />
           </g>
-          <path d="M40 150 A70 70 0 0 1 172 118" fill="none" stroke={A} strokeWidth="5" strokeLinecap="round" />
-          <path d="M110 150 L160 100" stroke={A} strokeWidth="3" strokeLinecap="round" />
+          <path className="fz-m-draw" pathLength="1" d="M40 150 A70 70 0 0 1 172 118" fill="none" stroke={A} strokeWidth="5" strokeLinecap="round" />
+          <path className="fz-m-needle" d="M110 150 L160 100" stroke={A} strokeWidth="3" strokeLinecap="round" />
           <circle cx="110" cy="150" r="6" fill={A} />
           <g stroke="currentColor" strokeOpacity={0.25} fill="none">
             <path d="M260 40 h120 l20 20 h160" />
-            <path d="M300 180 h220" strokeDasharray="6 6" />
+            <path className="fz-m-dash" d="M300 180 h220" strokeDasharray="6 6" />
           </g>
         </svg>
       );
@@ -347,7 +347,7 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             </radialGradient>
           </defs>
           <rect width="800" height="360" fill={`url(#a${uid})`} />
-          <rect width="800" height="360" fill={`url(#b${uid})`} />
+          <rect className="fz-m-drift" width="800" height="360" fill={`url(#b${uid})`} />
           <g fill="none" stroke="currentColor" strokeOpacity={0.3} strokeWidth="1.6">
             <ellipse cx="150" cy="334" rx="62" ry="16" />
             <ellipse cx="150" cy="334" rx="40" ry="10" />
@@ -357,10 +357,10 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             <path d="M362 244 h24 q0 34 -12 38 q-12 -4 -12 -38 Z M374 282 v40 M364 322 h20" />
           </g>
           {[70, 110, 390].map((x, i) => (
-            <g key={x}>
+            <g key={x} style={{ '--i': i } as CSSProperties}>
               <rect x={x - 5} y={220 + i * 14} width="10" height={60 - i * 10} rx="2" fill="currentColor" opacity={0.28} />
-              <path d={`M${x} ${200 + i * 14} q8 10 0 18 q-8 -8 0 -18 Z`} fill={A} opacity={0.9} />
-              <circle cx={x} cy={210 + i * 14} r="26" fill={A} opacity={0.12} />
+              <path className="fz-m-flicker" d={`M${x} ${200 + i * 14} q8 10 0 18 q-8 -8 0 -18 Z`} fill={A} opacity={0.9} />
+              <circle className="fz-m-glow" cx={x} cy={210 + i * 14} r="26" fill={A} opacity={0.12} />
             </g>
           ))}
         </svg>
@@ -374,13 +374,15 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             )),
           )}
           <g transform="translate(190 46)">
+            <g className="fz-m-float">
             <rect x="14" y="-8" width="84" height="108" rx="6" fill={SURF} stroke={P} strokeOpacity={0.25} />
             <rect x="0" y="4" width="84" height="108" rx="6" fill={SURF} stroke={P} strokeOpacity={0.4} />
             {[22, 36, 50, 64].map((y) => (
               <rect key={y} x="14" y={y} width={y === 64 ? 34 : 56} height="5" rx="2.5" fill={P} opacity={0.3} />
             ))}
-            <circle cx="64" cy="92" r="12" fill={A} />
-            <path d="M58 92 l4 4 l8 -9" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <circle className="fz-m-pop" cx="64" cy="92" r="12" fill={A} />
+            <path className="fz-m-draw" pathLength="1" d="M58 92 l4 4 l8 -9" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            </g>
           </g>
         </svg>
       );
@@ -388,12 +390,16 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
       return (
         <svg viewBox="0 0 400 300" {...common}>
           {/* Swiss-poster composition: one bold disc, a cut band, a tight dot grid and a hairline rule. */}
-          <circle cx="280" cy="128" r="104" fill={P} />
-          <path d="M-20 300 L210 30 L262 30 L32 300 Z" fill={T} />
-          <rect x="226" y="196" width="150" height="34" fill={SURF} transform="rotate(-18 301 213)" />
-          {Array.from({ length: 5 }, (_, r) =>
-            Array.from({ length: 6 }, (_, c) => <circle key={`${r}-${c}`} cx={36 + c * 18} cy={42 + r * 18} r="3.2" fill={T} />),
-          )}
+          <circle className="fz-m-breathe" cx="280" cy="128" r="104" fill={P} />
+          <path className="fz-m-slide" d="M-20 300 L210 30 L262 30 L32 300 Z" fill={T} />
+          <g className="fz-m-tilt">
+            <rect x="226" y="196" width="150" height="34" fill={SURF} transform="rotate(-18 301 213)" />
+          </g>
+          <g className="fz-m-blink">
+            {Array.from({ length: 5 }, (_, r) =>
+              Array.from({ length: 6 }, (_, c) => <circle key={`${r}-${c}`} cx={36 + c * 18} cy={42 + r * 18} r="3.2" fill={T} />),
+            )}
+          </g>
           <path d="M150 268 H392" stroke={T} strokeWidth="3" />
         </svg>
       );
@@ -403,10 +409,10 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
           {/* Bauhaus-like tiles: quarter circles, a half disc and a solid square on a quiet grid. */}
           <g opacity={0.95}>
             <path d="M220 20 h80 v80 a80 80 0 0 1 -80 -80 Z" fill={P} />
-            <rect x="300" y="20" width="80" height="80" fill={A} />
+            <rect className="fz-m-tilt" x="300" y="20" width="80" height="80" fill={A} />
             <path d="M300 100 h80 v80 h-80 a80 80 0 0 1 80 -80" fill={S} opacity={0.85} />
-            <circle cx="260" cy="140" r="40" fill={SURF} opacity={0.9} />
-            <path d="M220 180 a80 80 0 0 1 160 0 Z" fill={P} opacity={0.35} />
+            <circle className="fz-m-orbit-s" cx="260" cy="140" r="40" fill={SURF} opacity={0.9} />
+            <path className="fz-m-breathe" d="M220 180 a80 80 0 0 1 160 0 Z" fill={P} opacity={0.35} />
             <rect x="220" y="180" width="80" height="80" fill={S} opacity={0.4} />
             <path d="M300 260 a80 80 0 0 1 80 -80 v80 Z" fill={A} opacity={0.75} />
           </g>
@@ -426,14 +432,14 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
               <stop offset="1" stopColor={A} stopOpacity={0.55} />
             </linearGradient>
           </defs>
-          <path d="M0 150 C 120 90 220 210 340 150 S 520 90 600 140 V260 H0 Z" fill={`url(#w${uid})`} opacity={0.5} />
-          <path d="M0 190 C 140 140 240 240 380 185 S 540 150 600 180 V260 H0 Z" fill={S} opacity={0.35} />
-          <path d="M0 225 C 150 195 260 260 400 222 S 550 205 600 220 V260 H0 Z" fill={P} opacity={0.45} />
-          <g fill="none" stroke="currentColor" strokeOpacity={0.22} strokeWidth="1.5">
+          <path className="fz-m-wave" style={{ '--i': 0 } as CSSProperties} d="M-120 150 C 0 90 100 210 220 150 S 400 90 520 150 S 700 210 820 150 V260 H-120 Z" fill={`url(#w${uid})`} opacity={0.5} />
+          <path className="fz-m-wave fz-m-rev" style={{ '--i': 1 } as CSSProperties} d="M-120 190 C 20 140 120 240 260 190 S 460 140 600 190 S 760 240 820 190 V260 H-120 Z" fill={S} opacity={0.35} />
+          <path className="fz-m-wave" style={{ '--i': 2 } as CSSProperties} d="M-120 225 C 30 195 140 260 280 225 S 470 195 610 225 S 760 255 820 225 V260 H-120 Z" fill={P} opacity={0.45} />
+          <g fill="none" stroke="currentColor" strokeOpacity={0.22} strokeWidth="1.5" className="fz-m-drift">
             <path d="M40 90 C 120 50 200 120 280 80" />
             <path d="M330 60 C 400 25 470 85 560 50" />
           </g>
-          <circle cx="500" cy="70" r="26" fill={A} opacity={0.7} />
+          <circle className="fz-m-breathe" cx="500" cy="70" r="26" fill={A} opacity={0.7} />
         </svg>
       );
     case 'arches':
@@ -446,7 +452,7 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
               <path d="M10 300 V124 a24 24 0 0 1 48 0 V300" fill="none" stroke={SURF} strokeOpacity={0.6} strokeWidth="2" />
             </g>
           ))}
-          <circle cx="300" cy="64" r="30" fill={A} opacity={0.85} />
+          <circle className="fz-m-rise" cx="300" cy="64" r="30" fill={A} opacity={0.85} />
           <path d="M150 300 H420" stroke="currentColor" strokeOpacity={0.2} strokeWidth="2" />
         </svg>
       );
@@ -465,7 +471,7 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             [230, 210, A, 10],
             [310, 240, P, 22],
           ].map(([x, y, c, r], i) => (
-            <circle key={i} cx={x as number} cy={y as number} r={r as number} fill={c as string} opacity={0.55 + (i % 3) * 0.12} />
+            <circle key={i} className="fz-m-confetti" style={{ '--i': i } as CSSProperties} cx={x as number} cy={y as number} r={r as number} fill={c as string} opacity={0.55 + (i % 3) * 0.12} />
           ))}
           {[
             [250, 90, 20, P],
@@ -473,9 +479,11 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             [200, 160, 50, A],
             [370, 60, -15, P],
           ].map(([x, y, rot, c], i) => (
-            <rect key={i} x={x as number} y={y as number} width="22" height="8" rx="2" fill={c as string} transform={`rotate(${rot} ${x} ${y})`} />
+            <g key={i} className="fz-m-flutter" style={{ '--i': i } as CSSProperties}>
+              <rect x={x as number} y={y as number} width="22" height="8" rx="2" fill={c as string} transform={`rotate(${rot} ${x} ${y})`} />
+            </g>
           ))}
-          <path d="M190 20 C 230 60 200 100 240 140 S 260 220 300 250" fill="none" stroke={A} strokeWidth="3" strokeLinecap="round" opacity={0.8} />
+          <path className="fz-m-draw" pathLength="1" d="M190 20 C 230 60 200 100 240 140 S 260 220 300 250" fill="none" stroke={A} strokeWidth="3" strokeLinecap="round" opacity={0.8} />
           <path d="M280 10 C 300 50 340 60 330 110" fill="none" stroke={P} strokeWidth="3" strokeLinecap="round" opacity={0.6} />
           </g>
         </svg>
@@ -485,7 +493,7 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
         <svg viewBox="0 0 400 420" {...common}>
           {/* Fine-line leaves: a stem with alternating leaves and a soft backdrop disc. */}
           <circle cx="290" cy="200" r="150" fill={ALT} opacity={0.7} />
-          <g fill="none" stroke={S} strokeWidth="2" strokeLinecap="round">
+          <g className="fz-m-sway fz-m-base" fill="none" stroke={S} strokeWidth="2" strokeLinecap="round">
             <path d="M300 420 C 290 320 300 220 270 110" />
             <path d="M340 420 C 350 330 380 260 372 170" />
           </g>
@@ -497,8 +505,8 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             [356, 330, 40],
             [366, 260, -30],
           ].map(([x, y, rot], i) => (
+            <g key={i} className="fz-m-leaf" style={{ '--i': i } as CSSProperties}>
             <path
-              key={i}
               d="M0 0 C 18 -22 52 -22 64 0 C 52 22 18 22 0 0 Z"
               transform={`translate(${x} ${y}) rotate(${(rot as number) + (i % 2 ? 0 : 180)})`}
               fill={i % 3 === 0 ? P : S}
@@ -507,8 +515,9 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
               strokeOpacity={0.6}
               strokeWidth="1.2"
             />
+            </g>
           ))}
-          <circle cx="262" cy="104" r="9" fill={A} />
+          <circle className="fz-m-breathe" cx="262" cy="104" r="9" fill={A} />
         </svg>
       );
     case 'constellation':
@@ -522,7 +531,7 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
           </defs>
           <rect width="600" height="300" fill={`url(#c${uid})`} />
           <g stroke={A} strokeOpacity={0.45} strokeWidth="1">
-            <path d="M330 70 L400 110 L470 80 L520 140 L450 190 L400 110" fill="none" />
+            <path className="fz-m-draw" pathLength="1" d="M330 70 L400 110 L470 80 L520 140 L450 190 L400 110" fill="none" />
           </g>
           {[
             [330, 70, 3],
@@ -536,18 +545,20 @@ export function HeroArt({ decoration, className }: { decoration: WorkflowTheme['
             [540, 230, 3],
             [260, 50, 2],
           ].map(([x, y, r], i) => (
-            <circle key={i} cx={x} cy={y} r={r} fill={i % 4 === 0 ? A : 'currentColor'} opacity={i % 4 === 0 ? 0.95 : 0.55} />
+            <circle key={i} className="fz-m-twinkle" style={{ '--i': i } as CSSProperties} cx={x} cy={y} r={r} fill={i % 4 === 0 ? A : 'currentColor'} opacity={i % 4 === 0 ? 0.95 : 0.55} />
           ))}
-          <path d="M470 250 a40 40 0 1 0 30 -66 a32 32 0 1 1 -30 66 Z" fill={A} opacity={0.75} />
+          <path className="fz-m-glow" d="M470 250 a40 40 0 1 0 30 -66 a32 32 0 1 1 -30 66 Z" fill={A} opacity={0.75} />
         </svg>
       );
     case 'minimal':
       return (
         <svg viewBox="0 0 300 300" {...common}>
           {[140, 108, 76, 44].map((r, i) => (
-            <circle key={r} cx="150" cy="150" r={r} fill="none" stroke={i === 3 ? A : 'currentColor'} strokeOpacity={i === 3 ? 0.9 : 0.1} strokeWidth={i === 3 ? 3 : 1.5} />
+            <circle key={r} className="fz-m-ring" style={{ '--i': i } as CSSProperties} cx="150" cy="150" r={r} fill="none" stroke={i === 3 ? A : 'currentColor'} strokeOpacity={i === 3 ? 0.9 : 0.1} strokeWidth={i === 3 ? 3 : 1.5} />
           ))}
-          <circle cx="248" cy="82" r="7" fill={A} />
+          <g className="fz-m-orbit">
+            <circle cx="248" cy="82" r="7" fill={A} />
+          </g>
         </svg>
       );
     default:
