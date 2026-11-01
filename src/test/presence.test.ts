@@ -257,9 +257,10 @@ describe('Formangle brand, metadata, sales contact and Pages routing', () => {
     expect(href).not.toContain('github.com');
   });
 
-  it('keeps the GitHub Pages base path and SPA fallback', () => {
+  it('builds GitHub Pages at the custom-domain root and keeps SPA fallback', () => {
     const wf = pagesYml;
-    expect(wf).toContain('VITE_BASE: /${{ github.event.repository.name }}/');
+    expect(wf).toContain('VITE_BASE: /');
+    expect(wf).toContain('VITE_SITE_URL: https://formangle.rockstackds.com');
     expect(wf).toContain('cp dist/index.html dist/404.html');
     expect(viteConfig).toContain('VITE_BASE');
   });
