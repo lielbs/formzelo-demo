@@ -797,7 +797,7 @@ export class LocalStorageRepository implements FormangleRepository {
         type: 'action_created',
         actor: 'owner',
         actionId: action.id,
-        message: `${action.kind === 'update' ? 'עדכון ללקוח' : 'נשלחה ללקוח בקשה'}: ${actionSummary(action)}`,
+        message: `${action.kind === 'update' ? 'עדכון ללקוח' : 'נפתחה בקשה ללקוח'}: ${actionSummary(action)}`,
       });
       return action;
     });

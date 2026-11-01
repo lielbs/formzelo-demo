@@ -46,7 +46,7 @@ export function Demo() {
         <DemoBadge />
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-midnight">בחרו סביבת עבודה</h1>
         <p className="mt-2 max-w-xl text-ink-muted">
-          שלושה עסקים בדיוניים, כל אחד עם נתונים נפרדים לחלוטין — במסך ובאחסון. אפשר לעבור ביניהם בכל רגע מהתפריט באפליקציה.
+          ארבעה עסקים בדיוניים, כל אחד עם נתונים נפרדים לחלוטין — במסך ובאחסון. אפשר לעבור ביניהם בכל רגע מהתפריט באפליקציה.
         </p>
 
         {q.loading ? (

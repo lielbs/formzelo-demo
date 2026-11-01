@@ -1,5 +1,5 @@
 import { CalendarCheck, CalendarX, CheckCircle2, Clock, ExternalLink, ShieldCheck } from 'lucide-react';
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { PaymentBadge, StatusBadge } from '../components/StatusBadge';
 import type { WorkflowConfig, WorkflowRun } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
@@ -115,7 +115,10 @@ export function Confirmation({
   assets = {},
   justSubmitted,
   onCancelBooking,
+  actions,
 }: {
+  /** The request's Formangle Actions with their answer handler (customer page). */
+  actions?: ReactNode;
   run: WorkflowRun;
   config: WorkflowConfig;
   theme: WorkflowTheme;
@@ -173,6 +176,8 @@ export function Confirmation({
           </div>
           {booking && <BookingProgress status={run.status} />}
         </div>
+
+        {actions && <div className="mt-6">{actions}</div>}
 
         {externalUrl && (
           <a href={externalUrl} target="_blank" rel="noopener noreferrer nofollow" className="fz-btn fz-btn-primary mt-5 w-full">

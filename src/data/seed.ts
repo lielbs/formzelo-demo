@@ -541,7 +541,7 @@ export function appendDemoActions(data: OrgData, now = Date.now()): OrgData {
     if (!run) return;
     const at = new Date(now - p.hoursAgo * 3_600_000).toISOString();
     let action = buildAction(p.input, run, { id: `act_demo_${data.organization.id.slice(4)}_${i + 1}` }, at);
-    data.events.push({ id: newId('evt'), orgId: run.orgId, runId: run.id, actionId: action.id, type: 'action_created', actor: 'owner', message: `${action.kind === 'update' ? 'עדכון ללקוח' : 'נשלחה ללקוח בקשה'}: ${actionSummary(action)}`, internal: false, createdAt: at, updatedAt: at });
+    data.events.push({ id: newId('evt'), orgId: run.orgId, runId: run.id, actionId: action.id, type: 'action_created', actor: 'owner', message: `${action.kind === 'update' ? 'עדכון ללקוח' : 'נפתחה בקשה ללקוח'}: ${actionSummary(action)}`, internal: false, createdAt: at, updatedAt: at });
     if (p.answer) {
       const answeredAt = new Date(now - (p.answeredHoursAgo ?? p.hoursAgo) * 3_600_000).toISOString();
       action = respond(action, p.answer, answeredAt);

@@ -1,4 +1,4 @@
-import { Link2Off, Lock } from 'lucide-react';
+import { ArrowRight, Eye, Link2Off, Lock } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Brand';
@@ -9,6 +9,7 @@ import { useRepo, useRepoQuery } from '../data/store';
 import { hasOptionCapacity } from '../engine/capacity';
 import { answersToValues } from '../engine/validation';
 import { workflowTitle } from '../lib/meta';
+import { RequestActions } from '../renderer/actions';
 import { Confirmation } from '../renderer/Confirmation';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { buildTheme } from '../theme/presets';
@@ -55,11 +56,14 @@ export function PublicFlow() {
   const [params] = useSearchParams();
   const runId = params.get('r');
   const justSubmitted = params.get('sent') === '1';
+  // Owner switched perspective from the inbox ("צפייה כלקוח"); a link back, nothing more.
+  const fromInbox = params.get('from') === 'inbox';
   const navigate = useNavigate();
   const { repo } = useRepo();
 
   const pub = useRepoQuery((r) => r.resolvePublic(slug), [slug]);
   const runQ = useRepoQuery((r) => (runId ? r.getPublicRun(slug, runId) : Promise.resolve(null)), [slug, runId]);
+  const actionsQ = useRepoQuery((r) => (runId ? r.getPublicActions(slug, runId) : Promise.resolve([])), [slug, runId]);
   // A run is rendered with the exact version (config + design) it is bound to.
   const version = runQ.data?.version ?? pub.data?.version;
   const assetsQ = useRepoQuery(
@@ -100,6 +104,25 @@ export function PublicFlow() {
   const found = runQ.data;
   const { config, design } = version;
   const assets = assetsQ.data ?? {};
+  const ownerStrip = fromInbox && found && (
+    <div className="fz-owner-strip" role="note">
+      <Eye className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1">תצוגת לקוח: כך {found.run.customerName || 'הלקוח/ה'} רואה את הבקשה (בדמו, בדפדפן הזה).</span>
+      <Link to={`/app/requests/${found.run.id}`} className="inline-flex shrink-0 items-center gap-1 font-semibold underline">
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden /> חזרה לבקשה
+      </Link>
+    </div>
+  );
+  const requestActions = found && (
+    <RequestActions
+      actions={actionsQ.data ?? []}
+      business={organization.name}
+      reference={found.run.reference}
+      onRespond={async (actionId, optionId) => {
+        await repo.respondToAction(slug, found.run.id, actionId, optionId);
+      }}
+    />
+  );
 
   if (runId && !found) {
     return (
@@ -114,7 +137,9 @@ export function PublicFlow() {
   if (found && !EDITABLE.includes(found.run.status)) {
     return (
       <Shell theme={design} orgName={organization.name}>
+        {ownerStrip}
         <Confirmation
+          actions={requestActions}
           run={found.run}
           config={config}
           theme={design}
@@ -153,6 +178,8 @@ export function PublicFlow() {
 
   return (
     <Shell theme={design} orgName={organization.name}>
+      {ownerStrip}
+      {found && (actionsQ.data ?? []).length > 0 && <div className="mx-3 mt-4 sm:mx-auto sm:max-w-2xl">{requestActions}</div>}
       {found?.run.status === 'changes_requested' && (
         <p role="status" className="fz-warn mx-3 mt-4 sm:mx-auto sm:max-w-2xl">
           העסק ביקש שינויים בבקשה {found.run.reference}. עדכנו את הפרטים ושלחו שוב.

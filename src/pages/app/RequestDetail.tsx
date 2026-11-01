@@ -1,11 +1,13 @@
-import { ArrowRight, CalendarCheck, Copy, CreditCard, ExternalLink, StickyNote } from 'lucide-react';
+import { ArrowRight, CalendarCheck, CircleSlash, Copy, CreditCard, ExternalLink, Eye, SendHorizontal, StickyNote } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { NotificationList, Timeline } from '../../components/Activity';
 import { PaymentBadge, StatusBadge } from '../../components/StatusBadge';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, cx, DemoBadge, EmptyState, ErrorState, Modal, Spinner, Textarea } from '../../components/ui';
-import type { RunAnswer, RunStatus } from '../../domain/schema';
+import type { CustomerAction, RunAnswer, RunStatus } from '../../domain/schema';
+import { ACTION_KIND_INFO, actionStatus } from '../../engine/actions';
+import { ActionComposer } from './ActionComposer';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { bookingState, WEEKDAY_LABELS, weekdayOf } from '../../engine/booking';
 import { COMPLETION_LABELS, completionOf, isPaymentOutstanding } from '../../engine/completion';
@@ -14,6 +16,50 @@ import { formatCurrency, formatDate, formatDateTime } from '../../lib/format';
 import { publicFlowUrl } from '../../lib/links';
 
 const NEEDS_MESSAGE: RunStatus[] = ['changes_requested', 'rejected'];
+
+/** The owner's view of the request's Formangle Actions: what is open, what the customer chose. */
+function ActionsList({ actions, onCancel, busy }: { actions: CustomerAction[]; onCancel: (a: CustomerAction) => void; busy: string | null }) {
+  return (
+    <ul className="divide-y divide-cloud-200">
+      {actions.map((a) => {
+        const s = actionStatus(a);
+        return (
+          <li key={a.id} className="flex flex-wrap items-start gap-3 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink">
+                {a.title}
+                {a.amount ? <span className="ms-2 font-normal tabular-nums text-ink-muted">{formatCurrency(a.amount)}</span> : null}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                {ACTION_KIND_INFO[a.kind].title} · {formatDateTime(a.createdAt)}
+                {a.options.length === 2 && ` · ${a.options[0]!.label} / ${a.options[1]!.label}`}
+              </p>
+              {s === 'responded' && a.response && (
+                <p className="mt-1.5 text-sm">
+                  <span className="text-ink-muted">הלקוח/ה בחר/ה: </span>
+                  <strong className={a.kind === 'approval' && a.response.optionId === 'b' ? 'text-ink-soft' : 'text-teal-600'}>{a.response.label}</strong>
+                  <span className="text-xs text-ink-muted"> · {formatDateTime(a.response.at)}</span>
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {s === 'pending' && <Badge tone="amber">ממתין ללקוח</Badge>}
+              {s === 'posted' && <Badge tone="blue">מוצג ללקוח</Badge>}
+              {s === 'responded' && <Badge tone="teal">נענה</Badge>}
+              {s === 'cancelled' && <Badge>בוטל</Badge>}
+              {s === 'expired' && <Badge>פג תוקף</Badge>}
+              {(s === 'pending' || s === 'posted') && (
+                <Button size="sm" variant="ghost" icon={CircleSlash} loading={busy === a.id} onClick={() => onCancel(a)} aria-label={`ביטול: ${a.title}`}>
+                  ביטול
+                </Button>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function Answers({ items }: { items: RunAnswer[] }) {
   return (
@@ -46,18 +92,20 @@ export function RequestDetail() {
   const [busy, setBusy] = useState<string | null>(null);
   const [pending, setPending] = useState<{ to: RunStatus; label: string } | null>(null);
   const [message, setMessage] = useState('');
+  const [composing, setComposing] = useState(false);
 
   const q = useRepoQuery(
     async (r) => {
       const run = await r.getRun(org.id, id);
       if (!run) return null;
-      const [workflow, version, events, notifications] = await Promise.all([
+      const [workflow, version, events, notifications, runActions] = await Promise.all([
         r.getWorkflow(org.id, run.workflowId),
         r.getVersion(org.id, run.versionId),
         r.listEvents(org.id, run.id),
         r.listNotifications(org.id, run.id),
+        r.listActions(org.id, run.id),
       ]);
-      return { run, workflow, version, events, notifications };
+      return { run, workflow, version, events, notifications, runActions };
     },
     [org.id, id],
   );
@@ -71,7 +119,9 @@ export function RequestDetail() {
       </EmptyState>
     );
   }
-  const { run, workflow, version, events, notifications } = q.data;
+  const { run, workflow, version, events, notifications, runActions } = q.data;
+  const customerView = workflow ? `/f/${workflow.slug}?r=${run.id}&from=inbox` : '';
+  const canAct = Boolean(workflow) && run.status !== 'cancelled' && run.status !== 'rejected';
   const actions = ownerActions(run.status);
   const customerLink = workflow ? publicFlowUrl(workflow.slug, run.id) : '';
   const customerCanEdit = run.status === 'awaiting_customer' || run.status === 'changes_requested';
@@ -139,6 +189,16 @@ export function RequestDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canAct && (
+            <Button variant="secondary" icon={SendHorizontal} onClick={() => setComposing(true)}>
+              פעולה חדשה ללקוח
+            </Button>
+          )}
+          {customerView && (
+            <Link to={customerView} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-4 text-sm font-medium text-ink hover:bg-cloud">
+              <Eye className="h-4 w-4" aria-hidden /> צפייה כלקוח
+            </Link>
+          )}
           {actions.map((a) => (
             <Button
               key={a.to}
@@ -214,6 +274,46 @@ export function RequestDetail() {
               <p className="w-full text-xs text-ink-muted">אישור כאן הופך את הבקשה להזמנה מאושרת. בדמו אין יומן משותף ואין שמירת מקום בין מכשירים — הקיבולת מחושבת מבקשות בדפדפן זה.</p>
             </Card>
           )}
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-semibold">פעולות ללקוח</h2>
+                <p className="mt-0.5 text-xs text-ink-muted">אישורים, בחירות ועדכונים מובנים — עם שתי תשובות ברורות ותיעוד מלא.</p>
+              </div>
+              {canAct && runActions.length > 0 && (
+                <Button size="sm" variant="secondary" icon={SendHorizontal} onClick={() => setComposing(true)}>
+                  פעולה חדשה
+                </Button>
+              )}
+            </div>
+            {runActions.length ? (
+              <ActionsList
+                actions={runActions}
+                busy={busy}
+                onCancel={async (a) => {
+                  if (!window.confirm(`לבטל את "${a.title}"? הלקוח יראה שהבקשה בוטלה.`)) return;
+                  setBusy(a.id);
+                  try {
+                    await repo.cancelAction(org.id, a.id);
+                    toast('הפעולה בוטלה ונרשמה בהיסטוריה');
+                  } catch (e) {
+                    toast(e instanceof Error ? e.message : 'הביטול נכשל', 'error');
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              />
+            ) : (
+              <div className="mt-3 rounded-xl bg-cloud p-4 text-sm text-ink-muted">
+                <p>צריך אישור לעבודה נוספת, בחירה בין משלוח לאיסוף, או לעדכן שההזמנה מוכנה? במקום הודעה בוואטסאפ, שלחו פעולה מובנית: הלקוח בוחר אחת משתי תשובות, והכול נשמר כאן.</p>
+                {canAct && (
+                  <Button size="sm" className="mt-3" icon={SendHorizontal} onClick={() => setComposing(true)}>
+                    פעולה חדשה ללקוח
+                  </Button>
+                )}
+              </div>
+            )}
+          </Card>
           {run.caseAnswers.length > 0 && (
             <Card className="p-5">
               <h2 className="mb-2 font-semibold">פרטי התיק</h2>
@@ -308,6 +408,8 @@ export function RequestDetail() {
           </Card>
         </div>
       </div>
+
+      <ActionComposer open={composing} onClose={() => setComposing(false)} orgId={org.id} business={org.name} run={run} design={version?.design} onCreated={q.reload} />
 
       <Modal
         open={Boolean(pending)}
