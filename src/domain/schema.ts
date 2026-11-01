@@ -198,6 +198,12 @@ export const CompletionSchema = z.object({
     .regex(/^https:\/\/[^\s<>"']+$/, 'קישור חייב להתחיל ב-https://')
     .optional(),
   externalLabel: z.string().max(60).optional(),
+  /**
+   * When the customer sees the business's payment link. Absent = right after sending
+   * (the original behaviour). The link is the same page for every customer: Formangle
+   * neither creates per-customer payment requests nor learns whether anyone paid.
+   */
+  externalTiming: z.enum(['on_submit', 'after_approval']).optional(),
   /** Preferred future provider id (catalog only — no live integration in the demo). */
   providerId: z.string().max(40).optional(),
 });

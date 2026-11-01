@@ -231,18 +231,20 @@ export function RequestDetail() {
                 <Badge tone="neutral">{COMPLETION_LABELS[run.completionMode ?? completion.mode].title}</Badge>
               </div>
               <p className="mt-2 text-sm text-ink-muted">
-                {run.payment.status === 'none' && run.payment.amount === 0
+                {run.payment.kind === 'external' && run.payment.status === 'none'
+                  ? 'קישור התשלום של העסק יוצג ללקוח רק אחרי שתאשרו את הבקשה.'
+                  : run.payment.status === 'none' && run.payment.amount === 0
                   ? 'אין תשלום בבקשה הזו — זו הגשה בלבד, לא חוב פתוח.'
                   : run.payment.status === 'quote'
                     ? `הלקוח ראה הערכה של ${formatCurrency(run.payment.amount)}. לא נדרש תשלום; שלחו הצעה סופית.`
                     : run.payment.status === 'external_link'
-                      ? 'הלקוח הופנה לקישור התשלום החיצוני של העסק. Formangle אינו יודע אם שולם — בדקו במערכת התשלום שלכם.'
+                      ? 'קישור התשלום של העסק מוצג ללקוח בעמוד הבקשה. Formangle לא יודע אם הלקוח פתח אותו או שילם — בדקו במערכת התשלום שלכם.'
                       : run.payment.status === 'none'
                         ? `${run.payment.kind === 'deposit' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} יתבקש רק אחרי אישור.`
                         : isPaymentOutstanding(run.payment)
                           ? `ממתין ל${run.payment.status === 'deposit_requested' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)}.`
                           : `${run.payment.status === 'deposit_paid_simulated' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} סומן כשולם.`}{' '}
-                {run.payment.status !== 'none' || run.payment.amount > 0 ? 'כל התשלומים בדמו הם סימולציה — לא עבר כסף.' : ''}
+                {run.payment.kind !== 'external' && (run.payment.status !== 'none' || run.payment.amount > 0) ? 'כל התשלומים בדמו הם סימולציה — לא עבר כסף.' : ''}
               </p>
             </Card>
           )}

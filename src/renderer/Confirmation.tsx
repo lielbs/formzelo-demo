@@ -129,7 +129,8 @@ export function Confirmation({
   const decisions = run.answers.filter((a) => a.value === 'approved' || a.value === 'declined');
   const booking = config.booking?.enabled ? bookingState(run.status) : null;
   const c = completionOf(config);
-  const externalUrl = c.mode === 'external_link' ? safeExternalUrl(c.externalUrl) : null;
+  // Shown only once the run's payment state says so (right away, or after approval) and never on a closed request.
+  const externalUrl = c.mode === 'external_link' && run.payment.status === 'external_link' && run.status !== 'rejected' && run.status !== 'cancelled' ? safeExternalUrl(c.externalUrl) : null;
   const title = justSubmitted ? (config.confirmation?.title ?? 'נשלח בהצלחה') : config.title;
 
   return (
@@ -179,7 +180,10 @@ export function Confirmation({
             {c.externalLabel || 'מעבר לעמוד התשלום של העסק'}
           </a>
         )}
-        {externalUrl && <p className="fz-help text-center">אתר חיצוני ({new URL(externalUrl).hostname}). Formangle אינו מעבד את התשלום ואינו יודע אם בוצע.</p>}
+        {externalUrl && <p className="fz-help text-center">עמוד התשלום של העסק באתר חיצוני ({new URL(externalUrl).hostname}). Formangle לא מעבד את התשלום ולא יודע אם בוצע — העסק יאשר מולכם.</p>}
+        {c.mode === 'external_link' && run.payment.status === 'none' && run.payment.kind === 'external' && run.status !== 'rejected' && run.status !== 'cancelled' && (
+          <p className="fz-help text-center">אחרי שהעסק יאשר את הבקשה, יופיע כאן קישור לעמוד התשלום שלו.</p>
+        )}
 
         <div className="fz-review mt-5">
           <dl className="fz-review-section !py-2">

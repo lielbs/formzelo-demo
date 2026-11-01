@@ -72,7 +72,13 @@ export function paymentPlan(config: WorkflowConfig, price: Pick<PriceResult, 'to
     case 'pay_after_approval':
       return { mode: c.mode, dueNow: 0, dueAfterApproval: total, choice: false, headline: 'אין חיוב עכשיו — התשלום יתבקש אחרי אישור' };
     case 'external_link':
-      return { mode: c.mode, dueNow: 0, dueAfterApproval: 0, choice: false, headline: 'התשלום מתבצע בעמוד חיצוני של העסק' };
+      return {
+        mode: c.mode,
+        dueNow: 0,
+        dueAfterApproval: 0,
+        choice: false,
+        headline: c.externalTiming === 'after_approval' ? 'אין תשלום עכשיו — אחרי אישור העסק יופיע קישור לעמוד התשלום שלו' : 'אחרי השליחה יופיע קישור לעמוד התשלום של העסק',
+      };
   }
 }
 
@@ -89,7 +95,8 @@ export function initialPayment(config: WorkflowConfig, price: PriceResult, payNo
     case 'quote':
       return { status: price.total > 0 ? 'quote' : 'none', amount: price.total, kind: 'estimate', updatedAt: at };
     case 'external_link':
-      return { status: 'external_link', amount: price.total, kind: 'external', updatedAt: at };
+      // "after_approval": the link stays hidden until the business approves (paymentOnApproval).
+      return { status: c.externalTiming === 'after_approval' ? 'none' : 'external_link', amount: price.total, kind: 'external', updatedAt: at };
     case 'fixed':
     case 'calculated':
       if (plan.dueNow <= 0) return { status: 'none', amount: 0, kind: 'full', updatedAt: at };
@@ -110,6 +117,8 @@ export function initialPayment(config: WorkflowConfig, price: PriceResult, payNo
 /** Payment state after the business approves a run. */
 export function paymentOnApproval(config: WorkflowConfig, payment: Payment, at: string): Payment {
   const c = completionOf(config);
+  // The external page sets its own amount, so the link is shown even when nothing was calculated.
+  if (c.mode === 'external_link' && payment.status === 'none' && payment.kind === 'external') return { ...payment, status: 'external_link', updatedAt: at };
   if (payment.status !== 'none' || payment.amount <= 0) return payment;
   if (c.mode === 'deposit') return { ...payment, status: 'deposit_requested', kind: 'deposit', updatedAt: at };
   if (c.mode === 'pay_after_approval') return { ...payment, status: 'payment_requested', kind: 'full', updatedAt: at };

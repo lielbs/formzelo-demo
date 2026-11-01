@@ -2,7 +2,7 @@
  * Studio inspector panels. Every control edits the real WorkflowConfig, which
  * the canvas renders immediately through the generic renderer.
  */
-import { ArrowDown, ArrowUp, CalendarPlus, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarPlus, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ImagePicker } from '../../../components/ImagePicker';
 import { Badge, Button, cx, FieldLabel, Input, Select, Textarea } from '../../../components/ui';
@@ -495,6 +495,27 @@ export function StepInspector({
   );
 }
 
+/** What the customer will see on their request page (same classes as the live button, owner-side colours). */
+function ExternalPaymentPreview({ url, label, afterApproval }: { url: string | null; label?: string; afterApproval: boolean }) {
+  return (
+    <div className="rounded-xl border border-dashed border-cloud-300 p-3">
+      <p className="text-xs font-medium text-ink-muted">כך זה ייראה ללקוח{afterApproval ? ' (אחרי האישור)' : ''}</p>
+      {url ? (
+        <>
+          <span className="mt-2 flex h-11 items-center justify-center gap-2 rounded-xl bg-midnight text-sm font-semibold text-white" aria-hidden>
+            <ExternalLink className="h-4 w-4" /> {label || 'מעבר לעמוד התשלום של העסק'}
+          </span>
+          <p className="mt-1.5 text-center text-[11px] text-ink-muted">
+            עמוד התשלום של העסק באתר חיצוני (<bdi dir="ltr">{new URL(url).hostname}</bdi>)
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 rounded-lg bg-cloud px-3 py-2 text-center text-xs text-ink-muted">הכפתור יופיע כשתדביקו קישור https תקין.</p>
+      )}
+    </div>
+  );
+}
+
 export function CompletionInspector({ config, update }: { config: WorkflowConfig; update: (fn: (d: WorkflowConfig) => void) => void }) {
   const c: Completion = config.completion ?? { mode: config.pricing.enabled ? (config.pricing.depositPercent > 0 ? 'deposit' : 'quote') : 'request' };
   const needsPrice = ['calculated', 'deposit', 'pay_after_approval', 'quote'].includes(c.mode);
@@ -561,6 +582,19 @@ export function CompletionInspector({ config, update }: { config: WorkflowConfig
           <div>
             <FieldLabel htmlFor="cp-urllabel">טקסט הכפתור</FieldLabel>
             <Input id="cp-urllabel" maxLength={60} value={c.externalLabel ?? ''} placeholder="מעבר לתשלום" onChange={(e) => setC({ externalLabel: e.target.value || undefined })} />
+          </div>
+          <div>
+            <FieldLabel htmlFor="cp-timing-ext">מתי הלקוח רואה את הקישור</FieldLabel>
+            <Select id="cp-timing-ext" value={c.externalTiming ?? 'on_submit'} onChange={(e) => setC({ externalTiming: e.target.value as Completion['externalTiming'] })}>
+              <option value="on_submit">מיד אחרי השליחה</option>
+              <option value="after_approval">רק אחרי שהעסק מאשר</option>
+            </Select>
+          </div>
+          <ExternalPaymentPreview url={safeExternalUrl(c.externalUrl)} label={c.externalLabel} afterApproval={c.externalTiming === 'after_approval'} />
+          <div className="rounded-xl bg-cloud p-3 text-xs leading-relaxed text-ink-muted">
+            <p className="font-semibold text-ink">קישור קבוע, לא דרישת תשלום אישית</p>
+            <p className="mt-1">הדביקו עמוד תשלום שכבר יצרתם אצל ספק הסליקה שלכם. כל הלקוחות מקבלים אותו עמוד, והסכום נקבע שם. סכום אישי לכל לקוח דורש חיבור לספק הסליקה, שאינו קיים בדמו — אפשר לשלוח ללקוח פעולה עם הסכום מתוך עמוד הבקשה.</p>
+            <p className="mt-1">Formangle לא שומר פרטי כרטיס, לא יודע אם שולם, ולא מסמן בקשה כשולמה בגלל שהקישור נפתח.</p>
           </div>
         </div>
       )}

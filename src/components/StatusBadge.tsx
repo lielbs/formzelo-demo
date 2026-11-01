@@ -30,11 +30,11 @@ export function PaymentBadge({ payment, runStatus }: { payment: Payment; runStat
   }
   switch (payment.status) {
     case 'none':
-      return null;
+      return payment.kind === 'external' && !closed ? <Badge tone="neutral">קישור תשלום אחרי אישור</Badge> : null;
     case 'quote':
       return <Badge tone="neutral">הערכת מחיר {formatCurrency(payment.amount)}</Badge>;
     case 'external_link':
-      return <Badge tone="blue">תשלום בקישור חיצוני</Badge>;
+      return <Badge tone="blue">{closed ? 'קישור תשלום — לא רלוונטי' : 'קישור תשלום הוצג · לא מאומת'}</Badge>;
     case 'deposit_paid_simulated':
       return <Badge tone="teal">מקדמה שולמה (סימולציה)</Badge>;
     case 'paid_simulated':

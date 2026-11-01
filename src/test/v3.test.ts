@@ -118,6 +118,20 @@ describe('completion modes (payment independent from pricing)', () => {
     expect(safeExternalUrl('https://user:pw@pay.example.com')).toBeNull();
     expect(WorkflowConfigSchema.safeParse({ ...withCompletion({ mode: 'external_link', externalUrl: 'javascript:alert(1)' }) }).success).toBe(false);
   });
+
+  it('external links: shown on submit by default, or only after approval — never marked paid', () => {
+    const now = withCompletion({ mode: 'external_link', externalUrl: 'https://pay.example.com/p' });
+    const later = withCompletion({ mode: 'external_link', externalUrl: 'https://pay.example.com/p', externalTiming: 'after_approval' });
+    const price = { total: 0, lines: [] } as unknown as Parameters<typeof initialPayment>[1];
+    expect(initialPayment(now, price, true, AT)).toMatchObject({ status: 'external_link', kind: 'external' });
+    const pending = initialPayment(later, price, true, AT);
+    expect(pending).toMatchObject({ status: 'none', kind: 'external' });
+    // Approval reveals the link even though Formangle calculated no amount; nothing becomes "paid".
+    const approved = paymentOnApproval(later, pending, AT);
+    expect(approved.status).toBe('external_link');
+    expect(simulatePaid(approved, AT)).toBeNull();
+    expect(paymentPlan(later, { total: 0 }).headline).toMatch(/אחרי אישור/);
+  });
 });
 
 describe('booking requests', () => {
