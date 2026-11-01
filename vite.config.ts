@@ -49,11 +49,11 @@ function site(siteUrl: string): Plugin {
 }
 
 // GitHub Pages serves the site from /<repo>/; the workflow sets VITE_BASE accordingly.
-// VITE_SITE_URL: the public address (a future custom domain); defaults to the Pages URL for og:image.
+// VITE_SITE_URL: the public address for og:image / og:url; defaults to the production domain.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const base = env.VITE_BASE || '/';
-  const siteUrl = (env.VITE_SITE_URL || 'https://lielbs.github.io/formzelo-demo').replace(/\/$/, '');
+  const siteUrl = (env.VITE_SITE_URL || 'https://formangle.rockstackds.com').replace(/\/$/, '');
   return {
     base,
     plugins: [react(), site(siteUrl)],

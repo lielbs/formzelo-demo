@@ -107,6 +107,7 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 - Dev-only: hot-reloading a half-applied schema change quarantined v6 data once (not reachable in a built deploy; migration covered by tests).
 
 ## Deployment status
+- Now live at https://formangle.rockstackds.com/ (custom domain added by the owner in `250d3d9`/`933d280`; old github.io links redirect). Atelier standard + studio step bar: `4e856d2`, `c34a341`.
 - Live: https://lielbs.github.io/formzelo-demo/ = RC 1.0 (`main` fast-forwarded to `6c82713`, run 41313748336: build + deploy succeeded).
 - Live checks: HTTP 200 for `/`, `/privacy`, `/pricing`, `/demo`, `/f/autocare-repairs`, `/f/bloom-flowers`, `/f/...?r=`; `/app/requests` 404 status with working SPA fallback (expected); CSP meta and og:url present.
 - Live browser walkthrough (fresh headless Edge): Scenario B end to end, reload keeps answer, composer, dashboard card, inbox filter, Urban booking status, publish + share, no overflow at 375/390/768 on 14 routes, 0 console errors.

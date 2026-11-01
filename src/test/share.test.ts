@@ -11,8 +11,8 @@ const decode = (url: string) => {
 describe('QR codes', () => {
   it('decode back to the exact workflow URL', () => {
     for (const url of [
-      'https://lielbs.github.io/formzelo-demo/f/bloom-flowers',
-      'https://lielbs.github.io/formzelo-demo/f/autocare-repairs?r=run_0123456789abcdef',
+      'https://formangle.rockstackds.com/f/bloom-flowers',
+      'https://formangle.rockstackds.com/f/autocare-repairs?r=run_0123456789abcdef',
       'http://localhost:5173/f/urban-table-booking',
       'https://formangle.example/f/valley-run',
     ]) {
@@ -21,7 +21,7 @@ describe('QR codes', () => {
   });
 
   it('builds a standalone SVG with a quiet zone and only safe colours', () => {
-    const svg = qrSvg('https://lielbs.github.io/formzelo-demo/f/bloom-flowers', { dark: '#123456', light: 'red;"><script>' });
+    const svg = qrSvg('https://formangle.rockstackds.com/f/bloom-flowers', { dark: '#123456', light: 'red;"><script>' });
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
     expect(svg).toContain('fill="#123456"');
     expect(svg).not.toContain('<script');
@@ -38,14 +38,14 @@ describe('QR codes', () => {
 
 describe('sharing links and snippets', () => {
   it('prepares a WhatsApp share link with the encoded message', () => {
-    const msg = shareMessage('בלום פרחים', 'הזמנת זר', 'https://lielbs.github.io/formzelo-demo/f/bloom-flowers');
+    const msg = shareMessage('בלום פרחים', 'הזמנת זר', 'https://formangle.rockstackds.com/f/bloom-flowers');
     const href = whatsappShareUrl(msg);
     expect(href.startsWith('https://wa.me/?text=')).toBe(true);
     expect(new URL(href).searchParams.get('text')).toBe(msg);
   });
 
   it('escapes labels and titles inside website snippets', () => {
-    const url = 'https://lielbs.github.io/formzelo-demo/f/bloom-flowers';
+    const url = 'https://formangle.rockstackds.com/f/bloom-flowers';
     const btn = buttonSnippet(url, '<b>"הזמינו"</b>', 'javascript:x');
     expect(btn).toContain(`href="${url}"`);
     expect(btn).toContain('&lt;b&gt;&quot;הזמינו&quot;&lt;/b&gt;');

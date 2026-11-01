@@ -4,7 +4,7 @@
 
 **Formangle** (Form + Angle) is RockStack Digital Solutions' branded digital-workflow and business-process platform: customer-facing workflows (requests, approvals, bookings, registrations, optional payment), business branding and digital presence, and an owner dashboard. It is marketed, configured and supported by RockStack — not a public self-service SaaS. One schema-driven engine renders every workflow — flower orders, garage repair approvals, restaurant events and bookings, contest registrations, document collection, quote requests — with no per-business pages.
 
-> **Naming and compatibility.** The product was previously called *Formzelo*. The repository (`lielbs/formzelo-demo`), the npm package name, the GitHub Pages path (`/formzelo-demo/`) and the browser storage namespace (`formzelo:v1:` / `formzelo:ui:`) intentionally keep the old name so existing links, deep links and every visitor's saved data keep working. Renaming the repository or moving to a Formangle domain is a separate, future decision.
+> **Naming and compatibility.** The product was previously called *Formzelo*. The repository (`lielbs/formzelo-demo`), the npm package name, the GitHub Pages path (`/formzelo-demo/`) and the browser storage namespace (`formzelo:v1:` / `formzelo:ui:`) intentionally keep the old name so existing links, deep links and every visitor's saved data keep working. The site now runs at the domain root (https://formangle.rockstackds.com/); renaming the repository is a separate, future decision.
 
 **Brand assets** (local, editable SVG): `public/favicon.svg` (app icon), `public/brand/formangle-mark.svg`, `public/brand/formangle-lockup.svg`, `public/brand/formangle-lockup-dark.svg`; `public/og-image.png` (1200×630 social preview, rendered locally from the same SVG). In code: `src/components/Brand.tsx` (`BrandMark`, `Wordmark`, `Logo` full / compact / stacked, `PRODUCT_NAME`). The mark is an "F" whose arms are cut at one angle, with an orange wedge — a form seen from a different angle. Canonical spelling: **Formangle**.
 
@@ -14,7 +14,7 @@
 
 ---
 
-**Live demo (GitHub Pages):** https://lielbs.github.io/formzelo-demo/ — runs entirely in your browser (localStorage). Theme gallery: https://lielbs.github.io/formzelo-demo/themes
+**Live demo:** https://formangle.rockstackds.com/ (GitHub Pages with a custom domain; DNS on Cloudflare) — runs entirely in your browser (localStorage). Theme gallery: https://formangle.rockstackds.com/themes. The former address https://lielbs.github.io/formzelo-demo/… redirects to the same page on the domain.
 
 ## Quick start
 
@@ -52,7 +52,8 @@ Optional build-time variable:
 Local check of the sub-path build:
 
 ```bash
-VITE_BASE=/formzelo-demo/ npm run build
+npm run build                          # domain root (production)
+VITE_BASE=/formzelo-demo/ npm run build # sub-path builds still work
 ```
 
 ## Demo navigation
