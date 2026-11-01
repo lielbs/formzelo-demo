@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, CircleDashed, Clock, ExternalLink, Inbox, Plus, Sparkles, Wallet, Workflow as WorkflowIcon, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MessageSquareReply, SendHorizontal, CircleDashed, Clock, ExternalLink, Inbox, Plus, Sparkles, Wallet, Workflow as WorkflowIcon, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NotificationList, Timeline } from '../../components/Activity';
@@ -8,6 +8,7 @@ import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHea
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
 import { DONE_STATUSES, ownerActions, PENDING_STATUSES } from '../../engine/transitions';
+import { actionsByRun, actionStatus, countActions } from '../../engine/actions';
 import { formatCurrency, formatNumber, formatRelative } from '../../lib/format';
 import { appHref } from '../../lib/links';
 
@@ -15,6 +16,7 @@ const FILTERS = [
   { key: 'all', label: 'הכול' },
   { key: 'pending', label: 'ממתינות' },
   { key: 'done', label: 'אושרו / הושלמו' },
+  { key: 'decision', label: 'ממתינות להחלטה' },
 ] as const;
 
 const onboardingKey = (orgId: string) => `formzelo:ui:onboarding-dismissed:${orgId}`;
@@ -31,14 +33,15 @@ export function Dashboard() {
   const org = useActiveOrg();
   const q = useRepoQuery(
     async (r) => {
-      const [workflows, runs, events, notifications, usage] = await Promise.all([
+      const [workflows, runs, events, notifications, usage, actions] = await Promise.all([
         r.listWorkflows(org.id),
         r.listRuns(org.id),
         r.listEvents(org.id),
         r.listNotifications(org.id),
         r.listUsage(org.id),
+        r.listActions(org.id),
       ]);
-      return { workflows, runs, events, notifications, usage };
+      return { workflows, runs, events, notifications, usage, actions };
     },
     [org.id],
   );
@@ -68,10 +71,18 @@ export function Dashboard() {
 
   if (q.loading) return <Spinner />;
   if (q.error || !q.data || !stats) return <ErrorState error={q.error ?? 'לא נטען'} onRetry={q.reload} />;
-  const { workflows, runs, events, notifications, usage } = q.data;
+  const { workflows, runs, events, notifications, usage, actions } = q.data;
+  const byRun = actionsByRun(actions);
+  const decisions = countActions(actions);
+  const openActions = actions.filter((a) => actionStatus(a) === 'pending').slice(0, 4);
+  const answeredActions = actions
+    .filter((a) => actionStatus(a) === 'responded')
+    .sort((a, b) => b.response!.at.localeCompare(a.response!.at))
+    .slice(0, 4);
+  const runOf = (id: string) => runs.find((r) => r.id === id);
 
   const filtered = runs.filter((r) =>
-    filter === 'pending' ? PENDING_STATUSES.includes(r.status) : filter === 'done' ? DONE_STATUSES.includes(r.status) : true,
+    filter === 'pending' ? PENDING_STATUSES.includes(r.status) : filter === 'done' ? DONE_STATUSES.includes(r.status) : filter === 'decision' ? Boolean(byRun.get(r.id)?.awaiting) : true,
   );
   const mainFlow = workflows.find((w) => w.status === 'published');
   // The newest submitted request — the moment a customer's answers reach the business.
@@ -205,6 +216,65 @@ export function Dashboard() {
         </div>
       </div>
 
+      <Card className="mt-6 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-semibold">החלטות לקוחות</h2>
+          <p className="text-xs text-ink-muted">פעולות מובנות שנשלחו מתוך בקשות: אישורים, בחירות ועדכונים.</p>
+        </div>
+        {actions.length ? (
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
+            <section aria-label="ממתינות לתשובת הלקוח">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <SendHorizontal className="h-4 w-4 text-amber-700" aria-hidden /> ממתינות לתשובת הלקוח
+                <span className="tabular-nums text-ink-muted">{formatNumber(decisions.awaiting)}</span>
+              </p>
+              {openActions.length ? (
+                <ul className="mt-2 space-y-1.5">
+                  {openActions.map((a) => (
+                    <li key={a.id}>
+                      <Link to={`/app/requests/${a.runId}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-cloud">
+                        <span className="min-w-0 truncate">{a.title}</span>
+                        <span className="shrink-0 text-xs text-ink-muted">
+                          {runOf(a.runId)?.customerName || runOf(a.runId)?.reference} · {formatRelative(a.createdAt)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-ink-muted">אין כרגע החלטות פתוחות.</p>
+              )}
+            </section>
+            <section aria-label="תשובות אחרונות">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <MessageSquareReply className="h-4 w-4 text-teal-600" aria-hidden /> תשובות אחרונות
+                <span className="tabular-nums text-ink-muted">{formatNumber(decisions.answered)}</span>
+              </p>
+              {answeredActions.length ? (
+                <ul className="mt-2 space-y-1.5">
+                  {answeredActions.map((a) => (
+                    <li key={a.id}>
+                      <Link to={`/app/requests/${a.runId}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-cloud">
+                        <span className="min-w-0 truncate">
+                          {a.title}: <strong className={a.kind === 'approval' && a.response!.optionId === 'b' ? 'text-ink-soft' : 'text-teal-600'}>{a.response!.label}</strong>
+                        </span>
+                        <span className="shrink-0 text-xs text-ink-muted">{formatRelative(a.response!.at)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-ink-muted">עדיין לא התקבלו תשובות.</p>
+              )}
+            </section>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-xl bg-cloud p-4 text-sm text-ink-muted">
+            מתוך כל בקשה אפשר לשלוח ללקוח פעולה מובנית — אישור עבודה נוספת, בחירה בין שתי אפשרויות או עדכון — ולראות כאן מה ממתין ומה נענה.
+          </p>
+        )}
+      </Card>
+
       {stats.outcomes.length > 0 && (
         <Card className="mt-6 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -257,7 +327,7 @@ export function Dashboard() {
             </div>
           </div>
           {filtered.length ? (
-            <RunsTable runs={filtered.slice(0, 8)} workflows={workflows} />
+            <RunsTable runs={filtered.slice(0, 8)} workflows={workflows} actions={byRun} />
           ) : (
             <div className="p-4">
               <EmptyState icon={Inbox} title="אין בקשות בסינון הזה">

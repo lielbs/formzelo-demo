@@ -8,11 +8,13 @@ import { RUN_STATUSES, type RunStatus, type Workflow } from '../../domain/schema
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { isPaymentOutstanding } from '../../engine/completion';
 import { STATUS_LABELS } from '../../engine/transitions';
+import { actionsByRun } from '../../engine/actions';
 
 export function Requests() {
   const org = useActiveOrg();
   const [params, setParams] = useSearchParams();
-  const status = (params.get('status') ?? 'all') as RunStatus | 'all';
+  // 'decision' / 'answered' filter by Formangle Actions rather than by request status.
+  const status = (params.get('status') ?? 'all') as RunStatus | 'all' | 'decision' | 'answered';
   const [search, setSearch] = useState('');
   const [workflowFilter, setWorkflowFilter] = useState('all');
   const [payFilter, setPayFilter] = useState<'all' | 'none' | 'outstanding' | 'paid' | 'quote'>('all');
@@ -21,13 +23,13 @@ export function Requests() {
 
   const q = useRepoQuery(
     async (r) => {
-      const [runs, workflows] = await Promise.all([r.listRuns(org.id), r.listWorkflows(org.id)]);
+      const [runs, workflows, actions] = await Promise.all([r.listRuns(org.id), r.listWorkflows(org.id), r.listActions(org.id)]);
       const caseFlows = await Promise.all(
         workflows
           .filter((w) => w.status === 'published' && w.publishedVersionId)
           .map(async (w) => ({ w, v: await r.getVersion(org.id, w.publishedVersionId!) })),
       );
-      return { runs, workflows, caseFlows: caseFlows.filter((x) => x.v?.config.mode === 'case') };
+      return { runs, workflows, actions, caseFlows: caseFlows.filter((x) => x.v?.config.mode === 'case') };
     },
     [org.id],
   );
@@ -35,6 +37,8 @@ export function Requests() {
   if (q.loading) return <Spinner />;
   if (q.error || !q.data) return <ErrorState error={q.error ?? 'לא נטען'} onRetry={q.reload} />;
   const { runs, workflows, caseFlows } = q.data;
+  const byRun = actionsByRun(q.data.actions);
+  const decisionOk = (id: string) => (status === 'decision' ? Boolean(byRun.get(id)?.awaiting) : status === 'answered' ? Boolean(byRun.get(id)?.answered) : true);
 
   const needle = search.trim().toLowerCase();
   const byWorkflow = runs.filter((r) => workflowFilter === 'all' || r.workflowId === workflowFilter);
@@ -48,7 +52,8 @@ export function Requests() {
   const list = byWorkflow
     .filter(
       (r) =>
-        (status === 'all' || r.status === status) &&
+        (status === 'all' || status === 'decision' || status === 'answered' || r.status === status) &&
+        decisionOk(r.id) &&
         payOk(r) &&
         (!needle || r.reference.toLowerCase().includes(needle) || r.customerName.toLowerCase().includes(needle) || r.customerContact.includes(needle)),
     )
@@ -97,8 +102,8 @@ export function Requests() {
       </div>
 
       <div role="tablist" aria-label="סינון לפי סטטוס" className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
-        {(['all', ...RUN_STATUSES] as const).map((s) => {
-          const n = s === 'all' ? byWorkflow.length : count(s);
+        {(['all', 'decision', 'answered', ...RUN_STATUSES] as const).map((s) => {
+          const n = s === 'all' ? byWorkflow.length : s === 'decision' ? byWorkflow.filter((r) => byRun.get(r.id)?.awaiting).length : s === 'answered' ? byWorkflow.filter((r) => byRun.get(r.id)?.answered).length : count(s);
           if (s !== 'all' && n === 0 && status !== s) return null;
           return (
             <button
@@ -111,7 +116,7 @@ export function Requests() {
                 status === s ? 'border-midnight bg-midnight text-white' : 'border-cloud-300 bg-white text-ink-muted hover:text-ink',
               )}
             >
-              {s === 'all' ? 'הכול' : STATUS_LABELS[s]} <span className="tabular-nums opacity-70">{n}</span>
+              {s === 'all' ? 'הכול' : s === 'decision' ? 'ממתין להחלטת לקוח' : s === 'answered' ? 'הלקוח השיב' : STATUS_LABELS[s]} <span className="tabular-nums opacity-70">{n}</span>
             </button>
           );
         })}
@@ -119,7 +124,7 @@ export function Requests() {
 
       <Card className="overflow-hidden">
         {list.length ? (
-          <RunsTable runs={list} workflows={workflows} />
+          <RunsTable runs={list} workflows={workflows} actions={byRun} />
         ) : (
           <div className="p-4">
             <EmptyState icon={Inbox} title={runs.length ? 'אין בקשות שתואמות לסינון' : 'עדיין אין בקשות'}>

@@ -4,7 +4,7 @@ import { migrateOrgData } from '../data/migrations';
 import { DomainRuleError } from '../data/repository';
 import { DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
 import { CustomerActionSchema, OrgDataSchema, SCHEMA_VERSION, type CustomerAction, type WorkflowRun } from '../domain/schema';
-import { actionStatus, buildAction, cancel, countActions, isDuplicate, respond } from '../engine/actions';
+import { actionsByRun, actionStatus, buildAction, cancel, countActions, isDuplicate, respond } from '../engine/actions';
 
 class MemoryStore implements KeyValueStore {
   private m = new Map<string, string>();
@@ -73,6 +73,11 @@ describe('Formangle Actions — rules', () => {
     const all: CustomerAction[] = [a, respond({ ...approval(), id: 'act_5' }, 'b', AT), buildAction({ kind: 'update', title: 'u' }, run, { id: 'u' }, AT)];
     const counts = countActions(all, Date.parse(AT));
     expect([counts.awaiting, counts.answered, [...counts.awaitingRuns]]).toEqual([1, 1, ['run_1']]);
+    // Dashboard / inbox grouping per request: cancelled and posted updates are not decisions.
+    const other = buildAction({ kind: 'approval', title: 'y' }, { ...run, id: 'run_2' }, { id: 'act_7' }, AT);
+    const byRun = actionsByRun([...all, cancel(other, AT)], Date.parse(AT));
+    expect(byRun.get('run_1')).toEqual({ awaiting: 1, answered: 1 });
+    expect(byRun.has('run_2')).toBe(false);
   });
 });
 

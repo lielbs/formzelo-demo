@@ -122,6 +122,20 @@ export function actionSummary(a: CustomerAction): string {
 /** An approval answered with its first (positive) option. */
 export const isApproved = (a: CustomerAction) => a.kind === 'approval' && a.response?.optionId === 'a';
 
+/** Per request: open actions waiting for the customer and answered ones (for inbox badges). */
+export function actionsByRun(actions: CustomerAction[], now: number = Date.now()): Map<string, { awaiting: number; answered: number }> {
+  const m = new Map<string, { awaiting: number; answered: number }>();
+  for (const a of actions) {
+    const s = actionStatus(a, now);
+    if (s !== 'pending' && s !== 'responded') continue;
+    const e = m.get(a.runId) ?? { awaiting: 0, answered: 0 };
+    if (s === 'pending') e.awaiting++;
+    else e.answered++;
+    m.set(a.runId, e);
+  }
+  return m;
+}
+
 export interface ActionCounts {
   awaiting: number;
   answered: number;

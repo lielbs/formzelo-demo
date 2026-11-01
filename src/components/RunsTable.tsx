@@ -3,10 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import type { Workflow, WorkflowRun } from '../domain/schema';
 import { formatCurrency, formatRelative } from '../lib/format';
 import { PaymentBadge, StatusBadge } from './StatusBadge';
-import { DemoBadge } from './ui';
+import { Badge, DemoBadge } from './ui';
+
+export type RunActionInfo = Map<string, { awaiting: number; answered: number }>;
+
+/** Formangle Actions state of a request, next to its status. */
+function DecisionBadge({ info }: { info?: { awaiting: number; answered: number } }) {
+  if (!info) return null;
+  if (info.awaiting) return <Badge tone="amber">{info.awaiting > 1 ? `${info.awaiting} ממתינות להחלטת לקוח` : 'ממתין להחלטת לקוח'}</Badge>;
+  return info.answered ? <Badge tone="teal">הלקוח השיב</Badge> : null;
+}
 
 /** Requests table on desktop, stacked cards on mobile. Rows are keyboard-activatable links. */
-export function RunsTable({ runs, workflows }: { runs: WorkflowRun[]; workflows: Workflow[] }) {
+export function RunsTable({ runs, workflows, actions }: { runs: WorkflowRun[]; workflows: Workflow[]; actions?: RunActionInfo }) {
   const navigate = useNavigate();
   const title = (id: string) => workflows.find((w) => w.id === id)?.draft.title ?? '—';
   const open = (id: string) => navigate(`/app/requests/${id}`);
@@ -46,6 +55,7 @@ export function RunsTable({ runs, workflows }: { runs: WorkflowRun[]; workflows:
                   <div className="flex flex-wrap gap-1">
                     <StatusBadge status={r.status} />
                     <PaymentBadge payment={r.payment} runStatus={r.status} />
+                    <DecisionBadge info={actions?.get(r.id)} />
                   </div>
                 </td>
                 <td className="px-4 py-3 text-end tabular-nums">{r.total > 0 ? formatCurrency(r.total) : '—'}</td>
@@ -73,6 +83,7 @@ export function RunsTable({ runs, workflows }: { runs: WorkflowRun[]; workflows:
               </div>
               <div className="flex flex-col items-end gap-1">
                 <StatusBadge status={r.status} />
+                <DecisionBadge info={actions?.get(r.id)} />
                 {r.total > 0 && <span className="text-xs tabular-nums text-ink-muted">{formatCurrency(r.total)}</span>}
               </div>
             </button>
