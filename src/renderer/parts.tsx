@@ -44,6 +44,9 @@ export interface HeroProps {
   children?: ReactNode;
 }
 
+/** The illustrated style is on and the owner placed drawings in this spot (all spots when unset). */
+export const artIn = (theme: WorkflowTheme, spot: 'hero' | 'options' | 'blocks') => theme.illustrations === true && (theme.illustrationSpots ?? ['hero', 'options', 'blocks']).includes(spot);
+
 export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl, caseAnswers, condensed, preview, badge, assets = {}, studio, children }: HeroProps) {
   const layout = theme.hero.layout;
   const minutes = Math.max(1, Math.round(fieldsCount * 0.35));
@@ -57,7 +60,7 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
   const cover = media.coverStyle;
   // Panel, frame and band put the business's photo inside the opening (a placeholder in the studio).
   const slot = layout !== 'none' && ['panel', 'frame', 'band'].includes(cover) && (Boolean(coverUrl) || Boolean(studio));
-  const art = theme.decoration !== 'none' && !(coverUrl && cover !== 'page') && !slot;
+  const art = artIn(theme, 'hero') && theme.decoration !== 'none' && !(coverUrl && cover !== 'page') && !slot;
   const seal = media.logoStyle === 'seal';
 
   return (
@@ -66,8 +69,11 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
       data-layout={layout}
       data-cover={slot || (coverUrl && cover === 'backdrop') ? cover : undefined}
       data-tone={media.tone}
+      data-art={art && layout !== 'none' ? 'panel' : undefined}
       data-condensed={condensed || undefined}
       data-mobile-compact={theme.mobile.compactHero || undefined}
+      // The business's initial, set as a large typographic mark by the signature layer (CSS only, decorative).
+      data-initial={[...config.branding.logoText.trim()][0] ?? ''}
       aria-label={config.title}
     >
       {coverUrl && cover === 'backdrop' && layout !== 'none' && (
@@ -78,10 +84,10 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
         </>
       )}
       {layout !== 'none' && <span className="fz-hero-glow" aria-hidden />}
-      {art && layout !== 'none' && <HeroArt decoration={theme.decoration} className="fz-hero-art" />}
-      {badge?.trim() && layout !== 'none' && (
-        <span className="fz-sticker">
-          {badge}
+      {/* The drawing has its own framed panel: text never sits on artwork. */}
+      {art && layout !== 'none' && (
+        <span className="fz-hero-artpanel" aria-hidden>
+          <HeroArt decoration={theme.decoration} className="fz-hero-art" />
         </span>
       )}
       <div className="fz-hero-content fz-anim-hero">
@@ -93,7 +99,10 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
           ) : (
             <span />
           )}
-          {preview && <span className="fz-fact shrink-0">תצוגה מקדימה</span>}
+          <span className="flex shrink-0 items-center gap-2">
+            {badge?.trim() && layout !== 'none' && <span className="fz-tag">{badge}</span>}
+            {preview && <span className="fz-fact">תצוגה מקדימה</span>}
+          </span>
         </div>
         {theme.hero.eyebrow && !condensed && <p className="fz-hero-eyebrow mt-5">{theme.hero.eyebrow}</p>}
         {/* Long owner-written titles step down a size so they never run under the artwork. */}
@@ -446,7 +455,7 @@ export function Review({
                 const opts = f.options ?? [];
                 const idx = opts.findIndex((o) => o.value === values[f.key]);
                 const opt = idx >= 0 ? opts[idx] : undefined;
-                const art = opt && resolveAppearance(f, optionArt) === 'tiles' ? (optionArt ? inferArt(f, opt, idx, opts.length) : opt.image) : undefined;
+                const art = opt && resolveAppearance(f, optionArt) === 'tiles' ? (optionArt ? inferArt(f, opt, idx, opts.length) : undefined) : undefined;
                 return (
                   <div key={f.id}>
                     <dt>{f.label}</dt>

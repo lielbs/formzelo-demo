@@ -1,0 +1,836 @@
+/*
+ * Atelier — the default visual standard (loaded last).
+ *
+ * Restraint over ornament: one confident typographic opening, generous space, precise fields,
+ * option cards built from type and price rather than drawings, and the business's own photos.
+ * Drawn artwork belongs to the opt-in illustrated style (theme.illustrations → data-illustrated).
+ * Every design keeps its palette, fonts, radius and layout; this layer sets the craft.
+ */
+
+/* ---------- no clip-art in the standard style ---------- */
+
+.fz[data-illustrated='false'] .fz-hero-art,
+.fz[data-illustrated='false'] .fz-hero-glow,
+.fz[data-illustrated='false'] .fz-media-art,
+.fz[data-illustrated='false'] .fz-art-note,
+.fz[data-illustrated='false'] .fz-art-caption {
+  display: none !important;
+}
+/* Image / gallery blocks that held only illustrations disappear with them. */
+.fz[data-illustrated='false'] .fz-block[data-type='image']:not(:has(img)),
+.fz[data-illustrated='false'] .fz-block[data-type='gallery']:not(:has(img)) {
+  display: none;
+}
+/* Background textures stay behind the opening only, and quietly. */
+.fz[data-illustrated='false'].fz-page,
+.fz[data-illustrated='false'].fz-frame,
+.fz[data-illustrated='false'] .fz-layout {
+  background-image: none !important;
+}
+
+/* Hero layouts reserved room for artwork; without it the content takes the full measure. */
+.fz[data-illustrated='false'] .fz-hero[data-layout='split'],
+.fz[data-illustrated='false'] .fz-hero[data-layout='poster'],
+.fz[data-illustrated='false'] .fz-hero[data-layout='immersive'] {
+  min-height: 0;
+  padding-inline-end: calc(var(--fz-pad) * 1.05);
+  padding-bottom: calc(var(--fz-pad) * 1.05);
+}
+.fz[data-illustrated='false'] .fz-hero[data-layout='compact'] > .fz-hero-content {
+  padding-inline-end: 0;
+}
+@container fz (min-width: 960px) {
+  .fz[data-illustrated='false'] .fz-hero[data-layout='split'],
+  .fz[data-illustrated='false'] .fz-hero[data-layout='split'][data-condensed='true'],
+  .fz[data-illustrated='false'] .fz-hero[data-layout='poster'],
+  .fz[data-illustrated='false'] .fz-hero[data-layout='immersive'] {
+    min-height: 0;
+    padding: 56px 56px 52px;
+  }
+}
+
+/* ---------- the opening ---------- */
+
+.fz[data-illustrated='false'] .fz-hero-title {
+  font-size: clamp(2rem, 1.35rem + 3.2cqi, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  margin-top: 22px;
+  max-width: 18ch;
+  text-wrap: balance;
+}
+.fz[data-illustrated='false'] .fz-hero[data-layout='centered'] .fz-hero-title {
+  margin-inline: auto;
+}
+.fz[data-illustrated='false'] .fz-hero-desc {
+  margin-top: 14px;
+  max-width: 46ch;
+  font-size: clamp(15.5px, 14px + 0.4cqi, 18px);
+  line-height: 1.6;
+}
+.fz[data-illustrated='false'] .fz-hero[data-condensed='true'] .fz-hero-title {
+  font-size: calc(1.45rem * var(--fz-display-scale));
+  max-width: none;
+}
+
+/* Facts read as one quiet line, not a row of pills. */
+.fz[data-illustrated] .fz-hero-facts {
+  gap: 0;
+  margin-top: 22px;
+}
+.fz[data-illustrated] .fz-hero-facts .fz-fact {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font-size: 13.5px;
+  color: var(--fz-hero-muted);
+}
+.fz[data-illustrated] .fz-hero-facts .fz-fact + .fz-fact::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  margin-inline: 12px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.fz[data-illustrated] .fz-hero-facts .fz-fact svg {
+  display: none;
+}
+
+/* The business's badge: a small caps tag beside the name. */
+.fz-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border: 1px solid color-mix(in srgb, var(--fz-hero-text) 28%, transparent);
+  border-radius: 999px;
+  color: var(--fz-hero-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.fz[data-illustrated] .fz-brandrow {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.fz[data-illustrated] .fz-monogram {
+  width: 34px;
+  height: 34px;
+}
+
+/* ---------- announcement strip ---------- */
+
+.fz[data-illustrated] .fz-ribbon {
+  padding: 8px 16px;
+  background: var(--fz-text);
+  color: var(--fz-bg);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.fz[data-illustrated] .fz-ribbon svg {
+  display: none;
+}
+
+/* ---------- promises: a hairline row of facts ---------- */
+
+.fz[data-illustrated] .fz-promises {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  margin: 14px 0 0;
+  padding: 0;
+  overflow: visible;
+  border-block: 1px solid var(--fz-line);
+}
+.fz[data-illustrated] .fz-promise {
+  display: flex;
+  gap: 10px;
+  padding: 14px 4px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fz-text);
+  rotate: none;
+  translate: none;
+}
+.fz[data-illustrated] .fz-promise + .fz-promise {
+  border-inline-start: 1px solid var(--fz-line);
+  padding-inline-start: 16px;
+}
+.fz[data-illustrated] .fz-promise-icon {
+  width: auto;
+  height: auto;
+  background: none;
+  color: var(--fz-primary-ink);
+}
+@container fz (max-width: 600px) {
+  .fz[data-illustrated] .fz-promises {
+    grid-template-columns: 1fr;
+    margin-inline: 0;
+    padding: 0;
+  }
+  .fz[data-illustrated] .fz-promise {
+    flex: initial;
+    padding: 11px 2px;
+    font-size: 14px;
+  }
+  .fz[data-illustrated] .fz-promise + .fz-promise {
+    border-inline-start: 0;
+    border-top: 1px solid var(--fz-line);
+    padding-inline-start: 2px;
+  }
+}
+
+/* ---------- the owner's note: an editorial pull quote ---------- */
+
+.fz[data-illustrated] .fz-welcome {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 2px 0 2px 0;
+  padding-inline-start: 18px;
+  border: 0;
+  border-inline-start: 2px solid var(--fz-primary);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.fz[data-illustrated] .fz-welcome-msg {
+  font-family: var(--fz-font-display);
+  font-size: clamp(17px, 15.5px + 0.4cqi, 20px);
+  line-height: 1.5;
+  color: var(--fz-text);
+}
+.fz[data-illustrated] .fz-welcome-who {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--fz-muted);
+}
+.fz[data-illustrated] .fz-welcome-name {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fz-text);
+}
+.fz[data-illustrated] .fz-welcome-avatar {
+  width: 44px;
+  height: 44px;
+}
+
+/* ---------- the form card ---------- */
+
+.fz[data-illustrated] .fz-pad {
+  padding: clamp(22px, 14px + 2.4cqi, 44px);
+}
+.fz[data-illustrated] .fz-fields {
+  gap: max(var(--fz-field-gap), 26px);
+}
+.fz[data-illustrated] .fz-label,
+.fz[data-illustrated] .fz-legend {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  margin-bottom: 10px;
+}
+.fz[data-illustrated] .fz-help {
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--fz-muted) 88%, var(--fz-text));
+}
+.fz[data-illustrated] .fz-control {
+  min-height: max(var(--fz-control-h), 52px);
+  padding-inline: 16px;
+}
+.fz[data-input='outlined'] .fz-control {
+  border-width: 1px;
+  border-color: color-mix(in srgb, var(--fz-text) 20%, var(--fz-surface));
+}
+
+/* Business disclaimers: a calm note, not an alarm. */
+.fz[data-illustrated] .fz-main .fz-warn,
+.fz[data-illustrated] .fz-main .fz-note {
+  border: 0;
+  background: var(--fz-surface-alt);
+  color: color-mix(in srgb, var(--fz-muted) 70%, var(--fz-text));
+  font-size: 13.5px;
+}
+
+/* ---------- options built from type and price ---------- */
+
+.fz[data-illustrated] .fz-option {
+  border-width: 1px;
+  min-height: 56px;
+  padding: 15px 16px;
+}
+.fz[data-illustrated] .fz-option:has(input:checked) {
+  box-shadow: inset 0 0 0 1px var(--fz-primary);
+}
+.fz[data-illustrated] .fz-opt-label {
+  font-size: 15.5px;
+  font-weight: 600;
+}
+.fz[data-illustrated] .fz-opt-desc {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+/* A tile without a photo: a typographic card — name, a line about it, the price at its foot. */
+.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) {
+  min-height: 128px;
+  padding: 20px 18px 18px;
+  justify-content: flex-start;
+}
+.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+}
+.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-label {
+  font-family: var(--fz-font-display);
+  font-weight: var(--fz-display-weight);
+  font-size: 18px;
+  line-height: 1.25;
+  padding-inline-end: 30px;
+}
+.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-tile-foot {
+  margin-top: auto;
+  padding-top: 10px;
+}
+.fz[data-illustrated] .fz-option[data-kind='tile'] .fz-opt-price {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ---------- summary ---------- */
+
+.fz[data-illustrated] .fz-aside .fz-card {
+  box-shadow: none;
+  border: 1px solid var(--fz-line);
+}
+
+/* ---------- fixes across experiences ---------- */
+
+/* Promises on a dark stage take the opening's colours. */
+.fz[data-illustrated] .fz-layout[data-stage] .fz-hero-area .fz-promises {
+  border-color: color-mix(in srgb, var(--fz-hero-text) 18%, transparent);
+}
+.fz[data-illustrated] .fz-layout[data-stage] .fz-hero-area .fz-promises .fz-promise {
+  color: var(--fz-hero-text);
+  border-color: color-mix(in srgb, var(--fz-hero-text) 18%, transparent);
+}
+.fz[data-illustrated] .fz-layout[data-stage] .fz-hero-area .fz-promise-icon {
+  color: var(--fz-hero-text);
+  opacity: 0.8;
+}
+/* No tilted or offset pieces in the standard style, whatever the experience. */
+.fz[data-illustrated] .fz-promises .fz-promise,
+.fz[data-illustrated] .fz-promises .fz-promise:nth-child(odd),
+.fz[data-illustrated] .fz-promises .fz-promise:nth-child(even) {
+  rotate: none;
+  box-shadow: none;
+  border-top-width: 0;
+  border-bottom-width: 0;
+  border-inline-end-width: 0;
+}
+.fz[data-illustrated] .fz-promises .fz-promise:first-child {
+  border-inline-start-width: 0;
+}
+.fz[data-illustrated] .fz-main .fz-welcome {
+  rotate: none;
+  border-block: 0;
+  border-inline-end: 0;
+  border-inline-start: 2px solid var(--fz-primary);
+  background: none;
+}
+/* Rules between questions are straight lines. */
+.fz[data-illustrated] .fz-fields > .fz-block {
+  border-radius: 0;
+}
+
+/* Tiles get room for their names. */
+@container fz (min-width: 600px) {
+  .fz[data-illustrated] .fz-options[data-appearance='tiles'] {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  }
+}
+
+/* Service highlights: the same hairline language as the promises. */
+.fz[data-illustrated] .fz-highlights {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0;
+  border-block: 1px solid var(--fz-line);
+}
+.fz[data-illustrated] .fz-highlights li {
+  padding: 14px 4px;
+  border-radius: 0;
+  background: none;
+}
+.fz[data-illustrated] .fz-highlights li + li {
+  border-inline-start: 1px solid var(--fz-line);
+  padding-inline-start: 16px;
+}
+.fz[data-illustrated] .fz-highlight-icon {
+  width: auto;
+  height: auto;
+  background: none;
+}
+.fz[data-illustrated] .fz-highlight-title {
+  font-size: 14.5px;
+}
+.fz[data-illustrated] .fz-highlight-text {
+  font-size: 13px;
+}
+@container fz (max-width: 600px) {
+  .fz[data-illustrated] .fz-highlights {
+    grid-template-columns: 1fr;
+  }
+  .fz[data-illustrated] .fz-highlights li + li {
+    border-inline-start: 0;
+    border-top: 1px solid var(--fz-line);
+    padding-inline-start: 4px;
+  }
+}
+.fz[data-illustrated] .fz-highlights li {
+  flex-direction: row;
+  align-items: flex-start;
+  text-align: start;
+}
+/* The immersive opening floated the brand over the artwork; without artwork it sits in the flow. */
+.fz[data-illustrated='false'] .fz-hero[data-layout='immersive'] .fz-brandrow {
+  position: static;
+  inset: auto;
+}
+.fz[data-illustrated='false'] .fz-hero[data-layout='immersive'] .fz-hero-title {
+  margin-top: 22px;
+}
+/* On a stage the promise row is part of the band: the colour runs edge to edge under it, however tall it gets. */
+.fz[data-illustrated] .fz-layout[data-stage] .fz-hero-area .fz-promises {
+  position: relative;
+  margin-top: 0;
+  background: var(--fz-hero-bg);
+  box-shadow: 0 0 0 100vmax var(--fz-hero-bg);
+  clip-path: inset(0 -100vmax calc(var(--fz-band) * -1));
+}
+
+/* ======================================================================
+ * Signatures — one composition per experience family, built from type,
+ * colour and geometry. Decorative marks are pseudo-elements (aria-hidden by nature).
+ * ====================================================================== */
+
+/* Shared: a catalogue index on typographic tiles (01, 02…). */
+.fz[data-illustrated] .fz-options[data-appearance='tiles'] {
+  counter-reset: fz-opt;
+}
+.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) {
+  counter-increment: fz-opt;
+}
+.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body::before {
+  content: counter(fz-opt, decimal-leading-zero);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fz-primary-ink);
+  opacity: 0.85;
+}
+
+/* ---------- magazine (editorial): a cover ---------- */
+
+.fz[data-illustrated='false'] .fz-layout[data-flow='editorial'] .fz-hero::after {
+  content: attr(data-initial);
+  position: absolute;
+  z-index: -1;
+  inset-inline-end: -0.04em;
+  bottom: -0.3em;
+  font-family: var(--fz-font-display);
+  font-weight: var(--fz-display-weight);
+  font-size: clamp(220px, 30cqi, 420px);
+  line-height: 1;
+  color: var(--fz-primary);
+  opacity: 0.1;
+  pointer-events: none;
+}
+.fz[data-illustrated] .fz-layout[data-flow='editorial'] .fz-hero-content > :first-child {
+  padding-bottom: 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fz-hero-text) 22%, transparent);
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='editorial'] .fz-hero-title {
+  font-size: clamp(2.6rem, 1.4rem + 5cqi, 5rem);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  margin-top: 30px;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='editorial'] .fz-hero-desc {
+  font-family: var(--fz-font-display);
+  font-size: clamp(17px, 15px + 0.6cqi, 21px);
+  line-height: 1.5;
+}
+.fz[data-illustrated] .fz-layout[data-flow='editorial'] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-label {
+  font-size: 21px;
+}
+.fz[data-illustrated] .fz-layout[data-flow='editorial'] .fz-opt-price {
+  font-family: var(--fz-font-display);
+}
+
+/* ---------- concierge (focus): a cinematic opening ---------- */
+
+.fz[data-illustrated] .fz-layout[data-flow='focus'] .fz-hero {
+  background-image:
+    radial-gradient(90% 70% at 50% -10%, color-mix(in srgb, var(--fz-primary) 34%, transparent), transparent 62%),
+    radial-gradient(60% 50% at 100% 110%, color-mix(in srgb, var(--fz-accent) 18%, transparent), transparent 70%);
+  text-align: center;
+}
+.fz[data-illustrated] .fz-layout[data-flow='focus'] .fz-hero-content > :first-child {
+  justify-content: center;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='focus'] .fz-hero-title,
+.fz[data-illustrated='false'] .fz-layout[data-flow='focus'] .fz-hero-desc {
+  margin-inline: auto;
+}
+.fz[data-illustrated] .fz-layout[data-flow='focus'] .fz-hero-facts {
+  justify-content: center;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='focus'] .fz-hero-title {
+  font-size: clamp(2.3rem, 1.3rem + 4.4cqi, 4.4rem);
+  letter-spacing: -0.01em;
+  padding-top: 26px;
+  position: relative;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='focus'] .fz-hero-title::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: 56px;
+  height: 1px;
+  background: var(--fz-accent);
+}
+.fz[data-illustrated] .fz-layout[data-flow='focus'] .fz-monogram {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  outline: 1px solid color-mix(in srgb, var(--fz-hero-text) 40%, transparent);
+  outline-offset: 4px;
+}
+
+/* ---------- technical (console): a spec sheet ---------- */
+
+.fz[data-illustrated] .fz-layout[data-flow='console'] .fz-hero {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--fz-hero-text) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--fz-hero-text) 7%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+/* Registration marks in two corners. */
+.fz[data-illustrated='false'] .fz-layout[data-flow='console'] .fz-hero::before,
+.fz[data-illustrated='false'] .fz-layout[data-flow='console'] .fz-hero::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 22px;
+  height: 22px;
+  border: 0 solid var(--fz-accent);
+  pointer-events: none;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='console'] .fz-hero::before {
+  top: 18px;
+  inset-inline-start: 18px;
+  border-top-width: 2px;
+  border-inline-start-width: 2px;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='console'] .fz-hero::after {
+  bottom: 18px;
+  inset-inline-end: 18px;
+  border-bottom-width: 2px;
+  border-inline-end-width: 2px;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='console'] .fz-hero-title {
+  font-size: clamp(2.2rem, 1.3rem + 4cqi, 4.2rem);
+  letter-spacing: -0.03em;
+}
+.fz[data-illustrated] .fz-layout[data-flow='console'] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body::before {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- poster (playful): one huge outlined initial ---------- */
+
+.fz[data-illustrated='false'] .fz-layout[data-flow='playful'] .fz-hero::after {
+  content: attr(data-initial);
+  position: absolute;
+  z-index: -1;
+  inset-inline-end: -0.08em;
+  bottom: -0.3em;
+  font-family: var(--fz-font-display);
+  font-weight: 800;
+  font-size: clamp(220px, 30cqi, 420px);
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 2px color-mix(in srgb, var(--fz-hero-text) 55%, transparent);
+  pointer-events: none;
+}
+.fz[data-illustrated='false'] .fz-layout[data-flow='playful'] .fz-hero-title {
+  font-size: clamp(2.6rem, 1.3rem + 5.6cqi, 5.4rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  max-width: 14ch;
+}
+.fz[data-illustrated] .fz-layout[data-flow='playful'] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body::before {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  font-family: var(--fz-font-display);
+  color: var(--fz-primary);
+  opacity: 1;
+}
+
+/* ---------- minimal (card): Swiss ---------- */
+
+.fz[data-illustrated='false'] .fz-layout[data-flow='card'] .fz-hero-title {
+  font-size: clamp(2.4rem, 1.3rem + 4.6cqi, 4.6rem);
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+.fz[data-illustrated] .fz-layout[data-flow='card'] .fz-hero-content {
+  border-inline-start: 3px solid var(--fz-primary);
+  padding-inline-start: clamp(16px, 3cqi, 28px);
+}
+
+/* Integrity rules for the typographic marks: only where the space is guaranteed to be empty. */
+.fz[data-illustrated='false'] .fz-layout[data-flow='editorial'] .fz-hero:has(.fz-hero-summary)::after,
+.fz[data-illustrated='false'] .fz-layout[data-flow='playful'] .fz-hero:has(.fz-hero-summary)::after,
+.fz[data-illustrated] .fz-layout[data-flow='editorial'] .fz-hero[data-layout='centered']::after,
+.fz[data-illustrated] .fz-layout[data-flow='playful'] .fz-hero[data-layout='centered']::after,
+.fz[data-illustrated='false'] .fz-layout .fz-hero[data-condensed='true']::after,
+.fz[data-illustrated='false'] .fz-layout .fz-hero[data-cover]::after {
+  content: none;
+}
+@container fz (max-width: 760px) {
+  .fz[data-illustrated='false'] .fz-layout[data-flow='editorial'] .fz-hero::after,
+  .fz[data-illustrated='false'] .fz-layout[data-flow='playful'] .fz-hero::after {
+    content: none;
+  }
+}
+/* Text keeps clear of the mark: the content column never reaches the end third. */
+@container fz (min-width: 761px) {
+  .fz[data-illustrated='false'] .fz-layout:is([data-flow='editorial'], [data-flow='playful']) .fz-hero:not(:has(.fz-hero-summary)) :is(.fz-hero-title, .fz-hero-desc, .fz-hero-facts) {
+    max-width: min(64%, 46ch);
+  }
+}
+/* Nothing in the opening may paint over the form card. */
+.fz[data-illustrated] .fz-layout .fz-hero-area .fz-promises {
+  z-index: 0;
+}
+
+/* ======================================================================
+ * Colour and touch — deliberate states in each design's own palette.
+ * ====================================================================== */
+
+/* Selected options glow in the brand colour rather than turning flat grey. */
+.fz[data-illustrated] .fz-option:has(input:checked) {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--fz-primary) 13%, var(--fz-surface)), var(--fz-surface) 78%);
+  border-color: var(--fz-primary);
+  box-shadow:
+    inset 0 0 0 1px var(--fz-primary),
+    0 14px 30px -20px color-mix(in srgb, var(--fz-primary) 75%, transparent);
+}
+.fz[data-illustrated] .fz-option:has(input:checked) .fz-opt-label {
+  color: var(--fz-primary-ink);
+}
+.fz[data-illustrated] .fz-option[data-kind='tile'] .fz-tile-check {
+  background: var(--fz-primary);
+  color: var(--fz-on-primary);
+}
+/* Primary buttons carry a little light. */
+.fz[data-illustrated] .fz-btn-primary {
+  background-image: linear-gradient(180deg, color-mix(in srgb, #fff 14%, transparent), transparent 55%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+    0 12px 24px -16px color-mix(in srgb, var(--fz-primary) 85%, transparent);
+}
+.fz[data-button='brutal'] .fz-btn-primary {
+  background-image: none;
+}
+.fz[data-illustrated] .fz-control:focus {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--fz-primary) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--fz-primary) 40%, transparent);
+}
+
+/* ---------- motion (transform and opacity only, behind the guard) ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .fz:not([data-motion='none']) .fz-option {
+    transition:
+      transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 0.18s,
+      background-color 0.18s,
+      box-shadow 0.25s;
+  }
+  @media (hover: hover) {
+    .fz:not([data-motion='none']) .fz-option[data-kind='tile']:hover {
+      transform: translateY(-2px);
+    }
+    .fz:not([data-motion='none']) .fz-btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+  }
+  /* A press you can feel. */
+  .fz:not([data-motion='none']) .fz-option:active,
+  .fz:not([data-motion='none']) .fz-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  /* The check lands with a small pop; the indicator fills from the centre. */
+  .fz:not([data-motion='none']) .fz-option:has(input:checked) .fz-tile-check,
+  .fz:not([data-motion='none']) .fz-option:has(input:checked) .fz-indicator {
+    animation: fz-at-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  /* The opening settles in, one line after another. */
+  .fz:not([data-motion='none']) .fz-hero:not([data-condensed='true']) :is(.fz-hero-title, .fz-hero-desc, .fz-hero-facts) {
+    animation: fz-at-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .fz:not([data-motion='none']) .fz-hero:not([data-condensed='true']) .fz-hero-desc {
+    animation-delay: 0.08s;
+  }
+  .fz:not([data-motion='none']) .fz-hero:not([data-condensed='true']) .fz-hero-facts {
+    animation-delay: 0.16s;
+  }
+  .fz[data-illustrated='false']:not([data-motion='none']) .fz-layout:is([data-flow='editorial'], [data-flow='playful']) .fz-hero::after {
+    animation: fz-at-mark 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes fz-at-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes fz-at-rise {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes fz-at-mark {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ======================================================================
+ * Illustrated style (owner's choice): where, and how the drawings look.
+ * ====================================================================== */
+
+/* Image blocks without the owner's "blocks" spot keep only photos. */
+.fz[data-illustrated='true'][data-art-blocks='false'] .fz-media-art {
+  display: none;
+}
+.fz[data-illustrated='true'][data-art-blocks='false'] .fz-block[data-type='image']:not(:has(img)),
+.fz[data-illustrated='true'][data-art-blocks='false'] .fz-block[data-type='gallery']:not(:has(img)) {
+  display: none;
+}
+
+/* Facts on narrow screens: one per line, no separators that could start a wrapped line. */
+@container fz (max-width: 600px) {
+  .fz[data-illustrated] .fz-hero-facts {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .fz[data-illustrated] .fz-hero-facts .fz-fact + .fz-fact::before {
+    content: none;
+  }
+  .fz[data-illustrated] .fz-layout[data-flow='focus'] .fz-hero-facts {
+    align-items: center;
+  }
+}
+
+/* The drawing lives in its own frame: a band across the top on narrow openings, a side panel on wide ones. */
+.fz-hero[data-art='panel'] {
+  container: fzhero / inline-size;
+}
+.fz-hero[data-art='panel'][data-layout]:is([data-layout='split'], [data-layout='poster'], [data-layout='immersive'], [data-layout='banner'], [data-layout='compact'], [data-layout='centered']) {
+  min-height: 0;
+  padding-inline-end: calc(var(--fz-pad) * 1.05);
+  padding-bottom: calc(var(--fz-pad) * 1.05);
+}
+.fz-hero[data-art='panel'] > .fz-hero-content {
+  position: relative;
+  z-index: 1;
+  padding-inline-end: 0 !important;
+}
+.fz-hero[data-art='panel'] .fz-hero-artpanel {
+  position: relative;
+  display: block;
+  height: 170px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  border-radius: var(--fz-r-sm);
+  background: color-mix(in srgb, var(--fz-primary) 9%, var(--fz-surface));
+}
+.fz-hero[data-art='panel'] .fz-hero-artpanel > .fz-hero-art {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  z-index: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.fz-hero[data-art='panel'][data-condensed='true'] .fz-hero-artpanel {
+  display: none;
+}
+.fz-hero[data-art='panel'] .fz-hero-glow {
+  display: none;
+}
+@container fzhero (min-width: 640px) {
+  .fz-hero[data-art='panel']:not([data-layout='centered']):not([data-condensed='true']) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 40%);
+    column-gap: clamp(24px, 4cqi, 48px);
+    align-items: stretch;
+  }
+  .fz-hero[data-art='panel']:not([data-layout='centered']) .fz-hero-artpanel {
+    grid-column: 2;
+    grid-row: 1;
+    height: auto;
+    min-height: 260px;
+    margin: 0;
+  }
+  .fz-hero[data-art='panel']:not([data-layout='centered']) > .fz-hero-content {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+}
+
+/* Brand Kit "graphic marks" off (decoration none): the opening is type and colour only. */
+.fz[data-illustrated='false'][data-decor='none'] .fz-hero::before,
+.fz[data-illustrated='false'][data-decor='none'] .fz-hero::after {
+  content: none;
+}
+.fz[data-illustrated='false'][data-decor='none'] .fz-layout:is([data-flow='focus'], [data-flow='console']) .fz-hero {
+  background-image: none;
+}

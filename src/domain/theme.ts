@@ -37,6 +37,8 @@ export const THEME_PRESET_IDS = [
   'pets_friendly',
   'community_warm',
 ] as const;
+export const ILLUSTRATION_SPOTS = ['hero', 'options', 'blocks'] as const;
+
 export const ThemePresetIdSchema = z.enum(THEME_PRESET_IDS);
 export type ThemePresetId = z.infer<typeof ThemePresetIdSchema>;
 
@@ -205,6 +207,13 @@ export const WorkflowThemeSchema = z.object({
   motion: z.enum(MOTION_LEVELS),
   /** Infer local illustrations for options (bouquet, plate, cake…) when a field has none. */
   optionArt: z.boolean(),
+  /**
+   * Illustrated style: drawn artwork in the opening and on options. Absent = off — the default is
+   * the typographic standard (type, colour and the business's own photos, no clip-art).
+   */
+  illustrations: z.boolean().optional(),
+  /** Where the illustrated style draws (absent = everywhere): the opening, option cards, image blocks. */
+  illustrationSpots: z.array(z.enum(ILLUSTRATION_SPOTS)).max(3).optional(),
   mobile: z.object({
     /** Shrink the hero to a compact header on narrow screens. */
     compactHero: z.boolean(),

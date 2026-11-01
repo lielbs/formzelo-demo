@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { cx } from '../../components/ui';
 import { isDisplayField } from '../../domain/schema';
 import { searchTemplates, TEMPLATE_CATEGORIES, TEMPLATE_LIBRARY, type LibraryTemplate, type TemplateCategory } from '../../engine/library';
-import { HeroArt } from '../../theme/art';
+import { SignatureMark } from '../../theme/SignatureMark';
 import { buildTheme, PRESETS } from '../../theme/presets';
 import { ThemeScope } from '../../theme/ThemeScope';
 
@@ -78,8 +78,8 @@ export function TemplateGallery({ selected, onPick }: { selected?: string; onPic
                 )}
               >
                 <ThemeScope theme={theme} className="relative h-[92px] w-full overflow-hidden" style={{ background: 'var(--fz-hero-bg)', color: 'var(--fz-hero-text)' }}>
-                  <HeroArt decoration={theme.decoration} className="absolute inset-y-0 left-0 h-full w-[60%] opacity-90 transition duration-500 group-hover:scale-[1.04]" />
-                  <span className="relative flex h-full flex-col justify-end p-3" style={{ background: 'linear-gradient(to left, var(--fz-hero-bg) 40%, transparent)' }}>
+                  <SignatureMark theme={theme} letter={t.title} />
+                  <span className="relative flex h-full flex-col justify-end p-3">
                     <span className="text-[10px] font-medium opacity-75">{CATEGORY_LABEL[t.category]}</span>
                     <span className="fz-display text-[calc(1.05rem*var(--fz-display-scale))] leading-tight">{t.title}</span>
                   </span>

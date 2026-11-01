@@ -312,7 +312,7 @@ export function BrandKitPage() {
             <Segmented label="צורת כפתורים" value={kit.button} options={BUTTON_VARIANTS} labels={L.button} onChange={(v) => set((k) => void (k.button = v))} />
             <Segmented label="צפיפות" value={kit.density} options={DENSITIES} labels={L.density} onChange={(v) => set((k) => void (k.density = v))} />
             <Toggle checked={kit.decorations} onChange={(v) => set((k) => void (k.decorations = v))}>
-              איורים דקורטיביים בפתיח (כבוי = מראה נקי בלי איורים)
+              סימנים גרפיים בפתיח — אות גדולה, רשת או הילה לפי העיצוב (כבוי = נקי לגמרי). איורים מוסיפים בכל טופס, בלשונית העיצוב
             </Toggle>
           </Group>
 

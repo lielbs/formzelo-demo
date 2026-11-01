@@ -13,6 +13,7 @@ import {
   COMPOSITIONS,
   DENSITIES,
   HERO_LAYOUTS,
+  ILLUSTRATION_SPOTS,
   INPUT_VARIANTS,
   MOTION_LEVELS,
   OPTION_VARIANTS,
@@ -29,6 +30,8 @@ import { PresetPicker } from '../../../theme/PresetPicker';
 import type { ThemeRecommendation } from '../../../theme/resolver';
 import { themeTokens, TYPOGRAPHY } from '../../../theme/tokens';
 import { ExtrasEditor, FlowPicker } from './ExtrasPanel';
+
+const SPOT_LABELS = { hero: 'בפתיח', options: 'בכרטיסי האפשרויות', blocks: 'בבלוקים של תמונה' } as const;
 import { MediaEditor } from './MediaPanel';
 
 export const L = {
@@ -149,7 +152,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
     next.source = 'manual';
     onChange(next);
   };
-  const keep = { hero: design.hero, logo: design.logo, presence: design.presence, extras: design.extras, media: design.media };
+  const keep = { hero: design.hero, logo: design.logo, presence: design.presence, extras: design.extras, media: design.media, illustrations: design.illustrations, illustrationSpots: design.illustrationSpots };
   const warnings = themeTokens(design).warnings;
   const recName = PRESETS[recommendation.presetId].meta.nameHe;
   const used = assets.reduce((s, a) => s + a.bytes, 0);
@@ -268,16 +271,59 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
 
       <ExtrasEditor design={design} set={set} orgId={orgId} assets={assets} assetUrls={assetUrls} />
 
-      <Group title="מובייל ואיורים">
+      <Group title="מובייל">
         <Toggle checked={design.mobile.stickySummary} onChange={(v) => set((d) => void (d.mobile.stickySummary = v))}>
           סכום צמוד לתחתית המסך בטלפון (אחרת מוצג בסוף הטופס)
         </Toggle>
         <Toggle checked={design.mobile.compactHero} onChange={(v) => set((d) => void (d.mobile.compactHero = v))}>
           פתיח מצומצם בטלפון — פחות גלילה לפני השדה הראשון
         </Toggle>
-        <Toggle checked={design.optionArt} onChange={(v) => set((d) => void (d.optionArt = v))}>
-          איורים להמחשה לאפשרויות (זרים, מנות, תיקונים) — מסומנים תמיד כ״איור להמחשה״
+      </Group>
+
+      <Group title="איורים">
+        <p className="text-xs leading-relaxed text-ink-muted">כברירת מחדל העיצוב טיפוגרפי ונקי, עם התמונות של העסק בלבד. אפשר להוסיף איורים להמחשה ולבחור איפה הם יופיעו. בטופס הם מסומנים תמיד כ״איור להמחשה״.</p>
+        <Toggle
+          checked={design.illustrations === true}
+          onChange={(v) =>
+            set((d) => {
+              if (v) {
+                d.illustrations = true;
+                d.optionArt = true;
+              } else {
+                delete d.illustrations;
+                delete d.illustrationSpots;
+              }
+            })
+          }
+        >
+          להוסיף איורים לטופס
         </Toggle>
+        {design.illustrations === true && (
+          <>
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-ink">איפה</p>
+              <div className="flex flex-wrap gap-x-5 gap-y-2" role="group" aria-label="איפה מופיעים האיורים">
+                {ILLUSTRATION_SPOTS.map((spot) => {
+                  const spots = design.illustrationSpots ?? [...ILLUSTRATION_SPOTS];
+                  return (
+                    <Toggle
+                      key={spot}
+                      checked={spots.includes(spot)}
+                      onChange={(on) =>
+                        set((d) => {
+                          const next = on ? [...new Set([...spots, spot])] : spots.filter((x) => x !== spot);
+                          d.illustrationSpots = ILLUSTRATION_SPOTS.filter((x) => next.includes(x));
+                        })
+                      }
+                    >
+                      {SPOT_LABELS[spot]}
+                    </Toggle>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </Group>
     </div>
   );

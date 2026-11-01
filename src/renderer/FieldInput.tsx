@@ -17,6 +17,8 @@ interface Props {
   error?: string;
   /** Infer local illustrations for options without an explicit image. */
   optionArt?: boolean;
+  /** Illustrated style. Off: no drawn artwork at all, only the business's own photos. */
+  illustrated?: boolean;
   /** All current answers — lets previews (e.g. a greeting card) show related values. */
   values?: Values;
   /** Resolved workspace images (asset id → data URL). */
@@ -87,7 +89,10 @@ function hebrewDate(iso: string): string | null {
   return new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 }
 
-export function FieldInput({ field, value, onChange, onBlur, error, optionArt = true, values = {}, assets = {}, price, config, availability, usage }: Props) {
+export function FieldInput({ field, value, onChange, onBlur, error, optionArt: inferOn = true, illustrated = true, values = {}, assets = {}, price, config, availability, usage }: Props) {
+  // Without the illustrated style nothing is drawn: no inferred art and no illustration keys.
+  const optionArt = illustrated && inferOn;
+  const artOf = (key?: string) => (illustrated && hasArt(key) ? key : undefined);
   const id = inputId(field.key);
   if (isDisplayField(field) && field.type !== 'info') return <DisplayBlock field={field} assets={assets} price={price} config={config} />;
   const appearance = resolveAppearance(field, optionArt);
@@ -237,7 +242,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
                     {left === 0 ? 'מלא' : !usage ? `${o.capacity} מקומות` : left === 1 ? 'נותר מקום אחד' : `נותרו ${left} מקומות`}
                   </span>
                 );
-              const art = kind === 'tile' ? (optionArt ? inferArt(field, o, i, opts.length) : hasArt(o.image) ? o.image : undefined) : undefined;
+              const art = kind === 'tile' ? (optionArt ? inferArt(field, o, i, opts.length) : artOf(o.image)) : undefined;
               const price = o.price ? (
                 <span id={`${oid}-p`} className="fz-opt-price">
                   {formatCurrency(o.price)}
@@ -318,7 +323,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
               );
             })}
           </div>
-          {kind === 'tile' && opts.some((o, i) => !(o.image?.startsWith('ast_') && assets[o.image]) && (optionArt ? inferArt(field, o, i, opts.length) : hasArt(o.image))) && <ArtNote />}
+          {kind === 'tile' && opts.some((o, i) => !(o.image?.startsWith('ast_') && assets[o.image]) && (optionArt ? inferArt(field, o, i, opts.length) : artOf(o.image))) && <ArtNote />}
           {usage && <p className="fz-help">המקומות הפנויים מחושבים מההרשמות שנשמרו בדפדפן זה בלבד.</p>}
           <Help field={field} error={error} />
         </fieldset>
@@ -326,7 +331,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
     }
 
     case 'checkbox': {
-      const art = optionArt ? inferArt(field) : hasArt(field.image) ? field.image : undefined;
+      const art = optionArt ? inferArt(field) : artOf(field.image);
       return wrap(
         <>
           <label className="fz-option fz-check" data-kind="row">
@@ -362,7 +367,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt = 
     }
 
     case 'decision':
-      return <DecisionCard field={field} value={value} onChange={onChange} onBlur={onBlur} error={error} optionArt={optionArt} />;
+      return <DecisionCard field={field} value={value} onChange={onChange} onBlur={onBlur} error={error} optionArt={optionArt} illustrated={illustrated} />;
 
     case 'file':
       return <FileDrop field={field} value={value} onChange={onChange} error={error} />;
@@ -440,9 +445,9 @@ function TextInput({ field, value, onChange, onBlur, error }: Omit<Props, 'value
   );
 }
 
-function DecisionCard({ field, value, onChange, onBlur, error, optionArt }: Omit<Props, 'values'>) {
+function DecisionCard({ field, value, onChange, onBlur, error, optionArt, illustrated = true }: Omit<Props, 'values'>) {
   const id = inputId(field.key);
-  const art = optionArt ? inferArt(field) : hasArt(field.image) ? field.image : undefined;
+  const art = !illustrated ? undefined : optionArt ? inferArt(field) : hasArt(field.image) ? field.image : undefined;
   const state = value === 'approved' ? 'approved' : value === 'declined' ? 'declined' : 'pending';
   return (
     <fieldset className="fz-decision fz-field" data-state={state} data-invalid={Boolean(error) || undefined} aria-labelledby={`${id}-title`} aria-describedby={describedBy(field, error)}>

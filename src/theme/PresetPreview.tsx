@@ -1,5 +1,5 @@
 import type { WorkflowTheme } from '../domain/theme';
-import { HeroArt } from './art';
+import { SignatureMark } from './SignatureMark';
 import { PRESETS } from './presets';
 import { ThemeScope } from './ThemeScope';
 
@@ -9,7 +9,7 @@ export function PresetPreview({ theme, tall = false }: { theme: WorkflowTheme; t
   return (
     <ThemeScope theme={theme} className="pointer-events-none select-none overflow-hidden rounded-xl" style={{ background: 'var(--fz-bg)' }}>
       <div className={`relative overflow-hidden ${tall ? 'h-[120px]' : 'h-[68px]'}`} style={{ background: 'var(--fz-hero-bg)', color: 'var(--fz-hero-text)' }}>
-        <HeroArt decoration={theme.decoration} className="absolute inset-y-0 left-0 h-full w-[58%] opacity-90" />
+        <SignatureMark theme={theme} letter={s.title} />
         <div className={tall ? 'relative p-4' : 'relative p-2.5'}>
           <p className={tall ? 'text-[11px] opacity-75' : 'text-[9px] opacity-75'}>{s.eyebrow}</p>
           <p className={`fz-display mt-0.5 leading-tight ${tall ? 'text-[22px]' : 'text-[15px]'}`}>{s.title}</p>

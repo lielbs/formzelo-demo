@@ -6,7 +6,7 @@
 import { THEME_PRESET_IDS, WorkflowThemeSchema, type FLOWS, type PATTERNS, type ThemeExtras, type ThemePresetId, type WorkflowTheme } from '../domain/theme';
 import { LIBRARY_PRESETS, type PresetEntry, type PresetMeta, type PresetTheme } from './presetLibrary';
 
-type Keep = Pick<WorkflowTheme, 'hero' | 'logo'> & Pick<Partial<WorkflowTheme>, 'presence' | 'extras' | 'media'>;
+type Keep = Pick<WorkflowTheme, 'hero' | 'logo'> & Pick<Partial<WorkflowTheme>, 'presence' | 'extras' | 'media' | 'illustrations' | 'illustrationSpots'>;
 
 export type { PresetCategory, PresetMeta } from './presetLibrary';
 export { PRESET_CATEGORIES } from './presetLibrary';
@@ -311,6 +311,8 @@ export function buildTheme(presetId: ThemePresetId, opts: { source?: WorkflowThe
     logo: { ...preset.logo, ...(opts.keep?.logo ?? {}) },
     ...(opts.keep?.presence ? { presence: structuredClone(opts.keep.presence) } : {}),
     ...(opts.keep?.media ? { media: structuredClone(opts.keep.media) } : {}),
+    // The owner's illustration choice is theirs, not the design's: it survives a change of design.
+    ...(opts.keep?.illustrations ? { illustrations: true, optionArt: true, ...(opts.keep.illustrationSpots ? { illustrationSpots: [...opts.keep.illustrationSpots] } : {}) } : {}),
     ...(Object.keys(extras).length ? { extras } : {}),
   };
   if (!Object.keys(extras).length) delete theme.extras;

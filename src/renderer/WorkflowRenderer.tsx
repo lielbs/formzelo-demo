@@ -23,7 +23,7 @@ import { fieldDomId, FieldInput } from './FieldInput';
 import { DigitalPresence } from './presence';
 import { Promises, Ribbon, Welcome } from './extras';
 import { BusinessGallery, PagePhoto } from './media';
-import { CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
+import { artIn, CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
 
 export interface RendererProps {
   config: WorkflowConfig;
@@ -443,6 +443,7 @@ export function WorkflowRenderer({
                             availability={config.booking?.timeKey === f.key ? availability : undefined}
                             usage={usage?.[f.key]}
                             optionArt={theme.optionArt}
+                            illustrated={artIn(theme, 'options')}
                             onChange={(v) => {
                               rhf.onChange(v);
                               if (errors[f.key]) {
@@ -464,7 +465,7 @@ export function WorkflowRenderer({
 
               {isSummary && (
                 <div key="summary" className="fz-step space-y-5" data-dir={dir}>
-                  <Review config={config} steps={steps} values={values} visible={(s) => visibleFields(s, values)} onEdit={go} price={price} optionArt={theme.optionArt} />
+                  <Review config={config} steps={steps} values={values} visible={(s) => visibleFields(s, values)} onEdit={go} price={price} optionArt={artIn(theme, 'options') && theme.optionArt} />
                   {booking && (
                     <div className="fz-inline-price">
                       <ReservationCard config={config} values={values} />

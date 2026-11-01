@@ -33,7 +33,7 @@ import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { ActionCard } from '../renderer/actions';
 import type { CustomerAction } from '../domain/schema';
 import type { ThemePresetId } from '../domain/theme';
-import { HeroArt } from '../theme/art';
+import { SignatureMark } from '../theme/SignatureMark';
 import { BrandShowcase, CompletionShowcase } from './LandingShowcase';
 import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
 import { TEMPLATE_LIBRARY } from '../engine/library';
@@ -283,9 +283,8 @@ export function Landing() {
                 <li key={e.title} className={i < 2 ? 'lg:col-span-3' : i === EXAMPLES.length - 1 && EXAMPLES.length % 2 === 1 ? 'sm:col-span-2 lg:col-span-2' : 'lg:col-span-2'}>
                   <Link to={e.href} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-cloud-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
                     <ThemeScope theme={buildTheme(e.preset)} className="relative h-36 overflow-hidden" style={{ background: 'var(--fz-hero-bg)', color: 'var(--fz-hero-text)' }}>
-                      <HeroArt decoration={PRESETS[e.preset].theme.decoration} className="absolute inset-0 h-full w-full transition duration-500 group-hover:scale-[1.04]" />
-                      {/* Scrim: the artwork never sits behind the title text. */}
-                      <div className="relative flex h-full flex-col justify-end p-5" style={{ background: 'linear-gradient(to top, var(--fz-hero-bg) 34%, color-mix(in srgb, var(--fz-hero-bg) 70%, transparent) 62%, transparent)' }}>
+                      <SignatureMark theme={buildTheme(e.preset)} letter={e.name} />
+                      <div className="relative flex h-full flex-col justify-end p-5">
                         <span className="text-[11px] font-medium opacity-75">{e.name}</span>
                         <span className="fz-display mt-0.5 text-[calc(1.35rem*var(--fz-display-scale))] leading-tight">{e.title}</span>
                       </div>

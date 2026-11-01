@@ -95,7 +95,7 @@ export function BrandShowcase() {
         </fieldset>
         <label className="mt-5 flex items-center gap-2 text-sm">
           <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={decor} onChange={(e) => setDecor(e.target.checked)} />
-          איורים דקורטיביים (כבוי = מראה נקי)
+          סימנים גרפיים בפתיח (כבוי = נקי לגמרי)
         </label>
         <Link to="/app/brand" className="mt-6 inline-block text-sm font-medium text-orange-700 hover:underline">
           לערכת המותג בדמו ←

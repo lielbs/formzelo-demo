@@ -173,6 +173,8 @@ export function themeTokens(theme: WorkflowTheme): ThemeTokens {
     'data-hero': theme.hero.layout,
     'data-composition': theme.composition,
     'data-decor': theme.decoration,
+    'data-illustrated': theme.illustrations ? 'true' : 'false',
+    'data-art-blocks': theme.illustrations && (theme.illustrationSpots ?? ['blocks']).includes('blocks') ? 'true' : 'false',
     'data-motion': theme.motion,
     'data-progress': theme.progress,
     'data-type': theme.typography,

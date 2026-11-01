@@ -51,16 +51,16 @@ export function Promises({ items: all }: { items?: ThemeExtras['promises'] }) {
   );
 }
 
-const initial = (name: string) => [...name.trim()][0] ?? '·';
-
 export function Welcome({ welcome, assets }: { welcome?: ThemeExtras['welcome']; assets: Record<string, string> }) {
   if (!welcome?.message.trim()) return null;
   const photo = welcome.photoAssetId ? assets[welcome.photoAssetId] : undefined;
   return (
-    <figure className="fz-welcome">
-      <span className="fz-welcome-avatar" aria-hidden>
-        {photo ? <img src={photo} alt="" /> : initial(welcome.name)}
-      </span>
+    <figure className="fz-welcome" data-photo={photo ? 'true' : undefined}>
+      {photo && (
+        <span className="fz-welcome-avatar" aria-hidden>
+          <img src={photo} alt="" />
+        </span>
+      )}
       <div className="min-w-0">
         <blockquote className="fz-welcome-msg">{welcome.message}</blockquote>
         <figcaption className="fz-welcome-who">
