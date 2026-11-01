@@ -72,8 +72,8 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 | 6 | Dashboard / inbox: awaiting-decision visibility | done |
 | 7 | Domain readiness, metadata, privacy/legal placeholders | done |
 | 8 | Docs: README, release notes, backend architecture | done |
-| 9 | QA (browser scenarios A–I), fixes | pending |
-| 10 | Merge to main + deploy + live verification (only if authorised) | pending |
+| 9 | QA (browser scenarios A–I), fixes | done (see notes) |
+| 10 | Merge to main + deploy + live verification (only if authorised) | **pending — awaiting owner approval to merge/push** |
 
 ## Files modified
 - M1: `src/lib/share.ts`, `src/components/SharePanel.tsx`, `src/pages/app/WorkflowEditor.tsx`, `src/test/share.test.ts`, deps `qrcode-generator@2.0.4` (MIT), dev `jsqr@1.4.0` (Apache-2.0, tests only).
@@ -82,6 +82,7 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 - M4–5: `renderer/actions.tsx` (ActionCard, RequestActions), `pages/app/ActionComposer.tsx`, `pages/app/RequestDetail.tsx`, `pages/PublicFlow.tsx` (actions + owner strip `?from=inbox`), `renderer/Confirmation.tsx`, `theme/theme.css` (`.fz-action*`, `.fz-owner-strip`), copy fixes in `Settings.tsx`, `Demo.tsx`.
 - M6: `engine/actions.ts` (`actionsByRun`), `components/RunsTable.tsx`, `pages/app/Requests.tsx`, `pages/app/Dashboard.tsx`.
 - M7: `vite.config.ts` (STATIC_ROUTES, CSP, `__SITE_URL__`), `index.html`, `.github/workflows/pages.yml` (`VITE_SITE_URL`), `lib/meta.ts` (robots/canonical), `App.tsx`, `pages/Privacy.tsx`, `components/SiteChrome.tsx`, `test/deploy.test.ts`.
+- M9: QA fixes in `renderer/actions.tsx`, `Dashboard.tsx`, `RunsTable.tsx`; `pages/Landing.tsx` (Formangle Actions section).
 - M8: `README.md`, `docs/RELEASE_NOTES_RC1.md`, `docs/ARCHITECTURE_BACKEND.md`, `docs/DEPLOYMENT.md`, `docs/LEGAL_PLACEHOLDERS.md`.
 
 ## Validation results
@@ -92,15 +93,27 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 - M4–6: tsc OK, 202/202 tests. Browser walkthrough (Scenario B) done in dev: owner composed a choice, opened "צפייה כלקוח", customer approved ₪180 (with confirm step) and chose pickup, owner timeline + list + dashboard + inbox filter updated. Demo reset (Scenario I) verified.
 - M7: tsc OK, 205/205 tests; Pages build OK; production preview (port 4174, base /formzelo-demo/): 0 CSP violations and 0 console errors across 10 routes + studio + image upload + publish QR + same-origin iframe.
 
+- M9 (production preview, fresh headless Edge profile, console clean):
+  - Scenario B: owner → customer view → approve ₪180 with confirm → reload keeps the answer (H) → back to request, timeline shows decision → composer at 375/1280 → dashboard card + inbox filter updated.
+  - Scenario C: Urban Table approved booking, customer status page shows "הזמנה מאושרת" + "השולחן שמור" update.
+  - Scenario D/E (part): publish success + share at 375 (QR, WhatsApp, snippets, honest reach note); external link preview checked in dev.
+  - Scenario I: demo reset restores seeded state incl. sample actions.
+  - No horizontal overflow on 14 routes at 375 / 390 / 768. `npm audit`: 0 vulnerabilities.
+  - Not re-run in a browser this session (covered by unit tests / earlier sessions): A (flower order fill), D (Hebrew prompt → workflow), F (Brand Kit links), G (published version unchanged after draft edits).
+  - Not tested: real phones, Safari, Firefox, a third-party site embedding the iframe (only same-origin + header check).
+
 ## Known defects
 - Browser pane screenshots were cropped (DPR 3) in this session; visual QA via headless Edge captures instead.
 - Dev-only: hot-reloading a half-applied schema change quarantined v6 data once (not reachable in a built deploy; migration covered by tests).
 
 ## Deployment status
-- Live: https://lielbs.github.io/formzelo-demo/ = `f69e11c` (pre-RC). RC not deployed.
+- Live: https://lielbs.github.io/formzelo-demo/ = `f69e11c` (pre-RC). RC committed on `rc-v1`, NOT merged or pushed (awaiting approval).
 
 ## Exact next action
-Milestone 9: QA — browser scenarios A–I on the production preview (headless Edge captures at 375/390/768/1280), fix defects found.
+Milestone 10 (needs the owner's go-ahead): merge `rc-v1` into `main` (fast-forward), push, watch the
+"Deploy demo to GitHub Pages" run, then verify live: `/`, `/privacy`, `/f/autocare-repairs` (HTTP 200
+now), a request's "צפייה כלקוח" flow, publish → QR. Optional follow-ups: Phase 5 studio audit pass,
+Phase 7 Engagement Kit browser re-test, Scenarios A/D/F/G in a browser.
 
 ## How to resume
 1. Read this file. 2. `git status && git log --oneline main..rc-v1`.
