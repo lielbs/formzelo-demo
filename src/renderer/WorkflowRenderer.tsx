@@ -16,10 +16,12 @@ import { validateOptionCapacity, type OptionUsage } from '../engine/capacity';
 import { paymentPlan } from '../engine/completion';
 import { computePrice } from '../engine/pricing';
 import { validateFields, type FieldErrors } from '../engine/validation';
+import { focusPosition, focusScreens } from '../engine/focus';
 import { ThemeScope } from '../theme/ThemeScope';
 import { recommendTheme } from '../theme/resolver';
 import { fieldDomId, FieldInput } from './FieldInput';
 import { DigitalPresence } from './presence';
+import { Promises, Ribbon, Welcome } from './extras';
 import { CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
 
 export interface RendererProps {
@@ -68,6 +70,8 @@ export function WorkflowRenderer({
   const { control, watch, getValues, setError, clearErrors, formState } = useForm<Values>({ defaultValues: initialValues ?? {} });
   const values = watch();
   const [stepIndex, setStepIndex] = useState(0);
+  /** Focus experience: which question of the current step is on screen. */
+  const [screen, setScreen] = useState(0);
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
@@ -84,6 +88,12 @@ export function WorkflowRenderer({
   const summaryIndex = steps.length;
   const isSummary = stepIndex >= summaryIndex;
   const current = isSummary ? null : steps[stepIndex];
+  const flow = theme.flow ?? 'card';
+  const focus = flow === 'focus';
+  const fieldsNow = current ? visibleFields(current, values) : [];
+  const screens = focus ? focusScreens(fieldsNow) : [fieldsNow];
+  const screenIdx = Math.min(screen, screens.length - 1);
+  const shown = screens[screenIdx] ?? [];
   const price = useMemo(() => computePrice(config, values), [config, values]);
   const errors = formState.errors as Record<string, { message?: string } | undefined>;
   const hasDecisions = decisionFields(config).length > 0;
@@ -134,9 +144,18 @@ export function WorkflowRenderer({
     if (i >= 0 && i !== stepIndex) {
       setDir(i > stepIndex ? 'fwd' : 'back');
       setStepIndex(i);
+      setScreen(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusStepId]);
+
+  // Studio, focus experience: show the question that holds the selected block.
+  useEffect(() => {
+    if (!focus || !selectedFieldId) return;
+    const i = screens.findIndex((sc) => sc.some((f) => f.id === selectedFieldId));
+    if (i >= 0 && i !== screenIdx) setScreen(i);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFieldId, focus, stepIndex]);
 
   // Studio: bring the selected block into view inside the (scaled) device frame.
   useEffect(() => {
@@ -163,12 +182,17 @@ export function WorkflowRenderer({
     else if (!embedded) topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const go = (i: number) => {
+  /** `toEnd`: arriving backwards in the focus experience lands on the step's last question. */
+  const go = (i: number, opts: { toEnd?: boolean; screen?: number } = {}) => {
     setDir(i > stepIndex ? 'fwd' : 'back');
     setStepIndex(i);
+    setScreen(opts.screen ?? (opts.toEnd ? Number.MAX_SAFE_INTEGER : 0));
     setErrorCount(0);
     scrollTop();
   };
+  /** The focus screen of step `i` that holds the first of these error keys. */
+  const screenOf = (i: number, errs: FieldErrors, all: Values) =>
+    focus ? Math.max(0, focusScreens(visibleFields(steps[i]!, all)).findIndex((sc) => sc.some((f) => errs[f.key]))) : 0;
 
   const applyErrors = (errs: FieldErrors) => {
     clearErrors();
@@ -201,8 +225,27 @@ export function WorkflowRenderer({
 
   const goNext = () => {
     if (!current) return;
-    if (!applyErrors(stepErrors(visibleFields(current, getValues()), getValues()))) return;
+    const all = getValues();
+    if (!applyErrors(stepErrors(focus ? shown : visibleFields(current, all), all))) return;
+    if (focus && screenIdx < screens.length - 1) {
+      setDir('fwd');
+      setScreen(screenIdx + 1);
+      setErrorCount(0);
+      scrollTop();
+      return;
+    }
     go(stepIndex + 1);
+  };
+
+  const goBack = () => {
+    if (focus && !isSummary && screenIdx > 0) {
+      setDir('back');
+      setScreen(screenIdx - 1);
+      setErrorCount(0);
+      scrollTop();
+      return;
+    }
+    go(Math.max(0, stepIndex - 1), { toEnd: focus });
   };
 
   const submit = async () => {
@@ -211,7 +254,7 @@ export function WorkflowRenderer({
     for (let i = 0; i < steps.length; i++) {
       const errs = stepErrors(visibleFields(steps[i]!, all), all);
       if (Object.keys(errs).length) {
-        go(i);
+        go(i, { screen: screenOf(i, errs, all) });
         applyErrors(errs);
         return;
       }
@@ -234,7 +277,7 @@ export function WorkflowRenderer({
       if (err instanceof ValidationFailedError) {
         const target = steps.findIndex((s) => s.fields.some((f) => err.errors[f.key]));
         if (target >= 0) {
-          go(target);
+          go(target, { screen: screenOf(target, err.errors, all) });
           applyErrors(err.errors);
         } else setSubmitError(Object.values(err.errors)[0] ?? 'בדקו את הפרטים');
       } else {
@@ -263,16 +306,22 @@ export function WorkflowRenderer({
       : booking
         ? 'שליחת בקשת הזמנה'
         : 'שליחה';
-  const lastBeforeSummary = stepIndex === summaryIndex - 1;
+  const lastBeforeSummary = stepIndex === summaryIndex - 1 && screenIdx === screens.length - 1;
+  const firstScreen = screenIdx === 0;
+  const position = focus ? focusPosition(steps.map((st) => focusScreens(visibleFields(st, values)).length), Math.min(stepIndex, summaryIndex), isSummary ? 0 : screenIdx) : null;
+  const extras = theme.extras;
 
   return (
     <ThemeScope theme={theme} className={embedded ? 'fz-frame' : undefined}>
+      <Ribbon text={extras?.ribbon} />
       <div
         ref={topRef}
         className="fz-layout scroll-mt-2"
         data-composition={composition}
-        // Stage: the hero's colour runs edge to edge and the form card rests on it (not for the side-by-side editorial layout).
-        data-stage={(composition !== 'editorial_split' && ['banner', 'immersive', 'centered', 'compact'].includes(theme.hero.layout)) || undefined}
+        data-flow={flow}
+        // Stage: the hero's colour runs edge to edge and the form card rests on it (not for the side-by-side
+        // editorial layout, and not for the magazine experience, whose content sits on the open page).
+        data-stage={(composition !== 'editorial_split' && flow !== 'editorial' && ['banner', 'immersive', 'centered', 'compact'].includes(theme.hero.layout)) || undefined}
         data-aside={hasAside || undefined}
         data-inline-summary={(pricing && !theme.mobile.stickySummary) || undefined}
       >
@@ -285,11 +334,13 @@ export function WorkflowRenderer({
             logoUrl={logoUrl}
             coverUrl={coverUrl}
             caseAnswers={caseAnswers}
+            badge={extras?.badge}
             condensed={stepIndex > 0}
             preview={mode === 'preview'}
           >
             {editorial && booking ? <ReservationCard config={config} values={values} /> : editorial && pricing ? <PriceCard config={config} price={price} values={values} /> : null}
           </Hero>
+          <Promises items={extras?.promises} />
           <DigitalPresence theme={theme} slot="header" interactive={mode === 'live'} />
         </div>
 
@@ -304,17 +355,30 @@ export function WorkflowRenderer({
           }}
         >
           <div className="fz-card fz-pad">
-            <Stepper style={theme.progress} titles={titles} index={Math.min(stepIndex, summaryIndex)} onJump={go} />
+            <Stepper style={flow === 'console' ? 'rail' : theme.progress} titles={titles} index={Math.min(stepIndex, summaryIndex)} onJump={(i) => go(i)} />
+            {position && !isSummary && (
+              <div className="fz-focus-meter" aria-hidden>
+                <span className="fz-focus-count fz-num">
+                  {String(position.n).padStart(2, '0')}
+                  <small>/{String(position.total).padStart(2, '0')}</small>
+                </span>
+                <span className="fz-focus-bar">
+                  <span style={{ width: `${Math.round((position.n / Math.max(1, position.total)) * 100)}%` }} />
+                </span>
+              </div>
+            )}
 
             <div className="space-y-4">
-              {config.disclaimer && (stepIndex === 0 || isSummary) && (
+              {stepIndex === 0 && firstScreen && <Welcome welcome={extras?.welcome} assets={assets} />}
+
+              {config.disclaimer && ((stepIndex === 0 && firstScreen) || isSummary) && (
                 <div role="note" className="fz-warn">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                   <p>{config.disclaimer}</p>
                 </div>
               )}
 
-              {caseAnswers.length > 0 && stepIndex === 0 && !caseInHero && (
+              {caseAnswers.length > 0 && stepIndex === 0 && firstScreen && !caseInHero && (
                 <section aria-label="פרטי התיק" className="fz-panel p-4">
                   <h3 className="text-sm font-bold">פרטי התיק</h3>
                   <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -338,13 +402,14 @@ export function WorkflowRenderer({
               )}
 
               {current && (
-                <div key={current.id} className="fz-step" data-dir={dir}>
-                  {current.description && <p className="fz-muted mb-5 text-[15px] leading-relaxed">{current.description}</p>}
+                <div key={`${current.id}:${screenIdx}`} className="fz-step" data-dir={dir} data-focus={focus || undefined}>
+                  {current.description && firstScreen && <p className="fz-muted fz-step-desc mb-5 text-[15px] leading-relaxed">{current.description}</p>}
                   <div className="fz-fields">
-                    {visibleFields(current, values).map((f) => (
+                    {shown.map((f) => (
                       <div
                         key={f.id}
                         className="fz-block"
+                        data-type={f.type}
                         data-fz-field-id={f.id}
                         data-selected={selectedFieldId === f.id || undefined}
                         data-selectable={onSelectField ? true : undefined}
@@ -454,7 +519,7 @@ export function WorkflowRenderer({
 
             <div className="fz-divider my-6" />
             <div className="fz-nav">
-              <button type="button" className="fz-btn fz-btn-ghost" onClick={() => go(Math.max(0, stepIndex - 1))} disabled={stepIndex === 0}>
+              <button type="button" className="fz-btn fz-btn-ghost" onClick={goBack} disabled={stepIndex === 0 && firstScreen}>
                 <ArrowRight className="h-4 w-4" aria-hidden />
                 חזרה
               </button>
@@ -468,6 +533,11 @@ export function WorkflowRenderer({
                   {lastBeforeSummary ? 'לסיכום' : 'המשך'}
                   <ArrowLeft className="h-4 w-4" aria-hidden />
                 </button>
+              )}
+              {focus && !isSummary && (
+                <span className="fz-focus-hint" aria-hidden>
+                  או <kbd>Enter</kbd> ↵
+                </span>
               )}
             </div>
           </div>

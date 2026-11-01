@@ -206,6 +206,22 @@ OrgData.brandKit: { displayName, description, logo/secondaryLogo/cover asset ids
 - **Tactile controls:** options lift on hover, press down, and their check lands with a spring; inputs glow on focus; the primary button lifts, its arrow moves, and luxury / glam / hospitality / wedding / tech / night designs get a light sweep. Night designs add neon light; luxury and wedding cards carry a fine inner frame.
 - **Accessibility:** all motion is transform / opacity only, follows the theme's motion level, and is removed for `prefers-reduced-motion` (hover travel included), `motion: none` and print. Tests (`premium.test.ts`) check the guard, the thumbnail scoping and the keyframe properties.
 
+### Fill experiences and business add-ons
+
+Designs now differ in how the customer walks through the form, not only in how it looks. `theme.flow` picks one of five experiences (`theme/signature.css`); every preset ships with one (`SIGNATURES` in `theme/presets.ts`) and the owner can switch it under **Design Studio → חוויית מילוי**:
+
+| Experience | What the customer gets | Default for |
+|---|---|---|
+| `card` | The whole step in one floating card (the original look) | modern minimal |
+| `focus` | One question per screen in large type, a question counter and progress line, Enter to continue; presentation blocks travel with the next question (`engine/focus.ts`) | hospitality, spa, glam, medical, tech, luxury, night, travel |
+| `editorial` | An open magazine page: no card, chapter headings, rules between questions, an ornament before the navigation | floral, bakery, bistro, wedding, nature, community |
+| `console` | A rail of steps beside the content and a two-column working grid of fields, numbered questions | garage, corporate, legal, finance, home services, academy |
+| `playful` | Outlined cards, hard offset shadows, highlighted titles, stickers | creative, celebration, kids, pets, fitness |
+
+`theme.extras` holds the business's own touches, edited under **Design Studio → תוספות שמייחדות את העסק** and kept when the style changes: an announcement strip, a sticker on the opening, a note from the owner (name, role, message, optional photo), up to four short promises with icons, a background texture (dots, grid, waves, confetti, stripes, diamonds — SVG built only from palette colours) and a personal sign-off on the confirmation. All owner text is rendered as text; empty text renders nothing.
+
+Both fields are optional: designs saved before them render exactly as before (`card`, no add-ons). Schema v6 migrates only the fictional demo workspaces, giving each demo business its experience and add-ons on the draft and the published version (`data/demoExtras.ts`); business config, runs and answers are untouched.
+
 ### Design library and template library
 
 - **26 designs** (`theme/presets.ts` core six + `theme/presetLibrary.ts`), grouped in 9 categories (יופי וטיפוח, אוכל ואירוח, אירועים וחגיגות, שירותים מקצועיים, בריאות וכושר, בית/רכב/שירותי שטח, חינוך וילדים, פנאי/טבע/תיירות, כללי). Each one is a full art direction — palette, typography, hero layout, composition, decoration, card / input / option / button shapes, radius, depth, density, progress and motion — including two dark designs (יוקרה כהה, ניאון לילה). Every design has a one-word *experience* name (שליו, זוהר, מתוק, חגיגי, אמין, אנרגטי…), a description and "best for".
@@ -303,7 +319,7 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-169 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`):
+181 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`, `signature.test.ts`):
 
 - **Builder (`builder.test.ts`):** only implemented creation paths; blank workflow valid and publishable; every template, seeded draft and published version passes the logic checker; generated workflows valid; library groups and required entries; unavailable signature; every library entry yields schema-valid fields with unique keys; customer-details roles; insertion position; duplication (ids, key, options, role); key sanitizing; undo / redo semantics; configuration survives a schema round-trip; plain-language conditions; earlier-only condition sources; circular / forward / self / missing references; stale values, missing values, bad multipliers, conditional first step; duplicate keys, inverted limits, broken booking references; operators by type; readiness errors vs warnings; price integrity.
 - **Design and template libraries (`theme.test.ts`, `library.test.ts`):** at least 24 valid designs, each structurally unique and with a unique palette, ≥10 typographies and ≥12 decorations in use, every category with a real choice, contrast for every design (text ≥7:1, buttons and links ≥4.5:1), dark designs readable; at least 45 templates with unique ids and titles, every topic covered, every template schema-valid, logic-clean, publishable, with unique keys and fresh ids per build, paired with a valid design (≥20 different designs in use); library prices / conditional fees / multipliers compute correctly; search by text and category; demo-only capabilities labelled.

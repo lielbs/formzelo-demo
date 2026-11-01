@@ -19,8 +19,9 @@ import { computePrice } from '../engine/pricing';
 import { buildSubmission, nextReference, statusNotification, submitNotifications } from '../engine/runs';
 import { TEMPLATES, type TemplateKey } from '../engine/templates';
 import { STATUS_LABELS } from '../engine/transitions';
+import { DEMO_EXTRAS } from './demoExtras';
 import { toRunAnswers } from '../engine/validation';
-import type { PresenceLink, PresenceSettings } from '../domain/theme';
+import type { PresenceLink, PresenceSettings, WorkflowTheme } from '../domain/theme';
 import { isoDay } from '../lib/format';
 import { brandKitFromTheme, defaultBrandKit, freezeTheme } from '../theme/brand';
 import { recommendTheme } from '../theme/resolver';
@@ -130,6 +131,12 @@ function emptyData(organization: Organization): OrgData {
   };
 }
 
+/** The demo business's own add-ons on top of the design's texture. */
+export function withDemoExtras<T extends { extras?: WorkflowTheme['extras'] }>(slug: string, design: T): T {
+  const own = DEMO_EXTRAS[slug];
+  return own ? { ...design, extras: { ...design.extras, ...structuredClone(own) } } : design;
+}
+
 function addWorkflow(
   ctx: Ctx,
   opts: { slug: string; templateKey: TemplateKey; status: Workflow['status']; config?: WorkflowConfig; daysAgo: number; presence?: Omit<PresenceSettings, 'links'> },
@@ -143,7 +150,7 @@ function addWorkflow(
     status: opts.status,
     templateKey: opts.templateKey,
     draft: config,
-    design: { ...recommendTheme({ templateKey: opts.templateKey, title: config.title, description: config.description, industry: ctx.data.organization.industry }).theme, inheritBrand: true, ...(opts.presence ? { presence: opts.presence } : {}) },
+    design: withDemoExtras(opts.slug, { ...recommendTheme({ templateKey: opts.templateKey, title: config.title, description: config.description, industry: ctx.data.organization.industry }).theme, inheritBrand: true, ...(opts.presence ? { presence: opts.presence } : {}) }),
     hasUnpublishedChanges: false,
     isDemo: true,
     createdAt: at,

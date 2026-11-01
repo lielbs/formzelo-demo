@@ -28,6 +28,7 @@ import { buildTheme, PRESET_LIST, PRESETS } from '../../../theme/presets';
 import { PresetPicker } from '../../../theme/PresetPicker';
 import type { ThemeRecommendation } from '../../../theme/resolver';
 import { themeTokens, TYPOGRAPHY } from '../../../theme/tokens';
+import { ExtrasEditor, FlowPicker } from './ExtrasPanel';
 
 export const L = {
   hero: { split: 'פאנל עריכתי', banner: 'רצועה טכנית', immersive: 'אווירה מלאה', compact: 'כותרת עניינית', poster: 'פוסטר נועז', centered: 'ממורכז', none: 'ללא פתיח' },
@@ -147,7 +148,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
     next.source = 'manual';
     onChange(next);
   };
-  const keep = { hero: design.hero, logo: design.logo };
+  const keep = { hero: design.hero, logo: design.logo, presence: design.presence, extras: design.extras };
   const warnings = themeTokens(design).warnings;
   const recName = PRESETS[recommendation.presetId].meta.nameHe;
   const used = assets.reduce((s, a) => s + a.bytes, 0);
@@ -188,6 +189,10 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
           onChange={(id) => onChange(buildTheme(id, { source: id === recommendation.presetId ? design.source : 'manual', keep }))}
         />
         <p className="text-xs text-ink-muted">{PRESETS[design.presetId].meta.description}</p>
+      </Group>
+
+      <Group title="חוויית מילוי" hint="איך הלקוח עובר בטופס — לא רק איך הוא נראה. כל סגנון מגיע עם חוויה משלו, ואפשר להחליף.">
+        <FlowPicker value={design.flow ?? 'card'} onChange={(f) => set((d) => void (d.flow = f))} />
       </Group>
 
       <Group title="צבעים" hint="ניגודיות נבדקת אוטומטית; טקסט וקישורים מקבלים גוון קריא גם מצבע בהיר.">
@@ -258,6 +263,8 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
           הצגת שם העסק ליד הלוגו
         </Toggle>
       </Group>
+
+      <ExtrasEditor design={design} set={set} orgId={orgId} assets={assets} assetUrls={assetUrls} />
 
       <Group title="מובייל ואיורים">
         <Toggle checked={design.mobile.stickySummary} onChange={(v) => set((d) => void (d.mobile.stickySummary = v))}>

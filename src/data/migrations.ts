@@ -8,7 +8,8 @@ import { SCHEMA_VERSION } from '../domain/schema';
 import type { OrgData } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
 import { brandKitFromTheme } from '../theme/brand';
-import { buildTheme, DEFAULT_PRESET } from '../theme/presets';
+import { buildTheme, DEFAULT_PRESET, PRESETS, SIGNATURES } from '../theme/presets';
+import { DEMO_EXTRAS } from './demoExtras';
 import { recommendTheme } from '../theme/resolver';
 import { appendBookingDemo, DEMO_LINKS, DEMO_ORG_IDS, DEMO_SLUGS } from './seed';
 
@@ -93,6 +94,38 @@ function v4ToV5(input: Json): Json {
   return data;
 }
 
+/**
+ * v5 -> v6: fill experiences and business add-ons. Real workspaces only get the version bump:
+ * their designs have no `flow`, which renders as the classic card, exactly as before. The
+ * fictional demo workspaces adopt their design's experience and the demo businesses' own
+ * add-ons on the draft AND the published version, because the demo exists to show the product.
+ * Business config, runs, answers and statuses are not touched.
+ */
+function v5ToV6(input: Json): Json {
+  const data = structuredClone(input);
+  const org = isObj(data.organization) ? data.organization : {};
+  if (org.isDemo === true) {
+    const upgrade = (design: unknown, slug: string) => {
+      if (!isObj(design)) return;
+      const preset = PRESETS[String(design.presetId) as keyof typeof PRESETS];
+      if (!preset) return;
+      if (design.flow === undefined) design.flow = SIGNATURES[preset.meta.id].flow;
+      if (design.extras === undefined) {
+        const extras = { ...(preset.theme.extras ?? {}), ...structuredClone(DEMO_EXTRAS[slug] ?? {}) };
+        if (Object.keys(extras).length) design.extras = extras;
+      }
+    };
+    const slugs = new Map<string, string>();
+    for (const wf of arr(data.workflows)) {
+      slugs.set(String(wf.id), String(wf.slug));
+      upgrade(wf.design, String(wf.slug));
+    }
+    for (const v of arr(data.versions)) upgrade(v.design, slugs.get(String(v.workflowId)) ?? '');
+  }
+  data.schemaVersion = 6;
+  return data;
+}
+
 export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown; migrated: boolean } {
   if (!isObj(raw) || typeof raw.schemaVersion !== 'number' || raw.schemaVersion >= SCHEMA_VERSION) return { value: raw, migrated: false };
   let value = raw;
@@ -101,6 +134,7 @@ export function migrateOrgData(raw: unknown, now = Date.now()): { value: unknown
   // v3 -> v4: no structural change to a workspace (new fields are optional); new demo workspaces are added at the meta level.
   if (value.schemaVersion === 3) value = { ...value, schemaVersion: 4 };
   if (value.schemaVersion === 4) value = v4ToV5(value);
+  if (value.schemaVersion === 5) value = v5ToV6(value);
   return { value, migrated: value !== raw };
 }
 

@@ -23,5 +23,5 @@ export default defineConfig(({ mode }) => ({
   },
   server: { port: 5173, host: 'localhost' },
   // css.include: the premium-layer test reads premium.css as source (Vitest empties CSS otherwise).
-  test: { environment: 'node', include: ['src/**/*.test.ts'], css: { include: [/premium.css/] } },
+  test: { environment: 'node', include: ['src/**/*.test.ts'], css: { include: [/premium.css/, /signature.css/] } },
 }));

@@ -48,6 +48,28 @@ export interface ThemeTokens {
   warnings: string[];
 }
 
+/**
+ * Background textures. Built only from palette colours, which the schema guarantees are #RRGGBB,
+ * so no owner-written text ever reaches the SVG. Kept faint: a texture, never a picture.
+ */
+export function patternImage(theme: WorkflowTheme): string | undefined {
+  const kind = theme.extras?.pattern;
+  if (!kind || kind === 'none') return undefined;
+  const p = theme.palette;
+  const ink = mix(p.background, p.text, 0.1);
+  const soft = mix(p.background, p.primary, 0.16);
+  const warm = mix(p.background, p.accent, 0.4);
+  const svg: Record<Exclude<typeof kind, 'none'>, string> = {
+    dots: `<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'><circle cx='3' cy='3' r='1.6' fill='${ink}'/></svg>`,
+    grid: `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><path d='M32 0H0V32' fill='none' stroke='${ink}' stroke-width='1'/></svg>`,
+    waves: `<svg xmlns='http://www.w3.org/2000/svg' width='80' height='24'><path d='M0 12c10-8 30-8 40 0s30 8 40 0' fill='none' stroke='${soft}' stroke-width='1.6'/></svg>`,
+    stripes: `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><path d='M-4 4l8-8M0 16L16 0M12 20l8-8' stroke='${ink}' stroke-width='1.4'/></svg>`,
+    diamonds: `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><path d='M14 9l5 5-5 5-5-5z' fill='${soft}'/></svg>`,
+    confetti: `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect x='14' y='18' width='10' height='4' rx='2' transform='rotate(28 19 20)' fill='${warm}'/><circle cx='78' cy='26' r='3' fill='${soft}'/><rect x='92' y='76' width='9' height='4' rx='2' transform='rotate(-34 96 78)' fill='${soft}'/><circle cx='30' cy='88' r='2.5' fill='${warm}'/><path d='M58 58l4 7-8 0z' fill='${ink}'/></svg>`,
+  };
+  return `url("data:image/svg+xml,${encodeURIComponent(svg[kind])}")`;
+}
+
 export function heroBackground(theme: WorkflowTheme): string {
   const p = theme.palette;
   switch (theme.hero.layout) {
@@ -137,6 +159,7 @@ export function themeTokens(theme: WorkflowTheme): ThemeTokens {
       return `0 1px 2px ${t}10, 0 24px 60px -18px ${t}${t === '#000000' ? '99' : '40'}, 0 8px 22px -12px ${t}24`;
     })(),
     '--fz-shift': `${m.shift}px`,
+    '--fz-pattern': patternImage(theme) ?? 'none',
     // Backwards compatibility with the shared brand-* utility classes.
     '--brand': p.primary,
   };
@@ -155,6 +178,8 @@ export function themeTokens(theme: WorkflowTheme): ThemeTokens {
     'data-type': theme.typography,
     'data-shadow': theme.shadow,
     'data-radius': theme.radius,
+    'data-flow': theme.flow ?? 'card',
+    'data-pattern': theme.extras?.pattern ?? 'none',
   };
   return { style: style as CSSProperties, attrs, warnings };
 }

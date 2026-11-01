@@ -34,10 +34,12 @@ export interface HeroProps {
   caseAnswers: RunAnswer[];
   condensed: boolean;
   preview: boolean;
+  /** The business's sticker on the opening (theme.extras.badge). */
+  badge?: string;
   children?: ReactNode;
 }
 
-export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl, caseAnswers, condensed, preview, children }: HeroProps) {
+export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl, caseAnswers, condensed, preview, badge, children }: HeroProps) {
   const layout = theme.hero.layout;
   const minutes = Math.max(1, Math.round(fieldsCount * 0.35));
   const facts = [
@@ -58,6 +60,11 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
       )}
       {layout !== 'none' && <span className="fz-hero-glow" aria-hidden />}
       {art && layout !== 'none' && <HeroArt decoration={theme.decoration} className="fz-hero-art" />}
+      {badge?.trim() && layout !== 'none' && (
+        <span className="fz-sticker">
+          {badge}
+        </span>
+      )}
       <div className="fz-hero-content fz-anim-hero">
         <div className="flex items-center justify-between gap-3">
           {theme.logo.placement !== 'hidden' ? (
@@ -104,7 +111,8 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
 
 // ---------- stepper ----------
 
-export function Stepper({ style, titles, index, onJump }: { style: WorkflowTheme['progress']; titles: string[]; index: number; onJump: (i: number) => void }) {
+/** `rail`: the console experience's vertical list of steps (a row of chips on narrow screens). */
+export function Stepper({ style, titles, index, onJump }: { style: WorkflowTheme['progress'] | 'rail'; titles: string[]; index: number; onJump: (i: number) => void }) {
   const total = titles.length;
   const current = Math.min(index, total - 1);
   const pct = Math.round(((current + 1) / total) * 100);
@@ -123,7 +131,31 @@ export function Stepper({ style, titles, index, onJump }: { style: WorkflowTheme
       <p className="fz-sr" aria-live="polite">
         שלב {current + 1} מתוך {total}: {titles[current]}
       </p>
-      {style === 'steps' ? (
+      {style === 'rail' ? (
+        <>
+          <ol className="fz-rail">
+            {titles.map((t, i) => (
+              <li key={i}>
+                <button
+                  type="button"
+                  className="fz-rail-btn"
+                  data-state={state(i)}
+                  aria-current={i === current ? 'step' : undefined}
+                  disabled={i >= current}
+                  onClick={() => onJump(i)}
+                  aria-label={`${t}${i < current ? ' — הושלם, חזרה לשלב' : ''}`}
+                >
+                  <span className="fz-rail-num fz-num" aria-hidden>
+                    {i < current ? <Check className="h-3 w-3" strokeWidth={3} /> : String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className="fz-rail-label">{t}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="fz-rail-head">{heading}</div>
+        </>
+      ) : style === 'steps' ? (
         <>
           <ol className="fz-steps">
             {titles.map((t, i) => (

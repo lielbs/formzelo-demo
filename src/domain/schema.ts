@@ -17,7 +17,7 @@ import { BrandKitSchema, WorkflowThemeSchema } from './theme';
  *      explicit completion (payment) mode. New config fields are optional, so
  *      published versions are never rewritten.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const id = z.string().min(1);
 const timestamp = z.string().min(1); // ISO-8601

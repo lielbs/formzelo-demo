@@ -3,8 +3,10 @@
  * library (theme/presetLibrary.ts). They differ in composition, hero,
  * typography, component shapes, density and motion — not only in color.
  */
-import { THEME_PRESET_IDS, WorkflowThemeSchema, type ThemePresetId, type WorkflowTheme } from '../domain/theme';
+import { THEME_PRESET_IDS, WorkflowThemeSchema, type FLOWS, type PATTERNS, type ThemeExtras, type ThemePresetId, type WorkflowTheme } from '../domain/theme';
 import { LIBRARY_PRESETS, type PresetEntry, type PresetMeta, type PresetTheme } from './presetLibrary';
+
+type Keep = Pick<WorkflowTheme, 'hero' | 'logo'> & Pick<Partial<WorkflowTheme>, 'presence' | 'extras'>;
 
 export type { PresetCategory, PresetMeta } from './presetLibrary';
 export { PRESET_CATEGORIES } from './presetLibrary';
@@ -236,27 +238,81 @@ const CORE_META: Record<(typeof CORE_PRESET_IDS)[number], Pick<PresetMeta, 'expe
   modern_minimal: { experience: 'מינימלי', category: 'universal' },
 };
 
+/**
+ * The architecture each design gives the customer — five families, so two designs from different
+ * families differ in how the form is walked through, not only in colour and type — plus the
+ * texture the design ships with (the owner can change it under the business add-ons).
+ */
+export const SIGNATURES: Record<ThemePresetId, { flow: (typeof FLOWS)[number]; pattern?: (typeof PATTERNS)[number] }> = {
+  // Concierge: one question at a time.
+  hospitality_premium: { flow: 'focus' },
+  spa_serenity: { flow: 'focus' },
+  beauty_glam: { flow: 'focus', pattern: 'diamonds' },
+  medical_care: { flow: 'focus' },
+  tech_startup: { flow: 'focus', pattern: 'grid' },
+  luxury_noir: { flow: 'focus' },
+  nightlife_neon: { flow: 'focus' },
+  travel_coastal: { flow: 'focus', pattern: 'waves' },
+  // Magazine: an open page, chapters and rules.
+  floral_boutique: { flow: 'editorial' },
+  bakery_sweet: { flow: 'editorial', pattern: 'dots' },
+  cafe_bistro: { flow: 'editorial' },
+  wedding_elegance: { flow: 'editorial', pattern: 'diamonds' },
+  eco_nature: { flow: 'editorial' },
+  community_warm: { flow: 'editorial', pattern: 'dots' },
+  // Console: a rail of steps and a working grid of fields.
+  automotive_precision: { flow: 'console', pattern: 'grid' },
+  corporate_modern: { flow: 'console' },
+  legal_trust: { flow: 'console' },
+  finance_clarity: { flow: 'console', pattern: 'grid' },
+  home_services: { flow: 'console', pattern: 'stripes' },
+  academy_learn: { flow: 'console', pattern: 'dots' },
+  // Playful: outlined cards, hard shadows, stickers.
+  creative_studio: { flow: 'playful', pattern: 'stripes' },
+  celebration_party: { flow: 'playful', pattern: 'confetti' },
+  kids_play: { flow: 'playful', pattern: 'confetti' },
+  pets_friendly: { flow: 'playful', pattern: 'dots' },
+  fitness_energy: { flow: 'playful', pattern: 'diamonds' },
+  // Classic: the whole step in one floating card.
+  modern_minimal: { flow: 'card' },
+};
+
+const signed = (id: ThemePresetId, theme: PresetTheme): PresetTheme => {
+  const { flow, pattern } = SIGNATURES[id];
+  return { ...theme, flow, ...(pattern ? { extras: { pattern } } : {}) };
+};
+
 export const PRESETS = Object.fromEntries(
   THEME_PRESET_IDS.map((id): [ThemePresetId, PresetEntry] => {
     const core = CORE[id];
-    if (core) return [id, { meta: { ...core.meta, ...CORE_META[id as (typeof CORE_PRESET_IDS)[number]] }, theme: core.theme }];
+    if (core) return [id, { meta: { ...core.meta, ...CORE_META[id as (typeof CORE_PRESET_IDS)[number]] }, theme: signed(id, core.theme) }];
     const lib = LIBRARY_PRESETS[id];
     if (!lib) throw new Error(`Missing preset definition: ${id}`);
-    return [id, lib];
+    return [id, { ...lib, theme: signed(id, lib.theme) }];
   }),
 ) as Record<ThemePresetId, PresetEntry>;
 
 export const PRESET_LIST: PresetMeta[] = THEME_PRESET_IDS.map((id) => PRESETS[id].meta);
 
 /** A complete, validated theme for a preset. Uploaded assets can be carried over. */
-export function buildTheme(presetId: ThemePresetId, opts: { source?: WorkflowTheme['source']; keep?: Pick<WorkflowTheme, 'hero' | 'logo'> } = {}): WorkflowTheme {
+/**
+ * A complete, validated theme for a preset. `keep` carries the business's own content across a
+ * style change: uploads, links and add-ons stay; the texture follows the new style.
+ */
+export function buildTheme(presetId: ThemePresetId, opts: { source?: WorkflowTheme['source']; keep?: Keep } = {}): WorkflowTheme {
   const preset = structuredClone(PRESETS[presetId].theme);
+  const kept: ThemeExtras = { ...(opts.keep?.extras ?? {}) };
+  delete kept.pattern;
+  const extras: ThemeExtras = { ...kept, ...(preset.extras?.pattern ? { pattern: preset.extras.pattern } : {}) };
   const theme: WorkflowTheme = {
     ...preset,
     source: opts.source ?? 'auto',
     hero: { ...preset.hero, eyebrow: opts.keep?.hero.eyebrow, coverAssetId: opts.keep?.hero.coverAssetId },
     logo: { ...preset.logo, ...(opts.keep?.logo ?? {}) },
+    ...(opts.keep?.presence ? { presence: structuredClone(opts.keep.presence) } : {}),
+    ...(Object.keys(extras).length ? { extras } : {}),
   };
+  if (!Object.keys(extras).length) delete theme.extras;
   return WorkflowThemeSchema.parse(theme);
 }
 

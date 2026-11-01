@@ -70,8 +70,44 @@ export const SHADOWS = ['none', 'soft', 'medium', 'hard'] as const;
 export const DENSITIES = ['compact', 'comfortable', 'airy'] as const;
 export const PROGRESS_STYLES = ['bar', 'steps', 'dots', 'numbered'] as const;
 export const MOTION_LEVELS = ['none', 'subtle', 'expressive'] as const;
+/**
+ * How the customer moves through the form — the page architecture, not just its colours.
+ * card: the whole step in one floating card · focus: one question at a time, large type ·
+ * editorial: an open magazine page with chapter numbers and rules · console: a side rail of steps
+ * with a working grid of fields · playful: outlined cards, hard shadows and stickers.
+ */
+export const FLOWS = ['card', 'focus', 'editorial', 'console', 'playful'] as const;
+/** Background textures drawn from the palette (no images, no user input inside the SVG). */
+export const PATTERNS = ['none', 'dots', 'grid', 'waves', 'confetti', 'stripes', 'diamonds'] as const;
+/** Same set as the highlight icons in schema.ts (kept here to avoid a circular import). */
+export const PROMISE_ICONS = ['sparkles', 'truck', 'leaf', 'shield', 'clock', 'heart', 'star', 'check', 'wrench', 'chef', 'calendar', 'phone'] as const;
 
 export const ThemeAssetRefSchema = z.string().regex(/^ast_[a-z0-9]+$/);
+
+/** Owner text. Not trimmed or required here (the studio stores it as typed); empty renders nothing. */
+const line = (max: number) => z.string().max(max);
+
+/**
+ * The business's own touches on top of a design: an announcement strip, a sticker on the
+ * opening, a note from the owner, short promises, a background texture and a personal sign-off
+ * on the confirmation. All plain text (rendered as text nodes), all optional.
+ */
+export const ThemeExtrasSchema = z.object({
+  ribbon: line(90).optional(),
+  badge: line(24).optional(),
+  welcome: z
+    .object({
+      name: line(40),
+      role: z.string().max(50).optional(),
+      message: line(240),
+      photoAssetId: ThemeAssetRefSchema.optional(),
+    })
+    .optional(),
+  promises: z.array(z.object({ icon: z.enum(PROMISE_ICONS), text: line(40) })).max(4).optional(),
+  pattern: z.enum(PATTERNS).optional(),
+  signoff: z.object({ message: line(200), name: line(50) }).optional(),
+});
+export type ThemeExtras = z.infer<typeof ThemeExtrasSchema>;
 
 // ---------- Business Engagement Kit (digital presence links) ----------
 
@@ -161,6 +197,10 @@ export const WorkflowThemeSchema = z.object({
   inheritBrand: z.boolean().optional(),
   /** Business links: where / how they appear. Absent on older versions = no links (unchanged look). */
   presence: PresenceSettingsSchema.optional(),
+  /** Fill experience. Absent on older versions = 'card' (unchanged look). */
+  flow: z.enum(FLOWS).optional(),
+  /** The business's own touches (announcement, sticker, owner note, promises, texture, sign-off). */
+  extras: ThemeExtrasSchema.optional(),
 });
 export type WorkflowTheme = z.infer<typeof WorkflowThemeSchema>;
 

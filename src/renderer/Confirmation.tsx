@@ -8,6 +8,7 @@ import { completionOf, safeExternalUrl } from '../engine/completion';
 import { formatCurrency, formatDateTime } from '../lib/format';
 import { BrandRow } from './parts';
 import { DigitalPresence, ReviewRequest } from './presence';
+import { Signoff } from './extras';
 import { presenceOf, reviewLink, shouldAskForReview } from '../engine/presence';
 
 /** Pieces of the completion burst: end offset (px) and spin, spread evenly around the mark. */
@@ -230,6 +231,7 @@ export function Confirmation({
             ))}
           </ol>
         </section>
+        <Signoff signoff={theme.extras?.signoff} />
         {booking && onCancelBooking && CUSTOMER_CANCELLABLE.includes(run.status) && <CancelBooking onCancel={onCancelBooking} />}
         {/* Engagement comes after the confirmation details, never instead of them. */}
         <DigitalPresence theme={theme} slot="completion" title={booking && !booking.confirmed ? 'בינתיים, אפשר להכיר אותנו' : 'נשארים בקשר'} />
