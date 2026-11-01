@@ -10,6 +10,8 @@
 
 > **This is a local demo.** It runs entirely in your browser with `localStorage`. There is no server, no account, no AI model, no payments, no real messages and no real reservations. Every simulation is labeled in the UI.
 
+> **Release Candidate 1.0** (branch `rc-v1`): Formangle Actions, publishing & sharing (QR / WhatsApp / website snippets), external payment link timing and preview, deployment readiness. See `docs/RELEASE_NOTES_RC1.md`, `docs/ARCHITECTURE_BACKEND.md` (what is local vs. simulated vs. not connected, and the minimum backend), `docs/DEPLOYMENT.md` (custom-domain readiness), `docs/LEGAL_PLACEHOLDERS.md` and `docs/RELEASE_CANDIDATE_PROGRESS.md` (handoff log).
+
 ---
 
 **Live demo (GitHub Pages):** https://lielbs.github.io/formzelo-demo/ — runs entirely in your browser (localStorage). Theme gallery: https://lielbs.github.io/formzelo-demo/themes
@@ -45,7 +47,7 @@ Optional build-time variable:
 
 ## Deploying to GitHub Pages
 
-`.github/workflows/pages.yml` runs on every push to `main`: `npm ci` → `npm test` → `npm run build` with `VITE_BASE=/<repo>/` → copies `index.html` to `404.html` (SPA fallback for deep links like `/f/<slug>`) → deploys with `actions/deploy-pages`. The router basename and every raw link go through `src/lib/links.ts`, so the app works under any sub-path. Pages must be set to **Source: GitHub Actions** in the repository settings.
+`.github/workflows/pages.yml` runs on every push to `main`: `npm ci` → `npm test` → `npm run build` with `VITE_BASE=/<repo>/` → copies `index.html` to `404.html` (SPA fallback for deep links like `/app/requests/<id>`) → deploys with `actions/deploy-pages`. The build also writes `<route>.html` entries for marketing pages and public demo flows (`STATIC_ROUTES` in `vite.config.ts`) so those links answer 200, and adds a self-only Content-Security-Policy meta; `VITE_SITE_URL` (optional repository variable) sets og:image / og:url for a future custom domain (`docs/DEPLOYMENT.md`). The router basename and every raw link go through `src/lib/links.ts`, so the app works under any sub-path. Pages must be set to **Source: GitHub Actions** in the repository settings.
 
 Local check of the sub-path build:
 
@@ -266,6 +268,14 @@ Booking lifecycle (from run status): `submitted` → **requested**, `in_review` 
 
 **Migration v2 → v3** (on first read, original kept under `formzelo:v1:pre-v3:*`): creates each workspace's brand kit from its main workflow design, marks workflows that already match it as inheriting (no visual change), leaves published versions byte-for-byte unchanged, and adds the new **Urban Table booking** demo (workflow + sample requests) to existing Urban Table workspaces without touching their runs. Run references are now "highest + 1", so added runs never collide. No data reset is required; **/demo → איפוס** gives the newest seeds (e.g. Bloom's bouquet-style tiles and highlights appear only in fresh seeds, because published versions are immutable).
 
+### Formangle Actions (schema v7)
+
+Structured owner → customer requests on a run (`OrgData.actions`, `CustomerActionSchema`, rules in `engine/actions.ts`): **approval** (two answers, default "מאשר / לא מאשר"), **choice** (exactly two owner-written answers) and **update** (no answer). Each action freezes its title, details, optional amount, both labels and the run's workflow version; it is never edited — the owner can cancel it while open, and changed terms mean a new action. The customer answers once on the personal request page (`/f/<slug>?r=<runId>`; approving an amount asks for confirmation); expiry is derived from `expiresAt`. Every step is a `RunEvent` (`action_created` / `action_responded` / `action_cancelled`, with `actionId`), tagged apart from internal notes in the timeline. Repository: `listActions`, `createAction` (refuses an identical open action), `cancelAction`, `getPublicActions`, `respondToAction`. Owner UI: "פעולה חדשה ללקוח" with a live preview in the business's design, actions list, "צפייה כלקוח" (`?from=inbox` adds a strip back to the request); inbox badges and filters; dashboard "החלטות לקוחות". In the demo, owner and customer share one browser; nothing is sent, and answers are not electronic signatures.
+
+### Publishing and sharing
+
+After publishing: version and time, link, WhatsApp share (`https://wa.me/?text=…`), QR code (`qrcode-generator`, generated locally; PNG / SVG download; `share.test.ts` decodes it back with `jsqr`), and website snippets (link button, iframe — the host sends no frame-blocking headers). `lib/share.ts → linkReach` tells the owner honestly where the link opens: seeded demo flows on any device, anything published only in this browser nowhere else.
+
 ### Data model
 
 | Entity | Notes |
@@ -329,7 +339,11 @@ Run statuses: `awaiting_customer → submitted → in_review → approved → co
 npm test
 ```
 
-186 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`, `signature.test.ts`, `media.test.ts`):
+205 unit tests in `src/test/` (engine, repository, themes, `v3.test.ts`, `v4.test.ts`, `lifecycle.test.ts`, `prompts.test.ts`, `valley.test.ts`, `presence.test.ts`, `builder.test.ts`, `sales.test.ts`, `library.test.ts`, `premium.test.ts`, `signature.test.ts`, `media.test.ts`, `actions.test.ts`, `share.test.ts`, `deploy.test.ts`):
+
+- **Formangle Actions (`actions.test.ts`):** exactly two frozen options for approval / choice and none for updates (schema-enforced); owner input validated (missing / identical answers, empty title, past expiry, closed request); one answer with the original terms kept; no answer after cancel or expiry; answered actions cannot be cancelled; duplicate open actions refused; per-request grouping for the inbox; repository round trip owner → customer link → timeline, cross-workflow access refused, persistence across instances; v6 → v7 migration (sample actions for demo workspaces only, runs untouched).
+- **Sharing (`share.test.ts`):** QR codes decode back to the exact URL; SVG output safe; non-http(s) URLs refused; WhatsApp link encoding; HTML-escaped snippets; link reach (seeded demo vs. local-only).
+- **Deployment (`deploy.test.ts`):** static entries for every public demo flow and marketing page; no hardcoded host in `index.html`; `VITE_SITE_URL` wired in the workflow; strict CSP.
 
 - **Builder (`builder.test.ts`):** only implemented creation paths; blank workflow valid and publishable; every template, seeded draft and published version passes the logic checker; generated workflows valid; library groups and required entries; unavailable signature; every library entry yields schema-valid fields with unique keys; customer-details roles; insertion position; duplication (ids, key, options, role); key sanitizing; undo / redo semantics; configuration survives a schema round-trip; plain-language conditions; earlier-only condition sources; circular / forward / self / missing references; stale values, missing values, bad multipliers, conditional first step; duplicate keys, inverted limits, broken booking references; operators by type; readiness errors vs warnings; price integrity.
 - **Design and template libraries (`theme.test.ts`, `library.test.ts`):** at least 24 valid designs, each structurally unique and with a unique palette, ≥10 typographies and ≥12 decorations in use, every category with a real choice, contrast for every design (text ≥7:1, buttons and links ≥4.5:1), dark designs readable; at least 45 templates with unique ids and titles, every topic covered, every template schema-valid, logic-clean, publishable, with unique keys and fresh ids per build, paired with a valid design (≥20 different designs in use); library prices / conditional fees / multipliers compute correctly; search by text and category; demo-only capabilities labelled.
@@ -363,7 +377,9 @@ Earlier browser end-to-end checks (scripted over the DevTools protocol in local 
 
 ## Known limits of the local demo
 
-- **localStorage only.** Data lives in this browser profile on this device (~5 MB quota). It does **not** sync across devices, browsers or private windows. A public link opened elsewhere shows "הקישור אינו זמין".
+- **localStorage only.** Data lives in this browser profile on this device (~5 MB quota). It does **not** sync across devices, browsers or private windows. The seeded demo flows open anywhere (every browser seeds them); a workflow created or published only here shows "הקישור אינו זמין" elsewhere, and the share panel says so.
+- **Formangle Actions are local.** The customer answers in the same browser as the owner (use "צפייה כלקוח"). Nothing is delivered to a customer's phone; an answer is a recorded choice, not an electronic signature.
+- Personal request links use random run ids (`?r=`) with no expiry or revocation. Production needs signed, expiring tokens (`docs/ARCHITECTURE_BACKEND.md`).
 - Clearing site data deletes everything. Use **Settings → ייצוא JSON** for a backup.
 - If stored data fails Zod validation, it is copied to `formzelo:v1:corrupt:*` and the demo workspace is re-seeded; a notice appears in Settings.
 - File fields store only the file name and size; file content is never stored or sent.
@@ -392,7 +408,7 @@ Earlier browser end-to-end checks (scripted over the DevTools protocol in local 
 ## Roadmap to production (not implemented — no paid services used)
 
 1. **Backend & database:** Postgres (e.g. Supabase) with tables mirroring `schema.ts`; implement `SupabaseRepository` behind the same interface; DB migrations; row-level security per organization.
-2. **Server auth:** real accounts, organization membership & roles enforced server-side; signed, expiring personal case links.
+2. **Server auth:** real accounts, organization membership & roles enforced server-side; signed, expiring personal case links (also authorising Formangle Actions answers, one per action, enforced by a unique constraint).
 3. **Server-side validation:** reuse `engine/` (pure TS) in API routes / edge functions so pricing and validation can't be bypassed by the client.
 4. **Payments:** implement `PaymentProviderAdapter` server-side for the chosen Israeli provider (hosted checkout, signed webhooks, provider transaction ids); the client never marks payments as paid.
 5. **Bookings:** server-side transactional capacity (`AvailabilityProvider`, e.g. Postgres exclusion constraints) and optional calendar sync; confirmations only after a successful hold.

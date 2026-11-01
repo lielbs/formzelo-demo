@@ -67,11 +67,11 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 | 1 | Publish success + share (QR PNG/SVG, WhatsApp, embed, demo-vs-local link honesty) | done |
 | 2 | External payment link experience (preview, fixed vs dynamic, status) | done |
 | 3 | Formangle Actions — domain, repository, tests | done |
-| 4 | Formangle Actions — owner UI (request detail, timeline) | pending |
-| 5 | Customer status page with actions + updates, "צפייה כלקוח" | pending |
-| 6 | Dashboard / inbox: awaiting-decision visibility | pending |
-| 7 | Domain readiness, metadata, privacy/legal placeholders | pending |
-| 8 | Docs: README, release notes, backend architecture | pending |
+| 4 | Formangle Actions — owner UI (request detail, timeline) | done |
+| 5 | Customer status page with actions + updates, "צפייה כלקוח" | done |
+| 6 | Dashboard / inbox: awaiting-decision visibility | done |
+| 7 | Domain readiness, metadata, privacy/legal placeholders | done |
+| 8 | Docs: README, release notes, backend architecture | done |
 | 9 | QA (browser scenarios A–I), fixes | pending |
 | 10 | Merge to main + deploy + live verification (only if authorised) | pending |
 
@@ -79,21 +79,28 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 - M1: `src/lib/share.ts`, `src/components/SharePanel.tsx`, `src/pages/app/WorkflowEditor.tsx`, `src/test/share.test.ts`, deps `qrcode-generator@2.0.4` (MIT), dev `jsqr@1.4.0` (Apache-2.0, tests only).
 - M2: `domain/schema.ts` (`completion.externalTiming`, optional), `engine/completion.ts`, `components/StatusBadge.tsx`, `renderer/Confirmation.tsx`, `pages/app/RequestDetail.tsx`, `pages/app/editor/Inspector.tsx`, `test/v3.test.ts`.
 - M3: `domain/schema.ts` (v7, `CustomerActionSchema`, `actions[]`, `RunEvent.actionId`, 3 event types), `engine/actions.ts`, `data/repository.ts` (+5 methods), `data/localRepository.ts`, `data/migrations.ts` (v6→v7), `data/seed.ts` (`appendDemoActions`), `components/Activity.tsx`, `test/actions.test.ts`.
+- M4–5: `renderer/actions.tsx` (ActionCard, RequestActions), `pages/app/ActionComposer.tsx`, `pages/app/RequestDetail.tsx`, `pages/PublicFlow.tsx` (actions + owner strip `?from=inbox`), `renderer/Confirmation.tsx`, `theme/theme.css` (`.fz-action*`, `.fz-owner-strip`), copy fixes in `Settings.tsx`, `Demo.tsx`.
+- M6: `engine/actions.ts` (`actionsByRun`), `components/RunsTable.tsx`, `pages/app/Requests.tsx`, `pages/app/Dashboard.tsx`.
+- M7: `vite.config.ts` (STATIC_ROUTES, CSP, `__SITE_URL__`), `index.html`, `.github/workflows/pages.yml` (`VITE_SITE_URL`), `lib/meta.ts` (robots/canonical), `App.tsx`, `pages/Privacy.tsx`, `components/SiteChrome.tsx`, `test/deploy.test.ts`.
+- M8: `README.md`, `docs/RELEASE_NOTES_RC1.md`, `docs/ARCHITECTURE_BACKEND.md`, `docs/DEPLOYMENT.md`, `docs/LEGAL_PLACEHOLDERS.md`.
 
 ## Validation results
 - Baseline: tsc OK, 186/186 tests.
 - M1: tsc OK, 192/192 tests; QR round-trip decoded with jsQR; publish modal checked in browser.
 - M2: tsc OK, 193/193 tests; inspector preview checked in browser.
 - M3: tsc OK, 202/202 tests (9 new: two-option rule, single answer, expiry, cancel, duplicates, persistence, timeline, migration).
+- M4–6: tsc OK, 202/202 tests. Browser walkthrough (Scenario B) done in dev: owner composed a choice, opened "צפייה כלקוח", customer approved ₪180 (with confirm step) and chose pickup, owner timeline + list + dashboard + inbox filter updated. Demo reset (Scenario I) verified.
+- M7: tsc OK, 205/205 tests; Pages build OK; production preview (port 4174, base /formzelo-demo/): 0 CSP violations and 0 console errors across 10 routes + studio + image upload + publish QR + same-origin iframe.
 
 ## Known defects
-- none recorded yet
+- Browser pane screenshots were cropped (DPR 3) in this session; visual QA via headless Edge captures instead.
+- Dev-only: hot-reloading a half-applied schema change quarantined v6 data once (not reachable in a built deploy; migration covered by tests).
 
 ## Deployment status
 - Live: https://lielbs.github.io/formzelo-demo/ = `f69e11c` (pre-RC). RC not deployed.
 
 ## Exact next action
-Milestone 4: owner UI — "פעולה חדשה ללקוח" composer on RequestDetail, actions list with status/cancel, "צפייה כלקוח".
+Milestone 9: QA — browser scenarios A–I on the production preview (headless Edge captures at 375/390/768/1280), fix defects found.
 
 ## How to resume
 1. Read this file. 2. `git status && git log --oneline main..rc-v1`.
