@@ -30,6 +30,8 @@ import { formatCurrency, formatRelative } from '../lib/format';
 import { demoRequestMailto, PRICING_TERMS } from '../lib/plans';
 import { PackageCards, PricingFinePrint } from '../components/Packages';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
+import { ActionCard } from '../renderer/actions';
+import type { CustomerAction } from '../domain/schema';
 import type { ThemePresetId } from '../domain/theme';
 import { HeroArt } from '../theme/art';
 import { BrandShowcase, CompletionShowcase } from './LandingShowcase';
@@ -60,6 +62,28 @@ const BENEFITS = [
   { icon: History, title: 'כל בקשה מתועדת', text: 'סטטוס, ציר זמן והגרסה המדויקת שהלקוח ראה ברגע השליחה.' },
   { icon: ShieldCheck, title: 'בלי הפתעות', text: 'בדמו הכול מסומן: נתוני דמו, סימולציות והודעות שלא נשלחות.' },
 ];
+
+/** The garage's approval as its customer sees it (illustration; same component as the live page). */
+const SAMPLE_ACTION: CustomerAction = {
+  id: 'act_landing',
+  orgId: DEMO_ORG_IDS.autocare,
+  runId: 'run_landing',
+  workflowId: 'wf_landing',
+  versionId: 'ver_landing',
+  versionNumber: 1,
+  kind: 'approval',
+  title: 'החלפת רפידות בלם',
+  description: 'בבדיקה נמצא שרפידות הבלם הקדמיות שחוקות. האם לאשר את העבודה?',
+  amount: 480,
+  note: 'המחיר כולל מע״מ.',
+  options: [
+    { id: 'a', label: 'מאשר' },
+    { id: 'b', label: 'לא מאשר' },
+  ],
+  status: 'pending',
+  createdAt: '2026-11-01T09:30:00.000Z',
+  updatedAt: '2026-11-01T09:30:00.000Z',
+};
 
 const FAQ = [
   ['מי מקים את המערכת?', 'RockStack. אנחנו מאפיינים יחד אתכם את התהליכים, מקימים אותם עם המיתוג והקישורים של העסק, בודקים ומלווים. אין הרשמה עצמית באתר.'],
@@ -310,6 +334,29 @@ export function Landing() {
         <section aria-label="אופן סיום ותשלום" className="py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <CompletionShowcase />
+          </div>
+        </section>
+
+        <section aria-labelledby="actions-title" className="border-t border-cloud-200 bg-white py-20">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
+            <div>
+              <p className="text-sm font-semibold text-orange-700">Formangle Actions</p>
+              <h2 id="actions-title" className="mt-1 text-3xl font-semibold tracking-tight text-midnight">במקום הודעה בוואטסאפ — החלטה מתועדת</h2>
+              <p className="mt-3 max-w-md leading-relaxed text-ink-muted">
+                צריך אישור לעבודה נוספת, בחירה בין משלוח לאיסוף, או לעדכן שההזמנה מוכנה? שולחים מתוך הבקשה פעולה מובנית. הלקוח בוחר אחת משתי תשובות שקבעתם, והתשובה נשמרת עם הסכום והתנאים שהוא ראה.
+              </p>
+              <ul className="mt-6 grid grid-cols-2 gap-3 text-sm">
+                {['אישור עם סכום', 'בחירה בין שתי אפשרויות', 'עדכון ללקוח', 'כל תשובה בציר הזמן'].map((t) => (
+                  <li key={t} className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-teal" aria-hidden /> {t}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-xs text-ink-soft">בדמו הבעלים והלקוח עובדים באותו דפדפן ("צפייה כלקוח"); לא נשלחות הודעות, והתשובה אינה חתימה אלקטרונית.</p>
+            </div>
+            <ThemeScope theme={buildTheme('automotive_precision')} className="mx-auto w-full max-w-sm rounded-3xl bg-[var(--fz-bg)] p-4 shadow-lift">
+              <ActionCard action={SAMPLE_ACTION} business="AutoCare Garage" reference="AG-1001" preview />
+            </ThemeScope>
           </div>
         </section>
 
