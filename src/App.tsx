@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { Spinner } from './components/ui';
-import { pageTitle } from './lib/meta';
+import { applyRouteMeta, pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
 import { PublicFlow } from './pages/PublicFlow';
 
@@ -16,6 +16,7 @@ const Demo = named(() => import('./pages/Demo'), 'Demo');
 const Pricing = named(() => import('./pages/Pricing'), 'Pricing');
 const Themes = named(() => import('./pages/Themes'), 'Themes');
 const Tour = named(() => import('./pages/Tour'), 'Tour');
+const Privacy = named(() => import('./pages/Privacy'), 'Privacy');
 const Dashboard = named(() => import('./pages/app/Dashboard'), 'Dashboard');
 const WorkflowList = named(() => import('./pages/app/WorkflowList'), 'WorkflowList');
 const WorkflowNew = named(() => import('./pages/app/WorkflowNew'), 'WorkflowNew');
@@ -32,6 +33,7 @@ function ScrollToTop() {
     window.scrollTo(0, 0);
     const title = pageTitle(pathname);
     if (title) document.title = title;
+    applyRouteMeta(pathname);
   }, [pathname]);
   return null;
 }
@@ -47,6 +49,7 @@ export function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/themes" element={<Themes />} />
           <Route path="/tour" element={<Tour />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />

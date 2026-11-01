@@ -1,4 +1,5 @@
 import { PRODUCT_LOCKUP } from '../components/Brand';
+import { publicBaseUrl } from './links';
 
 export const BRAND_TAGLINE = 'לכל עסק יש את הזווית שלו';
 
@@ -7,6 +8,7 @@ const ROUTE_TITLES: [RegExp, string][] = [
   [/^\/demo$/, 'סביבות דמו'],
   [/^\/pricing$/, 'מחירים'],
   [/^\/themes$/, 'גלריית עיצובים'],
+  [/^\/privacy$/, 'פרטיות ותנאי שימוש'],
   [/^\/app$/, 'לוח בקרה'],
   [/^\/app\/workflows$/, 'תהליכים'],
   [/^\/app\/workflows\/new$/, 'תהליך חדש'],
@@ -28,5 +30,30 @@ export function pageTitle(pathname: string): string | null {
   const hit = ROUTE_TITLES.find(([re]) => re.test(path));
   return `${hit ? hit[1] : 'הדף לא נמצא'} · Formangle`;
 }
+
+/** Public marketing pages are indexable with a canonical URL; the app and customer flows are not. */
+export const INDEXABLE = ['/', '/demo', '/pricing', '/themes', '/tour', '/privacy'];
+
+function headTag<T extends HTMLElement>(selector: string, create: () => T): T {
+  return (document.head.querySelector(selector) as T | null) ?? document.head.appendChild(create());
+}
+
+/**
+ * Canonical and robots per route. SITE_URL comes from VITE_SITE_URL (a future custom domain)
+ * and falls back to the current origin + base, so nothing hardcodes the GitHub Pages address.
+ */
+export function applyRouteMeta(pathname: string, siteUrl: string = SITE_URL()) {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  const indexable = INDEXABLE.includes(path);
+  const robots = headTag('meta[name="robots"]', () => Object.assign(document.createElement('meta'), { name: 'robots' }));
+  robots.content = indexable ? 'index, follow' : 'noindex, nofollow';
+  const canonical = document.head.querySelector('link[rel="canonical"]');
+  if (indexable) {
+    const link = (canonical as HTMLLinkElement | null) ?? document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'canonical' }));
+    link.href = `${siteUrl}${path === '/' ? '/' : path}`;
+  } else canonical?.remove();
+}
+
+export const SITE_URL = () => ((import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') || publicBaseUrl());
 
 export const workflowTitle = (title: string, business: string) => `${title} · ${business}`;

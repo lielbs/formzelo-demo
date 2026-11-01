@@ -93,7 +93,12 @@ export function SiteFooter() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-white/40">© {new Date().getFullYear()} RockStack Digital Solutions · Formangle demo</div>
+      <div className="border-t border-white/10 py-5 text-center text-xs text-white/40">
+        © {new Date().getFullYear()} RockStack Digital Solutions · Formangle demo ·{' '}
+        <Link to="/privacy" className="underline hover:text-white">
+          פרטיות ותנאי שימוש
+        </Link>
+      </div>
     </footer>
   );
 }

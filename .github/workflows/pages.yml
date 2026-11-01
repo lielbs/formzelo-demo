@@ -31,6 +31,8 @@ jobs:
           VITE_BASE: /${{ github.event.repository.name }}/
           # Optional override of the interest-button address (repository variable; empty = default in src/lib/links.ts).
           VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+          # Optional public address (e.g. a custom domain) for og:image / og:url; empty = the Pages URL.
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
       # SPA fallback: deep links such as /f/<slug> load the app instead of a 404.
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
