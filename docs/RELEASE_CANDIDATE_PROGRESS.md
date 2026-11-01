@@ -73,7 +73,7 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 | 7 | Domain readiness, metadata, privacy/legal placeholders | done |
 | 8 | Docs: README, release notes, backend architecture | done |
 | 9 | QA (browser scenarios A–I), fixes | done (see notes) |
-| 10 | Merge to main + deploy + live verification (only if authorised) | **pending — awaiting owner approval to merge/push** |
+| 10 | Merge to main + deploy + live verification (only if authorised) | done (approved by owner) |
 
 ## Files modified
 - M1: `src/lib/share.ts`, `src/components/SharePanel.tsx`, `src/pages/app/WorkflowEditor.tsx`, `src/test/share.test.ts`, deps `qrcode-generator@2.0.4` (MIT), dev `jsqr@1.4.0` (Apache-2.0, tests only).
@@ -107,13 +107,15 @@ Everything in C, plus copy/honesty polish, domain-ready URLs, docs.
 - Dev-only: hot-reloading a half-applied schema change quarantined v6 data once (not reachable in a built deploy; migration covered by tests).
 
 ## Deployment status
-- Live: https://lielbs.github.io/formzelo-demo/ = `f69e11c` (pre-RC). RC committed on `rc-v1`, NOT merged or pushed (awaiting approval).
+- Live: https://lielbs.github.io/formzelo-demo/ = RC 1.0 (`main` fast-forwarded to `6c82713`, run 41313748336: build + deploy succeeded).
+- Live checks: HTTP 200 for `/`, `/privacy`, `/pricing`, `/demo`, `/f/autocare-repairs`, `/f/bloom-flowers`, `/f/...?r=`; `/app/requests` 404 status with working SPA fallback (expected); CSP meta and og:url present.
+- Live browser walkthrough (fresh headless Edge): Scenario B end to end, reload keeps answer, composer, dashboard card, inbox filter, Urban booking status, publish + share, no overflow at 375/390/768 on 14 routes, 0 console errors.
+- Not exercised live: the v6 → v7 upgrade of a returning visitor's data (unit-tested only).
+- Rollback: `git revert` the RC commits or redeploy tag `v8-signature-flows` (`f69e11c`).
 
 ## Exact next action
-Milestone 10 (needs the owner's go-ahead): merge `rc-v1` into `main` (fast-forward), push, watch the
-"Deploy demo to GitHub Pages" run, then verify live: `/`, `/privacy`, `/f/autocare-repairs` (HTTP 200
-now), a request's "צפייה כלקוח" flow, publish → QR. Optional follow-ups: Phase 5 studio audit pass,
-Phase 7 Engagement Kit browser re-test, Scenarios A/D/F/G in a browser.
+All milestones done. Optional follow-ups: browser re-run of Scenarios A/D/F/G, Phase 5 studio audit
+pass, Phase 7 Engagement Kit browser re-test, company details on /privacy (docs/LEGAL_PLACEHOLDERS.md).
 
 ## How to resume
 1. Read this file. 2. `git status && git log --oneline main..rc-v1`.
