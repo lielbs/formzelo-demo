@@ -1,0 +1,84 @@
+name: Validate production foundation
+
+on:
+  pull_request:
+    branches: [main, production-v1]
+  push:
+    branches: [main, production-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Migrations, RLS, types, and application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      SUPABASE_CLI_VERSION: "3.0.0"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Install locked application dependencies
+        run: npm ci
+
+      - name: Verify synthetic local-only inputs
+        run: |
+          test ! -e supabase/.temp/project-ref
+          test ! -e supabase/.env
+          grep -q "Synthetic organizations only" supabase/seed.sql
+          if git grep -nE 's[b]_secret_|SUPABASE_(ACCESS_TOKEN|SECRET_KEY)=[^[:space:]]+|BEGIN (RSA|OPENSSH|EC) PRIVATE KE[Y]'; then
+            echo "Refusing to run with a committed credential or private key."
+            exit 1
+          fi
+
+      - name: Start isolated local Supabase
+        run: |
+          start_log="$RUNNER_TEMP/supabase-start.log"
+          if ! npx --yes "supabase@${SUPABASE_CLI_VERSION}" start >"$start_log" 2>&1; then
+            grep -Ev 'SECRET_KEY|JWT_SECRET|ANON_KEY|SERVICE_ROLE_KEY|PUBLISHABLE_KEY' "$start_log" | tail -100
+            exit 1
+          fi
+
+      - name: Run pgTAP and RLS tests
+        run: npx --yes "supabase@${SUPABASE_CLI_VERSION}" test db
+
+      - name: Lint database schemas
+        run: npx --yes "supabase@${SUPABASE_CLI_VERSION}" db lint --schema public,private --level warning --fail-on error
+
+      - name: Verify generated database types
+        run: |
+          generated="$RUNNER_TEMP/database.generated.ts"
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" gen types --schema public \
+            | sed -E 's/[[:space:]]+$//' >"$generated"
+          diff --unified src/production/database.generated.ts "$generated"
+
+      - name: Typecheck application
+        run: npm run typecheck
+
+      - name: Test application
+        run: npm test
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Stop isolated local Supabase
+        if: always()
+        continue-on-error: true
+        run: npx --yes "supabase@${SUPABASE_CLI_VERSION}" stop --no-backup

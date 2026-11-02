@@ -36,6 +36,14 @@ npx --yes supabase@3.0.0 stop
 npx --yes supabase@3.0.0 migration new descriptive_name
 ```
 
+## CI validation
+
+`.github/workflows/production-foundation.yml` runs on pull requests and pushes targeting `main` or `production-v1`, plus manual dispatch. It uses a fresh standard `ubuntu-24.04` runner, read-only repository permission, commit-SHA-pinned checkout/setup actions, the exact Supabase CLI 3.0.0 package, and the committed npm lockfile.
+
+The workflow requires no Supabase account, access token, production credential, environment secret, or remote project. It refuses a linked checkout or `supabase/.env`, confirms the synthetic seed marker, scans committed content for credential/private-key patterns, suppresses successful `supabase start` output so local keys do not enter public logs, and always attempts to remove the ephemeral local stack. It validates migrations, pgTAP/RLS, database lint, normalized generated-type drift, TypeScript, application tests, and the production build.
+
+The repository is public, so standard GitHub-hosted runners have no additional Actions charge. Larger runners, artifacts, caches, and paid services are not used. Local static policy/YAML checks passed, but no hosted workflow run was triggered while push remained prohibited; the first pushed pull request or branch update must supply that evidence.
+
 ## Layout and implemented boundaries
 
 - `config.toml`: generated with CLI 3.0.0; PostgreSQL 17, public schema only, explicit grants, disabled self-signup/anonymous identities, local redirect allowlist, local mail capture, no storage/realtime/analytics/edge workers or Studio AI.
