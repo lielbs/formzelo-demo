@@ -4,7 +4,7 @@ Last updated: 2026-11-02 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation is in progress. The TypeScript production configuration/contracts checkpoint is validated and committed. Podman 5.8.3 is installed locally from the signed Red Hat WinGet package. `Microsoft-Hyper-V-All` was enabled with `-NoRestart`, and Windows reported `RestartNeeded: True`; no reboot was performed. The local-only Supabase schema, migration, seed, pgTAP suite, and helper script remain uncommitted and **not database-validated** until the user performs a manual reboot and the isolated Podman runtime is verified.
+Milestone 0 — Secure Production Foundation remains in progress; the local database validation checkpoint is complete. Podman 5.8.3/Hyper-V ran an isolated `formangle-dev` machine, Supabase CLI 3.0.0 applied migration `20261102161823` from an empty local database, 34 pgTAP/RLS assertions passed before and after reset, database lint passed, and generated types were committed. The Supabase stack and Podman machine were stopped after validation. Milestone 1 has not started.
 
 ## Completed work
 
@@ -18,6 +18,8 @@ Milestone 0 — Secure Production Foundation is in progress. The TypeScript prod
 - Created focused documentation commits without staging product-source or marketing changes.
 - Added strict, credential-free organization/workflow configuration schemas, explicit provider resolution, server-side adapter/event contracts, and a repository selection seam that fails closed when no production adapter is configured.
 - Validated the TypeScript checkpoint with 13 focused Vitest assertions and the full repository typecheck.
+- Added and validated the local Supabase configuration, tenant schema, synthetic seed, RLS/authorization tests, generated database types, and guarded local database lifecycle script.
+- Proved clean migration reproducibility with an isolated reset; verified two synthetic organizations, 12 RLS-enabled public tables, and the recorded migration version.
 
 ## Files changed by this milestone
 
@@ -34,8 +36,17 @@ Milestone 0 — Secure Production Foundation is in progress. The TypeScript prod
 - `src/production/configuration.ts`
 - `src/production/configuration.test.ts`
 - `src/production/contracts.ts`
+- `src/production/database.generated.ts`
+- `scripts/local-db.ps1`
+- `supabase/config.toml`
+- `supabase/migrations/20261102161823_tenant_foundation.sql`
+- `supabase/tests/database/tenant_foundation.test.sql`
+- `supabase/seed.sql`
+- `supabase/.env.example`
+- `supabase/.gitignore`
+- `supabase/README.md`
 
-No application source, configuration, DNS, live deployment, provider account, database, or production data was changed by this task.
+No live application bootstrap, DNS, deployment, remote Supabase project, provider account, production credential, customer data, RAVO resource, or paid service was changed.
 
 ## Tests performed
 
@@ -52,8 +63,19 @@ No application source, configuration, DNS, live deployment, provider account, da
 - Podman 5.8.3 installation — WinGet package hash verified and Authenticode signature valid for Red Hat, LLC; installation completed and is registered by WinGet.
 - `podman machine init ... formangle-dev` — did not run successfully before Hyper-V activation (`HyperV namespace not found`); no Podman machine was created.
 - `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -All -NoRestart` — completed successfully and reported `RestartNeeded: True`; the machine was not rebooted per user instruction.
+- Post-reboot Hyper-V verification — `Microsoft-Hyper-V-All` enabled; `vmcompute` and `vmms` running; no additional reboot required.
+- Local Supabase start — passed; no linked project; local PostgreSQL at `127.0.0.1:54322`; configured disabled services remained stopped by design.
+- `supabase test db` — passed twice: 1 pgTAP file, 34 assertions, before and after a clean synthetic reset.
+- Clean reset verification — migration `20261102161823`, 2 synthetic organizations, and 12 RLS-enabled public tables verified from PostgreSQL.
+- `supabase db lint --schema public,private --level warning --fail-on error` — passed with no schema errors.
+- `./scripts/local-db.ps1 -Action types` and `types-check` — passed against the validated local schema; generated types committed. The later whitespace-normalization change was parser/typecheck validated but was not rerun against the stopped VM.
+- `npm test -- --run src/production/configuration.test.ts` — passed: 13 tests.
+- `npm run typecheck` — passed, including generated database types.
+- `npm test` — passed: 24 test files, 243 tests.
+- `npm run build` — passed with exit code 0; only existing non-failing Rollup warnings from Zod annotations.
+- Supabase `stop` — completed with `project_id_filter=formangle-development` and backup enabled; `formangle-dev` then stopped successfully.
 
-Not run for the current Milestone 0 database work: migration application/reset, pgTAP/RLS tests, generated database types, database advisors, or clean-stack reproducibility. The local Supabase CLI cannot reach `127.0.0.1:54322` without a compatible local runtime. No remote project was used.
+Not run: hosted/staging backup restore, Auth/PostgREST integration, browser E2E, provider callbacks, load tests, remote CI database gates, deployment, or production checks. No remote project was used.
 
 ## Decisions made
 
@@ -71,11 +93,16 @@ Not run for the current Milestone 0 database work: migration application/reset, 
 - `12fb330` — `docs: define production architecture and controls`
 - `d34d503` — `docs: add production migration roadmap and handoff`
 - `2f75733` — `feat: define production configuration boundaries`
+- `aa68d54` — `docs: record milestone zero checkpoint`
+- `2a0b8e9` — `docs: record local runtime restart blocker`
+- `a8cde74` — `feat: validate local tenant database foundation`
+- `6d49487` — `chore: normalize generated database types`
 
 ## Outstanding blockers and risks
 
-- Podman is installed and Hyper-V is enabled, but Windows requires a manual reboot before the provider can be verified. The user explicitly prohibited an automated reboot, so runtime/database validation is paused without attempting another machine initialization.
-- The authored migration and RLS tests are not accepted until they run successfully from an empty local stack. They must not be committed or represented as validated based on static inspection alone.
+- Local database validation is no longer blocked. Starting/stopping the Hyper-V Podman machine still requires an interactive elevated Windows action on this workstation; the machine is currently stopped.
+- The Podman 5.8 OCI artifact pull stalled on Windows. Initialization used the official Hyper-V image through the supported `--image` option only after manifest size and SHA-256 verification; the failed VM disk remains in a recoverable temporary quarantine and contains no Formangle database.
+- The post-normalization `types-check` was not rerun because the machine could not be restarted through the unattended elevation flow; PowerShell parsing, whitespace checks, and TypeScript typecheck passed. Run `types-check` at the start of the next local database session.
 - Production decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 remain unresolved and still block remote environment setup and production commitments.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
 - The demo must not be represented as secure cross-device/multi-tenant production software: `/app` lacks a real identity boundary, request IDs act as bearer capabilities, persistence is local, and capacity is non-transactional.
@@ -84,12 +111,11 @@ Not run for the current Milestone 0 database work: migration application/reset, 
 
 ## Exact next steps
 
-1. The user manually reboots Windows when convenient; Codex must not initiate the reboot.
-2. After reboot, verify Hyper-V and initialize/start the uniquely named `formangle-dev` Podman machine without touching unrelated containers.
-3. From a clean local Supabase stack, apply/reset the migration and run `./scripts/local-db.ps1 -Action test`.
-4. Fix any migration/pgTAP failures, repeat from an empty stack, generate `src/production/database.generated.ts`, and add a deterministic generation-diff check.
-5. Run the milestone-boundary TypeScript/full regression/build checks and commit only validated database files; do not start Milestone 1 automatically.
+1. Start `formangle-dev` through an elevated Podman command, start the local stack, and rerun `./scripts/local-db.ps1 -Action types-check`; stop both afterward.
+2. Add a zero-cost CI gate for migrations, pgTAP/RLS, database type drift, typecheck, tests, build, and secret scanning without creating remote Supabase resources.
+3. Complete the remaining Milestone 0 ownership, CI, rollback/runbook, and approved staging backup-restore evidence before declaring the full milestone complete.
+4. Do not start Milestone 1 automatically.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 Milestone 0 on branch `production-v1`. Read only this tracker and inspect `git status`. Preserve the unrelated advisor/marketing changes. Podman 5.8.3 is installed and Hyper-V was enabled with `-NoRestart`, but Windows reported `RestartNeeded: True`; the user prohibited Codex from rebooting. After the user manually reboots, verify Hyper-V, initialize/start the isolated `formangle-dev` Podman machine, start a clean local Supabase stack, reset/apply migrations, run the pgTAP suite, fix failures, repeat from empty state, generate database types, and add a generation-diff check. Commit only validated database files, update this tracker, and stop before Milestone 1, remote resources, deployment, providers, RAVO, or paid services.
+> Continue Formangle Production V1 Milestone 0 on branch `production-v1`. Read only this tracker and inspect `git status`; preserve unrelated advisor/marketing work. The local database checkpoint is validated and committed in `a8cde74` plus normalization commit `6d49487`: clean migration/reset, 34 pgTAP assertions twice, local lint, generated types, 243 application tests, typecheck, and build all passed. The Supabase stack and `formangle-dev` Podman machine are stopped. First start the machine through an elevated Windows action, start Supabase, rerun `types-check`, and stop both. Then implement the remaining zero-cost Milestone 0 CI/runbook evidence only. Do not create remote resources, deploy, activate providers, touch RAVO, or start Milestone 1 without approval.
