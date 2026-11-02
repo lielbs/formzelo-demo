@@ -4,7 +4,7 @@ Last updated: 2026-11-02 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation remains in progress; the local database validation checkpoint is complete. Podman 5.8.3/Hyper-V ran an isolated `formangle-dev` machine, Supabase CLI 3.0.0 applied migration `20261102161823` from an empty local database, 34 pgTAP/RLS assertions passed before and after reset, database lint passed, and generated types were committed. The Supabase stack and Podman machine were stopped after validation. Milestone 1 has not started.
+Milestone 0 — Secure Production Foundation implementation is locally complete, but formal closure is pending hosted evidence. The local database checkpoint passed, and a zero-cost, read-only GitHub Actions gate now reproduces migrations, pgTAP/RLS, database lint, generated-type drift, TypeScript, tests, and build on a fresh standard runner. Local static workflow/policy checks passed. The workflow has not run on GitHub because push is prohibited, and the post-normalization live `types-check` remains pending because Windows elevation did not restart the stopped `formangle-dev` machine. Milestone 1 has not started.
 
 ## Completed work
 
@@ -20,6 +20,7 @@ Milestone 0 — Secure Production Foundation remains in progress; the local data
 - Validated the TypeScript checkpoint with 13 focused Vitest assertions and the full repository typecheck.
 - Added and validated the local Supabase configuration, tenant schema, synthetic seed, RLS/authorization tests, generated database types, and guarded local database lifecycle script.
 - Proved clean migration reproducibility with an isolated reset; verified two synthetic organizations, 12 RLS-enabled public tables, and the recorded migration version.
+- Added a least-privilege, zero-cost GitHub Actions validation workflow using a standard public-repository runner, SHA-pinned actions, synthetic-only local Supabase, no credentials, no cache/artifacts, and guaranteed cleanup attempt.
 
 ## Files changed by this milestone
 
@@ -45,6 +46,7 @@ Milestone 0 — Secure Production Foundation remains in progress; the local data
 - `supabase/.env.example`
 - `supabase/.gitignore`
 - `supabase/README.md`
+- `.github/workflows/production-foundation.yml`
 
 No live application bootstrap, DNS, deployment, remote Supabase project, provider account, production credential, customer data, RAVO resource, or paid service was changed.
 
@@ -74,8 +76,11 @@ No live application bootstrap, DNS, deployment, remote Supabase project, provide
 - `npm test` — passed: 24 test files, 243 tests.
 - `npm run build` — passed with exit code 0; only existing non-failing Rollup warnings from Zod annotations.
 - Supabase `stop` — completed with `project_id_filter=formangle-development` and backup enabled; `formangle-dev` then stopped successfully.
+- CI workflow YAML/static policy — passed locally with installed PyYAML: safe triggers, `contents: read`, standard `ubuntu-24.04`, 30-minute timeout, commit-SHA-pinned actions, no secret references, no remote Supabase flags, and cleanup present.
+- CI synthetic/credential guards — passed locally: no project link or `supabase/.env`, synthetic seed marker present, no committed credential/private-key pattern, generated types already normalized, and workflow whitespace clean.
+- Official action tag refs verified read-only: `actions/checkout@v7.0.0` → `9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0`; `actions/setup-node@v7.1.0` → `949feb2413d6458794dcd2491c4babbbce0c15c1`.
 
-Not run: hosted/staging backup restore, Auth/PostgREST integration, browser E2E, provider callbacks, load tests, remote CI database gates, deployment, or production checks. No remote project was used.
+Not run: the new hosted GitHub Actions workflow (no push), post-normalization live `types-check` (Podman machine remained stopped after elevation attempts), hosted/staging backup restore, Auth/PostgREST integration, browser E2E, provider callbacks, load tests, deployment, or production checks. No remote project was used.
 
 ## Decisions made
 
@@ -97,12 +102,15 @@ Not run: hosted/staging backup restore, Auth/PostgREST integration, browser E2E,
 - `2a0b8e9` — `docs: record local runtime restart blocker`
 - `a8cde74` — `feat: validate local tenant database foundation`
 - `6d49487` — `chore: normalize generated database types`
+- `c6f6fdf` — `docs: complete local database validation checkpoint`
+- `1648a9b` — `ci: validate production database foundation`
 
 ## Outstanding blockers and risks
 
-- Local database validation is no longer blocked. Starting/stopping the Hyper-V Podman machine still requires an interactive elevated Windows action on this workstation; the machine is currently stopped.
+- Local database validation is no longer blocked. Starting/stopping the Hyper-V Podman machine requires an interactive elevated Windows action on this workstation; elevation did not complete during the latest attempts, so the machine remains stopped and the normalized live `types-check` is not yet recorded.
 - The Podman 5.8 OCI artifact pull stalled on Windows. Initialization used the official Hyper-V image through the supported `--image` option only after manifest size and SHA-256 verification; the failed VM disk remains in a recoverable temporary quarantine and contains no Formangle database.
-- The post-normalization `types-check` was not rerun because the machine could not be restarted through the unattended elevation flow; PowerShell parsing, whitespace checks, and TypeScript typecheck passed. Run `types-check` at the start of the next local database session.
+- The post-normalization `types-check` was not rerun because the machine could not be restarted through the elevation flow; PowerShell parsing, normalization checks, and TypeScript typecheck passed. Run `types-check` at the start of the next successful local database session.
+- The CI workflow is committed but has no hosted run result because pushing or manually dispatching remote Actions was not authorized. Local YAML/policy checks do not prove GitHub runner behavior.
 - Production decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 remain unresolved and still block remote environment setup and production commitments.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
 - The demo must not be represented as secure cross-device/multi-tenant production software: `/app` lacks a real identity boundary, request IDs act as bearer capabilities, persistence is local, and capacity is non-transactional.
@@ -111,11 +119,11 @@ Not run: hosted/staging backup restore, Auth/PostgREST integration, browser E2E,
 
 ## Exact next steps
 
-1. Start `formangle-dev` through an elevated Podman command, start the local stack, and rerun `./scripts/local-db.ps1 -Action types-check`; stop both afterward.
-2. Add a zero-cost CI gate for migrations, pgTAP/RLS, database type drift, typecheck, tests, build, and secret scanning without creating remote Supabase resources.
-3. Complete the remaining Milestone 0 ownership, CI, rollback/runbook, and approved staging backup-restore evidence before declaring the full milestone complete.
-4. Do not start Milestone 1 automatically.
+1. With the user present for UAC, start `formangle-dev`, start the local stack, rerun `./scripts/local-db.ps1 -Action types-check`, and stop both afterward.
+2. After explicit push authorization, obtain one green hosted run of `.github/workflows/production-foundation.yml`; no Supabase secret or cloud project is required.
+3. Complete named ownership and approved staging backup/restore evidence before declaring the full Milestone 0 production-readiness milestone closed.
+4. After Milestone 0 closure and explicit approval, begin Milestone 1 with the invited-owner authentication/membership boundary and cross-tenant authorization tests.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 Milestone 0 on branch `production-v1`. Read only this tracker and inspect `git status`; preserve unrelated advisor/marketing work. The local database checkpoint is validated and committed in `a8cde74` plus normalization commit `6d49487`: clean migration/reset, 34 pgTAP assertions twice, local lint, generated types, 243 application tests, typecheck, and build all passed. The Supabase stack and `formangle-dev` Podman machine are stopped. First start the machine through an elevated Windows action, start Supabase, rerun `types-check`, and stop both. Then implement the remaining zero-cost Milestone 0 CI/runbook evidence only. Do not create remote resources, deploy, activate providers, touch RAVO, or start Milestone 1 without approval.
+> Continue Formangle Production V1 Milestone 0 closure on branch `production-v1`. Read only this tracker and inspect `git status`; preserve unrelated advisor/marketing work. Local database validation passed and zero-cost CI is committed in `1648a9b`. The remaining evidence is a live post-normalization `types-check`, one authorized green hosted workflow run, named ownership, and approved staging backup/restore evidence. The `formangle-dev` machine is stopped and requires interactive UAC to start. Do not create a Supabase cloud project, push, deploy, activate providers, touch RAVO, incur costs, or begin Milestone 1 without explicit approval.
