@@ -8,6 +8,9 @@ export const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
 /** "/f/x" -> "/<base>/f/x" (no-op when served from the domain root). */
 export const appHref = (path: string) => `${BASE_PATH}${path.startsWith('/') ? path : `/${path}`}`;
 
+/** Image source of an asset: uploads are data URLs; demo showcase files are site-relative paths. */
+export const assetSrc = (dataUrl: string) => (dataUrl.startsWith('data:') ? dataUrl : appHref(`/${dataUrl}`));
+
 export const publicBaseUrl = () => `${window.location.origin}${BASE_PATH}`;
 export const publicFlowUrl = (slug: string, runId?: string) => `${publicBaseUrl()}/f/${slug}${runId ? `?r=${runId}` : ''}`;
 

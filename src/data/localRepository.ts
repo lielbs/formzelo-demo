@@ -57,7 +57,7 @@ import {
 } from './repository';
 import { buildSeed, LATER_DEMO_ORGS } from './seed';
 import { isShowcaseId, showcaseAssets } from './showcase';
-import { appHref } from '../lib/links';
+import { assetSrc } from '../lib/links';
 
 /** Storage namespace. Independent of SCHEMA_VERSION so migrations happen in place. */
 // Historical namespace from the product's previous name (Formzelo). Kept on purpose: renaming it would orphan every
@@ -745,7 +745,7 @@ export class LocalStorageRepository implements FormangleRepository {
   async getAssetUrls(orgId: string, ids: (string | undefined)[]): Promise<Record<string, string>> {
     const wanted = new Set(ids.filter(Boolean));
     if (!wanted.size) return {};
-    return Object.fromEntries(this.readAssets(orgId).filter((a) => wanted.has(a.id)).map((a) => [a.id, a.dataUrl.startsWith('data:') ? a.dataUrl : appHref(`/${a.dataUrl}`)]));
+    return Object.fromEntries(this.readAssets(orgId).filter((a) => wanted.has(a.id)).map((a) => [a.id, assetSrc(a.dataUrl)]));
   }
 
   async saveAsset(orgId: string, input: Pick<Asset, 'kind' | 'name' | 'mime' | 'dataUrl' | 'width' | 'height'>) {

@@ -5,6 +5,7 @@ import { DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
 import { applyShowcase, isShowcaseId, showcaseAssets } from '../data/showcase';
 import { OrgDataSchema, SCHEMA_VERSION, type OrgData } from '../domain/schema';
 import { AssetSchema } from '../domain/theme';
+import { assetSrc } from '../lib/links';
 import { referencedAssets } from '../renderer/media';
 
 class MemoryStore implements KeyValueStore {
@@ -49,6 +50,14 @@ describe('demo showcase identity', () => {
       for (const id of ids) expect(urls[id]).toMatch(/^\/showcase\/[a-z-]+\/[a-z-]+\.(jpg|svg)$/);
       expect(pub.version.design.logo.assetId).toBeDefined();
     }
+  });
+
+  it('the editor resolves showcase images to root paths, not relative to the current route', async () => {
+    const repo = await fresh();
+    const listed = (await repo.listAssets(DEMO_ORG_IDS.bloom)).filter((a) => isShowcaseId(a.id));
+    expect(listed.length).toBeGreaterThan(4);
+    for (const a of listed) expect(assetSrc(a.dataUrl)).toMatch(/^\/showcase\/bloom\//);
+    expect(assetSrc('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
   });
 
   it('dresses demo workspaces only, idempotently, and showcase images cannot be deleted', async () => {

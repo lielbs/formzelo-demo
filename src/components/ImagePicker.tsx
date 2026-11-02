@@ -2,7 +2,9 @@
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { Asset } from '../domain/theme';
+import { isShowcaseId } from '../data/showcase';
 import { useRepo } from '../data/store';
+import { assetSrc } from '../lib/links';
 import { ImagePrepError, prepareImage } from '../lib/images';
 import { useToast } from './Toast';
 import { Button, cx } from './ui';
@@ -72,9 +74,9 @@ export function ImagePicker({
               aria-label={`בחירת ${a.name}`}
               className={cx('block h-14 w-14 overflow-hidden rounded-lg border bg-cloud', selected === a.id ? 'border-midnight ring-2 ring-midnight/20' : 'border-cloud-300')}
             >
-              <img src={a.dataUrl} alt="" className={cx('h-full w-full', kind === 'logo' ? 'object-contain p-1' : 'object-cover')} />
+              <img src={assetSrc(a.dataUrl)} alt="" className={cx('h-full w-full', kind === 'logo' ? 'object-contain p-1' : 'object-cover')} />
             </button>
-            {selected !== a.id && (
+            {selected !== a.id && !isShowcaseId(a.id) && (
               <button
                 type="button"
                 aria-label={`מחיקת ${a.name}`}

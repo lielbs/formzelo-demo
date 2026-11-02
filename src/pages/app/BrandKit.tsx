@@ -13,6 +13,7 @@ import { BUTTON_VARIANTS, DENSITIES, TYPOGRAPHY_PRESETS, type BrandKit } from '.
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
 import { extractColors } from '../../lib/images';
+import { assetSrc } from '../../lib/links';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { effectiveTheme } from '../../theme/brand';
 import { buildTheme, PRESET_LIST } from '../../theme/presets';
@@ -86,7 +87,7 @@ export function BrandKitPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFor]);
 
-  const assetUrls = useMemo(() => Object.fromEntries((q.data?.assets ?? []).map((a) => [a.id, a.dataUrl])), [q.data?.assets]);
+  const assetUrls = useMemo(() => Object.fromEntries((q.data?.assets ?? []).map((a) => [a.id, assetSrc(a.dataUrl)])), [q.data?.assets]);
   const sample = q.data?.workflows.find((w) => w.status === 'published') ?? q.data?.workflows[0];
   const previewTheme = useMemo(() => (sample && kit ? effectiveTheme({ ...sample.design, inheritBrand: true }, kit) : null), [sample, kit]);
 

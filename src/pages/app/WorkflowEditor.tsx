@@ -52,7 +52,7 @@ import { COMPLETION_LABELS, completionOf } from '../../engine/completion';
 import { fieldHasPrice } from '../../engine/pricing';
 import { formatDateTime, formatNumber } from '../../lib/format';
 import { newId } from '../../lib/id';
-import { publicFlowUrl } from '../../lib/links';
+import { assetSrc, publicFlowUrl } from '../../lib/links';
 import { linkReach } from '../../lib/share';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { effectiveTheme } from '../../theme/brand';
@@ -136,7 +136,7 @@ export function WorkflowEditor() {
   );
   const side = useRepoQuery(async (r) => ({ assets: await r.listAssets(org.id), kit: await r.getBrandKit(org.id) }), [org.id]);
   const assets = useMemo(() => side.data?.assets ?? [], [side.data?.assets]);
-  const assetUrls = useMemo(() => Object.fromEntries(assets.map((a) => [a.id, a.dataUrl])), [assets]);
+  const assetUrls = useMemo(() => Object.fromEntries(assets.map((a) => [a.id, assetSrc(a.dataUrl)])), [assets]);
   const kit = side.data?.kit;
 
   // Undo history (engine/builder): the present is the draft being edited.
