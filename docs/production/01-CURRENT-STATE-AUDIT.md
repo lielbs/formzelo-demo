@@ -1,7 +1,7 @@
 # Current-State Audit
 
-Status: completed against the `production-v1` working tree on 2026-11-02.  
-Baseline commit: `b2e6670528eebbdae706146fc2acc44702005399`.  
+Status: completed against the `production-v1` working tree on 2026-11-02.
+Baseline commit: `b2e6670528eebbdae706146fc2acc44702005399`.
 Audience: RockStack product owner and the engineers implementing Production V1.
 
 ## Executive summary
