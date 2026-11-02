@@ -4,7 +4,7 @@ Last updated: 2026-11-02 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation is in progress. The TypeScript production configuration/contracts checkpoint is validated and committed. A local-only Supabase schema, migration, seed, pgTAP suite, and helper script are present in the working tree but remain uncommitted and **not database-validated** because this workstation has no available container runtime or local PostgreSQL service.
+Milestone 0 — Secure Production Foundation is in progress. The TypeScript production configuration/contracts checkpoint is validated and committed. Podman 5.8.3 is installed locally from the signed Red Hat WinGet package. `Microsoft-Hyper-V-All` was enabled with `-NoRestart`, and Windows reported `RestartNeeded: True`; no reboot was performed. The local-only Supabase schema, migration, seed, pgTAP suite, and helper script remain uncommitted and **not database-validated** until the user performs a manual reboot and the isolated Podman runtime is verified.
 
 ## Completed work
 
@@ -48,6 +48,10 @@ No application source, configuration, DNS, live deployment, provider account, da
 - `git diff --check -- docs/production` and required-content checks — passed.
 - `npm test -- --run src/production/configuration.test.ts` — passed: 1 test file, 13 tests.
 - `npm run typecheck` — passed after adding the production TypeScript boundary.
+- Local runtime discovery — Windows 11 Pro and hardware hypervisor detected; WSL, Docker, and Podman were initially absent; Supabase CLI 3.0.0 was available through the local `npx` cache.
+- Podman 5.8.3 installation — WinGet package hash verified and Authenticode signature valid for Red Hat, LLC; installation completed and is registered by WinGet.
+- `podman machine init ... formangle-dev` — did not run successfully before Hyper-V activation (`HyperV namespace not found`); no Podman machine was created.
+- `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -All -NoRestart` — completed successfully and reported `RestartNeeded: True`; the machine was not rebooted per user instruction.
 
 Not run for the current Milestone 0 database work: migration application/reset, pgTAP/RLS tests, generated database types, database advisors, or clean-stack reproducibility. The local Supabase CLI cannot reach `127.0.0.1:54322` without a compatible local runtime. No remote project was used.
 
@@ -70,7 +74,7 @@ Not run for the current Milestone 0 database work: migration application/reset, 
 
 ## Outstanding blockers and risks
 
-- A compatible container runtime is not available on this workstation. Installing/enabling Docker, Podman, WSL, Hyper-V, or changing machine services/settings requires founder approval; alternatively use an existing approved disposable development machine/runtime.
+- Podman is installed and Hyper-V is enabled, but Windows requires a manual reboot before the provider can be verified. The user explicitly prohibited an automated reboot, so runtime/database validation is paused without attempting another machine initialization.
 - The authored migration and RLS tests are not accepted until they run successfully from an empty local stack. They must not be committed or represented as validated based on static inspection alone.
 - Production decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 remain unresolved and still block remote environment setup and production commitments.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
@@ -80,11 +84,12 @@ Not run for the current Milestone 0 database work: migration application/reset, 
 
 ## Exact next steps
 
-1. Obtain approval to install/enable a compatible local container runtime, or identify an existing approved disposable development runtime.
-2. From a clean local Supabase stack, apply/reset the migration and run `./scripts/local-db.ps1 -Action test`.
-3. Fix any migration/pgTAP failures, repeat from an empty stack, generate `src/production/database.generated.ts`, and add a deterministic generation-diff check.
-4. Commit the database foundation only after those checks pass; do not start Milestone 1 automatically.
+1. The user manually reboots Windows when convenient; Codex must not initiate the reboot.
+2. After reboot, verify Hyper-V and initialize/start the uniquely named `formangle-dev` Podman machine without touching unrelated containers.
+3. From a clean local Supabase stack, apply/reset the migration and run `./scripts/local-db.ps1 -Action test`.
+4. Fix any migration/pgTAP failures, repeat from an empty stack, generate `src/production/database.generated.ts`, and add a deterministic generation-diff check.
+5. Run the milestone-boundary TypeScript/full regression/build checks and commit only validated database files; do not start Milestone 1 automatically.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 Milestone 0 on branch `production-v1`. Read only this tracker and inspect `git status`. Preserve the unrelated advisor/marketing changes. Commit `2f75733` already completed the TypeScript production boundary. The untracked `supabase/` and `scripts/local-db.ps1` foundation is authored but unaccepted because no compatible local runtime is available. After explicit founder approval to install/enable a local container runtime, or on an existing approved disposable runtime, start a clean local Supabase stack, reset/apply migrations, run the pgTAP suite, fix failures, repeat from empty state, generate database types, and add a generation-diff check. Commit only validated database files, update this tracker, and stop before Milestone 1, remote resources, deployment, providers, RAVO, or paid services.
+> Continue Formangle Production V1 Milestone 0 on branch `production-v1`. Read only this tracker and inspect `git status`. Preserve the unrelated advisor/marketing changes. Podman 5.8.3 is installed and Hyper-V was enabled with `-NoRestart`, but Windows reported `RestartNeeded: True`; the user prohibited Codex from rebooting. After the user manually reboots, verify Hyper-V, initialize/start the isolated `formangle-dev` Podman machine, start a clean local Supabase stack, reset/apply migrations, run the pgTAP suite, fix failures, repeat from empty state, generate database types, and add a generation-diff check. Commit only validated database files, update this tracker, and stop before Milestone 1, remote resources, deployment, providers, RAVO, or paid services.
