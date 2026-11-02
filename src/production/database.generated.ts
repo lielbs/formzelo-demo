@@ -116,7 +116,7 @@ isOneToOne: true
                   Update: {
                     "created_at"?: string,"id"?: string,"name"?: string,"slug"?: string,"status"?: string,"updated_at"?: string
                   }
-                Relationships: [
+                  Relationships: [
 
                   ]
                 },"profiles": {
@@ -130,7 +130,7 @@ isOneToOne: true
                   Update: {
                     "created_at"?: string,"display_name"?: string,"updated_at"?: string,"user_id"?: string
                   }
-                Relationships: [
+                  Relationships: [
 
                   ]
                 },"submission_events": {
@@ -369,7 +369,7 @@ export type CompositeTypes<
 
 export const Constants = {
   "public": {
-        Enums: {
+          Enums: {
 
           }
         }

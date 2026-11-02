@@ -34,7 +34,9 @@ if ($Action -in @('types','types-check')) {
       if (-not (Test-Path -LiteralPath $taskGeneratedPath)) {
         throw 'Generated database types are missing. Run -Action types.'
       }
-      if ([System.IO.File]::ReadAllText($taskGeneratedPath) -cne [System.IO.File]::ReadAllText($taskTemporaryPath)) {
+      [string[]]$taskExistingLines = [System.IO.File]::ReadAllLines($taskGeneratedPath)
+      $taskExistingText = (($taskExistingLines | ForEach-Object { $_.TrimEnd() }) -join "`n").TrimEnd() + "`n"
+      if ($taskExistingText -cne [System.IO.File]::ReadAllText($taskTemporaryPath)) {
         throw 'Generated database types are stale. Run -Action types and review the schema diff.'
       }
       Write-Output 'Generated database types match the local public schema.'
