@@ -2,7 +2,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
-  
+
   "public": {
           Tables: {
             "audit_events": {
@@ -116,8 +116,8 @@ isOneToOne: true
                   Update: {
                     "created_at"?: string,"id"?: string,"name"?: string,"slug"?: string,"status"?: string,"updated_at"?: string
                   }
-                  Relationships: [
-                    
+                Relationships: [
+
                   ]
                 },"profiles": {
                   Row: {
@@ -130,8 +130,8 @@ isOneToOne: true
                   Update: {
                     "created_at"?: string,"display_name"?: string,"updated_at"?: string,"user_id"?: string
                   }
-                  Relationships: [
-                    
+                Relationships: [
+
                   ]
                 },"submission_events": {
                   Row: {
@@ -369,8 +369,8 @@ export type CompositeTypes<
 
 export const Constants = {
   "public": {
-          Enums: {
-            
+        Enums: {
+
           }
         }
 } as const

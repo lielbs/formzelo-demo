@@ -24,7 +24,7 @@ if ($Action -in @('types','types-check')) {
     if ($LASTEXITCODE -ne 0) {
       throw "Supabase type generation failed with exit code $LASTEXITCODE."
     }
-    $taskGeneratedText = ($taskGeneratedLines -join "`n").TrimEnd() + "`n"
+    $taskGeneratedText = (($taskGeneratedLines | ForEach-Object { $_.TrimEnd() }) -join "`n").TrimEnd() + "`n"
     [System.IO.File]::WriteAllText(
       $taskTemporaryPath,
       $taskGeneratedText,
