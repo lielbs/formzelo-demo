@@ -29,6 +29,19 @@ const START_ICONS: Record<StartOption, typeof Wand2> = { describe: MessageSquare
 
 const JOURNEY = ['מה יוצרים', 'בוחרים חוויה', 'מתאימים', 'בודקים', 'מפרסמים'];
 
+/** Phrases the local engine understands; one tap adds them to the description. */
+const ADD_HINTS: { label: string; text: string }[] = [
+  { label: 'ימים ושעות', text: 'בימים א-ה בין 9 ל-18' },
+  { label: 'כמה ביום', text: 'עד 10 בקשות ביום' },
+  { label: 'התראה מראש', text: 'לפחות 24 שעות מראש' },
+  { label: 'עד כמה קדימה', text: 'עד חודש קדימה' },
+  { label: 'תאריך סיום', text: 'ההרשמה נסגרת ב-15.12' },
+  { label: 'בלי כפילויות', text: 'בקשה אחת לכל לקוח' },
+  { label: 'אישור ידני', text: 'באישור ידני' },
+  { label: 'מקדמה', text: 'עם מקדמה' },
+  { label: 'בלי תשלום', text: 'ללא תשלום' },
+];
+
 interface Draft {
   config: WorkflowConfig;
   theme: WorkflowTheme;
@@ -58,7 +71,8 @@ export function WorkflowNew() {
   const side = useRepoQuery(async (r) => ({ kit: await r.getBrandKit(org.id), workflows: await r.listWorkflows(org.id) }), [org.id]);
   const brandColor = side.data?.kit.palette.primary ?? org.brand.primaryColor;
 
-  const { register, handleSubmit, setValue, formState } = useForm<FormValues>({ defaultValues: { prompt: initialPrompt } });
+  const resultRef = useRef<HTMLDivElement>(null);
+  const { register, handleSubmit, setValue, getValues, formState } = useForm<FormValues>({ defaultValues: { prompt: initialPrompt } });
 
   const fromGeneration = (r: GenerationResult, prompt: string): Draft => {
     r.config.branding = { ...r.config.branding, primaryColor: org.brand.primaryColor, logoText: org.name };
@@ -71,6 +85,11 @@ export function WorkflowNew() {
     setTimeout(() => {
       setDraft(fromGeneration(generateWorkflowFromPrompt(prompt), prompt));
       setGenerating(false);
+      // On a phone the result sits far below the form: bring it into view.
+      requestAnimationFrame(() => {
+        const el = resultRef.current;
+        if (el && el.getBoundingClientRect().top > window.innerHeight * 0.6) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }, 350);
   };
 
@@ -99,6 +118,8 @@ export function WorkflowNew() {
     setSaving(true);
     try {
       const wf = await repo.createWorkflow(org.id, { config: draft.config, templateKey: draft.templateKey, sourcePrompt: draft.prompt, design: draft.theme });
+      // Limits the owner wrote ("עד 10 ביום", "נסגר ב-15.12") apply to the link from day one.
+      if (draft.generation?.intake) await repo.updateIntake(org.id, wf.id, draft.generation.intake);
       toast('הטיוטה נוצרה — ממשיכים בסטודיו');
       navigate(`/app/workflows/${wf.id}`);
     } catch (e) {
@@ -202,6 +223,28 @@ export function WorkflowNew() {
                   )}
                 </div>
                 <div>
+                  <p className="mb-2 text-xs font-medium text-ink-muted">אפשר להוסיף לתיאור בלחיצה:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ADD_HINTS.map((h) => (
+                      <button
+                        key={h.label}
+                        type="button"
+                        title={h.text}
+                        onClick={() => {
+                          const cur = getValues('prompt').trim();
+                          if (cur.includes(h.text)) return;
+                          setValue('prompt', cur ? `${cur.replace(/[.,]$/, '')}, ${h.text}` : h.text, { shouldValidate: cur.length > 0 });
+                          document.getElementById('prompt')?.focus();
+                        }}
+                        className="min-h-[34px] rounded-full border border-dashed border-cloud-300 bg-white px-3 text-xs font-medium text-ink-muted transition hover:border-teal hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+                      >
+                        + {h.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-ink-soft">אחר כך משנים את המספרים במילים שלכם — המנוע מבין גם ״א׳-ו׳״, ״10:00-14:00״, ״יומיים מראש״.</p>
+                </div>
+                <div>
                   <p className="mb-2 text-xs font-medium text-ink-muted">דוגמאות שאפשר להתחיל מהן:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {PROMPT_EXAMPLES.map((ex) => (
@@ -275,70 +318,89 @@ export function WorkflowNew() {
           )}
 
           {draft && start !== 'duplicate' && (
-            <Card className="animate-fade-up p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-semibold">החוויה ללקוח</h2>
-                <span className="text-xs text-ink-muted">שלב 2 · אפשר להחליף גם אחר כך</span>
-              </div>
-              <div className="mt-3">
-                <PresetPicker
-                  label="בחירת חוויה ועיצוב"
-                  value={draft.theme.presetId}
-                  recommended={draft.recommended}
-                  onChange={(id) => setDraft({ ...draft, theme: buildTheme(id, { source: id === draft.recommended ? 'auto' : 'manual' }) })}
-                />
-              </div>
-              <p className="mt-2 text-xs text-ink-muted">{PRESETS[draft.theme.presetId].meta.description}</p>
-
-              <div className="mt-5 rounded-xl bg-cloud p-3 text-sm">
-                <p className="font-medium">
-                  מה הכנו: {draft.label}
-                  {r && <Badge tone={CONFIDENCE[r.confidence].tone} className="ms-2">{CONFIDENCE[r.confidence].label}</Badge>}
-                </p>
-                <p className="mt-1 text-ink-muted">
-                  {draft.config.steps.length} שלבים · {draft.config.steps.reduce((n, s) => n + s.fields.length, 0)} שדות
-                  {draft.config.pricing.enabled ? ' · חישוב מחיר' : ''}
-                  {draft.config.mode === 'case' ? ' · תיק אישי לכל לקוח' : ''}
-                  {draft.config.booking?.enabled ? ' · כללי הזמנה' : ''} · סיום: {COMPLETION_LABELS[draft.config.completion?.mode ?? 'request'].title}
-                </p>
-                {r && r.detected.length > 0 && (
-                  <p className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-ink-muted">זוהה בתיאור:</span>
-                    {r.detected.map((k) => (
-                      <Badge key={k} tone="blue">
-                        {k}
-                      </Badge>
-                    ))}
-                  </p>
-                )}
-                {r && r.adjustments.length > 0 && (
-                  <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs text-ink-muted">
-                    {r.adjustments.map((a) => (
-                      <li key={a}>{a}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              {r && r.reviewNotes.length > 0 && (
-                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900" role="note">
-                  <p className="flex items-center gap-1.5 font-semibold">
-                    <AlertTriangle className="h-4 w-4" aria-hidden /> דורש בדיקה או לא נתמך בדמו
-                  </p>
-                  <ul className="mt-1.5 list-inside list-disc space-y-1 text-[13px]">
-                    {r.reviewNotes.map((n) => (
-                      <li key={n}>{n}</li>
-                    ))}
-                  </ul>
-                  <p className="mt-1.5 text-xs text-amber-800/80">ההערות נשמרות בטיוטה ומוצגות בסטודיו — לא ללקוחות.</p>
+            <div ref={resultRef} className="scroll-mt-4">
+              <Card className="animate-fade-up p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-semibold">החוויה ללקוח</h2>
+                  <span className="text-xs text-ink-muted">שלב 2 · אפשר להחליף גם אחר כך</span>
                 </div>
-              )}
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Button onClick={save} loading={saving}>
-                  המשך לסטודיו <ArrowLeft className="h-4 w-4" aria-hidden />
-                </Button>
-                <span className="text-xs text-ink-muted">בסטודיו: הוספת שדות, מיתוג, תצוגה בנייד, בדיקה ופרסום.</span>
-              </div>
-            </Card>
+                <div className="mt-3 rounded-xl bg-cloud p-3 text-sm">
+                  <p className="font-medium">
+                    מה הכנו: {draft.label}
+                    {r && <Badge tone={CONFIDENCE[r.confidence].tone} className="ms-2">{CONFIDENCE[r.confidence].label}</Badge>}
+                  </p>
+                  <p className="mt-1 text-ink-muted">
+                    {draft.config.steps.length} שלבים · {draft.config.steps.reduce((n, s) => n + s.fields.length, 0)} שדות
+                    {draft.config.pricing.enabled ? ' · חישוב מחיר' : ''}
+                    {draft.config.mode === 'case' ? ' · תיק אישי לכל לקוח' : ''}
+                    {draft.config.booking?.enabled ? ' · כללי הזמנה' : ''} · סיום: {COMPLETION_LABELS[draft.config.completion?.mode ?? 'request'].title}
+                  </p>
+                  {r && r.detected.length > 0 && (
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-ink-muted">זוהה בתיאור:</span>
+                      {r.detected.map((k) => (
+                        <Badge key={k} tone="blue">
+                          {k}
+                        </Badge>
+                      ))}
+                    </p>
+                  )}
+                  {r && r.understood.length > 0 && (
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-ink-muted">כללים שהבנו:</span>
+                      {r.understood.map((k) => (
+                        <Badge key={k} tone="teal">
+                          {k}
+                        </Badge>
+                      ))}
+                    </p>
+                  )}
+                  {r && r.adjustments.length > 0 && (
+                    <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs text-ink-muted">
+                      {r.adjustments.map((a) => (
+                        <li key={a}>{a}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {r && r.reviewNotes.length > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900" role="note">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle className="h-4 w-4" aria-hidden /> דורש בדיקה או לא נתמך בדמו
+                    </p>
+                    <ul className="mt-1.5 list-inside list-disc space-y-1 text-[13px]">
+                      {r.reviewNotes.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-xs text-amber-800/80">ההערות נשמרות בטיוטה ומוצגות בסטודיו — לא ללקוחות.</p>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Button onClick={save} loading={saving}>
+                    המשך לסטודיו <ArrowLeft className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <span className="text-xs text-ink-muted">אפשר גם לבחור קודם חוויה אחרת למטה.</span>
+                </div>
+                <div className="mt-5">
+                  <PresetPicker
+                    label="בחירת חוויה ועיצוב"
+                  initial={4}
+                    value={draft.theme.presetId}
+                    recommended={draft.recommended}
+                    onChange={(id) => setDraft({ ...draft, theme: buildTheme(id, { source: id === draft.recommended ? 'auto' : 'manual' }) })}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-ink-muted">{PRESETS[draft.theme.presetId].meta.description}</p>
+
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <Button onClick={save} loading={saving}>
+                    המשך לסטודיו <ArrowLeft className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <span className="text-xs text-ink-muted">בסטודיו: הוספת שדות, מיתוג, תצוגה בנייד, בדיקה ופרסום.</span>
+                </div>
+              </Card>
+            </div>
           )}
         </div>
 

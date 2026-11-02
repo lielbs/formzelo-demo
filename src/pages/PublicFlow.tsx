@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, Link2Off, Lock } from 'lucide-react';
+import { ArrowRight, CalendarX2, Eye, Link2Off, Lock } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Brand';
@@ -12,6 +12,7 @@ import { workflowTitle } from '../lib/meta';
 import { RequestActions } from '../renderer/actions';
 import { Confirmation } from '../renderer/Confirmation';
 import { referencedAssets } from '../renderer/media';
+import { DigitalPresence } from '../renderer/presence';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { buildTheme } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
@@ -64,6 +65,8 @@ export function PublicFlow() {
 
   const pub = useRepoQuery((r) => r.resolvePublic(slug), [slug]);
   const runQ = useRepoQuery((r) => (runId ? r.getPublicRun(slug, runId) : Promise.resolve(null)), [slug, runId]);
+  // New requests only: a personal link (?r=) always opens, whatever the intake rules say.
+  const intakeQ = useRepoQuery((r) => (runId ? Promise.resolve(null) : r.getIntakeState(slug)), [slug, runId]);
   const actionsQ = useRepoQuery((r) => (runId ? r.getPublicActions(slug, runId) : Promise.resolve([])), [slug, runId]);
   // A run is rendered with the exact version (config + design) it is bound to.
   const version = runQ.data?.version ?? pub.data?.version;
@@ -78,7 +81,7 @@ export function PublicFlow() {
     if (tabTitle) document.title = tabTitle;
   }, [tabTitle]);
 
-  if (pub.loading || runQ.loading)
+  if (pub.loading || runQ.loading || intakeQ.loading)
     return (
       <Shell>
         <Spinner />
@@ -173,6 +176,20 @@ export function PublicFlow() {
             בסביבת {organization.name}.
           </p>
         </Notice>
+      </Shell>
+    );
+  }
+
+  const intake = intakeQ.data;
+  if (!found && intake && !intake.open) {
+    return (
+      <Shell theme={design} orgName={organization.name}>
+        <Notice icon={CalendarX2} title={`${config.title} · ${organization.name}`}>
+          <p className="text-base">{pub.data.workflow.intake?.closedMessage || intake.message}</p>
+        </Notice>
+        <div className="mx-auto max-w-lg px-3 pb-10">
+          <DigitalPresence theme={design} slot="completion" title="אפשר ליצור איתנו קשר" />
+        </div>
       </Shell>
     );
   }

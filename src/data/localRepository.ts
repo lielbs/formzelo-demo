@@ -15,11 +15,13 @@
  * manual edit never crashes the app.
  */
 import {
+  IntakeSchema,
   MetaSchema,
   OrgDataSchema,
   SCHEMA_VERSION,
   WorkflowConfigSchema,
   type CustomerAction,
+  type Intake,
   type Meta,
   type OrgData,
   type Organization,
@@ -36,6 +38,7 @@ import { actionSummary, buildAction, cancel as cancelAct, isDuplicate, respond a
 import { CUSTOMER_CANCELLABLE, slotAvailability, validateBooking } from '../engine/booking';
 import { normalizeLink } from '../engine/presence';
 import { optionUsage, validateOptionCapacity } from '../engine/capacity';
+import { hasOpenRequestFrom, intakeState } from '../engine/intake';
 import { initialPayment, paymentOnApproval, simulatePaid } from '../engine/completion';
 import { computePrice } from '../engine/pricing';
 import { freezeTheme } from '../theme/brand';
@@ -419,6 +422,16 @@ export class LocalStorageRepository implements FormangleRepository {
     });
   }
 
+  async updateIntake(orgId: string, workflowId: string, intake: Intake) {
+    const parsed = IntakeSchema.parse(intake);
+    return this.mutate(orgId, (d) => {
+      const wf = this.findWorkflow(d, workflowId);
+      wf.intake = parsed;
+      wf.updatedAt = nowIso();
+      return wf;
+    });
+  }
+
   async listVersions(orgId: string, workflowId: string) {
     return this.readOrg(orgId)
       .versions.filter((v) => v.workflowId === workflowId)
@@ -489,6 +502,15 @@ export class LocalStorageRepository implements FormangleRepository {
       if (config.consent.required && !input.consent) throw new ValidationFailedError({ __consent: 'יש לאשר כדי לשלוח' });
 
       const sub = buildSubmission(config, input.values, existing?.caseAnswers ?? []);
+      // New public requests respect the owner's intake rules; a returning customer (changes requested) never does.
+      if (!existing) {
+        const wfRuns = d.runs.filter((r) => r.workflowId === wf.id);
+        const state = intakeState(wf.intake, wfRuns);
+        if (!state.open) throw new DomainRuleError(wf.intake?.closedMessage || state.message || 'הטופס סגור כרגע');
+        if (wf.intake?.onePerContact && hasOpenRequestFrom(sub.customerContact, wfRuns)) {
+          throw new DomainRuleError('כבר התקבלה מכם בקשה פתוחה. נחזור אליכם עליה — אין צורך לשלוח שוב.');
+        }
+      }
       const at = nowIso();
       // Price is recomputed here from the version's config, never trusted from the client.
       const payment = initialPayment(config, computePrice(config, input.values), Boolean(input.payNow), at);
@@ -670,6 +692,13 @@ export class LocalStorageRepository implements FormangleRepository {
     if (!pub) return {};
     const runs = this.readOrg(pub.organization.id).runs.filter((r) => r.workflowId === pub.workflow.id);
     return optionUsage(pub.version.config, runs);
+  }
+
+  async getIntakeState(slug: string) {
+    const pub = await this.resolvePublic(slug);
+    if (!pub) return intakeState(undefined, []);
+    const runs = this.readOrg(pub.organization.id).runs.filter((r) => r.workflowId === pub.workflow.id);
+    return intakeState(pub.workflow.intake, runs);
   }
 
   async cancelRunByCustomer(slug: string, runId: string) {

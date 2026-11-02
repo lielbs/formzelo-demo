@@ -3,7 +3,7 @@
  * the canvas renders immediately through the generic renderer.
  */
 import { ArrowDown, ArrowUp, CalendarPlus, ExternalLink, Plus, Trash2 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ImagePicker } from '../../../components/ImagePicker';
 import { Badge, Button, cx, FieldLabel, Input, Select, Textarea } from '../../../components/ui';
 import {
@@ -667,6 +667,86 @@ export function CompletionInspector({ config, update }: { config: WorkflowConfig
   );
 }
 
+const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const HOURS = Array.from({ length: 19 }, (_, i) => toHHMM((i + 6) * 60)); // 06:00 … 24:00
+
+/** "From 09:00 to 18:00, every 30 minutes" → the offered start times. Single times can still be removed. */
+function hoursToSlots(from: string, to: string, every: number): string[] {
+  const out: string[] = [];
+  for (let at = toMin(from); at + every <= toMin(to) && out.length < 48; at += every) out.push(toHHMM(at));
+  return out;
+}
+
+function SlotEditor({ slots, onChange }: { slots: string[]; onChange: (s: string[]) => void }) {
+  const first = slots[0] ?? '09:00';
+  const gap = slots.length > 1 ? toMin(slots[1]!) - toMin(slots[0]!) : 60;
+  const [from, setFrom] = useState(HOURS.includes(first) ? first : '09:00');
+  const [to, setTo] = useState(() => {
+    const end = slots.length ? toHHMM(Math.min(24 * 60, toMin(slots[slots.length - 1]!) + gap)) : '18:00';
+    return HOURS.includes(end) ? end : '18:00';
+  });
+  const [every, setEvery] = useState([15, 20, 30, 45, 60, 90, 120].includes(gap) ? gap : 60);
+  const preview = hoursToSlots(from, to, every);
+  return (
+    <fieldset className="space-y-2 rounded-xl border border-cloud-200 p-3">
+      <legend className="px-1 text-sm font-medium">שעות שהלקוח יכול לבחור</legend>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <FieldLabel htmlFor="sl-from">מ־</FieldLabel>
+          <Select id="sl-from" value={from} onChange={(e) => setFrom(e.target.value)}>
+            {HOURS.slice(0, -1).map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <FieldLabel htmlFor="sl-to">עד</FieldLabel>
+          <Select id="sl-to" value={to} onChange={(e) => setTo(e.target.value)}>
+            {HOURS.slice(1).map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <FieldLabel htmlFor="sl-every">כל</FieldLabel>
+          <Select id="sl-every" value={every} onChange={(e) => setEvery(Number(e.target.value))}>
+            {[15, 20, 30, 45, 60, 90, 120].map((m) => (
+              <option key={m} value={m}>
+                {m < 60 ? `${m} דק׳` : m === 60 ? 'שעה' : m === 90 ? 'שעה וחצי' : 'שעתיים'}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+      <Button size="sm" variant="secondary" disabled={!preview.length || preview.join() === slots.join()} onClick={() => onChange(preview)}>
+        {preview.length ? `עדכון ל-${preview.length} שעות` : 'הטווח קצר מדי'}
+      </Button>
+      <ul className="flex flex-wrap gap-1.5" aria-label="השעות המוצעות עכשיו">
+        {slots.map((t) => (
+          <li key={t}>
+            <button
+              type="button"
+              dir="ltr"
+              aria-label={`הסרת ${t}`}
+              disabled={slots.length <= 1}
+              onClick={() => onChange(slots.filter((x) => x !== t))}
+              className="inline-flex min-h-[30px] items-center gap-1 rounded-full bg-cloud px-2.5 text-xs font-medium text-ink hover:bg-cloud-200 disabled:opacity-60"
+            >
+              {t} <span aria-hidden>×</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-ink-muted">לחיצה על שעה מסירה אותה (למשל הפסקת צהריים).</p>
+    </fieldset>
+  );
+}
+
 export function BookingInspector({ config, update }: { config: WorkflowConfig; update: (fn: (d: WorkflowConfig) => void) => void }) {
   const fields = config.steps.flatMap((s) => s.fields);
   const dates = fields.filter((f) => f.type === 'date');
@@ -674,6 +754,14 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
   const numbers = fields.filter((f) => f.type === 'number');
   const b: Booking | undefined = config.booking;
   const setB = (patch: Partial<Booking>) => update((d) => void (d.booking = { ...(d.booking as Booking), ...patch }));
+  /** Offered times live in two places that must agree: the booking rules and the time field's options. */
+  const setSlots = (slots: string[]) =>
+    update((d) => {
+      if (!d.booking) return;
+      d.booking.slots = slots;
+      const time = d.steps.flatMap((s) => s.fields).find((f) => f.key === d.booking!.timeKey);
+      if (time) time.options = slots.map((t) => time.options?.find((o) => o.value === t) ?? makeOption(t, t));
+    });
 
   const enable = () =>
     update((d) => {
@@ -767,7 +855,11 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
               })}
             </div>
           </fieldset>
-          <p className="text-xs text-ink-muted">שעות מוצעות: {b.slots.join(' · ') || '—'} (נקבעות באפשרויות של שדה השעה)</p>
+          {b.timeKey ? (
+            <SlotEditor slots={b.slots} onChange={setSlots} />
+          ) : (
+            <p className="text-xs text-ink-muted">אין שדה שעה — הלקוח בוחר תאריך בלבד. כדי להציע שעות, בחרו ״שדה שעה״ למעלה.</p>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <FieldLabel htmlFor="bk-cap">קיבולת לכל שעה</FieldLabel>
@@ -782,6 +874,76 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
                 </option>
               </Select>
             </div>
+          </div>
+          <div className="space-y-3 border-t border-cloud-200 pt-3">
+            <p className="text-sm font-medium">מתי אפשר להזמין</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <FieldLabel htmlFor="bk-notice">התראה מראש</FieldLabel>
+                <Select id="bk-notice" value={b.minNoticeHours ?? ''} onChange={(e) => setB({ minNoticeHours: Number(e.target.value) || undefined })}>
+                  <option value="">אפשר גם לאותו יום</option>
+                  {[2, 4, 12, 24, 48, 72].map((h) => (
+                    <option key={h} value={h}>
+                      לפחות {h} שעות מראש
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <FieldLabel htmlFor="bk-ahead">עד כמה קדימה</FieldLabel>
+                <Select id="bk-ahead" value={b.maxDaysAhead ?? ''} onChange={(e) => setB({ maxDaysAhead: Number(e.target.value) || undefined })}>
+                  <option value="">ללא הגבלה</option>
+                  {[7, 14, 30, 60, 90, 180].map((d) => (
+                    <option key={d} value={d}>
+                      עד {d} ימים קדימה
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <FieldLabel htmlFor="bk-day">מקסימום ליום</FieldLabel>
+                <Input
+                  id="bk-day"
+                  type="number"
+                  min={1}
+                  dir="ltr"
+                  placeholder="ללא הגבלה"
+                  value={b.maxPerDay ?? ''}
+                  onChange={(e) => setB({ maxPerDay: Math.floor(Number(e.target.value)) > 0 ? Math.floor(Number(e.target.value)) : undefined })}
+                />
+              </div>
+            </div>
+            <div>
+              <FieldLabel htmlFor="bk-closed">ימים סגורים (חג, חופשה)</FieldLabel>
+              <Input
+                id="bk-closed"
+                type="date"
+                dir="ltr"
+                value=""
+                onChange={(e) => {
+                  const d = e.target.value;
+                  if (d && !(b.closedDates ?? []).includes(d)) setB({ closedDates: [...(b.closedDates ?? []), d].sort().slice(-120) });
+                }}
+              />
+              {(b.closedDates ?? []).length > 0 && (
+                <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="ימים סגורים">
+                  {b.closedDates!.map((d) => (
+                    <li key={d}>
+                      <button
+                        type="button"
+                        aria-label={`הסרת ${d}`}
+                        onClick={() => setB({ closedDates: b.closedDates!.filter((x) => x !== d) })}
+                        className="inline-flex min-h-[30px] items-center gap-1 rounded-full bg-cloud px-2.5 text-xs font-medium text-ink hover:bg-cloud-200"
+                        dir="ltr"
+                      >
+                        {d.split('-').reverse().join('.')} ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="text-xs text-ink-muted">הלקוח רואה בלוח השנה רק תאריכים שאפשר לבחור, ומקבל הסבר ברור אם בחר יום סגור.</p>
           </div>
           <Button size="sm" variant="ghost" onClick={() => setB({ enabled: false })}>
             כיבוי כללי הזמנה

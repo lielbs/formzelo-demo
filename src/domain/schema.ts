@@ -225,6 +225,14 @@ export const BookingSchema = z.object({
   /** Capacity per slot, counted locally from requests in this browser. */
   capacityPerSlot: z.number().int().min(1).max(1000),
   capacityUnit: z.enum(['bookings', 'guests']),
+  /** Requests must be at least this many hours ahead. */
+  minNoticeHours: z.number().int().min(1).max(720).optional(),
+  /** How far ahead a date may be requested. */
+  maxDaysAhead: z.number().int().min(1).max(730).optional(),
+  /** Cap for a whole date across all its slots (same unit as capacityPerSlot). */
+  maxPerDay: z.number().int().min(1).max(10000).optional(),
+  /** Dates closed for bookings (holidays, vacation). */
+  closedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(120).optional(),
 });
 export type Booking = z.infer<typeof BookingSchema>;
 
@@ -283,6 +291,32 @@ export const MembershipSchema = z.object({
 });
 export type Membership = z.infer<typeof MembershipSchema>;
 
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/**
+ * When and how much a public link accepts. Lives on the workflow, not on a version:
+ * the owner can close or limit the form at once, without publishing again.
+ * Counted from requests stored in this browser (see engine/intake.ts).
+ */
+export const IntakeSchema = z.object({
+  /** Closed by hand ("not taking requests right now"). */
+  paused: z.boolean().default(false),
+  /** First day the form accepts requests (inclusive). */
+  opensOn: isoDay.optional(),
+  /** Last day the form accepts requests (inclusive). */
+  closesOn: isoDay.optional(),
+  /** Whole days the form is closed (holiday, vacation). */
+  closedDates: z.array(isoDay).max(120).optional(),
+  maxTotal: z.number().int().min(1).max(100000).optional(),
+  maxPerDay: z.number().int().min(1).max(10000).optional(),
+  maxPerWeek: z.number().int().min(1).max(10000).optional(),
+  /** One open request per phone / email. */
+  onePerContact: z.boolean().default(false),
+  /** Shown to customers while the form is closed. */
+  closedMessage: z.string().max(240).optional(),
+});
+export type Intake = z.infer<typeof IntakeSchema>;
+
 export const WorkflowSchema = z.object({
   id,
   orgId: id,
@@ -295,6 +329,7 @@ export const WorkflowSchema = z.object({
   publishedVersionId: z.string().optional(),
   /** True when the draft has edits not yet published. */
   hasUnpublishedChanges: z.boolean().default(false),
+  intake: IntakeSchema.optional(),
   sourcePrompt: z.string().optional(),
   isDemo: z.boolean(),
   createdAt: timestamp,

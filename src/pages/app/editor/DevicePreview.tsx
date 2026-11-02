@@ -23,10 +23,12 @@ export function DeviceToggle({ device, onChange, tablet = false }: { device: Dev
           type="button"
           role="radio"
           aria-checked={device === d}
+          aria-label={label}
+          title={label}
           onClick={() => onChange(d)}
           className={cx('inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition', device === d ? 'bg-white text-ink shadow-sm' : 'text-ink-muted hover:text-ink')}
         >
-          <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
+          <Icon className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">{label}</span>
         </button>
       ))}
     </div>

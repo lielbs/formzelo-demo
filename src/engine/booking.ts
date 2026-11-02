@@ -52,12 +52,45 @@ export function slotAvailability(booking: Booking, date: string, runs: WorkflowR
 }
 
 /** Booking-specific validation on top of field validation. */
-export function validateBooking(config: WorkflowConfig, values: Values, runs: WorkflowRun[], excludeRunId?: string): FieldErrors {
+/** Local calendar day, YYYY-MM-DD. */
+const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Earliest and latest dates a customer may pick (for the date input and for validation). */
+export function bookingWindow(b: Booking, now = new Date()): { min: string; max?: string } {
+  const min = localDay(b.minNoticeHours ? new Date(now.getTime() + b.minNoticeHours * 3600_000) : now);
+  if (!b.maxDaysAhead) return { min };
+  const max = new Date(now);
+  max.setDate(max.getDate() + b.maxDaysAhead);
+  return { min, max: localDay(max) };
+}
+
+const unitsOf = (b: Booking, run: WorkflowRun) => (b.capacityUnit === 'guests' ? Math.max(1, Number(answerOf(run, b.guestsKey)) || 1) : 1);
+
+export function validateBooking(config: WorkflowConfig, values: Values, runs: WorkflowRun[], excludeRunId?: string, now = new Date()): FieldErrors {
   const b = config.booking;
   if (!b?.enabled) return {};
   const errors: FieldErrors = {};
   const date = values[b.dateKey];
   if (typeof date !== 'string' || !date) return errors; // required-ness is handled by field validation
+  const today = localDay(now);
+  if (date < today) return { [b.dateKey]: 'התאריך כבר עבר. בחרו תאריך מהיום והלאה.' };
+  if (b.closedDates?.includes(date)) return { [b.dateKey]: 'העסק סגור בתאריך הזה. בחרו תאריך אחר.' };
+  if (b.maxDaysAhead) {
+    const { max } = bookingWindow(b, now);
+    if (max && date > max) return { [b.dateKey]: `אפשר להזמין עד ${b.maxDaysAhead} ימים מראש.` };
+  }
+  if (b.minNoticeHours) {
+    const time = b.timeKey && typeof values[b.timeKey] === 'string' && values[b.timeKey] ? (values[b.timeKey] as string) : '23:59';
+    const at = new Date(`${date}T${time}:00`);
+    if (at.getTime() - now.getTime() < b.minNoticeHours * 3600_000) {
+      return { [b.timeKey && values[b.timeKey] ? b.timeKey : b.dateKey]: `צריך להזמין לפחות ${b.minNoticeHours} שעות מראש.` };
+    }
+  }
+  if (b.maxPerDay) {
+    const used = runs.filter((r) => r.id !== excludeRunId && HOLDS_CAPACITY.includes(r.status) && answerOf(r, b.dateKey) === date).reduce((n, r) => n + unitsOf(b, r), 0);
+    const units = b.capacityUnit === 'guests' ? Math.max(1, Number(values[b.guestsKey ?? '']) || 1) : 1;
+    if (used + units > b.maxPerDay) return { [b.dateKey]: 'היום הזה מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו תאריך אחר.' };
+  }
   const wd = weekdayOf(date);
   if (wd === null || !b.openWeekdays.includes(wd)) {
     errors[b.dateKey] = `אין קבלת הזמנות ביום ${wd === null ? 'זה' : WEEKDAY_LABELS[wd]}. ימי פעילות: ${b.openWeekdays.map((d) => WEEKDAY_LABELS[d]).join(', ')}`;
