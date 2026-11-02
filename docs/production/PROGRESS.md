@@ -4,7 +4,7 @@ Last updated: 2026-11-02 (Asia/Jerusalem)
 
 ## Current milestone
 
-Audit and Production V1 architecture documentation complete. The next milestone is a decision workshop followed by Milestone 0/1 implementation planning; no production infrastructure has been created or changed.
+Milestone 0 — Secure Production Foundation is in progress. The TypeScript production configuration/contracts checkpoint is validated and committed. A local-only Supabase schema, migration, seed, pgTAP suite, and helper script are present in the working tree but remain uncommitted and **not database-validated** because this workstation has no available container runtime or local PostgreSQL service.
 
 ## Completed work
 
@@ -16,6 +16,8 @@ Audit and Production V1 architecture documentation complete. The next milestone 
 - Reviewed current official Supabase guidance for RLS, Storage access, Auth invitations, Queues, Cron, backups, and pricing assumptions.
 - Authored all nine requested documents with architecture, database, Auth/RLS, integration/automation, operations, migration, milestone, acceptance, and decision guidance.
 - Created focused documentation commits without staging product-source or marketing changes.
+- Added strict, credential-free organization/workflow configuration schemas, explicit provider resolution, server-side adapter/event contracts, and a repository selection seam that fails closed when no production adapter is configured.
+- Validated the TypeScript checkpoint with 13 focused Vitest assertions and the full repository typecheck.
 
 ## Files changed by this milestone
 
@@ -29,6 +31,9 @@ Audit and Production V1 architecture documentation complete. The next milestone 
 - `docs/production/07-MIGRATION-PLAN.md`
 - `docs/production/08-IMPLEMENTATION-ROADMAP.md`
 - `docs/production/09-OPEN-DECISIONS.md`
+- `src/production/configuration.ts`
+- `src/production/configuration.test.ts`
+- `src/production/contracts.ts`
 
 No application source, configuration, DNS, live deployment, provider account, database, or production data was changed by this task.
 
@@ -41,8 +46,10 @@ No application source, configuration, DNS, live deployment, provider account, da
 - Secret/private-key and dangerous-sink searches — no live credential/private key or validated product-source injection sink identified.
 - Codex Security scan — completed with 8/8 coverage surfaces and 0 reportable findings; results are tied to the original recorded revision/snapshot.
 - `git diff --check -- docs/production` and required-content checks — passed.
+- `npm test -- --run src/production/configuration.test.ts` — passed: 1 test file, 13 tests.
+- `npm run typecheck` — passed after adding the production TypeScript boundary.
 
-Not run: live-site probing, browser E2E, screen-reader/manual accessibility testing, load, database/RLS/storage, provider/webhook, restore, migration rehearsal, or production deployment checks. Those systems do not exist here or were outside the authorized boundary.
+Not run for the current Milestone 0 database work: migration application/reset, pgTAP/RLS tests, generated database types, database advisors, or clean-stack reproducibility. The local Supabase CLI cannot reach `127.0.0.1:54322` without a compatible local runtime. No remote project was used.
 
 ## Decisions made
 
@@ -58,11 +65,14 @@ Not run: live-site probing, browser E2E, screen-reader/manual accessibility test
 
 - `35cd560` — `docs: start production v1 audit tracking`
 - `12fb330` — `docs: define production architecture and controls`
-- Final roadmap/handoff commit — this tracker and documents 07–09 are committed together next; record its hash in the session handoff.
+- `d34d503` — `docs: add production migration roadmap and handoff`
+- `2f75733` — `feat: define production configuration boundaries`
 
 ## Outstanding blockers and risks
 
-- Blocking decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 require stakeholder approval before environment setup and implementation.
+- A compatible container runtime is not available on this workstation. Installing/enabling Docker, Podman, WSL, Hyper-V, or changing machine services/settings requires founder approval; alternatively use an existing approved disposable development machine/runtime.
+- The authored migration and RLS tests are not accepted until they run successfully from an empty local stack. They must not be committed or represented as validated based on static inspection alone.
+- Production decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 remain unresolved and still block remote environment setup and production commitments.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
 - The demo must not be represented as secure cross-device/multi-tenant production software: `/app` lacks a real identity boundary, request IDs act as bearer capabilities, persistence is local, and capacity is non-transactional.
 - The security review was sequential because delegated audit workers were unavailable; no live environment/runtime validation was authorized.
@@ -70,12 +80,11 @@ Not run: live-site probing, browser E2E, screen-reader/manual accessibility test
 
 ## Exact next steps
 
-1. Review the nine documents and run the blocking decision workshop from `09-OPEN-DECISIONS.md`.
-2. Authorize an isolated Formangle development environment and approve region, spend ceiling, owners, RPO/RTO, and secret management.
-3. Start Milestone 0: local Supabase scaffolding, ordered migrations, generated types, seeds, environment validation, and CI migration/RLS gates—without touching production or RAVO.
-4. Implement only Milestone 1: invitation/login, membership isolation, draft/publish, public token resolution, server-authoritative submission, owner visibility, persistence, and cross-tenant negative tests.
-5. Demonstrate all seven required outcomes in staging and record RLS, idempotency, parity, rollback, latency, and audit evidence before expanding scope.
+1. Obtain approval to install/enable a compatible local container runtime, or identify an existing approved disposable development runtime.
+2. From a clean local Supabase stack, apply/reset the migration and run `./scripts/local-db.ps1 -Action test`.
+3. Fix any migration/pgTAP failures, repeat from an empty stack, generate `src/production/database.generated.ts`, and add a deterministic generation-diff check.
+4. Commit the database foundation only after those checks pass; do not start Milestone 1 automatically.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 on branch `production-v1` in `C:\Users\lielbs\CODEX PROJECTS\FORMZELO`. First read `docs/production/PROGRESS.md` and all nine numbered documents. Inspect `git status` and preserve every pre-existing source/marketing change; stage only files intentionally created for the next milestone. Do not connect production, reuse RAVO, create paid resources, deploy, change DNS, or activate providers. Facilitate and record the blocking decisions in `09-OPEN-DECISIONS.md`; if the user approves an isolated local/development foundation, implement Milestone 0 only: Supabase project scaffolding, ordered schema migrations, generated types, deterministic seeds, Auth/membership/RLS foundations, environment validation, and CI database/RLS checks. Use current official Supabase documentation, keep service credentials server-side, add positive and negative multi-tenant tests, run lint/typecheck/tests/build/migration checks, update `PROGRESS.md`, and make focused commits. Stop before real provider integration or production mutation and report residual risks and the exact next step.
+> Continue Formangle Production V1 Milestone 0 on branch `production-v1`. Read only this tracker and inspect `git status`. Preserve the unrelated advisor/marketing changes. Commit `2f75733` already completed the TypeScript production boundary. The untracked `supabase/` and `scripts/local-db.ps1` foundation is authored but unaccepted because no compatible local runtime is available. After explicit founder approval to install/enable a local container runtime, or on an existing approved disposable runtime, start a clean local Supabase stack, reset/apply migrations, run the pgTAP suite, fix failures, repeat from empty state, generate database types, and add a generation-diff check. Commit only validated database files, update this tracker, and stop before Milestone 1, remote resources, deployment, providers, RAVO, or paid services.
