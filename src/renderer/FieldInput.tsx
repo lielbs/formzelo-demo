@@ -1,7 +1,7 @@
 import { AlertCircle, CalendarDays, Check, Clock, FileUp, Info, Minus, Plus, X } from 'lucide-react';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { isDisplayField, type AnswerValue, type WorkflowConfig, type WorkflowField } from '../domain/schema';
-import type { SlotAvailability } from '../engine/booking';
+import { bookingWindow, type SlotAvailability } from '../engine/booking';
 import type { Values } from '../engine/conditions';
 import type { PriceResult } from '../engine/pricing';
 import { formatCurrency, isoDay } from '../lib/format';
@@ -405,12 +405,14 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt: i
       }
       return <TextInput field={field} value={value} onChange={onChange} onBlur={onBlur} error={error} />;
     default:
-      return <TextInput field={field} value={value} onChange={onChange} onBlur={onBlur} error={error} />;
+      return <TextInput field={field} value={value} onChange={onChange} onBlur={onBlur} error={error} config={config} />;
   }
 }
 
-function TextInput({ field, value, onChange, onBlur, error }: Omit<Props, 'values' | 'optionArt'>) {
+function TextInput({ field, value, onChange, onBlur, error, config }: Omit<Props, 'values' | 'optionArt'>) {
   const id = inputId(field.key);
+  // The booking date picker offers only the dates the business takes (notice, days ahead).
+  const win = field.type === 'date' && config?.booking?.enabled && config.booking.dateKey === field.key ? bookingWindow(config.booking) : undefined;
   const htmlType = { email: 'email', phone: 'tel', number: 'number', date: 'date' }[field.type as string] ?? 'text';
   const ltr = ['email', 'phone', 'number', 'date'].includes(field.type);
   const isDate = field.type === 'date';
@@ -433,8 +435,8 @@ function TextInput({ field, value, onChange, onBlur, error }: Omit<Props, 'value
           inputMode={field.type === 'phone' ? 'tel' : field.type === 'number' ? 'numeric' : field.type === 'email' ? 'email' : undefined}
           autoComplete={field.role === 'customer_name' ? 'name' : field.type === 'phone' ? 'tel' : field.type === 'email' ? 'email' : undefined}
           placeholder={field.placeholder}
-          min={field.type === 'number' ? field.min : isDate && field.min !== undefined ? isoDay(field.min) : undefined}
-          max={field.type === 'number' ? field.max : isDate && field.max !== undefined ? isoDay(field.max) : undefined}
+          min={field.type === 'number' ? field.min : win ? win.min : isDate && field.min !== undefined ? isoDay(field.min) : undefined}
+          max={field.type === 'number' ? field.max : win?.max ? win.max : isDate && field.max !== undefined ? isoDay(field.max) : undefined}
           value={value === undefined || value === null ? '' : String(value)}
           onChange={(e) => onChange(field.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
         />

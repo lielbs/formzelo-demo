@@ -6,12 +6,13 @@
  * are then adjusted. Unsupported requirements become owner-only review notes.
  * The output is an ordinary, editable WorkflowConfig validated against the Zod schema.
  */
-import { WorkflowConfigSchema, type WorkflowConfig } from '../domain/schema';
+import { WorkflowConfigSchema, type Intake, type WorkflowConfig } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
 import { recommendTheme, type ThemeRecommendation } from '../theme/resolver';
 import { newId } from '../lib/id';
 import { analyzePrompt, composeWorkflow, describeIntent, shouldCompose, type PromptIntent } from './compose';
 import { normalizeHebrew, tokenMatches } from './hebrew';
+import { readRules, type PromptRules } from './rules';
 import { buildGeneric, field, TEMPLATES, type TemplateKey } from './templates';
 
 export { normalizeHebrew };
@@ -42,6 +43,10 @@ export interface GenerationResult {
   /** Requirements that need the owner's review or are not supported in the demo (also stored as config.draftNotes). */
   reviewNotes: string[];
   config: WorkflowConfig;
+  /** When / how much the link accepts, read from the description (applied on create). */
+  intake?: Intake;
+  /** Operating rules understood from the description, in the owner's words. */
+  understood: string[];
   /** Recommended completion mode (also applied to the config). */
   completionMode: NonNullable<WorkflowConfig['completion']>['mode'];
   /** Design chosen by the local theme resolver (not AI) — editable before saving. */
@@ -127,11 +132,34 @@ const SERVICES: [RegExp, string[]][] = [
   [/(יוע|עורך דין|רואה חשבון|משרד)/, ['פגישת ייעוץ', 'פגישת המשך']],
 ];
 
-export function appointmentServices(text: string): string[] {
-  return SERVICES.find(([re]) => re.test(text))?.[1] ?? ['פגישה ראשונה', 'פגישת המשך'];
+/** Services the owner named, in their order ("תספורת או צבע" → תספורת, צבע). */
+const SERVICE_WORDS = [
+  'תספורת', 'צבע', 'פן', 'החלקה', 'גוונים', 'תסרוקת', 'זקן', 'מניקור', 'פדיקור', 'לק ג׳ל', 'בניית ציפורניים', 'טיפול פנים',
+  'איפור', 'הסרת שיער', 'עיסוי', 'פיזיותרפיה', 'דיקור', 'רפלקסולוגיה', 'ייעוץ', 'אבחון', 'בדיקה', 'ניקוי שיניים', 'הלבנה',
+  'אימון אישי', 'שיעור ניסיון', 'צילום', 'קעקוע', 'פירסינג', 'ריסים', 'גבות', 'שעווה',
+];
+
+export function namedServices(prompt: string): string[] {
+  const t = ` ${prompt.replace(/[״"']/g, '׳')}`;
+  // A whole word, optionally after one prefix letter: "לתספורת" yes, "פדיקור" is not "דיקור".
+  const at = (w: string) => t.search(new RegExp(`[^א-ת][ולבהמש]?${w}(?![א-ת])`));
+  return SERVICE_WORDS.map((w) => [w, at(w)] as const)
+    .filter(([, i]) => i >= 0)
+    .sort((a, b) => a[1] - b[1])
+    .map(([w]) => w);
 }
 
-function toAppointments(base: WorkflowConfig, title: string, text = ''): WorkflowConfig {
+export function appointmentServices(text: string, prompt = ''): string[] {
+  const named = namedServices(prompt);
+  if (named.length >= 2) return named.slice(0, 8);
+  const sample = SERVICES.find(([re]) => re.test(text))?.[1] ?? ['פגישה ראשונה', 'פגישת המשך'];
+  return named.length ? [named[0]!, ...sample.filter((s) => s !== named[0])] : sample;
+}
+
+/** One person per appointment unless the owner speaks of groups, couples or companions. */
+const GROUPS = /(משתתפ|אנשים|קבוצ|זוג|מלוו|ילדים|סועדים|אורחים|כמה אנשים)/;
+
+function toAppointments(base: WorkflowConfig, title: string, text = '', prompt = ''): WorkflowConfig {
   const c = structuredClone(base);
   // Echoing the request ("מספרה שרוצה…") reads badly to customers; owners rename it in the studio.
   c.title = title.length <= 24 ? title || 'קביעת תור' : 'קביעת תור';
@@ -142,10 +170,11 @@ function toAppointments(base: WorkflowConfig, title: string, text = ''): Workflo
   first.fields.splice(1, 0, field('service', 'איזה שירות?', 'radio', {
     required: true,
     appearance: 'chips',
-    options: appointmentServices(text).map((label, i) => ({ id: newId('opt'), label, value: `service_${i + 1}` })),
+    options: appointmentServices(text, prompt).map((label, i) => ({ id: newId('opt'), label, value: `service_${i + 1}` })),
   }));
+  const groups = GROUPS.test(text);
   first.fields = first.fields
-    .filter((f) => f.key !== 'seating')
+    .filter((f) => f.key !== 'seating' && (groups || f.key !== 'party_size'))
     .map((f) => {
       if (f.key === 'booking_notes') {
         return { ...f, items: [{ id: newId('hl'), title: 'בקשה — לא תור סופי', text: 'העסק מאשר כל בקשה', icon: 'calendar' as const }, { id: newId('hl'), title: 'ללא תשלום מראש', text: 'לא נדרשים פרטי אשראי', icon: 'shield' as const }] };
@@ -159,9 +188,42 @@ function toAppointments(base: WorkflowConfig, title: string, text = ''): Workflo
   second.fields = second.fields.filter((f) => f.key !== 'occasion').map((f) => (f.key === 'requests' ? { ...f, label: 'הערות לעסק', placeholder: 'מה תרצו שנדע מראש?' } : f));
   c.consent = { required: true, text: 'ידוע לי שזו בקשה לתור ושהיא סופית רק לאחר אישור העסק. זהו דמו מקומי — לא מתבצע תשלום ולא נשלחת הודעה אמיתית.' };
   c.successMessage = 'הבקשה לתור נשלחה. זו עדיין בקשה — נעדכן ברגע שהעסק יאשר.';
-  c.booking = { ...c.booking!, openWeekdays: [0, 1, 2, 3, 4], slots: DAY_SLOTS, capacityPerSlot: 1, capacityUnit: 'bookings' };
+  c.booking = { ...c.booking!, guestsKey: groups ? c.booking!.guestsKey : undefined, openWeekdays: [0, 1, 2, 3, 4], slots: DAY_SLOTS, capacityPerSlot: 1, capacityUnit: 'bookings' };
   c.confirmation = { title: 'הבקשה לתור התקבלה', nextSteps: ['העסק בודק את הזמינות', 'תקבלו עדכון על אישור או מועד חלופי (בדמו: הודעה מדומה)', 'התור סופי רק אחרי אישור'] };
   return c;
+}
+
+const DAY_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'שבת'];
+/** [0,1,2,3,4] → "א׳–ה׳"; gaps are listed ("א׳, ג׳, ה׳"). */
+export const weekdayRange = (days: number[]) =>
+  days.length > 2 && days.every((d, i) => i === 0 || d === days[i - 1]! + 1) ? `${DAY_SHORT[days[0]!]}–${DAY_SHORT[days[days.length - 1]!]}` : days.map((d) => DAY_SHORT[d]).join(', ');
+
+/** Puts the rules the owner wrote onto the booking (versioned) and the intake (live). */
+function applyRules(config: WorkflowConfig, r: PromptRules): Intake | undefined {
+  const b = config.booking?.enabled ? config.booking : undefined;
+  if (b) {
+    if (r.weekdays) {
+      b.openWeekdays = r.weekdays;
+      const date = config.steps.flatMap((s) => s.fields).find((f) => f.key === b.dateKey);
+      if (date) date.helpText = `פעילות בימים ${weekdayRange(r.weekdays)}`;
+    }
+    if (r.slots) {
+      b.slots = r.slots;
+      const time = config.steps.flatMap((s) => s.fields).find((f) => f.key === b.timeKey);
+      if (time) time.options = r.slots.map((t) => ({ id: newId('opt'), label: t, value: t }));
+    }
+    if (r.noticeHours) b.minNoticeHours = r.noticeHours;
+    if (r.daysAhead) b.maxDaysAhead = r.daysAhead;
+    if (r.perDay) b.maxPerDay = r.perDay;
+  }
+  const intake: Intake = {
+    paused: false,
+    onePerContact: Boolean(r.onePerContact),
+    maxPerDay: b ? undefined : r.perDay,
+    maxPerWeek: r.perWeek,
+    closesOn: r.closesOn,
+  };
+  return intake.onePerContact || intake.maxPerDay || intake.maxPerWeek || intake.closesOn ? intake : undefined;
 }
 
 export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: TemplateKey): GenerationResult {
@@ -184,9 +246,10 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
   } else {
     config = key === 'generic' ? buildGeneric(titleFromPrompt(prompt)) : TEMPLATES[key].build();
     if (key === 'table_booking' && !/מסעד|שולחן|ארוח|קפה|בר /.test(text)) {
-      config = toAppointments(config, titleFromPrompt(prompt), text);
-      adjustments.push('הותאם לקביעת תור (לא מסעדה): בחירת שירות, שעות יום, ללא העדפת ישיבה');
-      notes.push('רשימת השירותים היא לדוגמה. עדכנו אותה בסטודיו לפני הפרסום.');
+      config = toAppointments(config, titleFromPrompt(prompt), text, prompt);
+      adjustments.push(GROUPS.test(text) ? 'הותאם לקביעת תור: בחירת שירות ושעות יום' : 'הותאם לקביעת תור אישי: בחירת שירות ושעות יום, לקוח אחד לכל תור');
+      if (namedServices(prompt).length < 2) notes.push('רשימת השירותים היא לדוגמה. עדכנו אותה בסטודיו לפני הפרסום.');
+      else adjustments.push(`השירותים שכתבתם: ${namedServices(prompt).join(', ')}`);
     }
     if (key === 'generic') adjustments.push('לא זוהה תחום מוכר — נוצר טופס בסיסי לעריכה');
     config = applyModifiers(config, text, adjustments);
@@ -206,6 +269,8 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
     }
   }
   for (const u of intent.unsupported) notes.push(`${u.requirement}: ${u.reason}`);
+  const rules = readRules(prompt);
+  const intake = applyRules(config, rules);
   config.draftNotes = notes.length ? notes.slice(0, 12) : undefined;
 
   // Appointment flows (salon, clinic…) take their look from the prompt, not from the restaurant template.
@@ -215,7 +280,7 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
   const confidence = forcedTemplate ? 'high' : compose ? (capabilityScore >= 3 ? 'high' : 'medium') : detected.score >= 3 ? 'high' : detected.score >= 1 ? 'medium' : 'low';
   return {
     templateKey: key,
-    templateLabel: compose ? 'הורכב מאבני בניין' : TEMPLATES[key].label,
+    templateLabel: compose ? 'הורכב מאבני בניין' : appointment ? 'קביעת תור' : TEMPLATES[key].label,
     confidence,
     matchedKeywords: forcedTemplate ? [] : detected.matched,
     adjustments,
@@ -225,6 +290,8 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
     reviewNotes: notes,
     // Parse guarantees the generator can never emit an invalid workflow.
     config: WorkflowConfigSchema.parse(config),
+    intake,
+    understood: rules.understood,
     completionMode: config.completion?.mode ?? (config.pricing.enabled ? 'quote' : 'request'),
     theme,
     themeRecommendation: recommendation,

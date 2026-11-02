@@ -31,10 +31,13 @@ describe('reference business prompts', () => {
     const r = generateWorkflowFromPrompt('מספרה שרוצה שלקוחות יקבעו תור לתספורת או צבע');
     expect(r.templateKey).toBe('table_booking');
     const service = r.config.steps[0]!.fields.find((f) => f.key === 'service')!;
-    expect(service.options!.map((o) => o.label)).toEqual(['תספורת', 'צבע', 'פן ועיצוב']);
+    // Exactly the services the owner named — no invented extras.
+    expect(service.options!.map((o) => o.label)).toEqual(['תספורת', 'צבע']);
     expect(r.theme.presetId).toBe('floral_boutique');
     expect(r.detected).not.toContain('בחירת צבעים');
-    expect(r.reviewNotes.join(' ')).toMatch(/השירותים היא לדוגמה/);
+    expect(r.adjustments.join(' ')).toMatch(/השירותים שכתבתם/);
+    // With one named service the rest are samples, and the owner is told so.
+    expect(generateWorkflowFromPrompt('מספרה שרוצה שלקוחות יקבעו תור לתספורת').reviewNotes.join(' ')).toMatch(/השירותים היא לדוגמה/);
   });
 
   it('6. corporate onboarding collects documents and flags the signature', () => {

@@ -6,6 +6,7 @@
  */
 import type {
   CustomerAction,
+  Intake,
   Membership,
   NotificationPreview,
   OrgData,
@@ -22,6 +23,7 @@ import type { Asset, BrandKit, WorkflowTheme } from '../domain/theme';
 import type { ActionInput } from '../engine/actions';
 import type { SlotAvailability } from '../engine/booking';
 import type { OptionUsage } from '../engine/capacity';
+import type { IntakeState } from '../engine/intake';
 import type { Values } from '../engine/conditions';
 import type { FieldErrors } from '../engine/validation';
 
@@ -57,6 +59,8 @@ export interface FormangleRepository {
   publishWorkflow(orgId: string, workflowId: string): Promise<WorkflowVersion>;
   duplicateWorkflow(orgId: string, workflowId: string): Promise<Workflow>;
   setArchived(orgId: string, workflowId: string, archived: boolean): Promise<Workflow>;
+  /** When and how much the public link accepts. Applies at once — no publish needed. */
+  updateIntake(orgId: string, workflowId: string, intake: Intake): Promise<Workflow>;
   listVersions(orgId: string, workflowId: string): Promise<WorkflowVersion[]>;
   restoreVersionToDraft(orgId: string, workflowId: string, versionId: string): Promise<Workflow>;
 
@@ -68,6 +72,8 @@ export interface FormangleRepository {
   getBookingAvailability(slug: string, date: string): Promise<SlotAvailability[]>;
   /** Local, best-effort places taken per limited option (e.g. a track with 30 places). */
   getOptionUsage(slug: string): Promise<OptionUsage>;
+  /** Is the public link taking new requests now (local counts)? */
+  getIntakeState(slug: string): Promise<IntakeState>;
   /** The customer withdraws their own booking request through their personal link. */
   cancelRunByCustomer(slug: string, runId: string): Promise<WorkflowRun>;
 

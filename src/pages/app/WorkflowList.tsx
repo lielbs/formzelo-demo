@@ -5,6 +5,7 @@ import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, Input, PageHeader, Spinner } from '../../components/ui';
 import type { Workflow } from '../../domain/schema';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
+import { intakeState } from '../../engine/intake';
 import { TEMPLATES, type TemplateKey } from '../../engine/templates';
 import { formatNumber, formatRelative } from '../../lib/format';
 import { appHref, publicFlowUrl } from '../../lib/links';
@@ -110,6 +111,7 @@ export function WorkflowList() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Badge tone={s.tone}>{s.label}</Badge>
                         {w.hasUnpublishedChanges && w.status === 'published' && <Badge tone="amber">שינויים שלא פורסמו</Badge>}
+                        {w.status === 'published' && !intakeState(w.intake, q.data!.runs.filter((r) => r.workflowId === w.id)).open && <Badge tone="amber">סגור לבקשות חדשות</Badge>}
                         {w.isDemo && <DemoBadge />}
                         <span className="text-xs text-ink-soft">{TEMPLATES[w.templateKey as TemplateKey]?.label ?? w.templateKey}</span>
                       </div>

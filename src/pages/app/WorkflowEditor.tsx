@@ -16,12 +16,11 @@ import {
   Play,
   ArrowUp,
   CalendarClock,
+  Gauge,
   Copy,
   CreditCard,
   Eye,
   GripVertical,
-  Lightbulb,
-  X,
   FilePlus2,
   History,
   Layers,
@@ -62,18 +61,23 @@ import { blockIcon, createBlocks, type BlockAction, type BlockDef } from './edit
 import { FieldLibrary } from './editor/FieldLibrary';
 import { LogicPanel } from './editor/LogicPanel';
 import { duplicateField, earlierAnswerFields, historyOf, pushHistory, redoHistory, undoHistory, type History as EditHistory } from '../../engine/builder';
+import { advise } from '../../engine/advisor';
+import { hasIntakeRules, intakeState } from '../../engine/intake';
 import { canPublish, logicIssues, publishReadiness } from '../../engine/logic';
 import { DesignPanel, Toggle } from './editor/DesignPanel';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
 import { FIELD_TYPE_LABELS, FieldListEditor, move } from './editor/FieldEditor';
 import { BookingInspector, CompletionInspector, FieldInspector, NextStepsEditor, Panel, StepInspector } from './editor/Inspector';
+import { IntakePanel } from './editor/IntakePanel';
 import { PresenceInspector } from './editor/PresenceInspector';
+import { StudioCoach } from './editor/StudioCoach';
 
 type Selection =
   | { kind: 'workflow' }
   | { kind: 'design' }
   | { kind: 'completion' }
   | { kind: 'booking' }
+  | { kind: 'intake' }
   | { kind: 'presence' }
   | { kind: 'publish' }
   | { kind: 'logic' }
@@ -130,7 +134,8 @@ export function WorkflowEditor() {
       const workflow = await r.getWorkflow(org.id, id);
       if (!workflow) return null;
       const [versions, runs] = await Promise.all([r.listVersions(org.id, id), r.listRuns(org.id)]);
-      return { workflow, versions, runCount: runs.filter((x) => x.workflowId === id).length };
+      const own = runs.filter((x) => x.workflowId === id);
+      return { workflow, versions, runs: own, runCount: own.length };
     },
     [org.id, id],
   );
@@ -169,7 +174,7 @@ export function WorkflowEditor() {
   const [previewKey, setPreviewKey] = useState(0);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropAt, setDropAt] = useState<{ stepId: string; index: number } | null>(null);
-  const [guideHidden, setGuideHidden] = useState(() => {
+  const [guideHidden] = useState(() => {
     try {
       return localStorage.getItem(`formzelo:ui:studio-guide:${id}`) === '1';
     } catch {
@@ -276,6 +281,22 @@ export function WorkflowEditor() {
     />
   ) : null;
   const isPublished = workflow.status === 'published';
+  const intakeNow = intakeState(workflow.intake, q.data.runs);
+  const advice = advise({
+    config,
+    intake: workflow.intake,
+    hasLogo: Boolean(design.logo.assetId || kit?.logoAssetId),
+    presenceLinks: design.presence?.visibility === 'hidden' ? 0 : (kit?.links.filter((l) => l.enabled).length ?? 0),
+  });
+  const intakeBadge = !intakeNow.open ? (
+    <Badge tone="amber">סגור</Badge>
+  ) : workflow.intake?.maxPerDay ? (
+    <span className="text-[10px] opacity-70">
+      {intakeNow.counts.today}/{workflow.intake.maxPerDay} היום
+    </span>
+  ) : hasIntakeRules(workflow.intake) ? (
+    <Badge tone="teal">מוגבל</Badge>
+  ) : undefined;
   const studioMode = previewMode ? 'preview' : sel.kind === 'design' || sel.kind === 'presence' ? 'design' : sel.kind === 'logic' ? 'logic' : 'content';
   const readiness = publishReadiness(config);
   const ready = canPublish(readiness) && !issues.length;
@@ -355,7 +376,8 @@ export function WorkflowEditor() {
       step.fields.splice(after >= 0 ? after + 1 : step.fields.length, 0, ...blocks);
     }, `add-${blocks[0]!.id}`);
     setLibrary(null);
-    setSel({ kind: 'field', fieldId: blocks[0]!.id });
+    // A new block is opened for editing at once (on a phone this switches to its properties).
+    select({ kind: 'field', fieldId: blocks[0]!.id });
     toast(blocks.length > 1 ? `נוספו ${blocks.length} שדות: ${def.label}` : `נוסף: ${def.label}`, 'success', { label: 'ביטול', onClick: undo });
   };
 
@@ -431,33 +453,6 @@ export function WorkflowEditor() {
 
   const structure = (
     <nav aria-label="מבנה התהליך" className="space-y-4">
-      <div className="space-y-1">
-        <p className="px-2.5 text-[11px] font-semibold tracking-wide text-ink-soft">הגדרות</p>
-        <NavItem active={sel.kind === 'workflow'} icon={Settings2} onClick={() => select({ kind: 'workflow' })}>
-          פרטי התהליך
-        </NavItem>
-        <NavItem active={sel.kind === 'design'} icon={Palette} onClick={() => select({ kind: 'design' })} badge={<span className="text-[10px] opacity-70">{PRESETS[design.presetId].meta.nameHe}</span>}>
-          עיצוב
-        </NavItem>
-        <NavItem active={sel.kind === 'completion'} icon={CreditCard} onClick={() => select({ kind: 'completion' })} badge={<span className="text-[10px] opacity-70">{COMPLETION_LABELS[completion.mode].title}</span>}>
-          סיום ותשלום
-        </NavItem>
-        <NavItem active={sel.kind === 'booking'} icon={CalendarClock} onClick={() => select({ kind: 'booking' })} badge={config.booking?.enabled ? <Badge tone="teal">פעיל</Badge> : undefined}>
-          הזמנות ושעות
-        </NavItem>
-        <NavItem
-          active={sel.kind === 'presence'}
-          icon={Share2}
-          onClick={() => select({ kind: 'presence' })}
-          badge={design.presence?.visibility === 'hidden' ? <span className="text-[10px] opacity-70">מוסתר</span> : kit?.links.some((l) => l.enabled) ? <Badge tone="teal">קישורים</Badge> : undefined}
-        >
-          נוכחות דיגיטלית
-        </NavItem>
-        <NavItem active={sel.kind === 'publish'} icon={History} onClick={() => select({ kind: 'publish' })} badge={<span className="text-[10px] opacity-70">{versions.length} גרסאות</span>}>
-          גרסאות ושיתוף
-        </NavItem>
-      </div>
-
       <div className="space-y-2">
         <p className="flex items-center gap-1.5 px-2.5 text-[11px] font-semibold tracking-wide text-ink-soft">
           <Layers className="h-3.5 w-3.5" aria-hidden /> שלבים ורכיבים
@@ -572,6 +567,33 @@ export function WorkflowEditor() {
           שלב חדש
         </Button>
       </div>
+
+      <div className="space-y-1">
+        <p className="px-2.5 text-[11px] font-semibold tracking-wide text-ink-soft">הגדרות התהליך</p>
+        <NavItem active={sel.kind === 'workflow'} icon={Settings2} onClick={() => select({ kind: 'workflow' })}>
+          פרטי התהליך
+        </NavItem>
+        <NavItem active={sel.kind === 'intake'} icon={Gauge} onClick={() => select({ kind: 'intake' })} badge={intakeBadge}>
+          קבלת בקשות
+        </NavItem>
+        <NavItem active={sel.kind === 'booking'} icon={CalendarClock} onClick={() => select({ kind: 'booking' })} badge={config.booking?.enabled ? <Badge tone="teal">פעיל</Badge> : undefined}>
+          הזמנות ושעות
+        </NavItem>
+        <NavItem active={sel.kind === 'completion'} icon={CreditCard} onClick={() => select({ kind: 'completion' })} badge={<span className="text-[10px] opacity-70">{COMPLETION_LABELS[completion.mode].title}</span>}>
+          סיום ותשלום
+        </NavItem>
+        <NavItem
+          active={sel.kind === 'presence'}
+          icon={Share2}
+          onClick={() => select({ kind: 'presence' })}
+          badge={design.presence?.visibility === 'hidden' ? <span className="text-[10px] opacity-70">מוסתר</span> : kit?.links.some((l) => l.enabled) ? <Badge tone="teal">קישורים</Badge> : undefined}
+        >
+          נוכחות דיגיטלית
+        </NavItem>
+        <NavItem active={sel.kind === 'publish'} icon={History} onClick={() => select({ kind: 'publish' })} badge={<span className="text-[10px] opacity-70">{versions.length} גרסאות</span>}>
+          גרסאות ושיתוף
+        </NavItem>
+      </div>
     </nav>
   );
 
@@ -661,6 +683,8 @@ export function WorkflowEditor() {
         );
       case 'completion':
         return <CompletionInspector config={config} update={(fn) => update(fn, 'completion')} />;
+      case 'intake':
+        return <IntakePanel orgId={org.id} workflow={workflow} runs={q.data.runs} published={isPublished} />;
       case 'booking':
         return <BookingInspector config={config} update={(fn) => update(fn, 'booking')} />;
       case 'publish':
@@ -780,7 +804,7 @@ export function WorkflowEditor() {
 
   const canvas = (
     <div data-fz-canvas>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <DeviceToggle device={device} onChange={setDevice} tablet />
         <div className="flex items-center gap-1.5">
           {!previewMode && <button
@@ -792,8 +816,8 @@ export function WorkflowEditor() {
           >
             <MousePointerClick className="h-3.5 w-3.5" aria-hidden /> {pickMode ? 'מצב בחירה' : 'מצב מילוי'}
           </button>}
-          <button type="button" className="h-8 rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange-700" onClick={() => setPreviewKey((k) => k + 1)}>
-            איפוס תצוגה
+          <button type="button" aria-label="איפוס תצוגה" title="איפוס תצוגה" className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange-700" onClick={() => setPreviewKey((k) => k + 1)}>
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">איפוס תצוגה</span>
           </button>
         </div>
       </div>
@@ -893,13 +917,14 @@ export function WorkflowEditor() {
           <Button
             variant="ghost"
             icon={RotateCcw}
+            aria-label="ביטול שינויים"
             disabled={!dirty}
             onClick={() => {
               if (!window.confirm('לבטל את כל השינויים שלא נשמרו (תוכן ועיצוב)?')) return;
               setSnap(structuredClone(savedSnap));
             }}
           >
-            ביטול שינויים
+            <span className="hidden sm:inline">ביטול שינויים</span>
           </Button>
           <Button variant="secondary" icon={Save} onClick={save} loading={busy === 'save'} disabled={!dirty}>
             שמירת טיוטה
@@ -918,13 +943,14 @@ export function WorkflowEditor() {
           <Button
             variant="ghost"
             icon={Copy}
+            aria-label="שכפול"
             onClick={async () => {
               const copy = await repo.duplicateWorkflow(org.id, workflow.id);
               toast('נוצר עותק כטיוטה');
               navigate(`/app/workflows/${copy.id}`);
             }}
           >
-            שכפול
+            <span className="hidden sm:inline">שכפול</span>
           </Button>
         </div>
       </div>
@@ -940,87 +966,43 @@ export function WorkflowEditor() {
         </div>
       )}
 
-      {!workflow.isDemo && !guideHidden && (
-        <section aria-label="צעדים ראשונים" className="mb-4 rounded-xl border border-cloud-200 bg-white p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">התהליך שלכם בכמה צעדים</p>
-            <button
-              type="button"
-              className="rounded-lg p-1 text-ink-soft hover:bg-cloud hover:text-ink"
-              aria-label="הסתרת הצעדים"
-              onClick={() => {
-                setGuideHidden(true);
-                try {
-                  localStorage.setItem(`formzelo:ui:studio-guide:${id}`, '1');
-                } catch {
-                  /* per-viewer convenience only */
-                }
-              }}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <ol className="mt-2 flex flex-wrap gap-1.5 text-xs">
-            {(
-              [
+      <StudioCoach
+        workflowId={workflow.id}
+        steps={
+          workflow.isDemo || guideHidden
+            ? undefined
+            : [
                 ['נוצר תהליך', true, undefined],
                 ['לוגו וצבעים', Boolean(kit?.logoAssetId) || (kit ? kit.updatedAt > workflow.createdAt : false), () => navigate('/app/brand')],
                 ['סגנון עיצוב', design.source === 'manual', () => select({ kind: 'design' })],
                 ['עריכת שלבים ושדות', past.length > 0 || workflow.updatedAt > workflow.createdAt, () => select({ kind: 'step', stepId: config.steps[0]!.id })],
                 ['תצוגה בטלפון ובמחשב', device !== 'mobile', () => setDevice('desktop')],
                 ['פרסום וקישור', isPublished, () => setConfirmPublish(true)],
-              ] as [string, boolean, (() => void) | undefined][]
-            ).map(([label, done, action], i) => (
-              <li key={label}>
-                <button
-                  type="button"
-                  disabled={!action}
-                  onClick={action}
-                  className={cx('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition', done ? 'border-teal-50 bg-teal-50 text-teal-600' : 'border-cloud-300 text-ink-muted hover:border-ink-soft hover:text-ink')}
-                >
-                  <span className={cx('flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold', done ? 'bg-teal text-white' : 'bg-cloud-200 text-ink')} aria-hidden>
-                    {done ? '✓' : i + 1}
-                  </span>
-                  {label}
-                  <span className="sr-only">{done ? ' (בוצע)' : ''}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      {config.draftNotes && config.draftNotes.length > 0 && (
-        <section aria-label="הערות מהיצירה" className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
-          <div className="flex items-start justify-between gap-3">
-            <p className="flex items-center gap-1.5 font-semibold">
-              <Lightbulb className="h-4 w-4" aria-hidden /> לבדיקה לפני פרסום
-            </p>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium hover:bg-amber-100"
-              onClick={() => update((d) => void (d.draftNotes = undefined), 'notes')}
-            >
-              <X className="h-3.5 w-3.5" aria-hidden /> סימון כנבדק
-            </button>
-          </div>
-          <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-[13px]">
-            {config.draftNotes.map((n) => (
-              <li key={n}>{n}</li>
-            ))}
-          </ul>
-          <p className="mt-1.5 text-xs text-amber-800/80">ההערות גלויות רק לכם, לא ללקוחות.</p>
-        </section>
-      )}
+              ]
+        }
+        notes={config.draftNotes}
+        onClearNotes={() => update((d) => void (d.draftNotes = undefined), 'notes')}
+        advice={advice}
+        onFix={(a) => {
+          if (a.fix.kind === 'apply') {
+            update(a.fix.apply, `advice-${a.id}`);
+            toast(`בוצע: ${a.title}`, 'success', { label: 'ביטול', onClick: undo });
+          } else if (a.fix.target === 'brand') navigate('/app/brand');
+          else {
+            setPreviewMode(false);
+            select({ kind: a.fix.target });
+          }
+        }}
+      />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1" role="group" aria-label="מצב עבודה">
+        <div className="flex w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1 sm:w-auto" role="group" aria-label="מצב עבודה">
           {(
             [
               ['content', 'תוכן', Layers, () => { setPreviewMode(false); if (studioMode !== 'content') select({ kind: 'workflow' }); }],
               ['design', 'עיצוב', Palette, () => { setPreviewMode(false); select({ kind: 'design' }); }],
               ['logic', 'לוגיקה', GitBranch, () => { setPreviewMode(false); select({ kind: 'logic' }); }],
-              ['preview', 'תצוגה ובדיקה', Play, () => { setPreviewMode(true); setMobilePane('canvas'); setPreviewKey((k) => k + 1); }],
+              ['preview', 'בדיקה', Play, () => { setPreviewMode(true); setMobilePane('canvas'); setPreviewKey((k) => k + 1); }],
             ] as const
           ).map(([k, label, Icon, go]) => (
             <button
@@ -1028,9 +1010,17 @@ export function WorkflowEditor() {
               type="button"
               aria-pressed={studioMode === k}
               onClick={go}
-              className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', studioMode === k ? 'bg-midnight text-white' : 'text-ink-muted hover:bg-cloud hover:text-ink')}
+              className={cx('inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', studioMode === k ? 'bg-midnight text-white' : 'text-ink-muted hover:bg-cloud hover:text-ink')}
             >
-              <Icon className="h-4 w-4" aria-hidden /> {label}
+              <Icon className="h-4 w-4" aria-hidden />{' '}
+              {k === 'preview' ? (
+                <>
+                  <span className="sm:hidden">{label}</span>
+                  <span className="hidden sm:inline">תצוגה ובדיקה</span>
+                </>
+              ) : (
+                label
+              )}
               {k === 'logic' && logicErrors > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white">{logicErrors}</span>}
             </button>
           ))}
@@ -1049,9 +1039,9 @@ export function WorkflowEditor() {
       <div className={cx('mb-3 flex gap-1 rounded-xl bg-white p-1 shadow-card xl:hidden', previewMode && 'hidden')} role="tablist" aria-label="חלוניות הסטודיו">
         {(
           [
-            ['structure', 'מבנה', Layers],
+            ['structure', 'שלבים', Layers],
             ['canvas', 'תצוגה', Eye],
-            ['inspector', 'מאפיינים', PenLine],
+            ['inspector', 'עריכה', PenLine],
           ] as const
         ).map(([k, label, Icon]) => (
           <button
