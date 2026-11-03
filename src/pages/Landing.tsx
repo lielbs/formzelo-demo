@@ -161,7 +161,8 @@ function LivePromptDemo() {
         <span className="h-2.5 w-2.5 rounded-full bg-cloud-300" />
         <span className="ms-3 text-xs text-ink-soft ltr">Formangle · builder</span>
       </div>
-      <div className="grid gap-0 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      {/* The preview gets the wider column: a phone-width form needs about 390px to read as it does on a phone. */}
+      <div className="grid gap-0 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
         <div className="space-y-3 border-b border-cloud-200 p-5 md:border-b-0 md:border-e">
           <p className="text-[15px] font-semibold leading-snug text-ink">מתארים את הצורך — ומקבלים תהליך מוכן לעריכה.</p>
           <LocalGenerationNotice />
@@ -213,7 +214,7 @@ function LivePromptDemo() {
             )}
           </p>
         </div>
-        <div data-fz-scroll className="max-h-[560px] overflow-y-auto">
+        <div data-fz-scroll className="max-h-[640px] overflow-y-auto">
           <WorkflowRenderer key={`${version}-${sample.business ?? ''}`} config={sample.config} theme={sample.theme} assets={sample.assets} mode="preview" embedded scrollFrame />
         </div>
       </div>
@@ -264,7 +265,7 @@ export function Landing() {
       <SiteHeader />
       <main id="main">
         <section className="relative overflow-hidden border-b border-cloud-200 bg-cloud">
-          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:py-20">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:py-20">
             <div>
               <p className="text-sm font-medium text-orange-700">Formangle by RockStack · לכל עסק יש את הזווית שלו.</p>
               <h1 className="mt-3 text-[32px] font-semibold leading-[1.15] tracking-tight text-midnight sm:text-[44px] xl:text-[48px]">
