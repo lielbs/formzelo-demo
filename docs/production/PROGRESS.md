@@ -137,6 +137,8 @@ Not run: the new hosted GitHub Actions workflow (no push), hosted/staging backup
 - `1648a9b` — `ci: validate production database foundation`
 - `4ce944e` — `docs: record milestone zero ci evidence`
 - `d155487` — `fix: make database type drift check cross-platform`
+- `9d05215` — `fix: restrict hosted RLS helper execution`
+- `a9b66d9` — `feat: add secure workforce auth boundary`
 
 ## Outstanding follow-up evidence and risks
 
