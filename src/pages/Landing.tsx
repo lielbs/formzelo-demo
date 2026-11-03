@@ -16,7 +16,7 @@ import {
   UtensilsCrossed,
   Wand2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LocalGenerationNotice } from '../components/Brand';
 import { SiteFooter, SiteHeader } from '../components/SiteChrome';
@@ -31,9 +31,10 @@ import { demoRequestMailto, PRICING_TERMS } from '../lib/plans';
 import { PackageCards, PricingFinePrint } from '../components/Packages';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { ActionCard } from '../renderer/actions';
-import type { CustomerAction } from '../domain/schema';
-import type { ThemePresetId } from '../domain/theme';
-import { SignatureMark } from '../theme/SignatureMark';
+import type { CustomerAction, WorkflowConfig } from '../domain/schema';
+import type { ThemePresetId, WorkflowTheme } from '../domain/theme';
+import { referencedAssets } from '../renderer/media';
+import { appHref } from '../lib/links';
 import { BrandShowcase, CompletionShowcase } from './LandingShowcase';
 import { buildTheme, PRESET_LIST, PRESETS } from '../theme/presets';
 import { TEMPLATE_LIBRARY } from '../engine/library';
@@ -47,11 +48,11 @@ const STORY = [
 ];
 
 const EXAMPLES = [
-  { icon: Flower2, name: 'Bloom Studio', title: 'הזמנת זר פרחים', text: 'תקציב, צבעוניות, ברכה עם תצוגת כרטיס, אריזה ומשלוח — עם סכום מחושב.', href: `/f/${DEMO_SLUGS.flowers}`, preset: 'floral_boutique' as ThemePresetId },
-  { icon: Car, name: 'AutoCare', title: 'אישור תיקונים לרכב', text: 'הלקוח מאשר או דוחה כל תיקון בנפרד ורואה סכום מדויק.', href: `/f/${DEMO_SLUGS.garage}?r=${DEMO_GARAGE_CASE_ID}`, preset: 'automotive_precision' as ThemePresetId },
-  { icon: UtensilsCrossed, name: 'Urban Table', title: 'אירוע פרטי במסעדה', text: 'תאריך, אורחים, תפריט ותוספות, הערכת מחיר ומקדמה רק אחרי אישור.', href: `/f/${DEMO_SLUGS.events}`, preset: 'hospitality_premium' as ThemePresetId },
-  { icon: UtensilsCrossed, name: 'Urban Table', title: 'הזמנת שולחן', text: 'תאריך, שעה וסועדים. בקשה עד אישור המסעדה — בלי תשלום מראש.', href: `/f/${DEMO_SLUGS.booking}`, preset: 'hospitality_premium' as ThemePresetId },
-  { icon: Trophy, name: 'Valley Run', title: 'הרשמה למרוץ', text: 'מסלולים עם מקומות שנותרו, אישור הורה רק לקטינים ותשלום מדומה אופציונלי.', href: `/f/${DEMO_SLUGS.contest}`, preset: 'creative_studio' as ThemePresetId },
+  { icon: Flower2, name: 'Bloom Studio', title: 'הזמנת זר פרחים', cover: 'showcase/bloom/cover.jpg', mark: 'showcase/bloom/mark.svg', text: 'תקציב, צבעוניות, ברכה עם תצוגת כרטיס, אריזה ומשלוח — עם סכום מחושב.', href: `/f/${DEMO_SLUGS.flowers}`, preset: 'floral_boutique' as ThemePresetId },
+  { icon: Car, name: 'AutoCare', title: 'אישור תיקונים לרכב', cover: 'showcase/garage/engine-wide.jpg', mark: 'showcase/garage/mark.svg', text: 'הלקוח מאשר או דוחה כל תיקון בנפרד ורואה סכום מדויק.', href: `/f/${DEMO_SLUGS.garage}?r=${DEMO_GARAGE_CASE_ID}`, preset: 'automotive_precision' as ThemePresetId },
+  { icon: UtensilsCrossed, name: 'Urban Table', title: 'אירוע פרטי במסעדה', cover: 'showcase/urban/table.jpg', mark: 'showcase/urban/mark.svg', text: 'תאריך, אורחים, תפריט ותוספות, הערכת מחיר ומקדמה רק אחרי אישור.', href: `/f/${DEMO_SLUGS.events}`, preset: 'hospitality_premium' as ThemePresetId },
+  { icon: UtensilsCrossed, name: 'Urban Table', title: 'הזמנת שולחן', cover: 'showcase/urban/terrace.jpg', mark: 'showcase/urban/mark.svg', text: 'תאריך, שעה וסועדים. בקשה עד אישור המסעדה — בלי תשלום מראש.', href: `/f/${DEMO_SLUGS.booking}`, preset: 'hospitality_premium' as ThemePresetId },
+  { icon: Trophy, name: 'Valley Run', title: 'הרשמה למרוץ', cover: 'showcase/valley/valley.jpg', mark: 'showcase/valley/mark.svg', text: 'מסלולים עם מקומות שנותרו, אישור הורה רק לקטינים ותשלום מדומה אופציונלי.', href: `/f/${DEMO_SLUGS.contest}`, preset: 'creative_studio' as ThemePresetId },
 ];
 
 const BENEFITS = [
@@ -95,11 +96,57 @@ const FAQ = [
   ['כמה זה עולה?', 'Business: 399 ₪ לחודש. Business Plus: 499 ₪ לחודש. Enterprise: הצעת מחיר מותאמת. דמי ההקמה החד-פעמיים משתנים לפי היקף התהליכים וצורכי העסק. כל המחירים לפני מע״מ, והם מחירי חבילות מוצעים בכפוף לאפיון. אינטגרציות ופיתוח מותאם מתומחרים בנפרד.'],
 ];
 
+/** Which demo business a generated sample belongs to, so it is shown with that business's own identity. */
+const SAMPLE_BUSINESS: Partial<Record<string, string>> = {
+  flower_order: DEMO_SLUGS.flowers,
+  garage_repairs: DEMO_SLUGS.garage,
+  restaurant_event: DEMO_SLUGS.events,
+  table_booking: DEMO_SLUGS.booking,
+};
+
+/**
+ * Dresses a generated sample like a real business form: the matching demo business's design
+ * (logo, palette, cover photo, gallery, contact links) and its photo choice cards wherever the
+ * generated question is the same one. The questions themselves stay as generated.
+ */
+function useSampleIdentity(result: GenerationResult): { config: WorkflowConfig; theme: WorkflowTheme; assets: Record<string, string>; business?: string } {
+  const slug = SAMPLE_BUSINESS[result.templateKey] ?? (result.composed && result.intent.purpose === 'registration' ? DEMO_SLUGS.contest : undefined);
+  const q = useRepoQuery(
+    async (r) => {
+      if (!slug) return null;
+      await r.init();
+      const pub = await r.resolvePublic(slug);
+      if (!pub) return null;
+      const { design, config } = pub.version;
+      return { name: pub.organization.name, design, config, urls: await r.getAssetUrls(pub.organization.id, referencedAssets(design, config)) };
+    },
+    [slug],
+  );
+  return useMemo(() => {
+    const own = slug ? q.data : null;
+    if (!own) return { config: result.config, theme: result.theme, assets: {} };
+    const config = structuredClone(result.config);
+    config.branding = { ...config.branding, logoText: own.name };
+    const theirs = new Map(own.config.steps.flatMap((s) => s.fields).map((f) => [f.key, f]));
+    for (const f of config.steps.flatMap((s) => s.fields)) {
+      const match = theirs.get(f.key);
+      if (!match) continue;
+      for (const o of f.options ?? []) {
+        const image = match.options?.find((x) => x.value === o.value)?.image;
+        if (image) o.image = image;
+      }
+      if (match.appearance) f.appearance = match.appearance;
+    }
+    return { config, theme: structuredClone(own.design), assets: own.urls, business: own.name };
+  }, [q.data, result, slug]);
+}
+
 function LivePromptDemo() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(EXAMPLE_PROMPTS[0]!);
   const [result, setResult] = useState<GenerationResult>(() => generateWorkflowFromPrompt(EXAMPLE_PROMPTS[0]!));
   const [version, setVersion] = useState(0);
+  const sample = useSampleIdentity(result);
   const run = (p = prompt) => {
     if (p.trim().length < 4) return;
     setResult(generateWorkflowFromPrompt(p));
@@ -154,12 +201,20 @@ function LivePromptDemo() {
             </Button>
           </div>
           <p className="text-xs text-ink-muted" aria-live="polite">
-            זוהה: <span className="font-medium text-ink">{result.templateLabel}</span> · {result.config.steps.length} שלבים · עיצוב{' '}
-            <span className="font-medium text-ink">{PRESETS[result.theme.presetId].meta.nameHe}</span>
+            זוהה: <span className="font-medium text-ink">{result.templateLabel}</span> · {result.config.steps.length} שלבים ·{' '}
+            {sample.business ? (
+              <>
+                במיתוג של <span className="font-medium text-ink">{sample.business}</span> (עסק לדוגמה)
+              </>
+            ) : (
+              <>
+                עיצוב <span className="font-medium text-ink">{PRESETS[result.theme.presetId].meta.nameHe}</span>
+              </>
+            )}
           </p>
         </div>
         <div data-fz-scroll className="max-h-[560px] overflow-y-auto">
-          <WorkflowRenderer key={version} config={result.config} theme={result.theme} mode="preview" embedded scrollFrame />
+          <WorkflowRenderer key={`${version}-${sample.business ?? ''}`} config={sample.config} theme={sample.theme} assets={sample.assets} mode="preview" embedded scrollFrame />
         </div>
       </div>
     </div>
@@ -282,11 +337,16 @@ export function Landing() {
               {EXAMPLES.map((e, i) => (
                 <li key={e.title} className={i < 2 ? 'lg:col-span-3' : i === EXAMPLES.length - 1 && EXAMPLES.length % 2 === 1 ? 'sm:col-span-2 lg:col-span-2' : 'lg:col-span-2'}>
                   <Link to={e.href} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-cloud-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
-                    <ThemeScope theme={buildTheme(e.preset)} className="relative h-36 overflow-hidden" style={{ background: 'var(--fz-hero-bg)', color: 'var(--fz-hero-text)' }}>
-                      <SignatureMark theme={buildTheme(e.preset)} letter={e.name} />
+                    {/* The business's own photo and logo, as its customers see them. */}
+                    <ThemeScope theme={buildTheme(e.preset)} className="relative h-40 overflow-hidden" style={{ background: 'var(--fz-hero-bg)', color: '#fff' }}>
+                      <img src={appHref(`/${e.cover}`)} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
+                      <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/5" aria-hidden />
                       <div className="relative flex h-full flex-col justify-end p-5">
-                        <span className="text-[11px] font-medium opacity-75">{e.name}</span>
-                        <span className="fz-display mt-0.5 text-[calc(1.35rem*var(--fz-display-scale))] leading-tight">{e.title}</span>
+                        <span className="flex items-center gap-2 text-[12px] font-semibold">
+                          <img src={appHref(`/${e.mark}`)} alt="" className="h-7 w-7 rounded-lg bg-white p-0.5 shadow" />
+                          {e.name}
+                        </span>
+                        <span className="fz-display mt-1.5 text-[calc(1.35rem*var(--fz-display-scale))] leading-tight drop-shadow">{e.title}</span>
                       </div>
                     </ThemeScope>
                     <div className="flex flex-1 flex-col p-5">
