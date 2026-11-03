@@ -18,9 +18,10 @@ describe('deployment readiness', () => {
     expect(workflowYml).toContain('cp dist/index.html dist/404.html');
   });
 
-  it('ships a strict, self-only content security policy', () => {
+  it('ships a strict policy with only the dedicated Formangle API origin', () => {
     expect(CSP).toContain("script-src 'self'");
-    expect(CSP).not.toMatch(/unsafe-eval|https?:/);
+    expect(CSP).not.toContain('unsafe-eval');
+    expect(CSP.match(/https?:\/\/[^ ;]+/g)).toEqual(['https://ppgdbqhwbzlgzwsjmkor.supabase.co']);
     expect(CSP).toContain("object-src 'none'");
   });
 });

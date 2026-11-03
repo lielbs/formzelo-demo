@@ -48,16 +48,5 @@ export function ProductionRouteBoundary({ children }: { children: ReactNode }) {
     );
   }
 
-  // The identity and membership boundary is live, but the production repository
-  // is deliberately not wired to the demo UI. This prevents authenticated users
-  // from seeing localStorage data under a production configuration.
-  return (
-    <AccessPage>
-      <h1 className="mt-4 text-xl font-semibold text-ink">הגישה המאובטחת אומתה</h1>
-      <p className="mt-2 text-sm leading-6 text-ink-muted">
-        חיבור נתוני הייצור טרם הופעל. ממשק הדמו המקומי נשאר מבודד עד להשלמת ה־repository המאובטח.
-      </p>
-      <Button variant="secondary" className="mt-5" icon={LogOut} onClick={() => void signOut()}>התנתקות</Button>
-    </AccessPage>
-  );
+  return children;
 }

@@ -27,6 +27,7 @@ const RequestDetail = named(() => import('./pages/app/RequestDetail'), 'RequestD
 const Analytics = named(() => import('./pages/app/Analytics'), 'Analytics');
 const Settings = named(() => import('./pages/app/Settings'), 'Settings');
 const BrandKitPage = named(() => import('./pages/app/BrandKit'), 'BrandKitPage');
+const InviteAccept = named(() => import('./pages/InviteAccept'), 'InviteAccept');
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -51,6 +52,7 @@ export function App() {
           <Route path="/themes" element={<Themes />} />
           <Route path="/tour" element={<Tour />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/invite" element={<InviteAccept />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
           <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>
             <Route index element={<Dashboard />} />

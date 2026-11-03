@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Database } from '../production/database.generated';
 import { runtimeConfiguration } from '../production/runtime';
+import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { resolveWorkforceAccess, type WorkforceAccess } from './session';
 
 type AuthState =
@@ -13,6 +14,7 @@ type AuthState =
 interface AuthContextValue {
   state: AuthState;
   refresh: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -25,18 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (runtimeConfiguration.mode === 'demo') return;
-    const { supabaseUrl, publishableKey } = runtimeConfiguration;
     let active = true;
-    import('@supabase/supabase-js')
-      .then(({ createClient }) => {
+    getProductionSupabaseClient()
+      .then((productionClient) => {
         if (!active) return;
-        setClient(createClient<Database>(supabaseUrl, publishableKey, {
-          auth: {
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            persistSession: true,
-          },
-        }));
+        setClient(productionClient);
       })
       .catch(() => {
         if (active) setState({ kind: 'error', message: 'לא ניתן לטעון את רכיב ההזדהות.' });
@@ -76,6 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [client]);
 
+  const signIn = useCallback(async (email: string, password: string) => {
+    if (!client) return 'שירות ההזדהות עדיין נטען.';
+    const { error } = await client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    if (error) return 'פרטי הכניסה אינם תקינים או שהחשבון אינו פעיל.';
+    await refresh();
+    return null;
+  }, [client, refresh]);
+
   useEffect(() => {
     if (!client) return;
     void refresh();
@@ -98,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ kind: 'unauthenticated' });
   }, [client]);
 
-  const value = useMemo(() => ({ state, refresh, signOut }), [state, refresh, signOut]);
+  const value = useMemo(() => ({ state, refresh, signIn, signOut }), [state, refresh, signIn, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

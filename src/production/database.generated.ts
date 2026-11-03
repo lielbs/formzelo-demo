@@ -261,6 +261,11 @@ isOneToOne: false
               "invitation_expires_at": string,"invitation_id": string,"invitation_token": string
             }[]
                            },
+"server_create_owner_invitation_authorized":
+{ Args: { "actor_user_id": string,"intended_email": string,"target_organization_id": string,"valid_for"?: string }; Returns: {
+              "invitation_expires_at": string,"invitation_id": string,"invitation_token": string
+            }[]
+                           },
 "server_expire_owner_invitations":
 { Args: { "actor_user_id": string,"target_organization_id"?: string }; Returns: number
                            },

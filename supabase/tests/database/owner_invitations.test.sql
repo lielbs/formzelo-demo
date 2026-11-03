@@ -31,6 +31,12 @@ select throws_ok(
     '21000000-0000-4000-8000-000000000001',interval '48 hours')$$,
   '42501', null, 'browser-authenticated caller cannot create invitations'
 );
+select throws_ok(
+  $$select * from public.server_create_owner_invitation_authorized(
+    '31000000-0000-4000-8000-000000000001','forbidden-api@example.invalid',
+    '21000000-0000-4000-8000-000000000001',interval '48 hours')$$,
+  '42501', null, 'browser cannot call the authorized server wrapper directly'
+);
 reset role;
 
 set local role anon;
@@ -225,6 +231,41 @@ select ok((select accepted_at is null from private.owner_invitations where id=(s
 select is((select count(*) from information_schema.columns where table_schema='public' and table_name='audit_events' and column_name in ('email','token','token_hash')),0::bigint,'audit schema has no invitation secret or email field');
 select is((select count(*) from public.audit_events where resource_type='owner_invitation' and resource_id in (select value from invitation_test_state where key like '%token')),0::bigint,'raw tokens never appear as audit resource IDs');
 select is((select count(*) from private.owner_invitations where accepted_at is not null and (revoked_at is not null or expired_at is not null)),0::bigint,'invitation terminal states are mutually exclusive');
+
+set local role service_role;
+select lives_ok(
+  $$select * from public.server_create_owner_invitation_authorized(
+    '31000000-0000-4000-8000-000000000002','authorized-api@example.invalid',
+    '21000000-0000-4000-8000-000000000001',interval '48 hours')$$,
+  'trusted server wrapper creates an invitation for a verified operator'
+);
+do $$
+declare
+  current_count integer;
+  index integer;
+begin
+  select count(*) into current_count
+  from public.audit_events
+  where actor_user_id='21000000-0000-4000-8000-000000000001'
+    and resource_type='owner_invitation'
+    and operation='INSERT'
+    and created_at >= clock_timestamp()-interval '15 minutes';
+  for index in 1..(10-current_count) loop
+    perform * from public.server_create_owner_invitation_authorized(
+      '31000000-0000-4000-8000-000000000002',
+      format('rate-%s@example.invalid',index),
+      '21000000-0000-4000-8000-000000000001',interval '48 hours'
+    );
+  end loop;
+end;
+$$;
+select throws_ok(
+  $$select * from public.server_create_owner_invitation_authorized(
+    '31000000-0000-4000-8000-000000000002','rate-blocked@example.invalid',
+    '21000000-0000-4000-8000-000000000001',interval '48 hours')$$,
+  '54000', 'Invitation rate limit exceeded', 'server invitation creation is rate limited per authenticated operator'
+);
+reset role;
 
 select * from finish();
 rollback;
