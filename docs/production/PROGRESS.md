@@ -1,10 +1,21 @@
 # Formangle Production V1 Progress
 
-Last updated: 2026-11-03 (Asia/Jerusalem)
+Last updated: 2026-11-04 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation is deployed to and validated against the dedicated Formangle Supabase Cloud project. Milestone 1 secure owner invitations are now also deployed and rollback-validated on exact project `ppgdbqhwbzlgzwsjmkor`. Remote history matches committed migrations `20261102161823_tenant_foundation`, `20261103083922_revoke_default_rls_helper_execution`, and `20261103132648_secure_owner_invitations`; all application tables have RLS enabled, grants fail closed, and no application or synthetic validation data remains. Real invitation email and the production repository/API boundary remain unimplemented.
+Milestone 0 — Secure Production Foundation is deployed to and validated against the dedicated Formangle Supabase Cloud project. Milestone 1 secure owner invitations are deployed and rollback-validated on exact project `ppgdbqhwbzlgzwsjmkor`. A local-only secure API/repository checkpoint is now implemented: a JWT-authenticated operator Edge Function package, a service-role-only operator/RPC boundary with database authorization and rate limiting, authenticated invitation acceptance UI, and a fail-closed RLS production repository for organization, workflow, and submission reads. The new migration and Edge Function have not been applied or deployed remotely, and no real hosted end-to-end verification has occurred.
+
+## 2026-11-04 local API/repository checkpoint
+
+- Added one shared browser Supabase client so Auth and repository access share safe session refresh without exposing privileged credentials.
+- Added a production repository selected only in production mode. It loads organizations, workflows, and submissions through authenticated Data API queries protected by RLS; forged organization IDs are rejected locally before a query, unsupported production capabilities fail explicitly, and no production failure falls back to `localStorage`.
+- Enabled authenticated active members to enter the protected dashboard with production data while preserving the default demo adapter and data isolation.
+- Added `/invite` with Hebrew RTL login, loading, invalid/expired/revoked/wrong-identity-safe errors, fragment-only raw invitation token handling, URL scrubbing, authenticated RPC acceptance, idempotent database semantics, confirmation, and protected-dashboard navigation.
+- Added a local Edge Function package for operator invitation creation. It validates method, exact browser origin, bearer authentication, normalized email, and organization UUID; ignores browser-supplied actor/role values; returns non-sensitive errors; and exposes the raw token only in the one-time successful creation response.
+- Prepared migration `20261103170000_authorized_invitation_api.sql`. Its service-role-only wrapper re-verifies the authenticated actor against `private.platform_operators`, reuses the existing transactional invitation function, and uses a transaction advisory lock to enforce a concurrency-safe limit of 10 created invitations per operator per 15 minutes.
+- Added focused unit/HTTP-boundary tests and pgTAP cases for direct-browser denial, trusted wrapper success, and rate limiting.
+- No migration, Edge Function, Auth setting, secret, user, organization, email delivery, DNS, Cloudflare, RAVO resource, or other cloud resource was changed.
 
 ## Completed work
 
@@ -128,7 +139,13 @@ The approved invitation migration was applied only to the dedicated Formangle pr
 - Post-validation cloud state passed: zero organizations, memberships, invitations, audit events, and outbox events; `anon` and `authenticated` cannot read the private invitation table; only `authenticated` can accept; only `service_role` can create/revoke/expire.
 - Post-DDL security advisors report no warning/error findings. The three expected INFO findings are policy-free private tables with RLS enabled and all direct API-role table access revoked. Performance advisors additionally report four invitation actor foreign keys without covering indexes; these are recorded for a separately reviewed optimization migration rather than changed silently.
 
-Not run: the new hosted GitHub Actions workflow (no push), hosted/staging backup restore, browser E2E, provider callbacks, load tests, real invitation email delivery, or public deployment. Local workflow validation is not represented as a hosted GitHub Actions result. Remote validation was limited to exact Formangle project `ppgdbqhwbzlgzwsjmkor`; RAVO was not accessed.
+- Local API/repository focused tests — passed: 5 relevant test files, including authenticated operator request handling, actor/role impersonation resistance, exact-origin rejection, safe errors, RLS organization selection, forged tenant rejection, no demo fallback, session authorization, runtime project isolation, and fragment parsing.
+- `npm test` after the local API/repository checkpoint — passed: 29 test files, 262 tests.
+- `npm run typecheck` — passed.
+- `npm run build` — passed; only the existing non-failing Zod annotation warnings were emitted.
+- `npm audit --omit=dev --json` — passed: 0 known vulnerabilities across 75 production dependencies and 280 total dependencies.
+
+Not run: local database reset/pgTAP/lint for migration `20261103170000_authorized_invitation_api.sql` because the Hyper-V Podman machine requires administrator authority and remained unavailable to the Codex process; the isolated unlinked test copy was removed after the failed start. Also not run: actual local or hosted Supabase Edge Function E2E with real JWTs, cloud migration, Edge Function deployment, secret configuration, new hosted GitHub Actions workflow (no push), hosted/staging backup restore, browser E2E, provider callbacks, load tests, real invitation email delivery, or public deployment. Unit HTTP-boundary tests use controlled Auth/RPC dependencies and are not represented as live Supabase E2E evidence. RAVO was not accessed.
 
 ## Decisions made
 
