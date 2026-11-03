@@ -53,7 +53,7 @@ if ($Action -in @('types','types-check')) {
   'status' { @('status') }
   'start' { @('start') }
   'stop' { @('stop') }
-  'test' { @('test','db') }
+  'test' { @('test','db','supabase/tests/database') }
   'reset' { @('db','reset') }
 }
 # CLI 3.0.0 targets local by default. No arbitrary flags or remote targets are accepted.

@@ -251,7 +251,22 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "accept_owner_invitation":
+{ Args: { "expected_organization_id": string,"invitation_token": string }; Returns: {
+              "membership_created": boolean,"organization_id": string
+            }[]
+                           },
+"server_create_owner_invitation":
+{ Args: { "actor_user_id": string,"intended_email": string,"target_organization_id": string,"valid_for"?: string }; Returns: {
+              "invitation_expires_at": string,"invitation_id": string,"invitation_token": string
+            }[]
+                           },
+"server_expire_owner_invitations":
+{ Args: { "actor_user_id": string,"target_organization_id"?: string }; Returns: number
+                           },
+"server_revoke_owner_invitation":
+{ Args: { "actor_user_id": string,"expected_organization_id": string,"reason": string,"target_invitation_id": string }; Returns: boolean
+                           }
           }
           Enums: {
             [_ in never]: never
