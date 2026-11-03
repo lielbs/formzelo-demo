@@ -7,6 +7,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { AuthProvider } from './auth/AuthProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RepoProvider } from './data/store';
@@ -16,11 +17,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
     <BrowserRouter basename={BASE_PATH || undefined}>
-      <RepoProvider>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
-      </RepoProvider>
+      <AuthProvider>
+        <RepoProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </RepoProvider>
+      </AuthProvider>
     </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,

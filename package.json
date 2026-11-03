@@ -23,6 +23,7 @@
     "@fontsource/secular-one": "^5.3.0",
     "@fontsource/suez-one": "^5.3.0",
     "@fontsource/varela-round": "^5.3.0",
+    "@supabase/supabase-js": "2.118.0",
     "lucide-react": "^0.454.0",
     "qrcode-generator": "2.0.4",
     "react": "^18.3.1",

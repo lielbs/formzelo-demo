@@ -1,10 +1,10 @@
 # Formangle Production V1 Progress
 
-Last updated: 2026-11-02 (Asia/Jerusalem)
+Last updated: 2026-11-03 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation is closed under the founder-approved completion criteria. The local database checkpoint and post-normalization live `types-check` passed, and a zero-cost, read-only GitHub Actions gate is prepared to reproduce migrations, pgTAP/RLS, database lint, generated-type drift, TypeScript, tests, and build on a fresh standard runner. Local workflow syntax and security-policy validation passed. The workflow has not run on GitHub because no push was authorized; this is recorded as hosted follow-up evidence rather than a Milestone 0 blocker. Milestone 1 has not started.
+Milestone 0 — Secure Production Foundation is deployed to and validated against the dedicated Formangle Supabase Cloud project. Migrations `20261102161823_tenant_foundation` and `20261103083922_revoke_default_rls_helper_execution` are recorded remotely, all 14 application tables have RLS enabled, the focused cloud cross-tenant test passed with a full rollback, and no application or test data remains. The hosted `public.rls_auto_enable()` event trigger remains enabled while API-role EXECUTE privileges are revoked and the related security-advisor warnings are cleared. Milestone 1 has begun with a fail-closed browser session and organization-membership boundary; invitation provisioning and the production repository remain unimplemented.
 
 ## Completed work
 
@@ -48,8 +48,21 @@ Milestone 0 — Secure Production Foundation is closed under the founder-approve
 - `supabase/.gitignore`
 - `supabase/README.md`
 - `.github/workflows/production-foundation.yml`
+- `supabase/migrations/20261103083922_revoke_default_rls_helper_execution.sql`
+- `.env.example`
+- `package.json`
+- `package-lock.json`
+- `src/vite-env.d.ts`
+- `src/production/runtime.ts`
+- `src/production/runtime.test.ts`
+- `src/auth/session.ts`
+- `src/auth/session.test.ts`
+- `src/auth/AuthProvider.tsx`
+- `src/auth/ProductionRouteBoundary.tsx`
+- `src/main.tsx`
+- `src/App.tsx`
 
-No live application bootstrap, DNS, deployment, remote Supabase project, provider account, production credential, customer data, RAVO resource, or paid service was changed.
+The dedicated Formangle Supabase database was changed only by the reviewed tenant-foundation migration. No live application bootstrap, DNS, public deployment, provider account, production credential, customer data, RAVO resource, Spend Cap, or paid service was changed.
 
 ## Tests performed
 
@@ -82,8 +95,22 @@ No live application bootstrap, DNS, deployment, remote Supabase project, provide
 - CI workflow YAML/static policy — passed locally with installed PyYAML: safe triggers, `contents: read`, standard `ubuntu-24.04`, 30-minute timeout, commit-SHA-pinned actions, no secret references, no remote Supabase flags, and cleanup present.
 - CI synthetic/credential guards — passed locally: no project link or `supabase/.env`, synthetic seed marker present, no committed credential/private-key pattern, generated types already normalized, and workflow whitespace clean.
 - Official action tag refs verified read-only: `actions/checkout@v7.0.0` → `9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0`; `actions/setup-node@v7.1.0` → `949feb2413d6458794dcd2491c4babbbce0c15c1`.
+- Verified the dedicated Supabase Cloud project by exact reference `ppgdbqhwbzlgzwsjmkor`: display name `FORMANGLE`, organization `lial0610@gmail.com's Org` (Pro), region `eu-west-1`, PostgreSQL 17, and healthy status. The separate RAVO project was not linked, queried, or modified.
+- Linked the repository to `ppgdbqhwbzlgzwsjmkor`. Supabase CLI passwordless database connections repeatedly stalled while initializing the temporary login role; no partial migration or table creation occurred during those attempts.
+- Applied the reviewed tenant foundation through Supabase `apply_migration`, then reconciled the generated migration ledger version from `20261103083258` to the committed version `20261102161823` using an exact-name/version guard. Remote history now matches the committed migration.
+- Cloud schema validation passed: 12 `public` tables, 2 `private` tables, 14 RLS policies, 20 non-internal triggers, 4 private helper functions, zero RLS-disabled application tables, and zero persisted application rows.
+- Focused cloud RLS validation passed inside a rolled-back transaction: an owner saw and updated only its own organization, cross-tenant reads and settings updates returned zero rows, `anon` lacked submission read and workflow update privileges, and the transaction left zero test users and organizations.
+- Applied `20261103083922_revoke_default_rls_helper_execution` after separate founder approval. `anon`, `authenticated`, and `service_role` no longer have EXECUTE on the hosted `public.rls_auto_enable()` SECURITY DEFINER helper; `postgres` retains execution and the event trigger remains enabled. The related advisor warnings are cleared.
+- Supabase security advisors now report only two expected INFO findings for the policy-free private tables; RLS is enabled and all API-role table grants are revoked, so they intentionally fail closed.
+- Generated cloud TypeScript types were compared with `src/production/database.generated.ts`. The schema surface matches, but textual output differs because the cloud generator emits the PostgREST 14.18 format (`__InternalSupabase`, `Json`) while the committed local generator emits `ComputedFields` and `NonNullable<Json>`. No source-of-truth file was replaced for generator-only drift.
+- Added pinned `@supabase/supabase-js` 2.118.0 browser integration with lazy loading, verified claims via `auth.getClaims()`, active membership lookup through RLS, auth-state subscription, local-session logout, and invite-only/unauthorized states. No signup or outbound email action exists.
+- Pinned production runtime configuration to exact project reference `ppgdbqhwbzlgzwsjmkor`, its exact HTTPS hostname, and `sb_publishable_` keys only. RAVO URLs and secret/service-role/legacy JWT browser keys fail validation.
+- Protected `/app` with a fail-closed production boundary. Authenticated members still cannot enter the local demo UI in production mode until a real production repository is configured; default demo behavior remains unchanged.
+- Lazy-loaded the Supabase SDK so the demo entry chunk remains 228.20 kB instead of including the 306.38 kB auth/database SDK chunk at startup.
+- Focused Milestone 1 tests passed: 2 files and 9 assertions covering demo fallback, exact project isolation, browser-key rejection, verified-claims failure modes, suspended membership denial, and active membership authorization.
+- Full regression passed after the auth boundary: 26 test files, 252 tests; TypeScript typecheck passed; production build passed with only the existing non-failing Zod annotation warnings; `npm audit --omit=dev` reported 0 vulnerabilities across 75 production dependencies.
 
-Not run: the new hosted GitHub Actions workflow (no push), hosted/staging backup restore, Auth/PostgREST integration, browser E2E, provider callbacks, load tests, deployment, or production checks. Local workflow validation is not represented as a hosted GitHub Actions result. No remote project was used.
+Not run: the new hosted GitHub Actions workflow (no push), hosted/staging backup restore, end-to-end Auth/PostgREST integration, browser E2E, provider callbacks, load tests, or public deployment. Local workflow validation is not represented as a hosted GitHub Actions result. Remote validation was limited to the verified Formangle project and the checks recorded above.
 
 ## Decisions made
 
@@ -118,17 +145,23 @@ Not run: the new hosted GitHub Actions workflow (no push), hosted/staging backup
 - The CI workflow is committed and locally validated but has no hosted run result because pushing or manually dispatching remote Actions was not authorized. Local YAML/policy checks do not prove GitHub runner behavior; obtain the first hosted result after explicit push approval.
 - Backup/restore testing and staging recovery evidence are intentionally deferred to Production Readiness. They remain mandatory before real customer data or production launch and must not be silently dropped from the launch gate.
 - Production decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 remain unresolved and still block remote environment setup and production commitments.
+- The cloud database foundation and permission hardening are applied and the application tables remain empty.
+- Supabase CLI remote database commands are currently blocked by the hosted temporary-login-role path stalling at `Initialising login role...`; Supabase MCP/API operations remain authenticated and functional. Do not retry migrations blindly; inspect remote history first.
+- Cloud and committed TypeScript types are schema-equivalent but not byte-identical because different generator formats are in use. Standardize the generator/version before replacing the committed type source.
+- Milestone 1 currently establishes browser identity/session and membership gating only. It does not yet provision invitations, accept owner invitations transactionally, revoke server sessions, or provide a production repository/API.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
-- The demo must not be represented as secure cross-device/multi-tenant production software: `/app` lacks a real identity boundary, request IDs act as bearer capabilities, persistence is local, and capacity is non-transactional.
+- The default demo must not be represented as secure cross-device/multi-tenant production software: it intentionally retains localStorage persistence and simulated capacity. Production mode now blocks `/app` behind verified identity and membership and still refuses to expose the demo UI after authentication.
 - The security review was sequential because delegated audit workers were unavailable; no live environment/runtime validation was authorized.
 - Supabase plan/region/features and provider commercial/legal suitability require approval-time verification. No paid infrastructure was provisioned.
 
 ## Exact next steps
 
-1. Request explicit approval before any push. After authorization, push the focused Milestone 0 commits and obtain the first hosted run of `.github/workflows/production-foundation.yml`; no Supabase secret or cloud project is required.
-2. Do not begin Milestone 1 until explicitly approved. Its recommended first implementation task is the invited-owner authentication and organization-membership boundary, including anonymous, forged-organization, and cross-tenant negative authorization tests.
-3. At Production Readiness—and before any real customer data or launch—provision only approved infrastructure and record successful backup/restore plus staging recovery evidence.
+1. Implement the server-only owner invitation contract and versioned database migration: hashed single-use invitation token, normalized email, expiry/revocation/acceptance state, transactional membership creation, audit/outbox records, and negative reuse/wrong-email/cross-tenant tests. Do not enable real email delivery.
+2. Implement the production repository/API boundary so an authenticated active member can enter `/app` without exposing localStorage demo data or privileged browser credentials.
+3. Add callback and expiration/recovery UX only after the server invitation contract is validated; continue to prohibit public self-registration.
+4. Request explicit approval before any push. After authorization, push the focused commits and obtain the first hosted run of `.github/workflows/production-foundation.yml`.
+5. At Production Readiness—and before any real customer data or launch—record successful backup/restore plus staging recovery evidence.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 on branch `production-v1`. Milestone 0 is closed under the founder-approved criteria: local migrations/RLS, live generated-type drift, TypeScript/tests/build, and local CI policy validation passed. Preserve unrelated advisor/marketing work. Before any push, request explicit approval; after authorization, obtain the first hosted workflow result. Backup/restore and staging recovery evidence remain mandatory at Production Readiness before real customer data or launch, but do not block Milestone 1 development. Do not create a Supabase cloud project, deploy, activate providers, touch RAVO, incur costs, or begin Milestone 1 without explicit approval.
+> Continue Formangle Production V1 on branch `production-v1`. The dedicated cloud project is `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`, `eu-west-1`); migrations `20261102161823_tenant_foundation` and `20261103083922_revoke_default_rls_helper_execution` are applied and verified with no persisted application data. Milestone 1 now has a pinned, lazy-loaded Supabase browser client, exact-project/publishable-key validation, verified claims, active-membership gating, local-session logout, and a fail-closed `/app` boundary that never exposes demo localStorage in production mode. Next implement the server-only single-use owner invitation contract and its negative tests without enabling real email. Preserve unrelated advisor/marketing work. Do not push, deploy, enable providers, change Spend Cap, touch RAVO, or incur cost without explicit approval.

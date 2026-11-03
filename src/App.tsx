@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
+import { ProductionRouteBoundary } from './auth/ProductionRouteBoundary';
 import { Spinner } from './components/ui';
 import { applyRouteMeta, pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
@@ -51,7 +52,7 @@ export function App() {
           <Route path="/tour" element={<Tour />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
-          <Route path="/app" element={<AppLayout />}>
+          <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>
             <Route index element={<Dashboard />} />
             <Route path="workflows" element={<WorkflowList />} />
             <Route path="workflows/new" element={<WorkflowNew />} />
