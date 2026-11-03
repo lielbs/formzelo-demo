@@ -4,7 +4,7 @@ Last updated: 2026-11-03 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation is deployed to and validated against the dedicated Formangle Supabase Cloud project. Migrations `20261102161823_tenant_foundation` and `20261103083922_revoke_default_rls_helper_execution` are recorded remotely, all 14 application tables have RLS enabled, the focused cloud cross-tenant test passed with a full rollback, and no application or test data remains. The hosted `public.rls_auto_enable()` event trigger remains enabled while API-role EXECUTE privileges are revoked and the related security-advisor warnings are cleared. Milestone 1 now includes a locally implemented and validated secure owner-invitation checkpoint in migration `20261103132648_secure_owner_invitations`; it has not been applied to Supabase Cloud and requires a separate explicit approval. The production repository/API boundary remains unimplemented.
+Milestone 0 — Secure Production Foundation is deployed to and validated against the dedicated Formangle Supabase Cloud project. Milestone 1 secure owner invitations are now also deployed and rollback-validated on exact project `ppgdbqhwbzlgzwsjmkor`. Remote history matches committed migrations `20261102161823_tenant_foundation`, `20261103083922_revoke_default_rls_helper_execution`, and `20261103132648_secure_owner_invitations`; all application tables have RLS enabled, grants fail closed, and no application or synthetic validation data remains. Real invitation email and the production repository/API boundary remain unimplemented.
 
 ## Completed work
 
@@ -69,7 +69,7 @@ Milestone 0 — Secure Production Foundation is deployed to and validated agains
 - `src/main.tsx`
 - `src/App.tsx`
 
-This invitation checkpoint made no Supabase Cloud change. The dedicated Formangle project still contains only the two previously approved migrations; no live application bootstrap, DNS, public deployment, provider account, production credential, customer data, RAVO resource, Spend Cap, or paid service was changed.
+The approved invitation migration was applied only to the dedicated Formangle project. No live application bootstrap, DNS, public deployment, provider account, production credential, customer data, RAVO resource, Spend Cap, or paid service was changed.
 
 ## Tests performed
 
@@ -122,8 +122,13 @@ This invitation checkpoint made no Supabase Cloud change. The dedicated Formangl
 - `supabase db lint --schema private,public --level warning --fail-on error` — passed with no schema errors.
 - `./scripts/local-db.ps1 -Action types` and `types-check` — passed; generated public RPC types match the local schema.
 - Milestone 1 post-invitation regression — `npm test`: 26 files and 252 tests passed; `npm run build`: passed with only the existing Zod annotation warnings; `npm audit --omit=dev --json`: 0 known vulnerabilities across 75 production dependencies.
+- Cloud preflight re-verified exact project `ppgdbqhwbzlgzwsjmkor` as `FORMANGLE`, `eu-west-1`, healthy PostgreSQL 17.11, with only the two expected predecessor migrations and zero application rows before applying the approved migration.
+- Applied `20261103132648_secure_owner_invitations` through Supabase migration tooling. The tool-generated ledger version was reconciled to the committed version under an exact name/version guard; final remote history matches the repository.
+- Cloud invitation validation passed inside an explicit rolled-back transaction: valid acceptance, idempotent replay, revoked and expired invitations, wrong email, unverified identity, forged organization ID, audit/outbox counts, and full membership/invitation rollback after a synthetic audit failure.
+- Post-validation cloud state passed: zero organizations, memberships, invitations, audit events, and outbox events; `anon` and `authenticated` cannot read the private invitation table; only `authenticated` can accept; only `service_role` can create/revoke/expire.
+- Post-DDL security advisors report no warning/error findings. The three expected INFO findings are policy-free private tables with RLS enabled and all direct API-role table access revoked. Performance advisors additionally report four invitation actor foreign keys without covering indexes; these are recorded for a separately reviewed optimization migration rather than changed silently.
 
-Not run: application of `20261103132648_secure_owner_invitations` to Supabase Cloud (approval required), the new hosted GitHub Actions workflow (no push), hosted/staging backup restore, browser E2E, provider callbacks, load tests, real invitation email delivery, or public deployment. Local workflow validation is not represented as a hosted GitHub Actions result. Remote validation was limited to the previously verified Formangle project and checks recorded above; no cloud access was used for this checkpoint.
+Not run: the new hosted GitHub Actions workflow (no push), hosted/staging backup restore, browser E2E, provider callbacks, load tests, real invitation email delivery, or public deployment. Local workflow validation is not represented as a hosted GitHub Actions result. Remote validation was limited to exact Formangle project `ppgdbqhwbzlgzwsjmkor`; RAVO was not accessed.
 
 ## Decisions made
 
@@ -161,10 +166,11 @@ Not run: application of `20261103132648_secure_owner_invitations` to Supabase Cl
 - The CI workflow is committed and locally validated but has no hosted run result because pushing or manually dispatching remote Actions was not authorized. Local YAML/policy checks do not prove GitHub runner behavior; obtain the first hosted result after explicit push approval.
 - Backup/restore testing and staging recovery evidence are intentionally deferred to Production Readiness. They remain mandatory before real customer data or production launch and must not be silently dropped from the launch gate.
 - Production decisions D-01 through D-06, D-11 through D-13, D-16, and D-17 remain unresolved and still block remote environment setup and production commitments.
-- The cloud database foundation and permission hardening are applied and the application tables remain empty.
+- The cloud database foundation, permission hardening, and secure owner-invitation migration are applied and the application tables remain empty.
 - Supabase CLI remote database commands are currently blocked by the hosted temporary-login-role path stalling at `Initialising login role...`; Supabase MCP/API operations remain authenticated and functional. Do not retry migrations blindly; inspect remote history first.
 - Cloud and committed TypeScript types are schema-equivalent but not byte-identical because different generator formats are in use. Standardize the generator/version before replacing the committed type source.
-- Milestone 1 now implements invitation provisioning and transactional acceptance locally, but the migration is not present in Cloud until separately approved and applied. It still does not provide real email delivery, session revocation orchestration, or a production repository/API.
+- Milestone 1 invitation provisioning and transactional acceptance are implemented locally and in Cloud. It still does not provide real email delivery, session revocation orchestration, or a production repository/API.
+- Performance advisors identify four unindexed actor foreign keys on `private.owner_invitations`. This is INFO-level and does not affect authorization correctness; address it through a separately reviewed migration before invitation volume or user-deletion operations become material.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
 - The default demo must not be represented as secure cross-device/multi-tenant production software: it intentionally retains localStorage persistence and simulated capacity. Production mode now blocks `/app` behind verified identity and membership and still refuses to expose the demo UI after authentication.
 - The security review was sequential because delegated audit workers were unavailable; no live environment/runtime validation was authorized.
@@ -172,12 +178,12 @@ Not run: application of `20261103132648_secure_owner_invitations` to Supabase Cl
 
 ## Exact next steps
 
-1. Obtain explicit approval before applying migration `20261103132648_secure_owner_invitations` to exact project `ppgdbqhwbzlgzwsjmkor`; inspect remote migration history first, apply only that reviewed migration, and run focused rollback-safe validation.
-2. Implement the production repository/API boundary so an authenticated active member can enter `/app` without exposing localStorage demo data or privileged browser credentials.
-3. Add callback and expiration/recovery UX only after the cloud invitation contract is approved and validated; continue to prohibit public self-registration and real email delivery.
+1. Implement the production repository/API boundary so an authenticated active member can enter `/app` without exposing localStorage demo data or privileged browser credentials.
+2. Prepare a separate low-risk optimization migration for the four invitation actor foreign-key indexes, then obtain explicit approval before applying it to Cloud.
+3. Add callback and expiration/recovery UX only after the production server boundary exists; continue to prohibit public self-registration and real email delivery.
 4. Request separate explicit approval before any push. After authorization, push the focused commits and obtain the first hosted run of `.github/workflows/production-foundation.yml`.
 5. At Production Readiness—and before any real customer data or launch—record successful backup/restore plus staging recovery evidence.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 on branch `production-v1`. The dedicated cloud project is `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`, `eu-west-1`); migrations `20261102161823_tenant_foundation` and `20261103083922_revoke_default_rls_helper_execution` are applied and verified with no persisted application data. Milestone 1 has a pinned fail-closed browser Auth boundary plus locally validated migration `20261103132648_secure_owner_invitations` for hashed single-use owner invitations, verified email/organization binding, transactional idempotent membership creation, revocation/expiration, audit/outbox, rollback, and concurrent acceptance. The new migration is not applied to Cloud; stop for explicit approval before targeting exact project `ppgdbqhwbzlgzwsjmkor`. Preserve unrelated advisor/marketing work. Do not push, deploy, enable providers, change Spend Cap, touch RAVO, or incur cost without explicit approval.
+> Continue Formangle Production V1 on branch `production-v1`. The dedicated cloud project is `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`, `eu-west-1`); migrations `20261102161823_tenant_foundation`, `20261103083922_revoke_default_rls_helper_execution`, and `20261103132648_secure_owner_invitations` are applied and rollback-validated with no persisted application data. Milestone 1 has a pinned fail-closed browser Auth boundary plus hashed single-use owner invitations, verified email/organization binding, transactional idempotent membership creation, revocation/expiration, and audit/outbox. Next implement the production repository/API boundary; treat the four invitation actor foreign-key indexes as a separate approval-gated optimization migration. Preserve unrelated advisor/marketing work. Do not push, deploy, enable providers, change Spend Cap, touch RAVO, or incur cost without explicit approval.
