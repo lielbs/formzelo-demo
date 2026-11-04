@@ -1,12 +1,12 @@
 # Formangle local database foundation
 
-Status: Milestone 0 local database foundation **validated on 2026-11-02**. Migration `20261102161823` applied successfully to a fresh local database, the synthetic seed loaded, 34 pgTAP/RLS assertions passed before and after a clean reset, `db lint` reported no errors in `public` or `private`, and generated database types match the live local schema.
+Status: Milestone 1 local database and Edge Function boundary **validated on 2026-11-04**. All four migrations through `20261103170000_authorized_invitation_api` applied to a fresh disposable database; 67 pgTAP/RLS assertions, database lint, generated-type drift, the two-connection concurrency test, genuine-Auth-JWT HTTP scenarios, 262 application tests, typecheck, and build passed. The migration and `operator-invitations` version 1 are also active on the dedicated FORMANGLE project after explicit approval.
 
 ## Prerequisites
 
 - Node/npm (already available).
 - Supabase CLI **3.0.0**, invoked using `npx --yes supabase@3.0.0` (cached user-local tooling, not a global installation).
-- Podman 5.8.3 client with the verified Podman machine image (server 5.8.9), running in the isolated Hyper-V machine `formangle-dev`. Hyper-V and the runtime were installed/enabled only after founder approval; no Docker Desktop or WSL was installed.
+- WSL 3.0.3 with WSL2 enabled, plus Podman 5.8.3 client/server 5.8.9 running rootless in the isolated machine `formangle-wsl-dev` (4 CPUs, 6 GiB RAM, 30 GiB disk). The earlier Hyper-V machine `formangle-dev` is preserved but is not the active runtime because its guest vsock network endpoint failed.
 - Disposable synthetic local data only. No remote project link, access token, RAVO connection, customer data or billing account is needed.
 
 The commands below were discovered from CLI 3.0.0 help. In this release local is the default; older examples using `--local` may not apply.
@@ -84,19 +84,19 @@ Tests cover the requested positive and negative RLS scenarios, including owner/s
 
 ## Recovery and rollout
 
-No migration has run on a remote/shared system. Local experiments may be reset only after confirming they contain disposable synthetic data. Once applied to a shared environment, never edit this migration: add a new forward migration. Keep schema changes compatible with the current app, back up and rehearse restore before destructive changes. No production rollback, retention or recovery target is selected here.
+The four committed migrations are applied to the dedicated FORMANGLE project `ppgdbqhwbzlgzwsjmkor`; never edit an applied migration—add a reviewed forward migration. Local experiments may be reset only after confirming they contain disposable synthetic data. Keep schema changes compatible with the current app, and back up and rehearse restore before destructive production changes. No production rollback, retention or recovery target is selected here.
 
 The first Podman machine download hit a known Windows OCI artifact-write failure. Recovery used Podman's supported `--image` option with the official Hyper-V/x86_64 artifact from `quay.io/podman/machine-os:5.8`; its manifest-declared size (`1001679756`) and SHA-256 (`b869b9e8e780126ab61d4bfdb60fcaac9dff279a98c297c301c0649f3312f365`) were verified before initialization. The incomplete VM was confirmed as new, off, and unregistered, then its VHDX was moved to a recoverable temporary quarantine with founder approval. Do not reuse an unverified machine image.
 
-The current frontend still constructs `LocalStorageRepository`. The new factory is tested in isolation and fails closed if production is requested without an injected production implementation. Switching the app, publishing endpoints or changing hosting/CSP belongs to a separately authorized milestone.
+The default demo still uses local persistence, while production mode selects the authenticated RLS repository and fails closed if its Supabase configuration is absent or invalid. Enabling the production runtime in a deployed application, creating real operators/tenants, publishing email delivery, or changing hosting/CSP belongs to separately authorized work.
 
 ## Approval gates and cost ledger
 
 | Dependency | Purpose / local usage | Cost and limits | Reliability / security / upgrade trigger | Alternative |
 |---|---|---|---|---|
 | Supabase CLI 3.0.0 | Generate config/migrations and run local tests | No hosted resource or recurring subscription created; disk/network downloads only | Pinned command version; local migration/test/type checks verified | Existing approved container/CI workstation |
-| Podman 5.8.3 + Hyper-V | Run local Supabase/PostgreSQL/Auth | Apache-2.0 runtime; Windows 11 Pro feature; 0 NIS recurring cost | Local synthetic data only; no hosted backup/SLA; machine and stack stopped after validation | An existing approved machine with a compatible runtime |
-| Hosted Supabase | Future staging/production | Not provisioned; no tier, region, quota or price adopted | Free-tier/backup/SLA suitability must be verified from current official pricing before approval | Local development for this milestone |
+| Podman 5.8.3 + WSL2 | Run local Supabase/PostgreSQL/Auth | Apache-2.0 runtime and Windows WSL feature; 0 NIS recurring cost | Local synthetic data only; no hosted backup/SLA; keep the validation stack disposable | Another approved OCI runtime |
+| Hosted Supabase FORMANGLE | Existing dedicated production project on the organization's Pro plan | No project, branch, add-on, or paid service was created by this milestone; normal included usage/quota still applies | Exact project ref is mandatory; migration/function deploy require approval; backup/restore remains a launch gate | Isolated local validation until production activation |
 | Providers / broker / monitoring | Future messaging/payment/jobs/telemetry | None activated; recurring spend is zero | Database outbox prepared; no external effects or paid broker | Local fixtures and existing tests |
 
 Production login method, customer-token policy, support access, retention, RPO/RTO, hosting and region remain Proposed/Deferred in the decision log. Local Auth configuration is development scaffolding only, not approval of a production login strategy.

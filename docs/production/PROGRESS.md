@@ -4,7 +4,20 @@ Last updated: 2026-11-04 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation is deployed to and validated against the dedicated Formangle Supabase Cloud project. Milestone 1 secure owner invitations are deployed and rollback-validated on exact project `ppgdbqhwbzlgzwsjmkor`. A local-only secure API/repository checkpoint is now implemented: a JWT-authenticated operator Edge Function package, a service-role-only operator/RPC boundary with database authorization and rate limiting, authenticated invitation acceptance UI, and a fail-closed RLS production repository for organization, workflow, and submission reads. The new migration and Edge Function have not been applied or deployed remotely, and no real hosted end-to-end verification has occurred.
+Milestone 0 — Secure Production Foundation and the Milestone 1 owner-invitation vertical slice are deployed to and validated against the dedicated Formangle Supabase Cloud project. Migration `20261103170000_authorized_invitation_api` and Edge Function `operator-invitations` version 1 are active on exact project `ppgdbqhwbzlgzwsjmkor`. The function keeps Supabase gateway JWT verification enabled and independently verifies the user with Auth before invoking a service-role-only RPC whose authorization and rate limit are rechecked in PostgreSQL. Local genuine-JWT HTTP, tenant-isolation, invitation, replay, and rate-limit validation passed; the hosted smoke test proved unauthenticated requests fail at the gateway. No hosted test identities or application rows were created.
+
+## 2026-11-04 runtime recovery and Milestone 1 completion
+
+- Installed WSL 3.0.3 and created one supported rootless WSL2 Podman machine, `formangle-wsl-dev` (4 CPUs, 6 GiB RAM, 30 GiB disk). Podman client 5.8.3 communicates with server 5.8.9 through the Docker-compatible named pipe. The failed Hyper-V machine `formangle-dev` and its VHDX were preserved unchanged.
+- Used an isolated unlinked copy of `supabase/` so local validation could not address either hosted project. A clean reset applied all four migrations to disposable PostgreSQL 17.
+- Fixed a real PL/pgSQL ambiguity in `private.create_owner_invitation_authorized` by prefixing its parameters while preserving the public RPC signature and Edge Function contract.
+- Passed 67 pgTAP/RLS assertions, database lint with no errors, generated-type drift with zero differences, and the two-connection invitation concurrency test.
+- Served the Edge Function locally and exercised real HTTP requests with genuine local Supabase Auth JWTs. Missing/invalid credentials, wrong method/origin/body, unauthorized operator, nonexistent organization, tenant isolation, one-time invitation acceptance, idempotent replay, actor/role impersonation resistance, RLS isolation, and the 10-per-15-minute rate limit all behaved as required.
+- Passed the full application regression: 29 Vitest files and 262 tests, TypeScript typecheck, and production build. The build emitted only the existing non-failing Zod/Rollup annotation warnings.
+- Re-verified exact hosted target `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`, `eu-west-1`, PostgreSQL 17.11, healthy) and the existing Pro organization. RAVO has a different project reference and was not changed.
+- Applied `20261103170000_authorized_invitation_api`; reconciled the tool-generated ledger timestamp to the committed version under an exact version/name guard. Both functions grant execution only to `postgres` and `service_role`; the public wrapper is security invoker and the private function is security definer with an empty search path.
+- Set only `FORMANGLE_APP_ORIGIN=https://formangle.rockstackds.com` and deployed `operator-invitations` version 1 with `verify_jwt=true`. A hosted request without Authorization returned `401 UNAUTHORIZED_NO_AUTH_HEADER` before handler execution. No hosted Auth user, operator, organization, invitation, membership, email, or other application row was created.
+- No project, branch, add-on, paid service, provider, DNS record, Spend Cap setting, RAVO resource, push, merge, or application deployment was created or changed.
 
 ## 2026-11-04 local API/repository checkpoint
 
@@ -157,7 +170,7 @@ The approved invitation migration was applied only to the dedicated Formangle pr
 - `npm run build` — passed; only the existing non-failing Zod annotation warnings were emitted.
 - `npm audit --omit=dev --json` — passed: 0 known vulnerabilities across 75 production dependencies and 280 total dependencies.
 
-Not run: local database reset/pgTAP/lint for migration `20261103170000_authorized_invitation_api.sql` because the Hyper-V Podman machine requires administrator authority and remained unavailable to the Codex process; the isolated unlinked test copy was removed after the failed start. Also not run: actual local or hosted Supabase Edge Function E2E with real JWTs, cloud migration, Edge Function deployment, secret configuration, new hosted GitHub Actions workflow (no push), hosted/staging backup restore, browser E2E, provider callbacks, load tests, real invitation email delivery, or public deployment. Unit HTTP-boundary tests use controlled Auth/RPC dependencies and are not represented as live Supabase E2E evidence. RAVO was not accessed.
+Not run: an authorized hosted invitation flow with a real production Auth identity. This was intentionally omitted because the complete genuine-JWT flow passed against the isolated local Supabase stack and creating production test identities/operators/tenants would persist unnecessary data. Also not run: a new hosted GitHub Actions workflow (no push), hosted/staging backup restore, browser E2E against the hosted function, provider callbacks, load tests, real invitation email delivery, or application deployment. RAVO was not accessed or changed.
 
 ## Decisions made
 
@@ -187,10 +200,12 @@ Not run: local database reset/pgTAP/lint for migration `20261103170000_authorize
 - `9d05215` — `fix: restrict hosted RLS helper execution`
 - `a9b66d9` — `feat: add secure workforce auth boundary`
 - `846c96f` — `feat: add secure owner invitation foundation`
+- `ab626eb` — `docs: record container runtime diagnosis`
+- `c321b66` — `fix: disambiguate invitation authorization actor`
 
 ## Outstanding follow-up evidence and risks
 
-- Local database validation is complete. The isolated Supabase stack and `formangle-dev` machine were stopped after the successful live type-drift check.
+- Local database validation is complete. The isolated stack uses the supported WSL2 machine `formangle-wsl-dev`; its disposable validation copy is removed after final cleanup. The original Hyper-V machine and VHDX remain preserved for forensic/recovery purposes and are not the active runtime.
 - The Podman 5.8 OCI artifact pull stalled on Windows. Initialization used the official Hyper-V image through the supported `--image` option only after manifest size and SHA-256 verification; the failed VM disk remains in a recoverable temporary quarantine and contains no Formangle database.
 - The CI workflow is committed and locally validated but has no hosted run result because pushing or manually dispatching remote Actions was not authorized. Local YAML/policy checks do not prove GitHub runner behavior; obtain the first hosted result after explicit push approval.
 - Backup/restore testing and staging recovery evidence are intentionally deferred to Production Readiness. They remain mandatory before real customer data or production launch and must not be silently dropped from the launch gate.
@@ -198,21 +213,21 @@ Not run: local database reset/pgTAP/lint for migration `20261103170000_authorize
 - The cloud database foundation, permission hardening, and secure owner-invitation migration are applied and the application tables remain empty.
 - Supabase CLI remote database commands are currently blocked by the hosted temporary-login-role path stalling at `Initialising login role...`; Supabase MCP/API operations remain authenticated and functional. Do not retry migrations blindly; inspect remote history first.
 - Cloud and committed TypeScript types are schema-equivalent but not byte-identical because different generator formats are in use. Standardize the generator/version before replacing the committed type source.
-- Milestone 1 invitation provisioning and transactional acceptance are implemented locally and in Cloud. It still does not provide real email delivery, session revocation orchestration, or a production repository/API.
+- Milestone 1 invitation provisioning, transactional acceptance, production repository boundary, and authenticated operator Edge Function are implemented locally; the database migration and Edge Function are active in Cloud. It still does not provide real email delivery or session revocation orchestration, and the application has not been deployed with the production runtime enabled.
 - Performance advisors identify four unindexed actor foreign keys on `private.owner_invitations`. This is INFO-level and does not affect authorization correctness; address it through a separately reviewed migration before invitation volume or user-deletion operations become material.
 - Substantial pre-existing modified/untracked product and marketing work remains untouched and unstaged by this task.
 - The default demo must not be represented as secure cross-device/multi-tenant production software: it intentionally retains localStorage persistence and simulated capacity. Production mode now blocks `/app` behind verified identity and membership and still refuses to expose the demo UI after authentication.
-- The security review was sequential because delegated audit workers were unavailable; no live environment/runtime validation was authorized.
+- The hosted smoke test covers unauthenticated rejection only. Authorized/unauthorized operators, tenant isolation, invitation acceptance/replay, rate limiting, and invalid credentials were validated with genuine Auth JWTs in the isolated local stack rather than by persisting synthetic production identities.
 - Supabase plan/region/features and provider commercial/legal suitability require approval-time verification. No paid infrastructure was provisioned.
 
 ## Exact next steps
 
-1. Implement the production repository/API boundary so an authenticated active member can enter `/app` without exposing localStorage demo data or privileged browser credentials.
-2. Prepare a separate low-risk optimization migration for the four invitation actor foreign-key indexes, then obtain explicit approval before applying it to Cloud.
-3. Add callback and expiration/recovery UX only after the production server boundary exists; continue to prohibit public self-registration and real email delivery.
+1. Obtain separate approval before enabling the production runtime in a deployed application or creating the first real platform operator and tenant.
+2. Prepare a separate low-risk optimization migration for the invitation actor foreign-key indexes, then obtain explicit approval before applying it to Cloud.
+3. Add callback, email delivery, and expiration/recovery UX only after provider, legal, operational, and cost decisions are approved; continue to prohibit public self-registration.
 4. Request separate explicit approval before any push. After authorization, push the focused commits and obtain the first hosted run of `.github/workflows/production-foundation.yml`.
 5. At Production Readiness—and before any real customer data or launch—record successful backup/restore plus staging recovery evidence.
 
 ## Continuation prompt
 
-> Continue Formangle Production V1 on branch `production-v1`. The dedicated cloud project is `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`, `eu-west-1`); migrations `20261102161823_tenant_foundation`, `20261103083922_revoke_default_rls_helper_execution`, and `20261103132648_secure_owner_invitations` are applied and rollback-validated with no persisted application data. Milestone 1 has a pinned fail-closed browser Auth boundary plus hashed single-use owner invitations, verified email/organization binding, transactional idempotent membership creation, revocation/expiration, and audit/outbox. Next implement the production repository/API boundary; treat the four invitation actor foreign-key indexes as a separate approval-gated optimization migration. Preserve unrelated advisor/marketing work. Do not push, deploy, enable providers, change Spend Cap, touch RAVO, or incur cost without explicit approval.
+> Continue Formangle Production V1 on branch `production-v1`. The dedicated cloud project is `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`, `eu-west-1`); all four migrations through `20261103170000_authorized_invitation_api` are applied with no persisted application data, and `operator-invitations` version 1 is active with gateway JWT verification enabled and exact production-origin configuration. The complete genuine-JWT security flow passed locally; hosted smoke proved unauthenticated rejection without creating production identities. Use `formangle-wsl-dev` for isolated local validation and preserve the original failed Hyper-V VM/VHDX. Treat invitation indexes, real operators/tenants, email/provider work, application deployment, push, and any cost as separate approval gates. Preserve unrelated advisor/marketing work and never touch RAVO.
