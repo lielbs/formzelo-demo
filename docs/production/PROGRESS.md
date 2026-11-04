@@ -17,6 +17,18 @@ Milestone 0 — Secure Production Foundation is deployed to and validated agains
 - Added focused unit/HTTP-boundary tests and pgTAP cases for direct-browser denial, trusted wrapper success, and rate limiting.
 - No migration, Edge Function, Auth setting, secret, user, organization, email delivery, DNS, Cloudflare, RAVO resource, or other cloud resource was changed.
 
+## 2026-11-04 container runtime diagnostic checkpoint
+
+- Performed one read-only Hyper-V/Podman diagnostic pass and one bounded recovery path. No VM, VHDX, network switch, Windows network configuration, cloud resource, or non-disposable database was deleted or overwritten.
+- Confirmed `formangle-dev` uses the Hyper-V provider in Podman 5.8.3. Its adapter is connected to the healthy Hyper-V `Default Switch`, whose host interface is up at `172.29.128.1/20`; Hyper-V logged successful guest boots and virtual-network attachment.
+- Established that the initial `unknown state: "enabled but offline"` failure is Podman 5.8.3 state handling, not DHCP. A Hyper-V `Saved` VM is reported as `Enabled but offline`, while the Podman 5.8.3 Hyper-V provider converts only `Enabled`, `Disabled`, and `Starting` states. Podman therefore aborted before starting `gvproxy` or the SSH forwarder.
+- Used one evidence-driven recovery path without `Save-VM`, forced power-off, saved-state deletion, or disk changes: resume the saved VM, request a clean integration-service shutdown, and invoke `podman machine start` once from `Off` so Podman could own its ready-vsock and forwarding setup.
+- The VM booted and Podman received the guest `ready ack`. `gvproxy` 0.8.9 opened the named pipes and Hyper-V vsock, proving that Hyper-V boot and the ready-vsock path work. Podman reassigned the stale/conflicting host SSH port from `63324` to `62633` in its local machine configuration.
+- The recovery then failed at the guest user-mode network/SSH layer. The `gvproxy` log repeatedly sent ARP from `192.168.127.1` for the expected guest endpoint `192.168.127.2`, received zero bytes from the VM, waited for `sshd`, and finally the SSH handshake was reset by the remote side. Podman then stopped `gvproxy` and returned exit 125.
+- The remaining fault is inside the existing guest's Podman vsock network path (the guest `vsock-network`/NetworkManager endpoint, with `sshd` consequently unreachable), not the Hyper-V Default Switch, host DHCP, browser SSH key configuration, or Supabase. Direct Hyper-V boots cannot repair this because Podman must establish the vsock listener and forwarding itself.
+- Stopped after the single justified recovery path. WSL is not installed. The recommended next runtime is a supported WSL2-based Podman machine, preserving the existing Hyper-V VM and VHDX; WSL2 installation and creation of that alternative environment require separate founder approval because they modify Windows system features.
+- Migration `20261103170000_authorized_invitation_api.sql`, the complete pgTAP/RLS suite, database lint, and genuine local Auth JWT/Edge Function HTTP tests remain unexecuted. No claim of migration or Edge Function cloud readiness was made.
+
 ## Completed work
 
 - Read and classified the full Production V1 assignment and business model.
