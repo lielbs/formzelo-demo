@@ -4,7 +4,33 @@ Last updated: 2026-11-04 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 0 — Secure Production Foundation and the Milestone 1 owner-invitation vertical slice are deployed to and validated against the dedicated Formangle Supabase Cloud project. Migration `20261103170000_authorized_invitation_api` and Edge Function `operator-invitations` version 1 are active on exact project `ppgdbqhwbzlgzwsjmkor`. The function keeps Supabase gateway JWT verification enabled and independently verifies the user with Auth before invoking a service-role-only RPC whose authorization and rate limit are rechecked in PostgreSQL. Local genuine-JWT HTTP, tenant-isolation, invitation, replay, and rate-limit validation passed; the hosted smoke test proved unauthenticated requests fail at the gateway. No hosted test identities or application rows were created.
+Milestone 2 is implemented and validated locally as a production-data vertical slice. Two new migrations and the `operator-organizations` Edge Function package are prepared but are **not applied or deployed to Supabase Cloud**. The hosted application remains unchanged. Cloud activation, real operator/tenant creation, push and deployment remain explicit approval gates. No paid resource or provider was introduced.
+
+## 2026-11-04 Milestone 2 local completion
+
+- Added trusted RockStack business provisioning behind the existing verified-operator architecture. The new service-role-only RPC transaction creates the organization, settings, complete default Brand Kit and one owner invitation; the browser cannot call it directly. The local `operator-organizations` Edge Function verifies the bearer identity, exact origin and normalized request, ignores actor impersonation fields, and returns the invitation token only in the one successful response.
+- Connected the protected workspace to real Supabase organization metadata, active memberships, organization switching and owner-only profile/brand settings. Production empty/error states no longer redirect to or describe local demo storage.
+- Connected the existing Design Studio and template library to production RPCs for create, template initialization, full draft persistence, multi-workflow listing, duplicate, archive/restore, version restore and immutable publication. Writes use server-side tenant authorization, schema-version 8 validation, a validated theme contract, plan limits and optimistic `lock_version` checks.
+- Persisted Brand Kit JSON per organization and froze the resolved brand into every published version. Production can edit colors, typography, layout and button styles. Storage-backed image upload remains intentionally unavailable because enabling/changing Supabase Storage is a separate approval gate.
+- Added a narrow anonymous public resolver that exposes only the current immutable published snapshot and basic business identity. Draft and archived workflows resolve to no public record.
+- Added transactional public submissions bound to the exact published version. PostgreSQL validates required fields, types, allowed options, ranges, conditions and consent; rejects unknown/forged fields; recalculates ILS totals and fees; derives the tenant/workflow/version from the slug; enforces idempotency, per-workflow and per-client rate limits, intake closure/capacity and one-open-request rules; appends audit/outbox and submission timeline records atomically.
+- Connected the production inbox to RLS-protected submissions, workflow/status filters, request detail loading, timeline loading and optimistic status transitions. Payment state is never marked paid by this implementation.
+- Kept the default demo adapter isolated and unchanged. Production capabilities never fall back to `localStorage`.
+- Local database validation used an unlinked disposable copy on the existing WSL2 + Podman runtime. A clean reset applied all six migrations; 114/114 pgTAP assertions passed; database lint reported no schema errors.
+- Application regression passed: 30 Vitest files and 265 tests; TypeScript typecheck passed; production build passed with only the pre-existing non-failing Zod/Rollup annotation warnings.
+- No cloud migration, Edge Function deployment, Auth/Storage setting, secret, real identity, organization, customer row, provider, DNS, public site, RAVO resource, push or paid resource was changed.
+
+### Milestone 2 limitations before cloud activation
+
+- The two new migrations `20261104162858_milestone_2_workspace_workflows` and `20261104165034_public_delivery_submissions` exist only locally.
+- `operator-organizations` exists only as a local Edge Function package. It has unit coverage but has not been deployed or exercised against Cloud.
+- Production object uploads, case/personal customer links, customer resubmission tokens, internal notes, Formangle Actions, notifications and payments are not enabled in the production adapter. Their existing demo implementations remain local-only; no production fallback occurs.
+- Anonymous submissions use database-enforced bounded rate limits. A managed CAPTCHA/WAF was not added because that would require separate service/configuration and cost review.
+- Backup/restore, staging recovery, monitoring, incident response and real-data operating procedures remain Production Readiness gates. Formangle is not yet approved for paying customers.
+
+### Exact next step
+
+Review and explicitly approve applying the two new migrations to exact project `FORMANGLE` (`ppgdbqhwbzlgzwsjmkor`) and deploying only `operator-organizations` with the already-used `FORMANGLE_APP_ORIGIN`. Expected incremental cost: zero on the existing project. After cloud validation, separately approve creating the first real operator/organization and application deployment.
 
 ## 2026-11-04 runtime recovery and Milestone 1 completion
 
@@ -202,6 +228,7 @@ Not run: an authorized hosted invitation flow with a real production Auth identi
 - `846c96f` — `feat: add secure owner invitation foundation`
 - `ab626eb` — `docs: record container runtime diagnosis`
 - `c321b66` — `fix: disambiguate invitation authorization actor`
+- `f172c5f` — `feat: complete milestone two production workflows`
 
 ## Outstanding follow-up evidence and risks
 
