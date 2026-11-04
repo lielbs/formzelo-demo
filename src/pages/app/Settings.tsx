@@ -7,6 +7,7 @@ import { Badge, Button, Card, FieldLabel, Input, Modal, PageHeader, Spinner } fr
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { formatDate, formatNumber } from '../../lib/format';
 import { PaymentConnectors } from './PaymentConnectors';
+import { runtimeConfiguration } from '../../production/runtime';
 
 interface FormValues {
   name: string;
@@ -78,7 +79,7 @@ export function Settings() {
                 {err.name && <p role="alert" className="mt-1 text-xs text-red-600">{err.name.message}</p>}
               </div>
               <div>
-                <FieldLabel htmlFor="s-email">אימייל להתראות (מדומה)</FieldLabel>
+                <FieldLabel htmlFor="s-email">אימייל להתראות{runtimeConfiguration.mode === 'demo' ? ' (מדומה)' : ''}</FieldLabel>
                 <Input
                   id="s-email"
                   type="email"
@@ -120,7 +121,7 @@ export function Settings() {
             <h2 className="flex items-center gap-2 font-semibold">
               <Users className="h-4 w-4" aria-hidden /> חברי צוות
             </h2>
-            <p className="mt-0.5 text-xs text-ink-muted">מדומה — אין התחברות אמיתית בדמו.</p>
+            <p className="mt-0.5 text-xs text-ink-muted">{runtimeConfiguration.mode === 'demo' ? 'מדומה — אין התחברות אמיתית בדמו.' : 'חברים פעילים שקיבלו הרשאה לארגון זה.'}</p>
             {info.loading ? (
               <Spinner />
             ) : (
@@ -137,7 +138,7 @@ export function Settings() {
 
           <Card className="p-5">
             <h2 className="flex items-center gap-2 font-semibold">
-              <Database className="h-4 w-4" aria-hidden /> אחסון מקומי
+              <Database className="h-4 w-4" aria-hidden /> {runtimeConfiguration.mode === 'demo' ? 'אחסון מקומי' : 'אחסון מאובטח'}
             </h2>
             {report && (
               <>
@@ -155,19 +156,27 @@ export function Settings() {
               </>
             )}
             <ul className="mt-3 list-inside list-disc space-y-1 text-xs leading-relaxed text-ink-muted">
-              <li>הנתונים נשמרים ב-localStorage של הדפדפן הזה בלבד.</li>
-              <li>אין סנכרון בין מכשירים, דפדפנים או חלון גלישה בסתר.</li>
-              <li>ניקוי נתוני האתר בדפדפן מוחק את כל הנתונים.</li>
-              <li>נוצר {org.createdAt ? formatDate(org.createdAt) : ''} · נתוני הדמו בדיוניים.</li>
+              {runtimeConfiguration.mode === 'demo' ? (
+                <>
+                  <li>הנתונים נשמרים ב-localStorage של הדפדפן הזה בלבד.</li>
+                  <li>אין סנכרון בין מכשירים, דפדפנים או חלון גלישה בסתר.</li>
+                  <li>ניקוי נתוני האתר בדפדפן מוחק את כל הנתונים.</li>
+                  <li>נוצר {org.createdAt ? formatDate(org.createdAt) : ''} · נתוני הדמו בדיוניים.</li>
+                </>
+              ) : (
+                <>
+                  <li>הנתונים נשמרים ב-Supabase ומוגנים באמצעות RLS.</li>
+                  <li>טיוטות ותהליכים מסתנכרנים בין מכשירים מורשים.</li>
+                  <li>נוצר {org.createdAt ? formatDate(org.createdAt) : ''}.</li>
+                </>
+              )}
             </ul>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" icon={Download} onClick={exportJson}>
-                ייצוא JSON
-              </Button>
-              <Button size="sm" variant="danger" icon={RotateCcw} onClick={() => setConfirmReset(true)}>
-                איפוס נתוני הדמו
-              </Button>
-            </div>
+            {runtimeConfiguration.mode === 'demo' && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" icon={Download} onClick={exportJson}>ייצוא JSON</Button>
+                <Button size="sm" variant="danger" icon={RotateCcw} onClick={() => setConfirmReset(true)}>איפוס נתוני הדמו</Button>
+              </div>
+            )}
           </Card>
         </div>
       </div>

@@ -1,11 +1,12 @@
 import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, Palette, Plus, Settings, Workflow, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useRepo, useRepoQuery } from '../data/store';
 import { PENDING_STATUSES } from '../engine/transitions';
 import { Logo } from './Brand';
 import { ButtonLink, cx, ErrorState, Spinner } from './ui';
 import { useToast } from './Toast';
+import { runtimeConfiguration } from '../production/runtime';
 
 const NAV = [
   { to: '/app', label: 'לוח בקרה', icon: LayoutDashboard, end: true },
@@ -53,7 +54,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{activeOrg.name}</span>
-              <span className="block truncate text-xs text-white/50">{activeOrg.industry} · דמו</span>
+              <span className="block truncate text-xs text-white/50">{activeOrg.industry}{activeOrg.isDemo ? ' · דמו' : ''}</span>
             </span>
             <ChevronDown className="h-4 w-4 text-white/50" aria-hidden />
           </>
@@ -86,11 +87,13 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
               </button>
             </li>
           ))}
-          <li className="mt-1 border-t border-cloud-200 pt-1">
-            <button type="button" data-fz-leave onClick={() => navigate('/demo')} className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-ink-muted hover:bg-cloud">
-              <Building2 className="h-4 w-4" aria-hidden /> כל סביבות הדמו
-            </button>
-          </li>
+          {runtimeConfiguration.mode === 'demo' && (
+            <li className="mt-1 border-t border-cloud-200 pt-1">
+              <button type="button" data-fz-leave onClick={() => navigate('/demo')} className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-ink-muted hover:bg-cloud">
+                <Building2 className="h-4 w-4" aria-hidden /> כל סביבות הדמו
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>
@@ -132,8 +135,8 @@ function Sidebar({ onNavigate, pending }: { onNavigate?: () => void; pending: nu
         ))}
       </nav>
       <div className="mt-auto rounded-xl border border-white/10 p-3 text-xs leading-relaxed text-white/50">
-        <p className="font-medium text-white/80">דמו מקומי</p>
-        הנתונים נשמרים בדפדפן הזה בלבד ולא מסתנכרנים בין מכשירים.
+        <p className="font-medium text-white/80">{runtimeConfiguration.mode === 'demo' ? 'דמו מקומי' : 'סביבת עבודה מאובטחת'}</p>
+        {runtimeConfiguration.mode === 'demo' ? 'הנתונים נשמרים בדפדפן הזה בלבד ולא מסתנכרנים בין מכשירים.' : 'הנתונים נשמרים ב-Supabase ונגישים רק לחברי הארגון המורשים.'}
       </div>
     </div>
   );
@@ -152,7 +155,7 @@ export function AppLayout() {
 
   if (bootError) return <div className="p-6"><ErrorState error={bootError} /></div>;
   if (!ready) return <Spinner label="טוען סביבת עבודה…" />;
-  if (!activeOrg) return <Navigate to="/demo" replace />;
+  if (!activeOrg) return <div className="p-6"><ErrorState error={runtimeConfiguration.mode === 'production' ? 'לא נמצאה סביבת עבודה פעילה. פנו ל-RockStack להשלמת ההקמה.' : 'לא נמצאה סביבת דמו.'} /></div>;
 
   return (
     <div className="min-h-screen lg:ps-64">

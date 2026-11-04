@@ -1,0 +1,450 @@
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
+import {
+  IntakeSchema,
+  SCHEMA_VERSION,
+  WorkflowConfigSchema,
+  type Membership,
+  type Organization,
+  type RunEvent,
+  type RunStatus,
+  type Workflow,
+  type WorkflowRun,
+  type WorkflowVersion,
+} from '../domain/schema';
+import { BrandKitSchema, WorkflowThemeSchema, type BrandKit } from '../domain/theme';
+import type { FormangleRepository } from '../data/repository';
+import { DomainRuleError, NotFoundError } from '../data/repository';
+import { freezeTheme } from '../theme/brand';
+import type { Database, Json } from './database.generated';
+import { intakeState } from '../engine/intake';
+
+export class ProductionCapabilityError extends Error {
+  constructor(capability: string) {
+    super(`Production capability is not available: ${capability}`);
+    this.name = 'ProductionCapabilityError';
+  }
+}
+
+type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
+type WorkflowRow = Database['public']['Tables']['workflows']['Row'];
+type VersionRow = Database['public']['Tables']['workflow_versions']['Row'];
+
+function jsonObject(value: Json): Record<string, unknown> {
+  if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error('Invalid production record');
+  return value as Record<string, unknown>;
+}
+
+function toJson(value: unknown): Json {
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+function fail(error: PostgrestError | null, fallback: string): never {
+  if (error?.code === '40001') throw new DomainRuleError('התהליך השתנה במכשיר או חלון אחר. רעננו לפני שמירה נוספת.');
+  if (error?.code === '42501') throw new DomainRuleError('אין הרשאה לבצע את הפעולה בסביבת העבודה הזו.');
+  if (error?.code === '22023') throw new DomainRuleError('השרת דחה מסמך תהליך שאינו תקין.');
+  throw new Error(fallback);
+}
+
+type OrganizationProjection = OrganizationRow & {
+  organization_settings?: { config: Json } | { config: Json }[] | null;
+  brand_configurations?: { config: Json } | { config: Json }[] | null;
+};
+
+function relationConfig(value: OrganizationProjection['organization_settings']): Record<string, unknown> {
+  const relation = Array.isArray(value) ? value[0] : value;
+  return relation ? jsonObject(relation.config) : {};
+}
+
+function mapOrganization(row: OrganizationProjection): Organization {
+  const settings = relationConfig(row.organization_settings);
+  const brand = relationConfig(row.brand_configurations);
+  const palette = brand.palette && typeof brand.palette === 'object' && !Array.isArray(brand.palette) ? brand.palette as Record<string, unknown> : {};
+  const primaryColor = typeof settings.primaryColor === 'string' ? settings.primaryColor : typeof palette.primary === 'string' ? palette.primary : '#EA580C';
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    industry: typeof settings.industry === 'string' ? settings.industry : 'סביבת ייצור',
+    tagline: typeof settings.tagline === 'string' ? settings.tagline : '',
+    brand: { primaryColor, logoText: row.name.slice(0, 40) },
+    contactEmail: typeof settings.contactEmail === 'string' ? settings.contactEmail : '',
+    isDemo: false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapWorkflow(row: WorkflowRow): Workflow {
+  return {
+    id: row.id,
+    orgId: row.organization_id,
+    slug: row.public_slug,
+    status: row.status as Workflow['status'],
+    templateKey: row.template_key,
+    draft: WorkflowConfigSchema.parse(jsonObject(row.draft_config)),
+    design: WorkflowThemeSchema.parse(jsonObject(row.draft_design)),
+    publishedVersionId: row.published_version_id ?? undefined,
+    hasUnpublishedChanges: row.status !== 'published' || row.published_lock_version !== row.lock_version,
+    intake: IntakeSchema.parse(jsonObject(row.intake)),
+    sourcePrompt: row.source_prompt ?? undefined,
+    isDemo: false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapVersion(row: VersionRow): WorkflowVersion {
+  return {
+    id: row.id,
+    orgId: row.organization_id,
+    workflowId: row.workflow_id,
+    version: row.version_number,
+    config: WorkflowConfigSchema.parse(jsonObject(row.config)),
+    design: WorkflowThemeSchema.parse(jsonObject(row.design)),
+    publishedAt: row.created_at,
+    createdAt: row.created_at,
+    updatedAt: row.created_at,
+  };
+}
+
+function mapRun(row: Database['public']['Tables']['submissions']['Row']): WorkflowRun {
+  const payload = jsonObject(row.answers);
+  return {
+    id: row.id,
+    orgId: row.organization_id,
+    workflowId: row.workflow_id,
+    versionId: row.workflow_version_id,
+    versionNumber: 1,
+    reference: row.id.slice(0, 8).toUpperCase(),
+    status: ({ received: 'submitted' }[row.status] ?? row.status) as RunStatus,
+    answers: Array.isArray(payload.answers) ? payload.answers as WorkflowRun['answers'] : [],
+    caseAnswers: [],
+    priceLines: Array.isArray(payload.priceLines) ? payload.priceLines as WorkflowRun['priceLines'] : [],
+    total: row.total_minor / 100,
+    payment: { status: 'none', amount: 0, kind: 'none' },
+    customerName: typeof payload.customerName === 'string' ? payload.customerName : '',
+    customerContact: typeof payload.customerContact === 'string' ? payload.customerContact : '',
+    submittedAt: row.created_at,
+    isDemo: false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** RLS-backed production adapter. It never falls back to local or demo persistence. */
+export function createProductionRepository(client: SupabaseClient<Database>): FormangleRepository {
+  const listeners = new Set<() => void>();
+  const locks = new Map<string, number>();
+  const submissionLocks = new Map<string, number>();
+  const publicClientToken = crypto.randomUUID();
+  let organizations: Organization[] = [];
+  let activeOrgId: string | null = null;
+  const allowed = () => new Set(organizations.map((item) => item.id));
+  const assertOrg = (orgId: string) => {
+    if (!allowed().has(orgId)) throw new Error('Organization is not available to this session');
+  };
+  const emit = () => listeners.forEach((listener) => listener());
+  const remember = (row: WorkflowRow) => {
+    locks.set(row.id, row.lock_version);
+    return mapWorkflow(row);
+  };
+  const expectedLock = async (orgId: string, workflowId: string) => {
+    const known = locks.get(workflowId);
+    if (known !== undefined) return known;
+    const { data, error } = await client.from('workflows').select('lock_version').eq('organization_id', orgId).eq('id', workflowId).maybeSingle();
+    if (error) fail(error, 'Unable to load workflow revision');
+    if (!data) throw new NotFoundError('Workflow');
+    locks.set(workflowId, data.lock_version);
+    return data.lock_version;
+  };
+
+  const supported = {
+    async init() {
+      const { data, error } = await client.from('organizations').select('id,slug,name,status,created_at,updated_at,organization_settings(config),brand_configurations(config)').in('status', ['active', 'onboarding']);
+      if (error) fail(error, 'Unable to load authorized organizations');
+      organizations = (data ?? []).map(mapOrganization);
+      if (!activeOrgId || !organizations.some((item) => item.id === activeOrgId)) activeOrgId = organizations[0]?.id ?? null;
+    },
+    subscribe(listener: () => void) { listeners.add(listener); return () => listeners.delete(listener); },
+    async listOrganizations() { return [...organizations]; },
+    async getActiveOrgId() { return activeOrgId; },
+    async setActiveOrgId(orgId: string) { assertOrg(orgId); activeOrgId = orgId; emit(); },
+    async updateOrganization(orgId: string, patch: Parameters<FormangleRepository['updateOrganization']>[1]) {
+      assertOrg(orgId);
+      const current = organizations.find((item) => item.id === orgId);
+      if (!current) throw new NotFoundError('Organization');
+      const next = {
+        ...current,
+        ...patch,
+        brand: patch.brand ?? current.brand,
+      };
+      const { data, error } = await client.rpc('update_organization_profile', {
+        p_organization_id: orgId,
+        p_name: next.name,
+        p_tagline: next.tagline,
+        p_contact_email: next.contactEmail,
+        p_primary_color: next.brand.primaryColor,
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to update organization profile');
+      const stored: Organization = { ...next, name: data[0].name, updatedAt: data[0].updated_at };
+      organizations = organizations.map((item) => item.id === orgId ? stored : item);
+      emit();
+      return stored;
+    },
+    async listWorkflows(orgId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.from('workflows').select('*').eq('organization_id', orgId).order('updated_at', { ascending: false });
+      if (error) fail(error, 'Unable to load workflows');
+      return (data ?? []).map(remember);
+    },
+    async getWorkflow(orgId: string, workflowId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.from('workflows').select('*').eq('organization_id', orgId).eq('id', workflowId).maybeSingle();
+      if (error) fail(error, 'Unable to load workflow');
+      return data ? remember(data) : null;
+    },
+    async createWorkflow(orgId: string, input: Parameters<FormangleRepository['createWorkflow']>[1]) {
+      assertOrg(orgId);
+      const config = WorkflowConfigSchema.parse(input.config);
+      const design = WorkflowThemeSchema.parse(input.design);
+      const { data, error } = await client.rpc('create_workflow', {
+        organization_id: orgId,
+        config: toJson(config),
+        design: toJson(design),
+        template_key: input.templateKey,
+        source_prompt: input.sourcePrompt,
+        schema_version: SCHEMA_VERSION,
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to create workflow');
+      emit();
+      return remember(data[0]);
+    },
+    async saveDraft(orgId: string, workflowId: string, config: Parameters<FormangleRepository['saveDraft']>[2], design?: Parameters<FormangleRepository['saveDraft']>[3]) {
+      assertOrg(orgId);
+      const current = design ? null : await supported.getWorkflow(orgId, workflowId);
+      const { data, error } = await client.rpc('save_workflow_draft', {
+        organization_id: orgId,
+        workflow_id: workflowId,
+        expected_lock_version: await expectedLock(orgId, workflowId),
+        config: toJson(WorkflowConfigSchema.parse(config)),
+        design: toJson(WorkflowThemeSchema.parse(design ?? current?.design)),
+        schema_version: SCHEMA_VERSION,
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to save workflow');
+      emit();
+      return remember(data[0]);
+    },
+    async publishWorkflow(orgId: string, workflowId: string) {
+      assertOrg(orgId);
+      const workflow = await supported.getWorkflow(orgId, workflowId);
+      if (!workflow) throw new NotFoundError('Workflow');
+      const { data, error } = await client.rpc('publish_workflow', {
+        organization_id: orgId,
+        workflow_id: workflowId,
+        expected_lock_version: await expectedLock(orgId, workflowId),
+        published_design: toJson(freezeTheme(workflow.design, await supported.getBrandKit(orgId))),
+        engine_version: 'formangle-v1',
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to publish workflow');
+      locks.set(workflowId, (locks.get(workflowId) ?? 0) + 1);
+      emit();
+      return mapVersion(data[0]);
+    },
+    async duplicateWorkflow(orgId: string, workflowId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.rpc('duplicate_workflow', { organization_id: orgId, workflow_id: workflowId });
+      if (error || !data?.[0]) fail(error, 'Unable to duplicate workflow');
+      emit();
+      return remember(data[0]);
+    },
+    async setArchived(orgId: string, workflowId: string, archived: boolean) {
+      assertOrg(orgId);
+      const { data, error } = await client.rpc('set_workflow_archived', {
+        organization_id: orgId,
+        workflow_id: workflowId,
+        expected_lock_version: await expectedLock(orgId, workflowId),
+        archived,
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to update workflow state');
+      emit();
+      return remember(data[0]);
+    },
+    async updateIntake(orgId: string, workflowId: string, intake: Parameters<FormangleRepository['updateIntake']>[2]) {
+      assertOrg(orgId);
+      const { data, error } = await client.rpc('update_workflow_intake', {
+        organization_id: orgId,
+        workflow_id: workflowId,
+        expected_lock_version: await expectedLock(orgId, workflowId),
+        intake: toJson(IntakeSchema.parse(intake)),
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to update intake settings');
+      emit();
+      return remember(data[0]);
+    },
+    async listVersions(orgId: string, workflowId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.from('workflow_versions').select('*').eq('organization_id', orgId).eq('workflow_id', workflowId).order('version_number', { ascending: false });
+      if (error) fail(error, 'Unable to load workflow versions');
+      return (data ?? []).map(mapVersion);
+    },
+    async getVersion(orgId: string, versionId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.from('workflow_versions').select('*').eq('organization_id', orgId).eq('id', versionId).maybeSingle();
+      if (error) fail(error, 'Unable to load workflow version');
+      return data ? mapVersion(data) : null;
+    },
+    async restoreVersionToDraft(orgId: string, workflowId: string, versionId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.rpc('restore_workflow_version', {
+        organization_id: orgId,
+        workflow_id: workflowId,
+        version_id: versionId,
+        expected_lock_version: await expectedLock(orgId, workflowId),
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to restore workflow version');
+      emit();
+      return remember(data[0]);
+    },
+    async listRuns(orgId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.from('submissions').select('*').eq('organization_id', orgId).order('created_at', { ascending: false });
+      if (error) fail(error, 'Unable to load submissions');
+      return (data ?? []).map((row) => { submissionLocks.set(row.id, row.lock_version); return mapRun(row); });
+    },
+    async getRun(orgId: string, runId: string) {
+      assertOrg(orgId);
+      const { data, error } = await client.from('submissions').select('*').eq('organization_id', orgId).eq('id', runId).maybeSingle();
+      if (error) fail(error, 'Unable to load submission');
+      if (!data) return null;
+      submissionLocks.set(data.id, data.lock_version);
+      return mapRun(data);
+    },
+    async resolvePublic(slug: string) {
+      const { data, error } = await client.rpc('resolve_public_workflow', { p_slug: slug });
+      if (error) fail(error, 'Unable to resolve public workflow');
+      if (!data) return null;
+      const root = jsonObject(data);
+      const organizationData = jsonObject(root.organization as Json);
+      const workflowData = jsonObject(root.workflow as Json);
+      const versionData = jsonObject(root.version as Json);
+      const organization: Organization = {
+        id: String(organizationData.id), slug: String(organizationData.slug), name: String(organizationData.name),
+        industry: 'עסק', tagline: '', brand: { primaryColor: '#EA580C', logoText: String(organizationData.name).slice(0, 40) },
+        contactEmail: '', isDemo: false, createdAt: String(organizationData.createdAt), updatedAt: String(organizationData.updatedAt),
+      };
+      const workflow: Workflow = {
+        id: String(workflowData.id), orgId: String(workflowData.orgId), slug: String(workflowData.slug), status: 'published',
+        templateKey: String(workflowData.templateKey), draft: WorkflowConfigSchema.parse(workflowData.draft),
+        design: WorkflowThemeSchema.parse(workflowData.design), publishedVersionId: String(workflowData.publishedVersionId),
+        hasUnpublishedChanges: false, intake: IntakeSchema.parse(workflowData.intake), isDemo: false,
+        createdAt: String(workflowData.createdAt), updatedAt: String(workflowData.updatedAt),
+      };
+      const version: WorkflowVersion = {
+        id: String(versionData.id), orgId: String(versionData.orgId), workflowId: String(versionData.workflowId),
+        version: Number(versionData.version), config: WorkflowConfigSchema.parse(versionData.config), design: WorkflowThemeSchema.parse(versionData.design),
+        publishedAt: String(versionData.publishedAt), createdAt: String(versionData.createdAt), updatedAt: String(versionData.updatedAt),
+      };
+      return { organization, workflow, version };
+    },
+    async submitRun(slug: string, input: Parameters<FormangleRepository['submitRun']>[1]) {
+      if (input.runId) throw new ProductionCapabilityError('public request resubmission token');
+      const idempotencyKey = crypto.randomUUID();
+      const { data, error } = await client.rpc('submit_public_workflow', {
+        p_slug: slug,
+        p_answers: toJson(input.values),
+        p_consent: input.consent,
+        p_idempotency_key: idempotencyKey,
+        p_client_token: publicClientToken,
+      });
+      if (error) fail(error, 'Unable to submit workflow');
+      const result = jsonObject(data);
+      const payload = jsonObject(result.answers as Json);
+      return {
+        id: String(result.id), orgId: String(result.organizationId), workflowId: String(result.workflowId), versionId: String(result.versionId),
+        versionNumber: Number(result.versionNumber), reference: String(result.id).slice(0, 8).toUpperCase(), status: 'submitted',
+        answers: Array.isArray(payload.answers) ? payload.answers as WorkflowRun['answers'] : [], caseAnswers: [],
+        priceLines: Array.isArray(payload.priceLines) ? payload.priceLines as WorkflowRun['priceLines'] : [], total: Number(result.totalMinor) / 100,
+        payment: { status: 'none', amount: 0, kind: 'none' }, customerName: typeof payload.customerName === 'string' ? payload.customerName : '',
+        customerContact: typeof payload.customerContact === 'string' ? payload.customerContact : '', consentAt: typeof payload.consentAt === 'string' ? payload.consentAt : undefined,
+        submittedAt: String(result.createdAt), isDemo: false, createdAt: String(result.createdAt), updatedAt: String(result.updatedAt),
+      };
+    },
+    async getPublicRun() { return null; },
+    async getIntakeState(slug: string) {
+      const resolved = await supported.resolvePublic(slug);
+      return intakeState(resolved?.workflow.intake, []);
+    },
+    async getBookingAvailability() { return []; },
+    async getOptionUsage() { return {}; },
+    async getAssetUrls() { return {}; },
+    async listAssets() { return []; },
+    async transitionRun(orgId: string, runId: string, to: RunStatus) {
+      assertOrg(orgId);
+      const expected = submissionLocks.get(runId);
+      if (expected === undefined) await supported.getRun(orgId, runId);
+      const databaseStatus = to === 'submitted' ? 'received' : to;
+      const { data, error } = await client.rpc('transition_submission_status', {
+        p_organization_id: orgId, p_submission_id: runId,
+        p_expected_lock_version: submissionLocks.get(runId) ?? 0, p_to_status: databaseStatus,
+      });
+      if (error || !data?.[0]) fail(error, 'Unable to update submission status');
+      submissionLocks.set(runId, data[0].lock_version);
+      emit();
+      return mapRun(data[0]);
+    },
+    async listEvents(orgId: string, runId?: string): Promise<RunEvent[]> {
+      assertOrg(orgId);
+      let query = client.from('submission_events').select('*').eq('organization_id', orgId).order('created_at', { ascending: true });
+      if (runId) query = query.eq('submission_id', runId);
+      const { data, error } = await query;
+      if (error) fail(error, 'Unable to load submission events');
+      return (data ?? []).map((row) => {
+        const status = row.event_type.startsWith('status:') ? row.event_type.slice(7) as RunStatus : undefined;
+        return { id: row.id, orgId: row.organization_id, runId: row.submission_id, type: row.event_type === 'submitted' ? 'submitted' : 'status_changed',
+          actor: row.actor_user_id ? 'owner' : 'customer', message: status ? `הסטטוס עודכן` : 'הבקשה נשלחה', to: status,
+          internal: false, createdAt: row.created_at, updatedAt: row.created_at };
+      });
+    },
+    async getBrandKit(orgId: string): Promise<BrandKit> {
+      assertOrg(orgId);
+      const { data, error } = await client.from('brand_configurations').select('config').eq('organization_id', orgId).single();
+      if (error) fail(error, 'Unable to load brand settings');
+      return BrandKitSchema.parse(jsonObject(data.config));
+    },
+    async updateBrandKit(orgId: string, kit: BrandKit) {
+      assertOrg(orgId);
+      const valid = BrandKitSchema.parse({ ...kit, updatedAt: new Date().toISOString() });
+      const { data, error } = await client.from('brand_configurations').update({ config: toJson(valid) as NonNullable<Json> }).eq('organization_id', orgId).select('config').single();
+      if (error) fail(error, 'Unable to update brand settings');
+      emit();
+      return BrandKitSchema.parse(jsonObject(data.config));
+    },
+    async listMemberships(orgId: string): Promise<Membership[]> {
+      assertOrg(orgId);
+      const { data, error } = await client.from('organization_memberships').select('organization_id,user_id,role,status,created_at,updated_at').eq('organization_id', orgId).eq('status', 'active');
+      if (error) fail(error, 'Unable to load members');
+      return (data ?? []).map((row) => ({
+        id: `${row.organization_id}:${row.user_id}`,
+        orgId: row.organization_id,
+        userName: `משתמש ${row.user_id.slice(0, 8)}`,
+        role: row.role as Membership['role'],
+        simulated: true,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+    },
+    async storageReport() { return { bytes: 0, keys: 0, approxQuotaBytes: 1, warnings: ['נתוני הייצור נשמרים ב-Supabase ומסתנכרנים בין מכשירים מורשים.'] }; },
+    async listNotifications() { return []; },
+    async listUsage() { return []; },
+    async listActions() { return []; },
+    async trackUsage() {},
+  };
+
+  return new Proxy(supported, {
+    get(target, property, receiver) {
+      if (property in target) return Reflect.get(target, property, receiver);
+      if (typeof property === 'string') return async () => { throw new ProductionCapabilityError(property); };
+      return undefined;
+    },
+  }) as unknown as FormangleRepository;
+}

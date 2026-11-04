@@ -4,7 +4,7 @@ import { WorkflowThemeSchema } from '../domain/theme';
 import type { Database, Json } from './database.generated';
 import type { FormangleRepository } from '../data/repository';
 
-export class ProductionCapabilityError extends Error {
+class LegacyProductionCapabilityError extends Error {
   constructor(capability: string) {
     super(`Production capability is not available: ${capability}`);
     this.name = 'ProductionCapabilityError';
@@ -82,7 +82,7 @@ function ensureSelectedOrganization(allowed: ReadonlySet<string>, orgId: string)
  * First production slice: RLS-backed organization, workflow and submission reads.
  * Every unimplemented mutation rejects explicitly; it can never fall back to demo storage.
  */
-export function createProductionRepository(client: SupabaseClient<Database>): FormangleRepository {
+function createProductionRepositoryLegacy(client: SupabaseClient<Database>): FormangleRepository {
   const listeners = new Set<() => void>();
   let organizations: Organization[] = [];
   let activeOrgId: string | null = null;
@@ -123,8 +123,11 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
   return new Proxy(supported, {
     get(target, property, receiver) {
       if (property in target) return Reflect.get(target, property, receiver);
-      if (typeof property === 'string') return async () => { throw new ProductionCapabilityError(property); };
+      if (typeof property === 'string') return async () => { throw new LegacyProductionCapabilityError(property); };
       return undefined;
     },
   }) as unknown as FormangleRepository;
 }
+
+void createProductionRepositoryLegacy;
+export { createProductionRepository, ProductionCapabilityError } from './productionRepositoryV2';
