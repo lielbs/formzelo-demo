@@ -1,10 +1,10 @@
 begin;
 
 create function private.create_owner_invitation_authorized(
-  target_organization_id uuid,
-  intended_email text,
-  actor_user_id uuid,
-  valid_for interval default interval '48 hours'
+  p_target_organization_id uuid,
+  p_intended_email text,
+  p_actor_user_id uuid,
+  p_valid_for interval default interval '48 hours'
 )
 returns table(invitation_id uuid, invitation_token text, invitation_expires_at timestamptz)
 language plpgsql
@@ -12,14 +12,14 @@ security definer
 set search_path = ''
 as $$
 begin
-  perform private.assert_verified_platform_operator(actor_user_id);
+  perform private.assert_verified_platform_operator(p_actor_user_id);
   -- Serialize the per-operator count and insert so parallel requests cannot
   -- race past the abuse limit.
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(actor_user_id::text, 0));
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_actor_user_id::text, 0));
   if (
     select count(*)
     from public.audit_events event
-    where event.actor_user_id = actor_user_id
+    where event.actor_user_id = p_actor_user_id
       and event.resource_type = 'owner_invitation'
       and event.operation = 'INSERT'
       and event.created_at >= clock_timestamp() - interval '15 minutes'
@@ -28,10 +28,10 @@ begin
   end if;
 
   return query select * from private.create_owner_invitation(
-    target_organization_id,
-    intended_email,
-    actor_user_id,
-    valid_for
+    p_target_organization_id,
+    p_intended_email,
+    p_actor_user_id,
+    p_valid_for
   );
 end;
 $$;
@@ -49,7 +49,12 @@ language sql
 security invoker
 set search_path = ''
 as $$
-  select * from private.create_owner_invitation_authorized(target_organization_id, intended_email, actor_user_id, valid_for);
+  select * from private.create_owner_invitation_authorized(
+    target_organization_id,
+    intended_email,
+    actor_user_id,
+    valid_for
+  );
 $$;
 revoke all on function public.server_create_owner_invitation_authorized(uuid,text,uuid,interval) from public,anon,authenticated,service_role;
 grant execute on function public.server_create_owner_invitation_authorized(uuid,text,uuid,interval) to service_role;
