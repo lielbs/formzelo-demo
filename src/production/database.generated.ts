@@ -445,8 +445,14 @@ isOneToOne: false
 "list_team":
 { Args: { "p_organization_id": string }; Returns: Json
                            },
+"operator_issue_password_recovery":
+{ Args: { "p_email": string }; Returns: string
+                           },
 "operator_list_organizations":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"owner_issue_staff_recovery":
+{ Args: { "p_organization_id": string,"p_user_id": string }; Returns: string
                            },
 "public_booking_availability":
 { Args: { "p_date": string,"p_slug": string }; Returns: Json
@@ -605,6 +611,11 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"server_consume_password_recovery":
+{ Args: { "recovery_token": string }; Returns: {
+              "email": string,"user_id": string
+            }[]
+                           },
 "server_create_owner_invitation":
 { Args: { "actor_user_id": string,"intended_email": string,"target_organization_id": string,"valid_for"?: string }; Returns: {
               "invitation_expires_at": string,"invitation_id": string,"invitation_token": string

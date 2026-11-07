@@ -10,7 +10,7 @@ import { Logo } from '../components/Brand';
 import { copyText, useToast } from '../components/Toast';
 import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner } from '../components/ui';
 import { formatDateTime } from '../lib/format';
-import { isPlatformOperator, operatorOrganizations, provisionBusiness, reinviteOwner, type OperatorOrganization } from '../production/admin';
+import { isPlatformOperator, issueAccountRecovery, operatorOrganizations, provisionBusiness, reinviteOwner, type OperatorOrganization } from '../production/admin';
 import { runtimeConfiguration } from '../production/runtime';
 
 const slugFrom = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
@@ -20,7 +20,9 @@ function LinkResult({ title, link, onDone }: { title: string; link: string; onDo
   return (
     <Card className="border-teal-200 bg-teal-50/60 p-5">
       <p className="font-semibold text-teal-900">{title}</p>
-      <p className="mt-1 text-sm text-teal-900/80">שלחו את הקישור לבעלים. הוא תקף ל-48 שעות ולשימוש אחד, ונפתח רק לכתובת שהוזמנה.</p>
+      <p className="mt-1 text-sm text-teal-900/80">
+        {link.includes('/reset#') ? 'שלחו את הקישור לבעל/ת החשבון. הוא תקף לשעתיים ולשימוש אחד; הסיסמה נבחרת על ידם ואינה עוברת דרככם.' : 'שלחו את הקישור לבעלים. הוא תקף ל-48 שעות ולשימוש אחד, ונפתח רק לכתובת שהוזמנה.'}
+      </p>
       <Input className="mt-3" readOnly dir="ltr" value={link} aria-label="קישור ההזמנה" onFocus={(e) => e.currentTarget.select()} />
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" icon={Copy} onClick={async () => toast((await copyText(link)) ? 'הקישור הועתק' : 'לא ניתן להעתיק', 'success')}>
@@ -127,6 +129,27 @@ function Console() {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                {o.owners > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    loading={busy === `r${o.id}`}
+                    onClick={async () => {
+                      const email = window.prompt('אימייל החשבון שצריך סיסמה חדשה');
+                      if (!email) return;
+                      setBusy(`r${o.id}`);
+                      try {
+                        setResult({ title: 'קישור לבחירת סיסמה חדשה', link: await issueAccountRecovery(email.trim().toLowerCase()) });
+                      } catch (e) {
+                        toast(e instanceof Error ? e.message : 'יצירת הקישור נכשלה', 'error');
+                      } finally {
+                        setBusy(null);
+                      }
+                    }}
+                  >
+                    איפוס סיסמה
+                  </Button>
+                )}
                 <Badge tone={o.status === 'active' ? 'teal' : 'amber'}>{o.status === 'active' ? 'פעיל' : o.status === 'suspended' ? 'מושעה' : 'בהקמה'}</Badge>
                 {o.owners === 0 && (
                   <Button

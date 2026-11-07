@@ -19,6 +19,8 @@ describe('account creation from an invitation', () => {
       allowedOrigin: ORIGIN,
       target: async () => ({ email: 'owner@business.test', accountExists: false }),
       createAccount,
+      consumeRecovery: async () => null,
+      setPassword: async () => undefined,
     });
     expect(res.status).toBe(201);
     expect(createAccount).toHaveBeenCalledWith({ email: 'owner@business.test', password: 'correct-horse-9' });
@@ -30,12 +32,16 @@ describe('account creation from an invitation', () => {
       allowedOrigin: ORIGIN,
       target: async () => ({ email: 'o@b.test', accountExists: true }),
       createAccount,
+      consumeRecovery: async () => null,
+      setPassword: async () => undefined,
     });
     expect(existing.status).toBe(409);
     const unknown = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9' }), {
       allowedOrigin: ORIGIN,
       target: async () => null,
       createAccount,
+      consumeRecovery: async () => null,
+      setPassword: async () => undefined,
     });
     expect(unknown.status).toBe(404);
     expect(await unknown.json()).toEqual({ error: 'invitation_unavailable' });
@@ -44,11 +50,27 @@ describe('account creation from an invitation', () => {
 
   it('rejects other origins, malformed tokens and weak passwords before any lookup', async () => {
     const target = vi.fn(async () => ({ email: 'o@b.test', accountExists: false }));
-    const deps = { allowedOrigin: ORIGIN, target, createAccount: vi.fn(async () => undefined) };
+    const deps = { allowedOrigin: ORIGIN, target, createAccount: vi.fn(async () => undefined), consumeRecovery: vi.fn(async () => null), setPassword: vi.fn(async () => undefined) };
     expect((await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9' }, 'https://evil.test'), deps)).status).toBe(403);
     expect((await handleAccountOnboarding(call({ invitationToken: 'nope', organizationId: ORG, password: 'correct-horse-9' }), deps)).status).toBe(400);
     expect((await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'short' }), deps)).status).toBe(400);
     expect((await handleAccountOnboarding(call({}, ORIGIN, 'GET'), deps)).status).toBe(405);
     expect(target).not.toHaveBeenCalled();
+  });
+
+  it('sets a new password only through a valid single-use recovery link', async () => {
+    const setPassword = vi.fn(async () => undefined);
+    const base = { allowedOrigin: ORIGIN, target: async () => null, createAccount: vi.fn(async () => undefined), setPassword };
+    const ok = await handleAccountOnboarding(call({ action: 'recover', recoveryToken: TOKEN, password: 'new-secret-2026', userId: 'someone-else' }), {
+      ...base, consumeRecovery: async () => ({ userId: 'user-1', email: 'owner@business.test' }),
+    });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ email: 'owner@business.test' });
+    expect(setPassword).toHaveBeenCalledWith({ userId: 'user-1', password: 'new-secret-2026' });
+    const used = await handleAccountOnboarding(call({ action: 'recover', recoveryToken: TOKEN, password: 'new-secret-2026' }), { ...base, consumeRecovery: async () => null });
+    expect(used.status).toBe(404);
+    const weak = await handleAccountOnboarding(call({ action: 'recover', recoveryToken: TOKEN, password: 'short' }), { ...base, consumeRecovery: async () => ({ userId: 'u', email: 'e' }) });
+    expect(weak.status).toBe(400);
+    expect(setPassword).toHaveBeenCalledTimes(1);
   });
 });

@@ -30,6 +30,7 @@ const Settings = named(() => import('./pages/app/Settings'), 'Settings');
 const BrandKitPage = named(() => import('./pages/app/BrandKit'), 'BrandKitPage');
 const InviteAccept = named(() => import('./pages/InviteAccept'), 'InviteAccept');
 const Operator = named(() => import('./pages/Operator'), 'Operator');
+const ResetPassword = named(() => import('./pages/ResetPassword'), 'ResetPassword');
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -56,6 +57,7 @@ export function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/invite" element={<InviteAccept />} />
           <Route path="/operator" element={<Operator />} />
+          <Route path="/reset" element={<ResetPassword />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
           <Route path="/track" element={<Track />} />
           <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>

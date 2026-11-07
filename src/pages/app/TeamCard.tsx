@@ -2,12 +2,12 @@
  * The workspace team in production: who has access, invite staff with a private link, revoke a
  * pending invitation, or remove someone (immediately, on the server). Owners only manage.
  */
-import { Copy, UserMinus, UserPlus, Users } from 'lucide-react';
+import { Copy, KeyRound, UserMinus, UserPlus, Users } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, ErrorState, Input, Spinner } from '../../components/ui';
 import { formatDateTime } from '../../lib/format';
-import { inviteStaff, listTeam, removeMember, revokeInvitation, type TeamInvitation, type TeamMember } from '../../production/admin';
+import { inviteStaff, issueStaffRecovery, listTeam, removeMember, revokeInvitation, type TeamInvitation, type TeamMember } from '../../production/admin';
 
 export function TeamCard({ orgId }: { orgId: string }) {
   const toast = useToast();
@@ -65,6 +65,16 @@ export function TeamCard({ orgId }: { orgId: string }) {
             <li key={m.userId} className="flex items-center gap-2 rounded-xl bg-cloud px-3 py-2 text-sm">
               <span className="ltr min-w-0 flex-1 truncate" title={m.email}>{m.email}{m.self ? ' (את/ה)' : ''}</span>
               <Badge tone={m.role === 'owner' ? 'dark' : 'neutral'}>{m.role === 'owner' ? 'בעלים' : 'צוות'}</Badge>
+              {isOwner && m.role === 'staff' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={KeyRound}
+                  aria-label={`קישור לאיפוס סיסמה ל${m.email}`}
+                  loading={busy === `r${m.userId}`}
+                  onClick={() => run(`r${m.userId}`, async () => setLink(await issueStaffRecovery(orgId, m.userId)))}
+                />
+              )}
               {isOwner && !m.self && (
                 <Button
                   size="sm"
@@ -100,7 +110,7 @@ export function TeamCard({ orgId }: { orgId: string }) {
       )}
       {link && (
         <div className="mt-3 rounded-xl bg-teal-50 p-3 text-sm text-teal-900">
-          <p>שלחו את הקישור לאיש/אשת הצוות. תקף ל-7 ימים, לשימוש אחד.</p>
+          <p>{link.includes('/reset#') ? 'קישור לבחירת סיסמה חדשה. תקף לשעתיים, לשימוש אחד. אתם לא רואים את הסיסמה.' : 'שלחו את הקישור לאיש/אשת הצוות. תקף ל-7 ימים, לשימוש אחד.'}</p>
           <div className="mt-2 flex gap-2">
             <Input readOnly dir="ltr" value={link} aria-label="קישור ההזמנה" onFocus={(e) => e.currentTarget.select()} />
             <Button size="sm" icon={Copy} onClick={async () => toast((await copyText(link)) ? 'הקישור הועתק' : 'לא ניתן להעתיק', 'success')} aria-label="העתקת הקישור" />

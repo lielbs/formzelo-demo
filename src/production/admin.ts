@@ -27,6 +27,7 @@ const MESSAGES: Record<string, string> = {
   invitation_closed: 'ההזמנה כבר אינה פעילה.',
   member_not_found: 'החבר כבר אינו בצוות.',
   last_owner: 'אי אפשר להסיר את הבעלים האחרון של העסק.',
+  account_not_found: 'אין חשבון עם הכתובת הזו.',
 };
 
 function explain(error: { code?: string; message?: string } | null, fallback: string): never {
@@ -65,6 +66,25 @@ export async function removeMember(orgId: string, userId: string) {
   const client = await getProductionSupabaseClient();
   const { error } = await client.rpc('remove_member', { p_organization_id: orgId, p_user_id: userId });
   if (error) explain(error, 'Unable to remove member');
+}
+
+/** The link a person opens to choose a new password; valid 2 hours, once. */
+export const recoveryLink = (token: string) => `${publicBaseUrl()}/reset#recovery_token=${encodeURIComponent(token)}`;
+
+/** Operators: a recovery link for an account (typically a business owner). */
+export async function issueAccountRecovery(email: string) {
+  const client = await getProductionSupabaseClient();
+  const { data, error } = await client.rpc('operator_issue_password_recovery', { p_email: email });
+  if (error || typeof data !== 'string') explain(error, 'Unable to create recovery link');
+  return recoveryLink(data);
+}
+
+/** Owners: a recovery link for a staff member of their own workspace. */
+export async function issueStaffRecovery(orgId: string, userId: string) {
+  const client = await getProductionSupabaseClient();
+  const { data, error } = await client.rpc('owner_issue_staff_recovery', { p_organization_id: orgId, p_user_id: userId });
+  if (error || typeof data !== 'string') explain(error, 'Unable to create recovery link');
+  return recoveryLink(data);
 }
 
 export async function isPlatformOperator(): Promise<boolean> {

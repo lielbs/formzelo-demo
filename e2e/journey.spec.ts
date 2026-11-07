@@ -216,3 +216,43 @@ test('business B cannot see or reach business A data', async ({ browser }) => {
   await expect(page.getByText('הבקשה לא נמצאה בסביבת עבודה זו')).toBeVisible();
   await ctx.close();
 });
+
+test('a forgotten password is replaced through a single-use link; the operator never sees it', async ({ browser }) => {
+  const op = await context(browser);
+  const opPage = await op.newPage();
+  await opPage.goto('/operator');
+  await opPage.getByLabel('אימייל').fill(OPERATOR.email);
+  await opPage.getByLabel('סיסמה').fill(OPERATOR.password);
+  await opPage.getByRole('button', { name: 'כניסה' }).click();
+  opPage.once('dialog', (d) => d.accept(OWNER_A.email));
+  await opPage.locator('li', { hasText: `rose-${run}` }).getByRole('button', { name: 'איפוס סיסמה' }).click();
+  const link = await opPage.getByLabel('קישור ההזמנה').inputValue();
+  expect(link).toMatch(/\/reset#recovery_token=[0-9a-f]{64}$/);
+  await op.close();
+
+  const ctx = await context(browser, true);
+  const page = await ctx.newPage();
+  const problems = watch(page);
+  const fresh = 'Rose-new-pass-2026';
+  await page.goto(link);
+  await expect(page).toHaveURL(/\/reset$/);
+  await page.getByLabel('סיסמה חדשה').fill(fresh);
+  await page.getByLabel('הסיסמה שוב').fill(fresh);
+  await page.getByRole('button', { name: 'שמירה וכניסה' }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  expect(problems).toEqual([]);
+
+  // The link is spent, and the old password no longer opens the workspace.
+  const again = await (await context(browser)).newPage();
+  await again.goto(link);
+  await again.getByLabel('סיסמה חדשה').fill('Another-pass-2026');
+  await again.getByLabel('הסיסמה שוב').fill('Another-pass-2026');
+  await again.getByRole('button', { name: 'שמירה וכניסה' }).click();
+  await expect(again.getByRole('alert')).toContainText('כבר נוצל');
+  await again.goto('/app');
+  await again.getByLabel('אימייל').fill(OWNER_A.email);
+  await again.getByLabel('סיסמה').fill(OWNER_A.password);
+  await again.getByRole('button', { name: 'כניסה', exact: true }).click();
+  await expect(again.getByRole('alert')).toBeVisible();
+  await ctx.close();
+});

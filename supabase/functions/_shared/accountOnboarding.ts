@@ -9,6 +9,9 @@ export interface AccountOnboardingDependencies {
   /** The pending invitation's address, or null when the token is not valid for this organization. */
   target(input: { token: string; organizationId: string }): Promise<{ email: string; accountExists: boolean } | null>;
   createAccount(input: { email: string; password: string }): Promise<void>;
+  /** Consumes a single-use password-recovery link; null when invalid, used, revoked or expired. */
+  consumeRecovery(token: string): Promise<{ userId: string; email: string } | null>;
+  setPassword(input: { userId: string; password: string }): Promise<void>;
 }
 
 const TOKEN = /^[0-9a-f]{64}$/;
@@ -40,11 +43,28 @@ export async function handleAccountOnboarding(request: Request, deps: AccountOnb
 
   let body: Record<string, unknown>;
   try { body = await request.json() as Record<string, unknown>; } catch { return response(400, { error: 'invalid_request' }, origin); }
+  const password = typeof body.password === 'string' ? body.password : '';
+  const weak = password.length < 10 || password.length > 72 || password.trim() !== password;
+
+  // Password recovery: the link's owner chooses the new password; nobody else ever sees it.
+  if (body.action === 'recover') {
+    const recoveryToken = typeof body.recoveryToken === 'string' ? body.recoveryToken : '';
+    if (!TOKEN.test(recoveryToken)) return response(400, { error: 'invalid_request' }, origin);
+    if (weak) return response(400, { error: 'weak_password' }, origin);
+    try {
+      const account = await deps.consumeRecovery(recoveryToken);
+      if (!account) return response(404, { error: 'recovery_unavailable' }, origin);
+      await deps.setPassword({ userId: account.userId, password });
+      return response(200, { email: account.email }, origin);
+    } catch {
+      return response(500, { error: 'recovery_failed' }, origin);
+    }
+  }
+
   const token = typeof body.invitationToken === 'string' ? body.invitationToken : '';
   const organizationId = typeof body.organizationId === 'string' ? body.organizationId.toLowerCase() : '';
-  const password = typeof body.password === 'string' ? body.password : '';
   if (!TOKEN.test(token) || !UUID.test(organizationId)) return response(400, { error: 'invalid_request' }, origin);
-  if (password.length < 10 || password.length > 72 || password.trim() !== password) return response(400, { error: 'weak_password' }, origin);
+  if (weak) return response(400, { error: 'weak_password' }, origin);
 
   try {
     const target = await deps.target({ token, organizationId });

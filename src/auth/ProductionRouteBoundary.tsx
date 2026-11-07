@@ -47,7 +47,7 @@ function SignIn() {
         <Button type="submit" loading={busy} className="w-full">כניסה</Button>
       </form>
       <p className="mt-5 text-xs leading-5 text-ink-muted">
-        אין עדיין חשבון? הכניסה הראשונה היא מקישור ההזמנה שקיבלתם. שכחתם סיסמה? פנו ל־RockStack ונשלח לכם קישור חדש.
+        אין עדיין חשבון? הכניסה הראשונה היא מקישור ההזמנה שקיבלתם. שכחתם סיסמה? בקשו מבעל/ת העסק או מ־RockStack קישור לבחירת סיסמה חדשה.
       </p>
     </AccessPage>
   );
