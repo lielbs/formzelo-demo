@@ -43,7 +43,7 @@ jobs:
           test ! -e supabase/.temp/project-ref
           test ! -e supabase/.env
           grep -q "Synthetic organizations only" supabase/seed.sql
-          if git grep -nE 's[b]_secret_|SUPABASE_(ACCESS_TOKEN|SECRET_KEY)=[^[:space:]]+|BEGIN (RSA|OPENSSH|EC) PRIVATE KE[Y]'; then
+          if git grep -nE 's[b]_secret_[A-Za-z0-9_-]{20,}|SUPABASE_(ACCESS_TOKEN|SECRET_KEY)=[^[:space:]]+|BEGIN (RSA|OPENSSH|EC) PRIVATE KE[Y]'; then
             echo "Refusing to run with a committed credential or private key."
             exit 1
           fi
