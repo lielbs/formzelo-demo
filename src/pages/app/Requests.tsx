@@ -1,3 +1,4 @@
+import { runtimeConfiguration } from '../../production/runtime';
 import { FilePlus2, Inbox, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -83,8 +84,8 @@ export function Requests() {
           <option value="all">כל מצבי התשלום</option>
           <option value="none">ללא תשלום</option>
           <option value="quote">הצעת מחיר</option>
-          <option value="outstanding">ממתין לתשלום (סימולציה)</option>
-          <option value="paid">שולם (סימולציה)</option>
+          {runtimeConfiguration.mode === 'demo' && <option value="outstanding">ממתין לתשלום (סימולציה)</option>}
+          {runtimeConfiguration.mode === 'demo' && <option value="paid">שולם (סימולציה)</option>}
         </Select>
         <Select aria-label="מיון" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="sm:w-40">
           <option value="new">החדשות קודם</option>

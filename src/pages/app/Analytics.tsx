@@ -1,3 +1,4 @@
+import { runtimeConfiguration } from '../../production/runtime';
 import { BarChart3, CheckCircle2, Clock, Inbox, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -106,7 +107,7 @@ export function Analytics() {
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
             <Stat label="בקשות שנשלחו" value={formatNumber(metrics.total)} icon={Inbox} tone="orange" />
             <Stat label="שיעור אישור" value={metrics.approvalRate === null ? '—' : `${metrics.approvalRate}%`} icon={CheckCircle2} tone="teal" hint="מתוך בקשות שהוכרעו" />
-            <Stat label="תשלומים מדומים" value={formatCurrency(metrics.money.paid)} icon={Wallet} tone="teal" hint={`${metrics.money.outstanding ? `${formatCurrency(metrics.money.outstanding)} ממתינים · ` : ''}רק תהליכים עם תשלום. סימולציה — לא עבר כסף`} />
+            {runtimeConfiguration.mode === 'demo' && <Stat label="תשלומים מדומים" value={formatCurrency(metrics.money.paid)} icon={Wallet} tone="teal" hint={`${metrics.money.outstanding ? `${formatCurrency(metrics.money.outstanding)} ממתינים · ` : ''}רק תהליכים עם תשלום. סימולציה — לא עבר כסף`} />}
             <Stat label="זמן תגובה ממוצע" value={metrics.avgResponse === null ? '—' : `${metrics.avgResponse.toFixed(1)} ש׳`} icon={Clock} hint="עד שינוי הסטטוס הראשון" />
           </div>
 

@@ -1,4 +1,5 @@
 /** Pick, upload (downscaled locally) or delete a workspace image. Nothing leaves the browser. */
+import { runtimeConfiguration } from '../production/runtime';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { Asset } from '../domain/theme';
@@ -42,7 +43,7 @@ export function ImagePicker({
       const prepared = await prepareImage(file, kind);
       const asset = await repo.saveAsset(orgId, prepared);
       onSelect(asset.id);
-      toast(`התמונה נשמרה מקומית (${Math.round(asset.bytes / 1024)}KB)`);
+      toast(`התמונה נשמרה${runtimeConfiguration.mode === 'demo' ? ' מקומית' : ''} (${Math.round(asset.bytes / 1024)}KB)`);
     } catch (e) {
       toast(e instanceof ImagePrepError || e instanceof Error ? e.message : 'שמירת התמונה נכשלה', 'error');
     } finally {
@@ -80,7 +81,7 @@ export function ImagePicker({
               <button
                 type="button"
                 aria-label={`מחיקת ${a.name}`}
-                className="absolute -left-1.5 -top-1.5 hidden h-6 w-6 items-center justify-center rounded-full bg-white text-red-600 shadow ring-1 ring-cloud-300 group-hover:flex group-focus-within:flex"
+                className="absolute -left-1.5 -top-1.5 hidden h-7 w-7 items-center justify-center rounded-full bg-white text-red-600 shadow ring-1 ring-cloud-300 group-hover:flex group-focus-within:flex [@media(hover:none)]:flex"
                 onClick={async () => {
                   try {
                     await repo.deleteAsset(orgId, a.id);

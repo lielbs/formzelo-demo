@@ -44,7 +44,6 @@ export const highlight = (title: string, text?: string, icon?: HighlightItem['ic
 
 const when = (fieldKey: string, operator: Condition['operator'], value?: string | number): Condition => ({ fieldKey, operator, value });
 
-const DEMO_CONSENT_SUFFIX = 'זהו דמו מקומי — לא מתבצע תשלום ולא נשלחת הודעה אמיתית.';
 
 function flowerOrder(): WorkflowConfig {
   return {
@@ -115,7 +114,7 @@ function flowerOrder(): WorkflowConfig {
         field('address', 'כתובת למשלוח', 'text', { required: true, placeholder: 'רחוב, מספר, עיר' }),
         field('delivery_date', 'תאריך משלוח מבוקש', 'date', { required: true, min: 1, max: 60, role: 'date' }),
         field('delivery_info', 'זמינות משלוח', 'info', {
-          helpText: 'בדמו לא נבדקת זמינות משלוח בפועל. החנות תאשר את המועד לאחר בדיקת ההזמנה.',
+          helpText: 'החנות תאשר את מועד המשלוח לאחר בדיקת ההזמנה.',
         }),
       ]),
     ],
@@ -127,12 +126,12 @@ function flowerOrder(): WorkflowConfig {
       totalLabel: 'סה״כ להזמנה',
     },
     branding: { primaryColor: '#B84C6E', logoText: 'Bloom Studio' },
-    consent: { required: true, text: `אני מאשר/ת שפרטי ההזמנה נכונים. ${DEMO_CONSENT_SUFFIX}` },
+    consent: { required: true, text: 'אני מאשר/ת שפרטי ההזמנה נכונים.' },
     successMessage: 'ההזמנה התקבלה! הסטודיו יבדוק את המועד ויאשר בהקדם.',
     completion: { mode: 'calculated', allowPayLater: true },
     confirmation: {
       title: 'הזר בדרך לתכנון',
-      nextSteps: ['המעצבת בודקת זמינות פרחים ומועד משלוח', 'תקבלו אישור עם שעת משלוח משוערת (בדמו: הודעה מדומה)', 'ביום המשלוח — הזר יוצא אל המקבל/ת'],
+      nextSteps: ['המעצבת בודקת זמינות פרחים ומועד משלוח', 'תקבלו אישור עם שעת משלוח משוערת', 'ביום המשלוח — הזר יוצא אל המקבל/ת'],
     },
   };
 }
@@ -187,15 +186,15 @@ function garageRepairs(): WorkflowConfig {
     branding: { primaryColor: '#2F5D8A', logoText: 'AutoCare' },
     consent: {
       required: true,
-      text: 'אני מאשר/ת את ביצוע התיקונים שסימנתי כמאושרים בלבד. אישור דמו מקומי — ללא חתימה אלקטרונית וללא תוקף משפטי.',
+      text: 'אני מאשר/ת את ביצוע התיקונים שסימנתי כמאושרים בלבד.',
     },
     disclaimer:
-      'החלטות הנוגעות לבטיחות הרכב מחייבות התייעצות עם איש מקצוע מוסמך. זהו דמו: האישורים נשמרים בדפדפן בלבד ואינם מהווים חתימה אלקטרונית או התחייבות משפטית.',
+      'החלטות הנוגעות לבטיחות הרכב מחייבות התייעצות עם איש מקצוע מוסמך. האישור כאן אינו חתימה אלקטרונית.',
     successMessage: 'ההחלטות נשמרו. המוסך יבצע רק את מה שאישרתם ויעדכן כשהרכב מוכן.',
     completion: { mode: 'request' },
     confirmation: {
       title: 'ההחלטות נרשמו',
-      nextSteps: ['המוסך מבצע רק את התיקונים שאישרתם', 'תיקון שנדחה לא יבוצע ולא יחויב', 'נעדכן כשהרכב מוכן לאיסוף (בדמו: הודעה מדומה)'],
+      nextSteps: ['המוסך מבצע רק את התיקונים שאישרתם', 'תיקון שנדחה לא יבוצע ולא יחויב', 'נעדכן כשהרכב מוכן לאיסוף'],
     },
   };
 }
@@ -268,14 +267,14 @@ function restaurantEvent(): WorkflowConfig {
     branding: { primaryColor: '#3A8A78', logoText: 'Urban Table' },
     consent: {
       required: true,
-      text: `ידוע לי שזו הערכת מחיר ושהאירוע ייקבע רק לאחר אישור המסעדה ותשלום מקדמה. ${DEMO_CONSENT_SUFFIX}`,
+      text: 'ידוע לי שזו הערכת מחיר ושהאירוע ייקבע רק לאחר אישור המסעדה ותשלום מקדמה.',
     },
-    disclaimer: 'מקדמה וסטטוס תשלום בדמו הם סימולציה בלבד. לא נגבה כסף אמיתי.',
+    disclaimer: 'המקדמה מתואמת מול המסעדה לאחר האישור. לא נגבה תשלום בטופס.',
     successMessage: 'הבקשה נשלחה! צוות האירועים יחזור אליכם עם אישור והצעה סופית.',
     completion: { mode: 'deposit', depositPercent: 20, depositTiming: 'after_approval' },
     confirmation: {
       title: 'בקשת האירוע התקבלה',
-      nextSteps: ['צוות האירועים בודק זמינות ותפריט', 'תקבלו הצעה סופית ואישור', 'רק אחרי אישור תתבקש מקדמה של 20% (בדמו: סימולציה)'],
+      nextSteps: ['צוות האירועים בודק זמינות ותפריט', 'תקבלו הצעה סופית ואישור', 'רק אחרי אישור תתבקש מקדמה של 20%'],
     },
   };
 }
@@ -317,7 +316,7 @@ function tableBooking(): WorkflowConfig {
     ],
     pricing: { enabled: false, currency: 'ILS', fees: [], depositPercent: 0, totalLabel: 'סה״כ' },
     branding: { primaryColor: '#A9502F', logoText: 'Urban Table' },
-    consent: { required: true, text: `ידוע לי שזו בקשה להזמנה ושהיא סופית רק לאחר אישור המסעדה. ${DEMO_CONSENT_SUFFIX}` },
+    consent: { required: true, text: 'ידוע לי שזו בקשה להזמנה ושהיא סופית רק לאחר אישור המסעדה.' },
     successMessage: 'בקשת ההזמנה נשלחה. זו עדיין בקשה — נעדכן ברגע שהמסעדה תאשר.',
     completion: { mode: 'request' },
     booking: {
@@ -332,7 +331,7 @@ function tableBooking(): WorkflowConfig {
     },
     confirmation: {
       title: 'בקשת ההזמנה התקבלה',
-      nextSteps: ['המסעדה בודקת את הזמינות בשעה שבחרתם', 'תקבלו עדכון כשהבקשה תאושר או תידחה (בדמו: הודעה מדומה)', 'השולחן שמור רק לאחר אישור'],
+      nextSteps: ['המסעדה בודקת את הזמינות בשעה שבחרתם', 'תקבלו עדכון כשהבקשה תאושר או תידחה', 'השולחן שמור רק לאחר אישור'],
     },
   };
 }
@@ -355,8 +354,8 @@ function documentCollection(): WorkflowConfig {
         }),
       ]),
       step('מסמכים', [
-        field('files_info', 'על העלאת קבצים בדמו', 'info', {
-          helpText: 'בדמו נשמרים רק שם הקובץ וגודלו. הקובץ עצמו לא נשמר ולא נשלח לשום מקום.',
+        field('files_info', 'איך שולחים מסמכים', 'info', {
+          helpText: 'רשמו כאן את שמות המסמכים או קישור לתיקייה משותפת. את הקבצים עצמם תשלחו לעסק בערוץ מאובטח לאחר שליחת הבקשה.',
         }),
         field('bank_letter', 'אישור ניהול חשבון', 'file', { required: true }),
         field('form_106', 'טופס 106', 'file', { required: true, condition: when('client_type', 'equals', 'employee') }),
@@ -367,7 +366,7 @@ function documentCollection(): WorkflowConfig {
     ],
     pricing: { enabled: false, currency: 'ILS', fees: [], depositPercent: 0, totalLabel: 'סה״כ' },
     branding: { primaryColor: '#18212D', logoText: 'המשרד שלי' },
-    consent: { required: true, text: 'אני מאשר/ת שהמסמכים שייכים לי ושהפרטים נכונים. אין להעלות מידע רגיש אמיתי לדמו.' },
+    consent: { required: true, text: 'אני מאשר/ת שהמסמכים שייכים לי ושהפרטים נכונים.' },
     successMessage: 'המסמכים התקבלו. נעדכן אם חסר משהו.',
     completion: { mode: 'request' },
   };
@@ -424,10 +423,10 @@ function contestRegistration(): WorkflowConfig {
     ],
     pricing: { enabled: true, currency: 'ILS', fees: [], depositPercent: 0, totalLabel: 'דמי הרשמה' },
     branding: { primaryColor: '#3D3BF3', logoText: 'Valley Run' },
-    consent: { required: true, text: `קראתי את תקנון המרוץ ואני מאשר/ת יצירת קשר. ${DEMO_CONSENT_SUFFIX}` },
+    consent: { required: true, text: 'קראתי את תקנון המרוץ ואני מאשר/ת יצירת קשר.' },
     successMessage: 'נרשמתם! מספר ההרשמה שמור כאן.',
     completion: { mode: 'calculated', allowPayLater: true },
-    confirmation: { title: 'ההרשמה התקבלה', nextSteps: ['אישור ההרשמה יופיע כאן', 'ערכת המשתתף נאספת ביום שלפני המרוץ', 'בדמו ההודעות מדומות בלבד'] },
+    confirmation: { title: 'ההרשמה התקבלה', nextSteps: ['אישור ההרשמה יופיע כאן', 'ערכת המשתתף נאספת ביום שלפני המרוץ'] },
   };
 }
 
@@ -501,3 +500,16 @@ export const TEMPLATES: Record<TemplateKey, { label: string; description: string
 };
 
 export const buildGeneric = generic;
+
+/**
+ * Production has no owner-opened personal cases yet: a case workflow becomes a public one whose
+ * first step asks the customer for the case details. Approvals then run as a quote.
+ */
+export function asPublicWorkflow(config: WorkflowConfig): WorkflowConfig {
+  if (config.mode !== 'case') return config;
+  const next = structuredClone(config);
+  if (next.caseFields.length) next.steps.unshift({ id: newId('stp'), title: 'הפרטים שלכם', fields: next.caseFields.map((f) => ({ ...f })) });
+  next.mode = 'public';
+  next.caseFields = [];
+  return next;
+}

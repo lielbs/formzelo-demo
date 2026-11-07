@@ -8,7 +8,7 @@ import react from '@vitejs/plugin-react';
  * these deep links with 200 instead of the 404.html fallback — better for link previews and
  * crawlers. Any other path still works through 404.html (copied in the deploy workflow).
  */
-export const STATIC_ROUTES = ['demo', 'pricing', 'themes', 'tour', 'privacy', 'app', 'f/bloom-flowers', 'f/autocare-repairs', 'f/urban-table-events', 'f/urban-table-booking', 'f/valley-run'];
+export const STATIC_ROUTES = ['demo', 'pricing', 'themes', 'tour', 'privacy', 'invite', 'operator', 'reset', 'track', 'app', 'f/bloom-flowers', 'f/autocare-repairs', 'f/urban-table-events', 'f/urban-table-booking', 'f/valley-run'];
 
 /**
  * Content-Security-Policy for the built site (static hosting cannot send headers). Everything
@@ -19,9 +19,9 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://ppgdbqhwbzlgzwsjmkor.supabase.co",
   "font-src 'self' data:",
-  "connect-src 'self' data:",
+  "connect-src 'self' data: https://ppgdbqhwbzlgzwsjmkor.supabase.co",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",

@@ -1,9 +1,9 @@
 import { ArrowRight, CalendarX2, Eye, Link2Off, Lock } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Brand';
 import { ButtonLink, Spinner } from '../components/ui';
-import type { WorkflowRun } from '../domain/schema';
+import type { WorkflowRun, WorkflowVersion } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
 import { useRepo, useRepoQuery } from '../data/store';
 import { hasOptionCapacity } from '../engine/capacity';
@@ -16,12 +16,14 @@ import { DigitalPresence } from '../renderer/presence';
 import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { buildTheme } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
+import { runtimeConfiguration } from '../production/runtime';
+import { trackPath } from '../data/track';
 
 const EDITABLE: WorkflowRun['status'][] = ['awaiting_customer', 'changes_requested'];
 const NEUTRAL = buildTheme('modern_minimal');
 
 /** Page frame: the customer's business identity first, a quiet Formangle credit last. */
-function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; theme?: WorkflowTheme; orgName?: string }) {
+export function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; theme?: WorkflowTheme; orgName?: string }) {
   return (
     <ThemeScope theme={theme} className="fz-page flex flex-col">
       <main id="main" className="flex-1">
@@ -29,7 +31,7 @@ function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; th
       </main>
       <footer className="fz-footer">
         <p>
-          {orgName ? `${orgName} · ` : ''}דמו מקומי: הנתונים נשמרים בדפדפן זה בלבד, ללא תשלומים וללא שליחת הודעות אמיתיות.
+          {orgName ? `${orgName} · ` : ''}{runtimeConfiguration.mode === 'demo' ? 'דמו מקומי: הנתונים נשמרים בדפדפן זה בלבד, ללא תשלומים וללא שליחת הודעות אמיתיות.' : 'הטופס מאובטח ומופעל על ידי Formangle. לא מתבצע תשלום דרך טופס זה.'}
         </p>
         <span className="fz-powered">
           <span>מופעל על ידי</span> <Logo endorsement={false} className="scale-[0.7] !no-underline" />
@@ -39,7 +41,7 @@ function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; th
   );
 }
 
-function Notice({ icon: Icon, title, children }: { icon: typeof Lock; title: string; children: ReactNode }) {
+export function Notice({ icon: Icon, title, children }: { icon: typeof Lock; title: string; children: ReactNode }) {
   return (
     <div className="mx-auto max-w-lg px-3 py-10 sm:py-16">
       <div className="fz-card fz-pad text-center">
@@ -62,6 +64,7 @@ export function PublicFlow() {
   const fromInbox = params.get('from') === 'inbox';
   const navigate = useNavigate();
   const { repo } = useRepo();
+  const [submitted, setSubmitted] = useState<{ run: WorkflowRun; version: WorkflowVersion } | null>(null);
 
   const pub = useRepoQuery((r) => r.resolvePublic(slug), [slug]);
   const runQ = useRepoQuery((r) => (runId ? r.getPublicRun(slug, runId) : Promise.resolve(null)), [slug, runId]);
@@ -92,11 +95,9 @@ export function PublicFlow() {
     return (
       <Shell>
         <Notice icon={Link2Off} title="הקישור אינו זמין">
-          <p>ייתכן שהתהליך עדיין לא פורסם, הועבר לארכיון, או שהקישור נפתח בדפדפן אחר — בדמו הנתונים נשמרים רק בדפדפן שבו נוצרו.</p>
+          <p>{runtimeConfiguration.mode === 'demo' ? 'ייתכן שהתהליך עדיין לא פורסם, הועבר לארכיון, או שהקישור נפתח בדפדפן אחר — בדמו הנתונים נשמרים רק בדפדפן שבו נוצרו.' : 'ייתכן שהתהליך עדיין לא פורסם, הועבר לארכיון או שהקישור אינו תקין.'}</p>
           <div className="mt-6 flex justify-center gap-2">
-            <ButtonLink to="/demo" variant="secondary">
-              לסביבות הדמו
-            </ButtonLink>
+            {runtimeConfiguration.mode === 'demo' && <ButtonLink to="/demo" variant="secondary">לסביבות הדמו</ButtonLink>}
             <ButtonLink to="/">לדף הבית</ButtonLink>
           </div>
         </Notice>
@@ -105,7 +106,7 @@ export function PublicFlow() {
   }
 
   const { organization } = pub.data;
-  const found = runQ.data;
+  const found = submitted ?? runQ.data;
   const { config, design } = version;
   const assets = assetsQ.data ?? {};
   const ownerStrip = fromInbox && found && (
@@ -215,6 +216,12 @@ export function PublicFlow() {
         getOptionUsage={hasOptionCapacity(config) ? () => repo.getOptionUsage(slug) : undefined}
         onSubmit={async (values, consent, { payNow }) => {
           const run = await repo.submitRun(slug, { values, consent, runId: found?.run.id, payNow });
+          if (runtimeConfiguration.mode === 'production') {
+            // The customer's private request page; without it, the confirmation still shows here.
+            const access = await repo.customerAccess(slug, run.id).catch(() => null);
+            if (access) return navigate(trackPath(access, true), { replace: true });
+            setSubmitted({ run, version });
+          }
           navigate(`/f/${slug}?r=${run.id}&sent=1`, { replace: true });
         }}
       />

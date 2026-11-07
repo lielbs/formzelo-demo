@@ -1,0 +1,36 @@
+name: Production smoke
+
+# Read-only health check of the live site and API. No secrets: the publishable key is public by
+# design and is read from a repository variable. Standard runners on a public repository: free.
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      SITE: https://formangle.rockstackds.com
+      API: https://ppgdbqhwbzlgzwsjmkor.supabase.co
+      KEY: ${{ vars.FORMANGLE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Site answers with its security policy
+        run: |
+          html="$(curl -fsS --max-time 20 "$SITE/")"
+          echo "$html" | grep -q 'Content-Security-Policy'
+          curl -fsS --max-time 20 -o /dev/null "$SITE/track"
+      - name: API answers and keeps unknown forms private
+        if: env.KEY != ''
+        run: |
+          body="$(curl -fsS --max-time 20 -X POST "$API/rest/v1/rpc/resolve_public_workflow" \
+            -H "apikey: $KEY" -H 'content-type: application/json' -d '{"p_slug":"smoke-check-unknown"}')"
+          test "$body" = "null"

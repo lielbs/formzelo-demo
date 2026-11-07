@@ -43,11 +43,14 @@ export function weekdayOf(isoDate: string): number | null {
 /** Capacity used per slot on a date, from local runs of the same workflow. */
 export function slotAvailability(booking: Booking, date: string, runs: WorkflowRun[], excludeRunId?: string): SlotAvailability[] {
   const relevant = runs.filter((r) => r.id !== excludeRunId && HOLDS_CAPACITY.includes(r.status) && answerOf(r, booking.dateKey) === date);
+  const units = (rs: WorkflowRun[]) => rs.reduce((n, r) => n + (booking.capacityUnit === 'guests' ? Math.max(1, Number(answerOf(r, booking.guestsKey)) || 1) : 1), 0);
+  // A day that reached its cap shows every slot as taken (same rule as the server).
+  const dayFull = booking.maxPerDay !== undefined && units(relevant) >= booking.maxPerDay;
   return booking.slots.map((time) => {
     const inSlot = booking.timeKey ? relevant.filter((r) => answerOf(r, booking.timeKey) === time) : relevant;
-    const used = inSlot.reduce((n, r) => n + (booking.capacityUnit === 'guests' ? Math.max(1, Number(answerOf(r, booking.guestsKey)) || 1) : 1), 0);
+    const used = units(inSlot);
     const left = booking.capacityPerSlot - used;
-    return { time, used, capacity: booking.capacityPerSlot, state: left <= 0 ? 'full' : left <= Math.ceil(booking.capacityPerSlot * 0.25) ? 'limited' : 'available' };
+    return { time, used, capacity: booking.capacityPerSlot, state: dayFull || left <= 0 ? 'full' : left <= Math.ceil(booking.capacityPerSlot * 0.25) ? 'limited' : 'available' };
   });
 }
 

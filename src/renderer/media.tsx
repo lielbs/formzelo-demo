@@ -80,6 +80,7 @@ export function referencedAssets(theme: WorkflowTheme, config: WorkflowConfig): 
   add(theme.extras?.welcome?.photoAssetId);
   for (const step of config.steps)
     for (const f of step.fields) {
+      add(f.image);
       f.options?.forEach((o) => add(o.image));
       f.media?.forEach(add);
     }

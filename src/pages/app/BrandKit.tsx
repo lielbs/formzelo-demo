@@ -2,6 +2,7 @@
  * Workspace brand kit: the default identity every inheriting workflow uses.
  * Published versions keep their frozen design until they are republished.
  */
+import { runtimeConfiguration } from '../../production/runtime';
 import { AlertCircle, CheckCircle2, Palette, Pipette, RotateCcw, Save } from 'lucide-react';
 import { BRAND_TABS, type BrandTab } from './brandTabs';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
@@ -203,7 +204,7 @@ export function BrandKitPage() {
       </div>
       <p className="mb-5 rounded-xl border border-cloud-200 bg-white p-3 text-xs leading-relaxed text-ink-muted">
         {inheriting.length} מתוך {q.data.workflows.length} תהליכים יורשים את המותג.{' '}
-        <strong className="font-medium text-ink">גרסאות שכבר פורסמו לא משתנות</strong> — השינוי יופיע בקישור הציבורי רק אחרי פרסום גרסה חדשה. התמונות נשמרות בדפדפן זה בלבד ואינן נשלחות לשום מקום.
+        <strong className="font-medium text-ink">גרסאות שכבר פורסמו לא משתנות</strong> — השינוי יופיע בקישור הציבורי רק אחרי פרסום גרסה חדשה. {runtimeConfiguration.mode === 'demo' ? 'התמונות נשמרות בדפדפן זה בלבד ואינן נשלחות לשום מקום.' : 'התמונות נשמרות באחסון המאובטח של העסק ומוצגות בטפסים שפורסמו.'}
       </p>
 
       <div className={cx('grid grid-cols-[minmax(0,1fr)] gap-6', tab !== 'preview' && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]')}>
@@ -243,7 +244,7 @@ export function BrandKitPage() {
             </div>
           </Group>
 
-          <Group title="לוגו ותמונות" hint="PNG / JPG / WebP. מוקטנים מקומית לפני השמירה; מגבלת אחסון בדמו ~1.2MB לסביבת עבודה.">
+          <Group title="לוגו ותמונות" hint={runtimeConfiguration.mode === 'demo' ? 'PNG / JPG / WebP. מוקטנים מקומית לפני השמירה; מגבלת אחסון בדמו ~1.2MB לסביבת עבודה.' : 'PNG / JPG / WebP. מוקטנים אוטומטית לפני ההעלאה; עד 80 תמונות לעסק.'}>
             <ImagePicker kind="logo" label="לוגו ראשי" hint="רקע שקוף נראה הכי טוב." selected={kit.logoAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.logoAssetId = id))} />
             <ImagePicker kind="logo" label="לוגו משני (אופציונלי)" hint="סימן קטן / אייקון, לשימוש עתידי בכותרות קומפקטיות." selected={kit.secondaryLogoAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.secondaryLogoAssetId = id))} />
             <ImagePicker kind="cover" label="תמונת כיסוי ברירת מחדל" hint="משמשת בפתיח כשלתהליך אין תמונה משלו. רק תמונות שבבעלותכם." selected={kit.coverAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.coverAssetId = id))} />

@@ -12,6 +12,7 @@ import { useRepo } from '../../data/store';
 import { ACTION_KIND_INFO, ActionInputSchema, buildAction, type ActionInput } from '../../engine/actions';
 import { ActionCard } from '../../renderer/actions';
 import { ThemeScope } from '../../theme/ThemeScope';
+import { runtimeConfiguration } from '../../production/runtime';
 
 const KIND_ICON = { approval: ShieldQuestion, choice: ListChecks, update: BellRing } as const;
 const EXPIRY = [
@@ -197,7 +198,7 @@ export function ActionComposer({ open, onClose, orgId, business, run, design, on
             <Input id="act-note" maxLength={300} value={d.note} onChange={(e) => set({ note: e.target.value })} placeholder="לדוגמה: המחיר כולל מע״מ" />
           </div>
           <p className="rounded-xl bg-cloud p-3 text-xs leading-relaxed text-ink-muted">
-            אחרי השמירה אי אפשר לערוך את הפעולה — אפשר רק לבטל אותה כל עוד לא נענתה. אם הסכום או התנאים משתנים, שולחים פעולה חדשה, וכך כל תשובה נשמרת עם מה שהלקוח ראה. בדמו הפעולה מופיעה בעמוד הבקשה של הלקוח בדפדפן הזה; לא נשלחת הודעה.
+            אחרי השמירה אי אפשר לערוך את הפעולה — אפשר רק לבטל אותה כל עוד לא נענתה. אם הסכום או התנאים משתנים, שולחים פעולה חדשה, וכך כל תשובה נשמרת עם מה שהלקוח ראה. {runtimeConfiguration.mode === 'production' ? 'הפעולה מופיעה בעמוד הבקשה של הלקוח; שלחו לו את הקישור מכרטיס "עמוד הבקשה של הלקוח".' : 'בדמו הפעולה מופיעה בעמוד הבקשה של הלקוח בדפדפן הזה; לא נשלחת הודעה.'}
           </p>
         </div>
 

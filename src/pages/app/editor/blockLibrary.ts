@@ -3,6 +3,7 @@
  * several fields); "action" entries open a studio panel instead, and
  * "unavailable" entries are listed honestly but cannot be added.
  */
+import { runtimeConfiguration } from '../../../production/runtime';
 import {
   AlignJustify,
   CalendarCheck,
@@ -117,8 +118,8 @@ export const BLOCKS: BlockDef[] = [
   },
   { id: 'decision', label: 'אישור / דחייה', hint: 'הלקוח מאשר או דוחה פריט, עם מחיר', group: 'business', icon: ThumbsUp, type: 'decision', make: () => ({ label: 'פריט לאישור', price: 100, helpText: 'תיאור קצר של הפריט', required: true, priority: 'recommended' }), keywords: 'approval' },
   { id: 'consent', label: 'אישור תנאים', hint: 'תיבת סימון חובה לפני שליחה', group: 'business', icon: ShieldCheck, type: 'checkbox', make: () => ({ label: 'קראתי ואני מסכים/ה לתנאים', required: true }), keywords: 'הסכמה תקנון' },
-  { id: 'file', label: 'צירוף קובץ (דמו: שם הקובץ בלבד)', hint: 'בדמו נשמר רק שם הקובץ — הקובץ עצמו לא נשמר ולא נשלח', group: 'business', icon: FileUp, type: 'file', make: () => ({ label: 'צירוף קובץ', helpText: 'בדמו נשמר שם הקובץ בלבד' }), keywords: 'מסמך העלאה' },
-  { id: 'signature', label: 'חתימה דיגיטלית', hint: 'חתימה מאומתת', group: 'business', icon: PenTool, type: 'text', make: () => ({}), unavailable: 'לא זמין בדמו: חתימה עם תוקף מחייבת זיהוי ושרת מאובטח.' },
+  { id: 'file', label: runtimeConfiguration.mode === 'demo' ? 'צירוף קובץ (דמו: שם הקובץ בלבד)' : 'קישור לקובץ', hint: runtimeConfiguration.mode === 'demo' ? 'בדמו נשמר רק שם הקובץ — הקובץ עצמו לא נשמר ולא נשלח' : 'הלקוח מדביק קישור לקובץ (Drive, Dropbox) או את שם המסמך', group: 'business', icon: FileUp, type: 'file', make: () => ({ label: 'צירוף קובץ', helpText: 'בדמו נשמר שם הקובץ בלבד' }), keywords: 'מסמך העלאה' },
+  { id: 'signature', label: 'חתימה דיגיטלית', hint: 'חתימה מאומתת', group: 'business', icon: PenTool, type: 'text', make: () => ({}), unavailable: 'לא זמין כרגע: חתימה עם תוקף מחייבת זיהוי ושרת מאובטח.' },
 
   // ---------- presentation ----------
   { id: 'heading', label: 'כותרת וטקסט', hint: 'מסבירים ללקוח מה הולך לקרות', group: 'presentation', icon: Heading, type: 'heading', make: () => ({ label: 'כותרת', content: 'כמה מילים שמסבירות ללקוח מה הולך לקרות.' }) },
@@ -135,7 +136,7 @@ export const BLOCKS: BlockDef[] = [
   // ---------- advanced (capabilities, not fields) ----------
   { id: 'adv_condition', label: 'הצגה מותנית', hint: 'שאלה שמופיעה רק לפי תשובה קודמת', group: 'advanced', icon: GitBranch, type: 'info', make: () => ({}), action: 'logic', keywords: 'תנאי condition' },
   { id: 'adv_step', label: 'שלב נוסף', hint: 'מחלקים תהליך ארוך לכמה מסכים', group: 'advanced', icon: Layers, type: 'info', make: () => ({}), action: 'step', keywords: 'multi step' },
-  { id: 'adv_pricing', label: 'חישוב מחיר ותשלום', hint: 'מחיר לפי בחירות, עמלות ומקדמה (מדומה)', group: 'advanced', icon: Receipt, type: 'info', make: () => ({}), action: 'completion', keywords: 'price' },
+  { id: 'adv_pricing', label: 'חישוב מחיר ותשלום', hint: runtimeConfiguration.mode === 'demo' ? 'מחיר לפי בחירות, עמלות ומקדמה (מדומה)' : 'מחיר לפי בחירות, עמלות ומקדמה (מוצג ללקוח, ללא גבייה)', group: 'advanced', icon: Receipt, type: 'info', make: () => ({}), action: 'completion', keywords: 'price' },
   { id: 'adv_booking', label: 'כללי הזמנה ומקומות', hint: 'ימים פתוחים, שעות ותפוסה לכל משבצת', group: 'advanced', icon: Ticket, type: 'info', make: () => ({}), action: 'booking', keywords: 'capacity' },
 ];
 

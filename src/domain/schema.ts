@@ -447,6 +447,10 @@ export const RunEventSchema = z.object({
     'action_created',
     'action_responded',
     'action_cancelled',
+    'quote_sent',
+    'quote_decided',
+    'quote_withdrawn',
+    'link_shared',
   ]),
   actor: z.enum(['customer', 'owner', 'system']),
   /** The Formangle Action this event belongs to. */
@@ -494,6 +498,37 @@ export const UsageEventSchema = z.object({
   updatedAt: timestamp,
 });
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
+
+// ---------- Interactive quotes ----------
+
+export const QUOTE_STATUSES = ['draft', 'sent', 'approved', 'declined', 'changes_requested', 'superseded', 'withdrawn'] as const;
+export const QuoteRecordSchema = z.object({
+  id,
+  orgId: id,
+  runId: id,
+  revision: z.number().int().positive(),
+  /** `expired` is derived from content.validUntil, like actions. */
+  status: z.enum(QUOTE_STATUSES),
+  /** QuoteContent (src/engine/quote.ts); validated there, frozen once sent. */
+  content: z.record(z.string(), z.unknown()),
+  total: z.number().min(0),
+  sentAt: z.string().optional(),
+  viewedAt: z.string().optional(),
+  decidedAt: z.string().optional(),
+  decision: z
+    .object({
+      decision: z.enum(['approved', 'declined', 'changes_requested']),
+      selections: z.record(z.string(), z.number()),
+      comment: z.string().optional(),
+      total: z.number(),
+      key: z.string().optional(),
+    })
+    .optional(),
+  lockVersion: z.number().int().min(0),
+  createdAt: timestamp,
+  updatedAt: timestamp,
+});
+export type QuoteRecord = z.infer<typeof QuoteRecordSchema>;
 
 // ---------- Formangle Actions ----------
 
@@ -557,6 +592,7 @@ export const OrgDataSchema = z.object({
   usage: z.array(UsageEventSchema),
   brandKit: BrandKitSchema,
   actions: z.array(CustomerActionSchema).default([]),
+  quotes: z.array(QuoteRecordSchema).default([]),
 });
 export type OrgData = z.infer<typeof OrgDataSchema>;
 

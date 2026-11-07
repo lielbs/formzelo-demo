@@ -82,14 +82,14 @@ function applyModifiers(config: WorkflowConfig, text: string, adjustments: strin
   const hasKey = (k: string) => next.steps.some((s) => s.fields.some((f) => f.key === k));
 
   if (/תמונ|צילומ/.test(text) && !next.steps.some((s) => s.fields.some((f) => f.type === 'file'))) {
-    lastStep.fields.push(field('photos', 'תמונות', 'file', { helpText: 'בדמו נשמר שם הקובץ בלבד' }));
-    adjustments.push('נוסף שדה להעלאת תמונות (נשמר שם הקובץ בלבד)');
+    lastStep.fields.push(field('photos', 'תמונות', 'file', { helpText: 'שם הקובץ או קישור לתיקייה משותפת' }));
+    adjustments.push('נוסף שדה לתמונות (שם קובץ או קישור)');
   }
   if (/מקדמ/.test(text) && next.pricing.enabled) {
     if (!next.pricing.depositPercent) next.pricing.depositPercent = 20;
     if (next.completion?.mode !== 'deposit') {
       next.completion = { mode: 'deposit', depositPercent: next.pricing.depositPercent, depositTiming: 'after_approval' };
-      adjustments.push('סיום: מקדמה מדומה של 20% אחרי אישור העסק');
+      adjustments.push('סיום: מקדמה של 20% אחרי אישור העסק');
     }
   } else if (/ללא תשלום|בלי תשלום|חינם/.test(text)) {
     next.completion = { mode: 'request' };
@@ -99,7 +99,7 @@ function applyModifiers(config: WorkflowConfig, text: string, adjustments: strin
     adjustments.push('סיום: הצעת מחיר — ללא גביית כסף');
   } else if (/תשלום|לשלם|ישלמו|תשלם/.test(text) && next.pricing.enabled) {
     next.completion = /אחרי אישור|לאחר אישור/.test(text) ? { mode: 'pay_after_approval' } : { mode: 'calculated', allowPayLater: true };
-    adjustments.push(next.completion.mode === 'pay_after_approval' ? 'סיום: תשלום מדומה רק אחרי אישור' : 'סיום: תשלום מדומה של הסכום המחושב');
+    adjustments.push(next.completion.mode === 'pay_after_approval' ? 'סיום: תשלום רק אחרי אישור' : 'סיום: תשלום הסכום המחושב');
   }
   if (/משלוח/.test(text) && next.pricing.enabled && !next.pricing.fees.some((f) => f.label.includes('משלוח'))) {
     next.pricing.fees.push({ id: newId('fee'), label: 'משלוח', amount: 30 });
@@ -186,10 +186,10 @@ function toAppointments(base: WorkflowConfig, title: string, text = '', prompt =
     });
   const second = c.steps[1]!;
   second.fields = second.fields.filter((f) => f.key !== 'occasion').map((f) => (f.key === 'requests' ? { ...f, label: 'הערות לעסק', placeholder: 'מה תרצו שנדע מראש?' } : f));
-  c.consent = { required: true, text: 'ידוע לי שזו בקשה לתור ושהיא סופית רק לאחר אישור העסק. זהו דמו מקומי — לא מתבצע תשלום ולא נשלחת הודעה אמיתית.' };
+  c.consent = { required: true, text: 'ידוע לי שזו בקשה לתור ושהיא סופית רק לאחר אישור העסק.' };
   c.successMessage = 'הבקשה לתור נשלחה. זו עדיין בקשה — נעדכן ברגע שהעסק יאשר.';
   c.booking = { ...c.booking!, guestsKey: groups ? c.booking!.guestsKey : undefined, openWeekdays: [0, 1, 2, 3, 4], slots: DAY_SLOTS, capacityPerSlot: 1, capacityUnit: 'bookings' };
-  c.confirmation = { title: 'הבקשה לתור התקבלה', nextSteps: ['העסק בודק את הזמינות', 'תקבלו עדכון על אישור או מועד חלופי (בדמו: הודעה מדומה)', 'התור סופי רק אחרי אישור'] };
+  c.confirmation = { title: 'הבקשה לתור התקבלה', nextSteps: ['העסק בודק את הזמינות', 'תקבלו עדכון על אישור או מועד חלופי', 'התור סופי רק אחרי אישור'] };
   return c;
 }
 
@@ -262,10 +262,10 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
       }
     }
     if (intent.payment === 'deposit' && /(אופציונל|רשות|לא חובה)/.test(text) && config.completion?.mode === 'deposit') {
-      notes.push('מקדמה אופציונלית: בדמו המקדמה מתבקשת רק אחרי אישור העסק. אם לא תרצו לבקש אותה, שנו את "סיום ותשלום" ל"הצעת מחיר".');
+      notes.push('מקדמה אופציונלית: המקדמה מתבקשת רק אחרי אישור העסק. אם לא תרצו לבקש אותה, שנו את "סיום ותשלום" ל"הצעת מחיר".');
     }
     if (intent.payment === 'deposit' && config.completion?.mode !== 'deposit') {
-      notes.push('התבקשה מקדמה, אבל בתהליך אין חישוב מחיר שממנו אפשר לגזור אותה. הוסיפו מחירים לאפשרויות כדי להפעיל מקדמה מדומה.');
+      notes.push('התבקשה מקדמה, אבל בתהליך אין חישוב מחיר שממנו אפשר לגזור אותה. הוסיפו מחירים לאפשרויות כדי לבקש מקדמה.');
     }
   }
   for (const u of intent.unsupported) notes.push(`${u.requirement}: ${u.reason}`);

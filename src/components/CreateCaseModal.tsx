@@ -1,3 +1,4 @@
+import { runtimeConfiguration } from '../production/runtime';
 import { Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -69,7 +70,7 @@ export function CreateCaseModal({ open, onClose, orgId, workflow, caseFields }: 
     >
       {created ? (
         <div className="space-y-4">
-          <p className="text-sm text-ink-muted">שלחו ללקוח את הקישור האישי. בדמו, ההודעה רק מוצגת כתצוגה מקדימה ואינה נשלחת.</p>
+          <p className="text-sm text-ink-muted">שלחו ללקוח את הקישור האישי. {runtimeConfiguration.mode === 'demo' ? 'בדמו, ההודעה רק מוצגת כתצוגה מקדימה ואינה נשלחת.' : ''}</p>
           <div className="flex gap-2">
             <input readOnly value={link} dir="ltr" aria-label="קישור אישי" className="fz-input min-w-0 flex-1 rounded-xl border border-cloud-300 bg-cloud px-3 py-2 text-sm" onFocus={(e) => e.target.select()} />
             <Button

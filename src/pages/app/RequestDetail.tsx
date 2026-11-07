@@ -14,6 +14,10 @@ import { COMPLETION_LABELS, completionOf, isPaymentOutstanding } from '../../eng
 import { ownerActions, STATUS_LABELS } from '../../engine/transitions';
 import { formatCurrency, formatDate, formatDateTime } from '../../lib/format';
 import { publicFlowUrl } from '../../lib/links';
+import { runtimeConfiguration } from '../../production/runtime';
+import { CustomerLinkCard, QuotePanel } from './QuotePanel';
+
+const PRODUCTION = runtimeConfiguration.mode === 'production';
 
 const NEEDS_MESSAGE: RunStatus[] = ['changes_requested', 'rejected'];
 
@@ -98,14 +102,15 @@ export function RequestDetail() {
     async (r) => {
       const run = await r.getRun(org.id, id);
       if (!run) return null;
-      const [workflow, version, events, notifications, runActions] = await Promise.all([
+      const [workflow, version, events, notifications, runActions, quotes] = await Promise.all([
         r.getWorkflow(org.id, run.workflowId),
         r.getVersion(org.id, run.versionId),
         r.listEvents(org.id, run.id),
         r.listNotifications(org.id, run.id),
         r.listActions(org.id, run.id),
+        r.listQuotes(org.id, run.id),
       ]);
-      return { run, workflow, version, events, notifications, runActions };
+      return { run, workflow, version, events, notifications, runActions, quotes };
     },
     [org.id, id],
   );
@@ -119,12 +124,12 @@ export function RequestDetail() {
       </EmptyState>
     );
   }
-  const { run, workflow, version, events, notifications, runActions } = q.data;
-  const customerView = workflow ? `/f/${workflow.slug}?r=${run.id}&from=inbox` : '';
+  const { run, workflow, version, events, notifications, runActions, quotes } = q.data;
+  const customerView = workflow && !PRODUCTION ? `/f/${workflow.slug}?r=${run.id}&from=inbox` : '';
   const canAct = Boolean(workflow) && run.status !== 'cancelled' && run.status !== 'rejected';
   const actions = ownerActions(run.status);
   const customerLink = workflow ? publicFlowUrl(workflow.slug, run.id) : '';
-  const customerCanEdit = run.status === 'awaiting_customer' || run.status === 'changes_requested';
+  const customerCanEdit = !PRODUCTION && (run.status === 'awaiting_customer' || run.status === 'changes_requested');
   const config = version?.config;
   const booking = config?.booking?.enabled ? config.booking : undefined;
   const bState = booking ? bookingState(run.status) : null;
@@ -136,7 +141,7 @@ export function RequestDetail() {
     setBusy(to);
     try {
       await repo.transitionRun(org.id, run.id, to, msg?.trim() || undefined);
-      toast(`הסטטוס עודכן ל"${STATUS_LABELS[to]}" · הודעה מדומה הוכנה`);
+      toast(PRODUCTION ? `הסטטוס עודכן ל"${STATUS_LABELS[to]}" ומוצג בעמוד הבקשה של הלקוח` : `הסטטוס עודכן ל"${STATUS_LABELS[to]}" · הודעה מדומה הוכנה`);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'העדכון נכשל', 'error');
     } finally {
@@ -209,7 +214,7 @@ export function RequestDetail() {
               {booking && a.to === 'approved' ? 'אישור ההזמנה' : a.label}
             </Button>
           ))}
-          {isPaymentOutstanding(run.payment) && run.status !== 'cancelled' && run.status !== 'rejected' && (
+          {!PRODUCTION && isPaymentOutstanding(run.payment) && run.status !== 'cancelled' && run.status !== 'rejected' && (
             <Button
               variant="dark"
               icon={CreditCard}
@@ -271,9 +276,10 @@ export function RequestDetail() {
                   {booking.guestsKey && answer(booking.guestsKey) ? ` · ${answer(booking.guestsKey)!.displayValue} ${booking.capacityUnit === 'guests' ? 'משתתפים' : ''}` : ''}
                 </p>
               </div>
-              <p className="w-full text-xs text-ink-muted">אישור כאן הופך את הבקשה להזמנה מאושרת. בדמו אין יומן משותף ואין שמירת מקום בין מכשירים — הקיבולת מחושבת מבקשות בדפדפן זה.</p>
+              <p className="w-full text-xs text-ink-muted">{PRODUCTION ? 'אישור כאן הופך את הבקשה להזמנה מאושרת. המקום נשמר על השרת מרגע השליחה, ומשתחרר אם הבקשה נדחית או מבוטלת.' : 'אישור כאן הופך את הבקשה להזמנה מאושרת. בדמו אין יומן משותף ואין שמירת מקום בין מכשירים — הקיבולת מחושבת מבקשות בדפדפן זה.'}</p>
             </Card>
           )}
+          <QuotePanel orgId={org.id} run={run} design={version?.design} quotes={quotes} canAct={canAct} onChanged={q.reload} />
           <Card className="p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -324,7 +330,7 @@ export function RequestDetail() {
             <h2 className="mb-2 font-semibold">תשובות הלקוח</h2>
             {run.answers.length ? <Answers items={run.answers} /> : <p className="py-4 text-sm text-ink-muted">הלקוח/ה עדיין לא שלח/ה תשובות.</p>}
           </Card>
-          {completion && run.submittedAt && (
+          {completion && run.submittedAt && !PRODUCTION && (
             <Card className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-semibold">סיום ותשלום</h2>
@@ -367,16 +373,17 @@ export function RequestDetail() {
 
             </Card>
           )}
-          <Card className="p-5">
+          {!PRODUCTION && <Card className="p-5">
             <div className="mb-3 flex items-center gap-2">
               <h2 className="font-semibold">הודעות מדומות</h2>
               <Badge>לא נשלחות בפועל</Badge>
             </div>
             <NotificationList items={notifications} />
-          </Card>
+          </Card>}
         </div>
 
         <div className="space-y-6">
+          {workflow && <CustomerLinkCard orgId={org.id} run={run} production={PRODUCTION} />}
           <Card className="p-5">
             <h2 className="font-semibold">הערה פנימית</h2>
             <p className="mt-0.5 text-xs text-ink-muted">נראית רק לצוות, לא ללקוח.</p>
@@ -427,7 +434,7 @@ export function RequestDetail() {
         }
       >
         <label htmlFor="transition-msg" className="mb-1.5 block text-sm font-medium">
-          הודעה ללקוח (תופיע בהודעה המדומה)
+          {PRODUCTION ? 'הודעה ללקוח (תופיע בעמוד הבקשה שלו)' : 'הודעה ללקוח (תופיע בהודעה המדומה)'}
         </label>
         <Textarea
           id="transition-msg"

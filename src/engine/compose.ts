@@ -117,12 +117,12 @@ const SUBJECTS: [string, string][] = [
 ];
 
 const UNSUPPORTED: [RegExp, string, string][] = [
-  [/(sms|סמס|וואטסאפ|ווטסאפ|whatsapp|הודעה אוטומטית|הודעות אוטומטיות)/, 'שליחת SMS / WhatsApp אמיתית', 'בדמו ההודעות הן תצוגה מדומה בלבד. שליחה אמיתית דורשת ספק הודעות בצד שרת.'],
-  [/(חתימה|לחתום|חתימת)/, 'חתימה דיגיטלית מחייבת', 'בדמו אפשר רק אישור בתיבת סימון בסיום. חתימה מאומתת משפטית דורשת שירות חתימה חיצוני.'],
-  [/(חשבונית|קבלה|קבלות)/, 'הפקת חשבונית או קבלה', 'הדמו אינו מפיק מסמכים חשבונאיים. חיבור למערכת כמו iCount או Morning מופיע כעתידי בלבד.'],
-  [/(כרטיס אשראי|אשראי|סליקה|לסלוק|ביט |paybox|פייבוקס)/, 'גביית כסף אמיתית', 'כל התשלומים בדמו מדומים ואין שדות כרטיס. ספקי הסליקה מופיעים כקטלוג עתידי שאינו מחובר.'],
-  [/(יומן גוגל|google calendar|סנכרון יומן|outlook|אאוטלוק)/, 'סנכרון ליומן חיצוני', 'הזמינות מחושבת מבקשות שנשמרו בדפדפן זה בלבד ואינה מסונכרנת ליומן.'],
-  [/(תזכורת|תזכורות)/, 'תזכורות אוטומטיות', 'אין שליחת תזכורות בדמו; אפשר לראות הודעות מדומות בבקשה.'],
+  [/(sms|סמס|וואטסאפ|ווטסאפ|whatsapp|הודעה אוטומטית|הודעות אוטומטיות)/, 'שליחת SMS / WhatsApp אמיתית', 'Formangle לא שולח הודעות בעצמו. אפשר לשלוח ללקוח קישור לעמוד הבקשה בוואטסאפ בלחיצה.'],
+  [/(חתימה|לחתום|חתימת)/, 'חתימה דיגיטלית מחייבת', 'אפשר אישור בתיבת סימון בסיום. חתימה מאומתת משפטית אינה חלק מהשירות.'],
+  [/(חשבונית|קבלה|קבלות)/, 'הפקת חשבונית או קבלה', 'Formangle אינו מפיק מסמכים חשבונאיים. חיבור למערכת כמו iCount או Morning אינו זמין עדיין.'],
+  [/(כרטיס אשראי|אשראי|סליקה|לסלוק|ביט |paybox|פייבוקס)/, 'גביית כסף אמיתית', 'הטופס לא גובה תשלום ואין בו שדות כרטיס. התשלום מתואם ישירות מול העסק.'],
+  [/(יומן גוגל|google calendar|סנכרון יומן|outlook|אאוטלוק)/, 'סנכרון ליומן חיצוני', 'הזמינות מחושבת מהבקשות ב-Formangle ואינה מסונכרנת ליומן חיצוני.'],
+  [/(תזכורת|תזכורות)/, 'תזכורות אוטומטיות', 'Formangle לא שולח תזכורות אוטומטיות. הלקוח רואה כל עדכון בעמוד הבקשה שלו.'],
   [/(אזור אישי|התחברות|סיסמה|חשבון לקוח|משתמש וסיסמה)/, 'אזור אישי ללקוחות עם התחברות', 'הלקוח פועל דרך קישור אישי, בלי חשבון וסיסמה.'],
   [/(תעודת זהות|ת ז|מספר זהות)/, 'איסוף מספר תעודת זהות', 'לא נוסף שדה כזה: מידע מזהה רגיש דורש אחסון מאובטח בשרת. הוסיפו רק אם באמת נדרש.'],
   [/(בדיקת גיל|אימות גיל|אימות זהות)/, 'אימות גיל או זהות', 'הגיל מוצהר על ידי הממלא ולא מאומת.'],
@@ -319,7 +319,7 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
   participant.push(field('phone', 'טלפון', 'phone', { required: !isSurvey, role: 'customer_phone' }));
   if (intent.wantsEmail || !isSurvey) participant.push(field('email', 'אימייל', 'email', { role: 'customer_email' }));
   if (intent.wantsAddress) participant.push(field('address', 'כתובת', 'text'));
-  if (intent.wantsFiles) participant.push(field('attachments', 'קבצים מצורפים', 'file', { helpText: 'בדמו נשמר שם הקובץ בלבד' }));
+  if (intent.wantsFiles) participant.push(field('attachments', 'קבצים מצורפים', 'file', { helpText: 'שם הקובץ או קישור לתיקייה משותפת' }));
   if (!isSurvey) participant.push(field('notes', 'הערות', 'textarea', { placeholder: 'משהו שחשוב שנדע?' }));
   steps.push(step(isSurvey ? 'פרטים (לא חובה)' : 'פרטי המשתתף/ת', participant));
 
@@ -351,15 +351,15 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
   }
   if (priced) notes.push('המחירים במסלולים הם לדוגמה. עדכנו אותם לפני הפרסום.');
   if (!priced && intent.payment && intent.payment !== 'none' && !isSurvey) {
-    notes.push('התבקש תשלום אבל לא זוהה על מה מחשבים מחיר. הוגדרה בקשה ללא תשלום — הוסיפו מחירים לשדה בחירה כדי להפעיל תשלום מדומה.');
+    notes.push('התבקש תשלום אבל לא זוהה על מה מחשבים מחיר. הוגדרה בקשה ללא תשלום — הוסיפו מחירים לשדה בחירה כדי להציג סכום לתשלום.');
   }
 
   const completion = completionFor(intent.payment, intent.approval, priced);
   if (completion.mode !== 'request') {
     const map: Partial<Record<CompletionMode, string>> = {
-      calculated: 'סיום: תשלום מדומה של הסכום, עם אפשרות "לשלם אחר כך"',
-      pay_after_approval: 'סיום: תשלום מדומה רק אחרי אישור העסק',
-      deposit: 'סיום: מקדמה מדומה של 20%',
+      calculated: 'סיום: סכום מחושב לתשלום',
+      pay_after_approval: 'סיום: תשלום רק אחרי אישור העסק',
+      deposit: 'סיום: מקדמה של 20%',
       quote: 'סיום: הערכת מחיר בלבד',
     };
     if (map[completion.mode]) adjustments.push(map[completion.mode]!);
@@ -380,7 +380,7 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
     branding: { primaryColor: '#E96B3D', logoText: 'העסק שלי' },
     consent: {
       required: !isSurvey,
-      text: isSurvey ? 'אני מאשר/ת שימוש במשוב לשיפור השירות.' : 'קראתי את פרטי ההרשמה ואני מאשר/ת יצירת קשר. זהו דמו מקומי — לא מתבצע תשלום ולא נשלחת הודעה אמיתית.',
+      text: isSurvey ? 'אני מאשר/ת שימוש במשוב לשיפור השירות.' : 'קראתי את פרטי ההרשמה ואני מאשר/ת יצירת קשר.',
     },
     successMessage: isSurvey ? 'תודה! המשוב התקבל.' : intent.approval ? 'ההרשמה התקבלה וממתינה לאישור.' : 'ההרשמה התקבלה.',
     completion: { mode: completion.mode, ...(completion.extra ?? {}) },
@@ -391,7 +391,7 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
           nextSteps: [
             intent.approval ? 'נבדוק את ההרשמה ונעדכן על אישור' : 'שמרו את מספר ההרשמה',
             ...(intent.parentalConsent || intent.audience.minors ? ['אם המשתתף/ת קטין/ה, ייתכן שניצור קשר עם ההורה'] : []),
-            'בדמו ההודעות מדומות בלבד',
+            'עדכונים יופיעו בעמוד ההרשמה שלכם',
           ],
         },
     draftNotes: notes.length ? notes : undefined,

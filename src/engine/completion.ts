@@ -23,9 +23,9 @@ export function completionOf(config: WorkflowConfig): Completion {
 export const COMPLETION_LABELS: Record<CompletionMode, { title: string; description: string }> = {
   request: { title: 'בקשה בלבד', description: 'ללא תשלום וללא סכום. העסק מקבל את הבקשה ומטפל בה.' },
   quote: { title: 'הצעת מחיר', description: 'הלקוח רואה הערכה; העסק שולח הצעה סופית. לא נגבה כסף.' },
-  fixed: { title: 'סכום קבוע', description: 'סכום קבוע לתשלום בסיום (בדמו: תשלום מדומה).' },
-  calculated: { title: 'סכום מחושב', description: 'תשלום הסכום המחושב בסיום (בדמו: תשלום מדומה).' },
-  deposit: { title: 'מקדמה', description: 'אחוז מהסכום, בשליחה או אחרי אישור העסק (בדמו: מדומה).' },
+  fixed: { title: 'סכום קבוע', description: 'סכום קבוע לתשלום. הטופס לא גובה — התשלום מתואם מול העסק.' },
+  calculated: { title: 'סכום מחושב', description: 'הלקוח רואה את הסכום המחושב. הטופס לא גובה — התשלום מתואם מול העסק.' },
+  deposit: { title: 'מקדמה', description: 'אחוז מהסכום, בשליחה או אחרי אישור העסק. התשלום מתואם מול העסק.' },
   pay_after_approval: { title: 'תשלום אחרי אישור', description: 'אין חיוב בשליחה; הסכום מתבקש רק אם העסק מאשר.' },
   external_link: { title: 'קישור תשלום חיצוני', description: 'אחרי השליחה הלקוח מועבר לעמוד התשלום של העסק עצמו.' },
 };

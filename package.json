@@ -23,6 +23,7 @@
     "@fontsource/secular-one": "^5.3.0",
     "@fontsource/suez-one": "^5.3.0",
     "@fontsource/varela-round": "^5.3.0",
+    "@supabase/supabase-js": "2.118.0",
     "lucide-react": "^0.454.0",
     "qrcode-generator": "2.0.4",
     "react": "^18.3.1",
@@ -33,11 +34,14 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/pg": "^8.23.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
     "jsqr": "1.4.0",
+    "pg": "^8.23.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "~5.6.3",

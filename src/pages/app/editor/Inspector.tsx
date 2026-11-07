@@ -2,6 +2,7 @@
  * Studio inspector panels. Every control edits the real WorkflowConfig, which
  * the canvas renders immediately through the generic renderer.
  */
+import { runtimeConfiguration } from '../../../production/runtime';
 import { ArrowDown, ArrowUp, CalendarPlus, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { ImagePicker } from '../../../components/ImagePicker';
@@ -609,7 +610,7 @@ export function CompletionInspector({ config, update }: { config: WorkflowConfig
               </option>
             ))}
           </Select>
-          <p className="mt-1 text-xs text-ink-muted">בדמו כל תשלום הוא סימולציה מסומנת. הבחירה נשמרת לתכנון בלבד.</p>
+          <p className="mt-1 text-xs text-ink-muted">{runtimeConfiguration.mode === 'demo' ? 'בדמו כל תשלום הוא סימולציה מסומנת. הבחירה נשמרת לתכנון בלבד.' : 'אין חיבור סליקה: הטופס לא גובה תשלום. הבחירה נשמרת לתכנון בלבד.'}</p>
         </div>
       )}
 
@@ -791,7 +792,7 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
   return (
     <Panel title="הזמנות ושעות">
       <p className="text-xs leading-relaxed text-ink-muted">
-        בקשה להזמנה נשארת <strong className="font-medium text-ink">בקשה</strong> עד שהעסק מאשר. הזמינות בדמו מחושבת מבקשות שנשמרו בדפדפן זה בלבד — היא לא מונעת הזמנה כפולה ממכשירים שונים.
+        בקשה להזמנה נשארת <strong className="font-medium text-ink">בקשה</strong> עד שהעסק מאשר. {runtimeConfiguration.mode === 'demo' ? 'הזמינות בדמו מחושבת מבקשות שנשמרו בדפדפן זה בלבד — היא לא מונעת הזמנה כפולה ממכשירים שונים.' : 'הזמינות נבדקת על השרת ברגע השליחה, כך ששני לקוחות לא יקבלו את אותו מקום.'}
       </p>
       {!b?.enabled ? (
         <Button icon={CalendarPlus} onClick={enable}>

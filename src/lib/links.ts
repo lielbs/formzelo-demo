@@ -9,7 +9,7 @@ export const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
 export const appHref = (path: string) => `${BASE_PATH}${path.startsWith('/') ? path : `/${path}`}`;
 
 /** Image source of an asset: uploads are data URLs; demo showcase files are site-relative paths. */
-export const assetSrc = (dataUrl: string) => (dataUrl.startsWith('data:') ? dataUrl : appHref(`/${dataUrl}`));
+export const assetSrc = (dataUrl: string) => (/^(data:|https:\/\/|http:\/\/127\.0\.0\.1:54321\/)/.test(dataUrl) ? dataUrl : appHref(`/${dataUrl}`));
 
 export const publicBaseUrl = () => `${window.location.origin}${BASE_PATH}`;
 export const publicFlowUrl = (slug: string, runId?: string) => `${publicBaseUrl()}/f/${slug}${runId ? `?r=${runId}` : ''}`;

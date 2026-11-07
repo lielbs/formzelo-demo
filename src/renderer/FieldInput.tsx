@@ -6,6 +6,7 @@ import type { Values } from '../engine/conditions';
 import type { PriceResult } from '../engine/pricing';
 import { formatCurrency, isoDay } from '../lib/format';
 import { hasArt, inferArt, OptionArt } from '../theme/art';
+import { runtimeConfiguration } from '../production/runtime';
 import { resolveAppearance } from './appearance';
 import { DisplayBlock, slotHint } from './blocks';
 
@@ -324,7 +325,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt: i
             })}
           </div>
           {kind === 'tile' && opts.some((o, i) => !(o.image?.startsWith('ast_') && assets[o.image]) && (optionArt ? inferArt(field, o, i, opts.length) : artOf(o.image))) && <ArtNote />}
-          {usage && <p className="fz-help">המקומות הפנויים מחושבים מההרשמות שנשמרו בדפדפן זה בלבד.</p>}
+          {usage && runtimeConfiguration.mode === 'demo' && <p className="fz-help">המקומות הפנויים מחושבים מההרשמות שנשמרו בדפדפן זה בלבד.</p>}
           <Help field={field} error={error} />
         </fieldset>
       );
@@ -378,6 +379,41 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt: i
         const min = field.min ?? 0;
         const max = field.max ?? Number.MAX_SAFE_INTEGER;
         const set = (next: number) => onChange(Math.min(max, Math.max(min, next)));
+        // A catalog item: picture, name, unit price and quantity in one card.
+        const product = Boolean(field.image || field.price);
+        if (product) {
+          const photo = field.image?.startsWith('ast_') ? assets[field.image] : undefined;
+          const art = !photo && illustrated && hasArt(field.image) ? field.image : undefined;
+          return (
+            <div className="fz-field">
+              <div className="fz-product" data-selected={(n ?? 0) > 0 || undefined}>
+                {(photo || art) && (
+                  <span className="fz-product-media" aria-hidden>
+                    {photo ? <img src={photo} alt="" loading="lazy" /> : <OptionArt name={art!} />}
+                  </span>
+                )}
+                <span className="fz-product-body">
+                  <label htmlFor={id} className="fz-product-name">
+                    {field.label}
+                    {field.required && <span className="fz-req" aria-hidden> *</span>}
+                  </label>
+                  {field.helpText && <span className="fz-product-desc">{field.helpText}</span>}
+                  {field.price ? <span className="fz-product-price fz-num">{formatCurrency(field.price)} ליחידה</span> : null}
+                </span>
+                <div className="fz-qty fz-qty-sm" data-invalid={Boolean(error) || undefined} dir="ltr">
+                  <button type="button" aria-label={`פחות ${field.label}`} disabled={n === undefined || n <= min} onClick={() => set((n ?? min) - 1)}>
+                    <Minus className="h-4 w-4" aria-hidden />
+                  </button>
+                  <input {...aria} type="number" inputMode="numeric" min={field.min} max={field.max} value={n === undefined || Number.isNaN(n) ? 0 : n} onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <button type="button" aria-label={`עוד ${field.label}`} disabled={n !== undefined && n >= max} onClick={() => set(n === undefined ? Math.max(min, 1) : n + 1)}>
+                    <Plus className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+              {error && <Help field={{ ...field, helpText: undefined }} error={error} />}
+            </div>
+          );
+        }
         return wrap(
           <>
             <Label field={field} htmlFor={id} />
@@ -505,6 +541,28 @@ function DecisionCard({ field, value, onChange, onBlur, error, optionArt, illust
 function FileDrop({ field, value, onChange, error }: Pick<Props, 'field' | 'value' | 'onChange' | 'error'>) {
   const id = inputId(field.key);
   const [over, setOver] = useState(false);
+  // Production has no file upload: ask for a link instead of pretending to take the file.
+  if (runtimeConfiguration.mode === 'production') {
+    return (
+      <div className="fz-field">
+        <Label field={field} htmlFor={id} />
+        <input
+          id={id}
+          className="fz-input"
+          dir="auto"
+          inputMode="url"
+          maxLength={field.max ?? 500}
+          placeholder="קישור לקובץ (Google Drive, Dropbox…) או שם המסמך"
+          value={typeof value === 'string' ? value : ''}
+          aria-describedby={describedBy(field, error)}
+          aria-invalid={Boolean(error) || undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <p className="fz-help">את הקובץ עצמו שולחים לעסק בנפרד. כאן מספיק קישור או שם.</p>
+        <Help field={field} error={error} />
+      </div>
+    );
+  }
   // Only metadata is kept. The file content never leaves the browser input.
   const accept = (f?: File) => onChange(f ? `${f.name} (${Math.max(1, Math.round(f.size / 1024))} KB)` : '');
   return (

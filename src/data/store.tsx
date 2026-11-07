@@ -2,6 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Organization } from '../domain/schema';
 import { LocalStorageRepository } from './localRepository';
 import type { FormangleRepository } from './repository';
+import { runtimeConfiguration } from '../production/runtime';
+import { createProductionRepository } from '../production/productionRepository';
+import { getProductionSupabaseClient } from '../production/supabaseClient';
+import { useAuth } from '../auth/AuthProvider';
 
 interface RepoState {
   repo: FormangleRepository;
@@ -16,10 +20,24 @@ interface RepoState {
 
 const RepoContext = createContext<RepoState | null>(null);
 
-// Single repository instance for the app. Swap this line for a SupabaseRepository later.
-const repository: FormangleRepository = new LocalStorageRepository();
+let repositoryPromise: Promise<FormangleRepository> | null = null;
+function getRepository() {
+  repositoryPromise ??= runtimeConfiguration.mode === 'demo'
+    ? Promise.resolve(new LocalStorageRepository())
+    : getProductionSupabaseClient().then(createProductionRepository);
+  return repositoryPromise;
+}
+
+/** Set while the document unloads, when the browser aborts in-flight requests. */
+let pageUnloading = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => (pageUnloading = true));
+  window.addEventListener('pageshow', () => (pageUnloading = false));
+}
 
 export function RepoProvider({ children }: { children: ReactNode }) {
+  const auth = useAuth();
+  const [repository, setRepository] = useState<FormangleRepository | null>(null);
   const [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -27,14 +45,28 @@ export function RepoProvider({ children }: { children: ReactNode }) {
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+    getRepository().then((repo) => active && setRepository(repo)).catch(() => active && setBootError('לא ניתן לאתחל את חיבור הייצור המאובטח.'));
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!repository) return;
     const unsubscribe = repository.subscribe(() => setRevision((r) => r + 1));
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [repository]);
 
   useEffect(() => {
     let cancelled = false;
+    if (!repository) return;
+    if (runtimeConfiguration.mode === 'production' && auth.state.kind !== 'authenticated') {
+      setReady(false);
+      setOrgs([]);
+      setActiveOrgId(null);
+      return;
+    }
     (async () => {
       try {
         await repository.init();
@@ -51,16 +83,17 @@ export function RepoProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [revision]);
+  }, [repository, revision, auth.state.kind]);
 
   const switchOrg = useCallback(async (orgId: string) => {
+    if (!repository) throw new Error('Repository is not ready');
     await repository.setActiveOrgId(orgId);
     setActiveOrgId(orgId);
-  }, []);
+  }, [repository]);
 
   const value = useMemo<RepoState>(
     () => ({
-      repo: repository,
+      repo: repository!,
       revision,
       ready,
       bootError,
@@ -68,8 +101,9 @@ export function RepoProvider({ children }: { children: ReactNode }) {
       activeOrg: orgs.find((o) => o.id === activeOrgId) ?? null,
       switchOrg,
     }),
-    [revision, ready, bootError, orgs, activeOrgId, switchOrg],
+    [repository, revision, ready, bootError, orgs, activeOrgId, switchOrg],
   );
+  if (!repository) return bootError ? <div role="alert">{bootError}</div> : null;
   return <RepoContext.Provider value={value}>{children}</RepoContext.Provider>;
 }
 
@@ -118,8 +152,10 @@ export function useRepoQuery<T>(fn: (repo: FormangleRepository) => Promise<T>, d
       .current(repo)
       .then((data) => !cancelled && setState({ data, loading: false, error: null }))
       .catch((error: unknown) => {
+        // A request cut off by leaving the page or the screen is not a failure.
+        if (cancelled || pageUnloading) return;
         console.error('[formangle] query failed', error);
-        if (!cancelled) setState({ data: undefined, loading: false, error: error instanceof Error ? error : new Error(String(error)) });
+        setState({ data: undefined, loading: false, error: error instanceof Error ? error : new Error(String(error)) });
       });
     return () => {
       cancelled = true;

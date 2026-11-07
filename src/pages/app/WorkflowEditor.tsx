@@ -4,6 +4,7 @@
  * WorkflowConfig / WorkflowTheme; publishing snapshots both into an immutable
  * version (with the brand kit resolved).
  */
+import { runtimeConfiguration } from '../../production/runtime';
 import {
   AlertTriangle,
   ArrowDown,
@@ -343,6 +344,7 @@ export function WorkflowEditor() {
 
   const publish = async () => {
     if (issues.length || !canPublish(publishReadiness(config))) return toast('יש לתקן את הפריטים המסומנים לפני פרסום', 'error');
+    if (runtimeConfiguration.mode === 'production' && config.mode === 'case') return toast('תיק אישי עדיין אינו זמין. בחרו "קישור ציבורי" ב"אופן פתיחה" ופרסמו שוב.', 'error');
     setBusy('publish');
     try {
       if (dirty) {
@@ -763,7 +765,9 @@ export function WorkflowEditor() {
               <FieldLabel htmlFor="wf-mode">אופן פתיחה</FieldLabel>
               <Select id="wf-mode" value={config.mode} onChange={(e) => update((d) => void (d.mode = e.target.value as WorkflowConfig['mode']))}>
                 <option value="public">קישור ציבורי — כל אחד יכול להתחיל</option>
-                <option value="case">תיק אישי — העסק פותח ושולח קישור</option>
+                <option value="case" disabled={runtimeConfiguration.mode === 'production'}>
+                  תיק אישי — העסק פותח ושולח קישור{runtimeConfiguration.mode === 'production' ? ' (בקרוב)' : ''}
+                </option>
               </Select>
             </div>
             {config.mode === 'case' && (

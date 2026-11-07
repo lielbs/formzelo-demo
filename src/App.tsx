@@ -1,9 +1,12 @@
+import { runtimeConfiguration } from './production/runtime';
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import { ProductionRouteBoundary } from './auth/ProductionRouteBoundary';
 import { Spinner } from './components/ui';
 import { applyRouteMeta, pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
 import { PublicFlow } from './pages/PublicFlow';
+import { Track } from './pages/Track';
 
 // The public customer flow is bundled eagerly so shared links load fast on mobile;
 // owner-facing pages (and Recharts) are split into their own chunks.
@@ -26,6 +29,9 @@ const RequestDetail = named(() => import('./pages/app/RequestDetail'), 'RequestD
 const Analytics = named(() => import('./pages/app/Analytics'), 'Analytics');
 const Settings = named(() => import('./pages/app/Settings'), 'Settings');
 const BrandKitPage = named(() => import('./pages/app/BrandKit'), 'BrandKitPage');
+const InviteAccept = named(() => import('./pages/InviteAccept'), 'InviteAccept');
+const Operator = named(() => import('./pages/Operator'), 'Operator');
+const ResetPassword = named(() => import('./pages/ResetPassword'), 'ResetPassword');
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -44,14 +50,18 @@ export function App() {
       <ScrollToTop />
       <Suspense fallback={<Spinner />}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={runtimeConfiguration.mode === 'production' ? <Navigate to="/app" replace /> : <Landing />} />
           <Route path="/demo" element={<Demo />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/themes" element={<Themes />} />
           <Route path="/tour" element={<Tour />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/invite" element={<InviteAccept />} />
+          <Route path="/operator" element={<Operator />} />
+          <Route path="/reset" element={<ResetPassword />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
-          <Route path="/app" element={<AppLayout />}>
+          <Route path="/track" element={<Track />} />
+          <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>
             <Route index element={<Dashboard />} />
             <Route path="workflows" element={<WorkflowList />} />
             <Route path="workflows/new" element={<WorkflowNew />} />
