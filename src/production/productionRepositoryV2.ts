@@ -13,7 +13,8 @@ import {
   type WorkflowRun,
   type WorkflowVersion,
 } from '../domain/schema';
-import { BrandKitSchema, PresenceLinkSchema, WorkflowThemeSchema, type BrandKit } from '../domain/theme';
+import { BrandKitSchema, PresenceLinkSchema, WorkflowThemeSchema, type Asset, type BrandKit } from '../domain/theme';
+import { runtimeConfiguration } from './runtime';
 import type { FormangleRepository } from '../data/repository';
 import { DomainRuleError, NotFoundError, ValidationFailedError } from '../data/repository';
 import { trackPath, type QuoteDecisionInput, type TrackView } from '../data/track';
@@ -157,6 +158,11 @@ type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 type ActionRow = Database['public']['Tables']['customer_actions']['Row'] & {
   submissions: { workflow_id: string; workflow_version_id: string; workflow_versions: { version_number: number } | null } | null;
 };
+
+const BRAND_BUCKET = 'brand-assets';
+/** Public object URL of a brand image (immutable: a replaced image gets a new id). */
+export const assetUrl = (orgId: string, id: string) =>
+  runtimeConfiguration.mode === 'production' ? `${runtimeConfiguration.supabaseUrl}/storage/v1/object/public/${BRAND_BUCKET}/${orgId}/${id}` : '';
 
 const runStatus = (status: string) => ({ received: 'submitted' }[status] ?? status) as RunStatus;
 
@@ -523,8 +529,6 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
       if (error) fail(error, 'Unable to load option usage');
       return data && typeof data === 'object' && !Array.isArray(data) ? (data as unknown as OptionUsage) : {};
     },
-    async getAssetUrls() { return {}; },
-    async listAssets() { return []; },
     async transitionRun(orgId: string, runId: string, to: RunStatus, message?: string) {
       assertOrg(orgId);
       const expected = submissionLocks.get(runId);
@@ -598,6 +602,46 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
+    },
+    // ---------- brand media (Supabase Storage, public-read bucket, tenant-scoped writes) ----------
+    async listAssets(orgId: string): Promise<Asset[]> {
+      assertOrg(orgId);
+      const { data, error } = await client.from('organization_assets').select('*').eq('organization_id', orgId).is('removed_at', null).order('created_at', { ascending: false });
+      if (error) fail(error, 'Unable to load images');
+      return (data ?? []).map((row) => ({
+        id: row.id, orgId: row.organization_id, kind: row.kind as Asset['kind'], name: row.name, mime: row.mime as Asset['mime'],
+        dataUrl: assetUrl(row.organization_id, row.id), bytes: row.bytes, width: row.width, height: row.height, createdAt: row.created_at,
+      }));
+    },
+    async getAssetUrls(orgId: string, ids: (string | undefined)[]) {
+      // Public objects: the URL is derived, so anonymous customers need no database query.
+      return Object.fromEntries(ids.filter((id): id is string => Boolean(id && /^ast_[a-z0-9]{8,40}$/.test(id))).map((id) => [id, assetUrl(orgId, id)]));
+    },
+    async saveAsset(orgId: string, input: Pick<Asset, 'kind' | 'name' | 'mime' | 'dataUrl' | 'width' | 'height'>): Promise<Asset> {
+      assertOrg(orgId);
+      if (!['image/webp', 'image/jpeg', 'image/png'].includes(input.mime)) throw new DomainRuleError('אפשר להעלות תמונות PNG, JPG או WebP.');
+      const blob = await (await fetch(input.dataUrl)).blob();
+      if (blob.size > 1_048_576) throw new DomainRuleError('התמונה גדולה מדי (עד 1MB אחרי הקטנה).');
+      const id = `ast_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
+      const upload = await client.storage.from(BRAND_BUCKET).upload(`${orgId}/${id}`, blob, { contentType: input.mime, cacheControl: '31536000', upsert: false });
+      if (upload.error) throw new DomainRuleError('העלאת התמונה נכשלה. בדקו את החיבור ונסו שוב.');
+      const { data, error } = await client.rpc('register_organization_asset', {
+        p_organization_id: orgId, p_id: id, p_kind: input.kind, p_name: input.name.slice(0, 120) || 'image', p_mime: input.mime,
+        p_width: Math.round(input.width), p_height: Math.round(input.height),
+      });
+      if (error || !data?.[0]) {
+        if (error?.code === '54000') throw new DomainRuleError('הגעתם למגבלת התמונות של העסק (80 תמונות או 50MB). הסירו תמונות שאינן בשימוש.');
+        fail(error, 'Unable to save image');
+      }
+      emit();
+      const row = data[0];
+      return { id: row.id, orgId, kind: row.kind as Asset['kind'], name: row.name, mime: row.mime as Asset['mime'], dataUrl: assetUrl(orgId, row.id), bytes: row.bytes, width: row.width, height: row.height, createdAt: row.created_at };
+    },
+    async deleteAsset(orgId: string, assetId: string) {
+      assertOrg(orgId);
+      const { error } = await client.rpc('remove_organization_asset', { p_organization_id: orgId, p_id: assetId });
+      if (error) fail(error, 'Unable to remove image');
+      emit();
     },
     // ---------- notes, customer actions and quotes ----------
     async addNote(orgId: string, runId: string, text: string): Promise<RunEvent> {

@@ -19,7 +19,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://ppgdbqhwbzlgzwsjmkor.supabase.co",
   "font-src 'self' data:",
   "connect-src 'self' data: https://ppgdbqhwbzlgzwsjmkor.supabase.co",
   "object-src 'none'",

@@ -256,3 +256,40 @@ test('a forgotten password is replaced through a single-use link; the operator n
   await expect(again.getByRole('alert')).toBeVisible();
   await ctx.close();
 });
+
+test('the owner uploads a logo to storage; anyone can see it, only the workspace could add it', async ({ browser }) => {
+  const ctx = await context(browser);
+  const page = await ctx.newPage();
+  const problems = watch(page);
+  await page.goto('/app/brand');
+  await page.getByLabel('אימייל').fill(OWNER_A.email);
+  await page.getByLabel('סיסמה').fill('Rose-new-pass-2026');
+  await page.getByRole('button', { name: 'כניסה', exact: true }).click();
+  // A real 64x64 PNG drawn in the browser, then uploaded through the picker.
+  const png = await page.evaluate(async () => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#c2185b';
+    g.fillRect(0, 0, 64, 64);
+    return c.toDataURL('image/png').split(',')[1]!;
+  });
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(page.getByText(/התמונה נשמרה/)).toBeVisible();
+  const rows = await sql<{ id: string; organization_id: string; bytes: number }>(
+    `select a.id, a.organization_id, a.bytes from public.organization_assets a join public.organizations o on o.id=a.organization_id where o.slug=$1`, [`rose-${run}`]);
+  expect(rows).toHaveLength(1);
+  const url = `http://127.0.0.1:54321/storage/v1/object/public/brand-assets/${rows[0]!.organization_id}/${rows[0]!.id}`;
+  const res = await page.request.get(url);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toMatch(/^image\//);
+  await expect(page.locator(`img[src="${url}"]`).first()).toBeVisible();
+  // Removing hides it from the library but published forms keep working.
+  // The new logo is selected in the main picker; it can be removed from the secondary one.
+  await page.getByRole('button', { name: /^בחירת / }).nth(1).hover();
+  await page.getByRole('button', { name: /^מחיקת / }).first().click();
+  await expect.poll(async () => (await sql(`select 1 from public.organization_assets where id=$1 and removed_at is not null`, [rows[0]!.id])).length).toBe(1);
+  expect((await page.request.get(url)).status()).toBe(200);
+  expect(problems).toEqual([]);
+  await ctx.close();
+});

@@ -85,6 +85,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"organization_assets": {
+                  Row: {
+                    "bytes": number,"created_at": string,"created_by": string,"height": number,"id": string,"kind": string,"mime": string,"name": string,"organization_id": string,"removed_at": string | null,"width": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bytes": number,"created_at"?: string,"created_by"?: string,"height": number,"id": string,"kind": string,"mime": string,"name": string,"organization_id": string,"removed_at"?: string | null,"width": number
+                  }
+                  Update: {
+                    "bytes"?: number,"created_at"?: string,"created_by"?: string,"height"?: number,"id"?: string,"kind"?: string,"mime"?: string,"name"?: string,"organization_id"?: string,"removed_at"?: string | null,"width"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_assets_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"organization_memberships": {
                   Row: {
                     "created_at": string,"organization_id": string,"role": string,"status": string,"updated_at": string,"user_id": string
@@ -497,8 +517,31 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"register_organization_asset":
+{ Args: { "p_height": number,"p_id": string,"p_kind": string,"p_mime": string,"p_name": string,"p_organization_id": string,"p_width": number }; Returns: {
+              "bytes": number,
+"created_at": string,
+"created_by": string,
+"height": number,
+"id": string,
+"kind": string,
+"mime": string,
+"name": string,
+"organization_id": string,
+"removed_at": string | null,
+"width": number
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "organization_assets"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "remove_member":
 { Args: { "p_organization_id": string,"p_user_id": string }; Returns: undefined
+                           },
+"remove_organization_asset":
+{ Args: { "p_id": string,"p_organization_id": string }; Returns: undefined
                            },
 "resolve_public_workflow":
 { Args: { "p_slug": string }; Returns: Json
