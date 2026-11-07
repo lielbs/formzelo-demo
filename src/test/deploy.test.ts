@@ -21,7 +21,9 @@ describe('deployment readiness', () => {
   it('ships a strict policy with only the dedicated Formangle API origin', () => {
     expect(CSP).toContain("script-src 'self'");
     expect(CSP).not.toContain('unsafe-eval');
-    expect(CSP.match(/https?:\/\/[^ ;]+/g)).toEqual(['https://ppgdbqhwbzlgzwsjmkor.supabase.co']);
+    // The dedicated project only: API calls (connect-src) and brand images from its storage (img-src).
+    expect(new Set(CSP.match(/https?:\/\/[^ ;]+/g))).toEqual(new Set(['https://ppgdbqhwbzlgzwsjmkor.supabase.co']));
+    expect(CSP).toMatch(/img-src 'self' data: blob: https:\/\/ppgdbqhwbzlgzwsjmkor\.supabase\.co;/);
     expect(CSP).toContain("object-src 'none'");
   });
 });
