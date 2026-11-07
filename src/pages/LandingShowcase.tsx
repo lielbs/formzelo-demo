@@ -17,6 +17,9 @@ import { effectiveTheme } from '../theme/brand';
 import { buildTheme } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
 import { DevicePreview } from './app/editor/DevicePreview';
+import { DEMO_ORG_IDS } from '../data/seed';
+import { showcaseAssets, showcaseId } from '../data/showcase';
+import { assetSrc } from '../lib/links';
 
 const SWATCHES = [
   { name: 'יין', primary: '#8E2F4F', accent: '#E7B7A3', secondary: '#7E8F72', background: '#FAF4EF' },
@@ -24,6 +27,11 @@ const SWATCHES = [
   { name: 'לילה', primary: '#22304A', accent: '#E3843C', secondary: '#55627A', background: '#F1F3F7' },
   { name: 'טרקוטה', primary: '#A9502F', accent: '#D3A15A', secondary: '#3F2A21', background: '#F5EEE4' },
 ];
+
+// Photos of the demo flower studio (CC0, public/showcase), used as this sample's own images.
+const COVER = showcaseId(DEMO_ORG_IDS.bloom, 'cover');
+const PHOTO: Record<string, string> = { round: showcaseId(DEMO_ORG_IDS.bloom, 'roses'), garden: showcaseId(DEMO_ORG_IDS.bloom, 'garden'), tall: showcaseId(DEMO_ORG_IDS.bloom, 'tall') };
+const SHOWCASE_URLS = Object.fromEntries(showcaseAssets(DEMO_ORG_IDS.bloom).map((a) => [a.id, assetSrc(a.dataUrl)]));
 
 /** Live brand customization on a real workflow. */
 export function BrandShowcase() {
@@ -33,6 +41,10 @@ export function BrandShowcase() {
   const config = useMemo(() => {
     const c = TEMPLATES.flower_order.build();
     c.branding.logoText = 'הסטודיו של נועה';
+    // Real photos on the choice cards, so the colour change is seen on a real-looking form.
+    const style = c.steps.flatMap((st) => st.fields).find((f) => f.key === 'bouquet_style');
+    style?.options?.forEach((o) => (o.image = PHOTO[o.value] ?? o.image));
+    if (style) style.appearance = 'image_cards';
     return c;
   }, []);
   const s = SWATCHES[swatch]!;
@@ -49,7 +61,7 @@ export function BrandShowcase() {
     links: [],
     updatedAt: '2026-01-01T00:00:00.000Z',
   };
-  const theme = effectiveTheme({ ...buildTheme('floral_boutique'), inheritBrand: true }, kit);
+  const theme = effectiveTheme({ ...buildTheme('floral_boutique'), hero: { ...buildTheme('floral_boutique').hero, coverAssetId: COVER }, media: { coverStyle: 'panel', tone: 'natural' }, inheritBrand: true }, kit);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
@@ -102,7 +114,7 @@ export function BrandShowcase() {
         </Link>
       </div>
       <DevicePreview device="mobile" height={600}>
-        <WorkflowRenderer config={config} theme={theme} mode="preview" embedded scrollFrame />
+        <WorkflowRenderer config={config} theme={theme} assets={SHOWCASE_URLS} mode="preview" embedded scrollFrame />
       </DevicePreview>
     </div>
   );

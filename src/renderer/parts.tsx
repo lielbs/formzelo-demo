@@ -91,7 +91,8 @@ export function Hero({ theme, config, stepsCount, fieldsCount, logoUrl, coverUrl
         </span>
       )}
       <div className="fz-hero-content fz-anim-hero">
-        <div className="flex items-center justify-between gap-3">
+        {/* Wraps rather than squeezing: on a narrow screen the tags move under the logo, the logo keeps its size. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           {theme.logo.placement !== 'hidden' ? (
             <div className={theme.logo.placement === 'center' || seal ? 'flex flex-1 justify-center' : undefined}>
               <BrandRow name={config.branding.logoText} logoUrl={logoUrl} showName={theme.logo.showName} logoStyle={media.logoStyle} />

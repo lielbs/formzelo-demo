@@ -37,7 +37,8 @@ export interface AdviceInput {
 const inputs = (c: WorkflowConfig) => c.steps.flatMap((s) => s.fields).filter((f) => !isDisplayField(f) && f.type !== 'info');
 const isContact = (f: WorkflowField) => f.type === 'phone' || f.type === 'email' || f.role === 'customer_phone' || f.role === 'customer_email';
 const LONG_STEP = 6;
-const REGISTRATION = /הרשמ|סדנ|קורס|חוג|כנס|מרוץ|ריצ|מחזור|שיעור|אירוע/;
+// Places matter for sign-ups; an order "for an event" (flowers, catering) is not one.
+const REGISTRATION = /הרשמ|סדנ|קורס|חוג|כנס|מרוץ|ריצ|מחזור|שיעור/;
 
 export function advise({ config, intake, hasLogo, presenceLinks }: AdviceInput): Advice[] {
   const out: Advice[] = [];

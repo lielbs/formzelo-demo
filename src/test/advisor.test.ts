@@ -45,5 +45,7 @@ describe('built-in studio advice', () => {
     expect(ids({ config, ...base })).toContain('places');
     expect(ids({ config, ...base, intake: { paused: false, onePerContact: false, maxTotal: 12 } })).not.toContain('places');
     expect(ids({ config, hasLogo: false, presenceLinks: 0 })).toEqual(expect.arrayContaining(['logo', 'presence']));
+    // A flower order that mentions an occasion is not a registration.
+    expect(ids({ config: TEMPLATES.flower_order.build(), ...base })).not.toContain('places');
   });
 });

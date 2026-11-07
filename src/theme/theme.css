@@ -214,6 +214,7 @@
   height: 38px;
   max-width: 140px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 .fz-hero-facts {
   display: flex;
