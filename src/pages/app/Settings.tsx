@@ -8,6 +8,7 @@ import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { formatDate, formatNumber } from '../../lib/format';
 import { PaymentConnectors } from './PaymentConnectors';
 import { runtimeConfiguration } from '../../production/runtime';
+import { TeamCard } from './TeamCard';
 
 interface FormValues {
   name: string;
@@ -117,24 +118,28 @@ export function Settings() {
         </Card>
 
         <div className="space-y-6">
+          {runtimeConfiguration.mode === 'production' ? (
+            <TeamCard orgId={org.id} />
+          ) : (
           <Card className="p-5">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Users className="h-4 w-4" aria-hidden /> חברי צוות
-            </h2>
-            <p className="mt-0.5 text-xs text-ink-muted">{runtimeConfiguration.mode === 'demo' ? 'מדומה — אין התחברות אמיתית בדמו.' : 'חברים פעילים שקיבלו הרשאה לארגון זה.'}</p>
-            {info.loading ? (
-              <Spinner />
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {info.data?.members.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between rounded-xl bg-cloud px-3 py-2 text-sm">
-                    <span>{m.userName}</span>
-                    <Badge tone={m.role === 'owner' ? 'dark' : 'neutral'}>{m.role === 'owner' ? 'בעלים' : 'צוות'}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+              <h2 className="flex items-center gap-2 font-semibold">
+                <Users className="h-4 w-4" aria-hidden /> חברי צוות
+              </h2>
+              <p className="mt-0.5 text-xs text-ink-muted">{runtimeConfiguration.mode === 'demo' ? 'מדומה — אין התחברות אמיתית בדמו.' : 'חברים פעילים שקיבלו הרשאה לארגון זה.'}</p>
+              {info.loading ? (
+                <Spinner />
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {info.data?.members.map((m) => (
+                    <li key={m.id} className="flex items-center justify-between rounded-xl bg-cloud px-3 py-2 text-sm">
+                      <span>{m.userName}</span>
+                      <Badge tone={m.role === 'owner' ? 'dark' : 'neutral'}>{m.role === 'owner' ? 'בעלים' : 'צוות'}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
 
           <Card className="p-5">
             <h2 className="flex items-center gap-2 font-semibold">

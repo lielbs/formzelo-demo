@@ -29,6 +29,7 @@ const Analytics = named(() => import('./pages/app/Analytics'), 'Analytics');
 const Settings = named(() => import('./pages/app/Settings'), 'Settings');
 const BrandKitPage = named(() => import('./pages/app/BrandKit'), 'BrandKitPage');
 const InviteAccept = named(() => import('./pages/InviteAccept'), 'InviteAccept');
+const Operator = named(() => import('./pages/Operator'), 'Operator');
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -54,6 +55,7 @@ export function App() {
           <Route path="/tour" element={<Tour />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/invite" element={<InviteAccept />} />
+          <Route path="/operator" element={<Operator />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
           <Route path="/track" element={<Track />} />
           <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>

@@ -381,6 +381,11 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"create_staff_invitation":
+{ Args: { "p_email": string,"p_organization_id": string }; Returns: {
+              "invitation_expires_at": string,"invitation_id": string,"invitation_token": string
+            }[]
+                           },
 "create_workflow":
 { Args: { "config": Json,"design": Json,"organization_id": string,"schema_version"?: number,"source_prompt"?: string,"template_key"?: string }; Returns: {
               "created_at": string,
@@ -431,8 +436,17 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"is_platform_operator":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "issue_tracking_link":
 { Args: { "p_organization_id": string,"p_submission_id": string }; Returns: string
+                           },
+"list_team":
+{ Args: { "p_organization_id": string }; Returns: Json
+                           },
+"operator_list_organizations":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "public_booking_availability":
 { Args: { "p_date": string,"p_slug": string }; Returns: Json
@@ -477,6 +491,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"remove_member":
+{ Args: { "p_organization_id": string,"p_user_id": string }; Returns: undefined
+                           },
 "resolve_public_workflow":
 { Args: { "p_slug": string }; Returns: Json
                            },
@@ -505,6 +522,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"revoke_team_invitation":
+{ Args: { "p_invitation_id": string,"p_organization_id": string }; Returns: undefined
+                           },
 "revoke_tracking_links":
 { Args: { "p_organization_id": string,"p_submission_id": string }; Returns: number
                            },
@@ -597,6 +617,11 @@ isOneToOne: false
                            },
 "server_expire_owner_invitations":
 { Args: { "actor_user_id": string,"target_organization_id"?: string }; Returns: number
+                           },
+"server_invitation_onboarding_target":
+{ Args: { "expected_organization_id": string,"invitation_token": string }; Returns: {
+              "account_exists": boolean,"email": string
+            }[]
                            },
 "server_provision_organization_authorized":
 { Args: { "actor_user_id": string,"name": string,"owner_email": string,"slug": string }; Returns: {

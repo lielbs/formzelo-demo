@@ -28,9 +28,14 @@ export function readRuntimeConfiguration(environment: Environment): RuntimeConfi
   const mode = Mode.parse(environment.VITE_FORMANGLE_MODE ?? 'demo');
   if (mode === 'demo') return { mode };
 
-  const projectRef = ProjectRef.parse(environment.VITE_SUPABASE_PROJECT_REF);
   const url = z.url().parse(environment.VITE_SUPABASE_URL);
   const parsedUrl = new URL(url);
+  // The disposable local stack, for end-to-end tests on the dev server only. Builds never accept it.
+  if (environment.DEV === true && environment.VITE_FORMANGLE_LOCAL_STACK === 'true') {
+    if (parsedUrl.origin !== 'http://127.0.0.1:54321') throw new Error('The local stack must be the disposable Supabase on 127.0.0.1:54321');
+    return { mode, projectRef: FORMANGLE_SUPABASE_PROJECT_REF, supabaseUrl: parsedUrl.origin, publishableKey: PublishableKey.parse(environment.VITE_SUPABASE_PUBLISHABLE_KEY) };
+  }
+  const projectRef = ProjectRef.parse(environment.VITE_SUPABASE_PROJECT_REF);
   if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== `${projectRef}.supabase.co` || parsedUrl.pathname !== '/') {
     throw new Error('Production Supabase URL must match the dedicated Formangle project');
   }

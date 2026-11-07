@@ -35,4 +35,11 @@ describe('readRuntimeConfiguration', () => {
       expect(() => readRuntimeConfiguration({ ...production, VITE_SUPABASE_PUBLISHABLE_KEY: key })).toThrow();
     },
   );
+
+  it('accepts the disposable local stack only on the dev server', () => {
+    const local = { ...production, VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_FORMANGLE_LOCAL_STACK: 'true' };
+    expect(readRuntimeConfiguration({ ...local, DEV: true })).toMatchObject({ mode: 'production', supabaseUrl: 'http://127.0.0.1:54321' });
+    expect(() => readRuntimeConfiguration({ ...local, DEV: false })).toThrow();
+    expect(() => readRuntimeConfiguration({ ...local, DEV: true, VITE_SUPABASE_URL: 'http://evil.example:54321' })).toThrow('disposable Supabase');
+  });
 });
