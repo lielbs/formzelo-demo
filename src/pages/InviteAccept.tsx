@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { runtimeConfiguration } from '../production/runtime';
 import { PRIVACY_VERSION } from './Privacy';
+import { appHref } from '../lib/links';
 
 type InviteState = { token: string; organizationId: string };
 
@@ -121,7 +122,7 @@ export function InviteAccept() {
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" className="mt-0.5 h-4 w-4 accent-orange-600" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
               <span>
-                קראתי ואני מסכים/ה ל<a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-orange-700 underline">תנאי השימוש ומדיניות הפרטיות</a>
+                קראתי ואני מסכים/ה ל<a href={appHref('/privacy')} target="_blank" rel="noreferrer" className="font-medium text-orange-700 underline">תנאי השימוש ומדיניות הפרטיות</a>
               </span>
             </label>
             <Button type="submit" loading={busy} className="w-full">יצירת חשבון וכניסה</Button>
