@@ -16,6 +16,7 @@ import { validateOptionCapacity } from '../engine/capacity';
 import { allVisibleFields, type Values } from '../engine/conditions';
 import { TEMPLATE_LIBRARY } from '../engine/library';
 import { computePrice } from '../engine/pricing';
+import { quoteTotals, type QuoteContent, type QuoteItem, type QuoteSelections, type QuoteTotals } from '../engine/quote';
 import { TEMPLATES } from '../engine/templates';
 import { validateRun } from '../engine/validation';
 import { isoDay } from '../lib/format';
@@ -212,5 +213,48 @@ describe.skipIf(!url)('the last place is sold once under concurrency', () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((r) => r.status === 'rejected').map((r) => (r as PromiseRejectedResult).reason.message)).toEqual(Array(7).fill('booking_slot_full'));
     expect(rows[0].n).toBe(1);
+  });
+});
+
+describe.skipIf(!url)('quote totals match the server to the agora (1/100 shekel)', () => {
+  it('2,000 generated quotes and selections give identical totals or identical refusals', async () => {
+    if (!url || !LOCAL.test(url)) throw new Error('local database only');
+    const db = new pg.Client({ connectionString: url });
+    await db.connect();
+    await db.query('begin');
+    const price = () => pick([0, 9.9, 45.5, 120, 333.33, 1999.99, Math.round(rand() * 500000) / 100]);
+    const mismatches: string[] = [];
+    for (let n = 0; n < 2000; n++) {
+      const items: QuoteItem[] = Array.from({ length: 1 + Math.floor(rand() * 5) }, (_, i) => {
+        const quantity = 1 + Math.floor(rand() * 4);
+        const adjustable = chance(0.4);
+        return { id: `i${i}`, label: `פריט ${i}`, unitPrice: price(), quantity, optional: chance(0.4), included: chance(0.5), adjustable,
+          ...(adjustable && chance(0.7) ? { maxQuantity: quantity + Math.floor(rand() * 5) } : {}) };
+      });
+      const content: QuoteContent = {
+        title: 'הצעה', items,
+        adjustments: Array.from({ length: Math.floor(rand() * 3) }, (_, i) => ({ label: `התאמה ${i}`, kind: pick(['discount', 'fee'] as const), mode: pick(['amount', 'percent'] as const), value: pick([5, 7.5, 12.5, 100, 15, 250]) })),
+        vat: { mode: pick(['included', 'excluded', 'exempt'] as const), rate: pick([18, 17, 0]) },
+      };
+      const selections: QuoteSelections = {};
+      for (const item of items) if (chance(0.5)) selections[item.id] = Math.floor(rand() * 8) - (chance(0.05) ? 1 : 0);
+      if (chance(0.05)) selections.forged = 1;
+      let client: QuoteTotals | 'invalid';
+      try { client = quoteTotals(content, selections); } catch { client = 'invalid'; }
+      let server: QuoteTotals | 'invalid';
+      await db.query('savepoint q');
+      try {
+        server = (await db.query('select private.quote_totals($1,$2) t', [JSON.stringify(content), JSON.stringify(selections)])).rows[0].t;
+        await db.query('release savepoint q');
+      } catch {
+        await db.query('rollback to savepoint q');
+        server = 'invalid';
+      }
+      const norm = (t: QuoteTotals | 'invalid') => t === 'invalid' ? t : JSON.stringify([t.lines.map((l) => [l.itemId, l.quantity, Number(l.amount)]), Number(t.subtotal), t.adjustments.map((a) => Number(a.amount)), Number(t.net), Number(t.vat), Number(t.total)]);
+      if (norm(client) !== norm(server)) mismatches.push(`${norm(client)} vs ${norm(server)} :: ${JSON.stringify({ content, selections })}`);
+    }
+    await db.query('rollback');
+    await db.end();
+    expect(mismatches.slice(0, 3)).toEqual([]);
   });
 });

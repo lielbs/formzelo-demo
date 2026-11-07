@@ -45,6 +45,26 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"customer_actions": {
+                  Row: {
+                    "amount_minor": number | null,"cancelled_at": string | null,"created_at": string,"created_by": string,"description": string,"expires_at": string | null,"id": string,"kind": string,"note": string | null,"options": NonNullable<Json>,"organization_id": string,"response": Json | null,"status": string,"submission_id": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount_minor"?: number | null,"cancelled_at"?: string | null,"created_at"?: string,"created_by"?: string,"description"?: string,"expires_at"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"options"?: NonNullable<Json>,"organization_id": string,"response"?: Json | null,"status": string,"submission_id": string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount_minor"?: number | null,"cancelled_at"?: string | null,"created_at"?: string,"created_by"?: string,"description"?: string,"expires_at"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"options"?: NonNullable<Json>,"organization_id"?: string,"response"?: Json | null,"status"?: string,"submission_id"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "customer_actions_organization_id_submission_id_fkey"
+      columns: ["organization_id","submission_id"]
+isOneToOne: false
+      referencedRelation: "submissions"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
                 },"integration_connections": {
                   Row: {
                     "category": string,"created_at": string,"display_name": string,"id": string,"organization_id": string,"provider_key": string,"status": string,"updated_at": string
@@ -133,20 +153,60 @@ isOneToOne: true
                   Relationships: [
 
                   ]
-                },"submission_events": {
+                },"quotes": {
                   Row: {
-                    "actor_user_id": string | null,"created_at": string,"event_type": string,"id": string,"organization_id": string,"submission_id": string
+                    "content": NonNullable<Json>,"created_at": string,"created_by": string,"decided_at": string | null,"decision": Json | null,"decision_key": string | null,"id": string,"lock_version": number,"organization_id": string,"revision": number,"sent_at": string | null,"status": string,"submission_id": string,"total_minor": number,"updated_at": string,"valid_until": string | null,"viewed_at": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "actor_user_id"?: string | null,"created_at"?: string,"event_type": string,"id"?: string,"organization_id": string,"submission_id": string
+                    "content": NonNullable<Json>,"created_at"?: string,"created_by"?: string,"decided_at"?: string | null,"decision"?: Json | null,"decision_key"?: string | null,"id"?: string,"lock_version"?: number,"organization_id": string,"revision": number,"sent_at"?: string | null,"status": string,"submission_id": string,"total_minor": number,"updated_at"?: string,"valid_until"?: string | null,"viewed_at"?: string | null
                   }
                   Update: {
-                    "actor_user_id"?: string | null,"created_at"?: string,"event_type"?: string,"id"?: string,"organization_id"?: string,"submission_id"?: string
+                    "content"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"decided_at"?: string | null,"decision"?: Json | null,"decision_key"?: string | null,"id"?: string,"lock_version"?: number,"organization_id"?: string,"revision"?: number,"sent_at"?: string | null,"status"?: string,"submission_id"?: string,"total_minor"?: number,"updated_at"?: string,"valid_until"?: string | null,"viewed_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "quotes_organization_id_submission_id_fkey"
+      columns: ["organization_id","submission_id"]
+isOneToOne: false
+      referencedRelation: "submissions"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"submission_events": {
+                  Row: {
+                    "actor_user_id": string | null,"created_at": string,"event_type": string,"id": string,"message": string | null,"organization_id": string,"submission_id": string,"visibility": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor_user_id"?: string | null,"created_at"?: string,"event_type": string,"id"?: string,"message"?: string | null,"organization_id": string,"submission_id": string,"visibility"?: string
+                  }
+                  Update: {
+                    "actor_user_id"?: string | null,"created_at"?: string,"event_type"?: string,"id"?: string,"message"?: string | null,"organization_id"?: string,"submission_id"?: string,"visibility"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "submission_events_organization_id_submission_id_fkey"
+      columns: ["organization_id","submission_id"]
+isOneToOne: false
+      referencedRelation: "submissions"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"submission_notes": {
+                  Row: {
+                    "author_user_id": string,"body": string,"created_at": string,"id": string,"organization_id": string,"submission_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_user_id"?: string,"body": string,"created_at"?: string,"id"?: string,"organization_id": string,"submission_id": string
+                  }
+                  Update: {
+                    "author_user_id"?: string,"body"?: string,"created_at"?: string,"id"?: string,"organization_id"?: string,"submission_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "submission_notes_organization_id_submission_id_fkey"
       columns: ["organization_id","submission_id"]
 isOneToOne: false
       referencedRelation: "submissions"
@@ -256,6 +316,71 @@ isOneToOne: false
               "membership_created": boolean,"organization_id": string
             }[]
                            },
+"add_submission_note":
+{ Args: { "p_body": string,"p_organization_id": string,"p_submission_id": string }; Returns: {
+              "author_user_id": string,
+"body": string,
+"created_at": string,
+"id": string,
+"organization_id": string,
+"submission_id": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "submission_notes"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"cancel_customer_action":
+{ Args: { "p_action_id": string,"p_organization_id": string }; Returns: {
+              "amount_minor": number | null,
+"cancelled_at": string | null,
+"created_at": string,
+"created_by": string,
+"description": string,
+"expires_at": string | null,
+"id": string,
+"kind": string,
+"note": string | null,
+"options": NonNullable<Json>,
+"organization_id": string,
+"response": Json | null,
+"status": string,
+"submission_id": string,
+"title": string,
+"updated_at": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "customer_actions"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"create_customer_action":
+{ Args: { "p_input": Json,"p_organization_id": string,"p_submission_id": string }; Returns: {
+              "amount_minor": number | null,
+"cancelled_at": string | null,
+"created_at": string,
+"created_by": string,
+"description": string,
+"expires_at": string | null,
+"id": string,
+"kind": string,
+"note": string | null,
+"options": NonNullable<Json>,
+"organization_id": string,
+"response": Json | null,
+"status": string,
+"submission_id": string,
+"title": string,
+"updated_at": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "customer_actions"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "create_workflow":
 { Args: { "config": Json,"design": Json,"organization_id": string,"schema_version"?: number,"source_prompt"?: string,"template_key"?: string }; Returns: {
               "created_at": string,
@@ -306,14 +431,32 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"issue_tracking_link":
+{ Args: { "p_organization_id": string,"p_submission_id": string }; Returns: string
+                           },
 "public_booking_availability":
 { Args: { "p_date": string,"p_slug": string }; Returns: Json
+                           },
+"public_cancel_request":
+{ Args: { "p_token": string }; Returns: Json
+                           },
+"public_decide_quote":
+{ Args: { "p_comment": string,"p_decision": string,"p_key": string,"p_quote_id": string,"p_selections": Json,"p_token": string }; Returns: Json
                            },
 "public_intake_state":
 { Args: { "p_slug": string }; Returns: Json
                            },
 "public_option_usage":
 { Args: { "p_slug": string }; Returns: Json
+                           },
+"public_request_tracking_token":
+{ Args: { "p_client_token": string,"p_idempotency_key": string,"p_slug": string }; Returns: string
+                           },
+"public_respond_action":
+{ Args: { "p_action_id": string,"p_option_id": string,"p_token": string }; Returns: Json
+                           },
+"public_track_request":
+{ Args: { "p_token": string }; Returns: Json
                            },
 "publish_workflow":
 { Args: { "engine_version"?: string,"expected_lock_version": number,"organization_id": string,"published_design": Json,"workflow_id": string }; Returns: {
@@ -362,6 +505,35 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"revoke_tracking_links":
+{ Args: { "p_organization_id": string,"p_submission_id": string }; Returns: number
+                           },
+"save_quote_draft":
+{ Args: { "p_content": Json,"p_expected_lock_version": number,"p_organization_id": string,"p_quote_id": string,"p_submission_id": string }; Returns: {
+              "content": NonNullable<Json>,
+"created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decision": Json | null,
+"decision_key": string | null,
+"id": string,
+"lock_version": number,
+"organization_id": string,
+"revision": number,
+"sent_at": string | null,
+"status": string,
+"submission_id": string,
+"total_minor": number,
+"updated_at": string,
+"valid_until": string | null,
+"viewed_at": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "quotes"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "save_workflow_draft":
 { Args: { "config": Json,"design": Json,"expected_lock_version": number,"organization_id": string,"schema_version"?: number,"workflow_id": string }; Returns: {
               "created_at": string,
@@ -384,6 +556,32 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "workflows"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"send_quote":
+{ Args: { "p_expected_lock_version": number,"p_organization_id": string,"p_quote_id": string }; Returns: {
+              "content": NonNullable<Json>,
+"created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decision": Json | null,
+"decision_key": string | null,
+"id": string,
+"lock_version": number,
+"organization_id": string,
+"revision": number,
+"sent_at": string | null,
+"status": string,
+"submission_id": string,
+"total_minor": number,
+"updated_at": string,
+"valid_until": string | null,
+"viewed_at": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "quotes"
         isOneToOne: false
         isSetofReturn: true
       } },
@@ -437,7 +635,7 @@ isOneToOne: false
 { Args: { "p_answers": Json,"p_client_token": string,"p_consent": boolean,"p_idempotency_key": string,"p_slug": string }; Returns: Json
                            },
 "transition_submission_status":
-{ Args: { "p_expected_lock_version": number,"p_organization_id": string,"p_submission_id": string,"p_to_status": string }; Returns: {
+{ Args: { "p_expected_lock_version": number,"p_message"?: string,"p_organization_id": string,"p_submission_id": string,"p_to_status": string }; Returns: {
               "answers": NonNullable<Json>,
 "created_at": string,
 "currency": string,
@@ -496,6 +694,32 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "workflows"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"withdraw_quote":
+{ Args: { "p_organization_id": string,"p_quote_id": string }; Returns: {
+              "content": NonNullable<Json>,
+"created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decision": Json | null,
+"decision_key": string | null,
+"id": string,
+"lock_version": number,
+"organization_id": string,
+"revision": number,
+"sent_at": string | null,
+"status": string,
+"submission_id": string,
+"total_minor": number,
+"updated_at": string,
+"valid_until": string | null,
+"viewed_at": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "quotes"
         isOneToOne: false
         isSetofReturn: true
       } }
