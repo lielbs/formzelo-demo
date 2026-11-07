@@ -44,6 +44,7 @@ async function acceptInvitation(page: Page, link: string, password: string) {
   await page.goto(link);
   await page.getByLabel('סיסמה חדשה').fill(password);
   await page.getByLabel('הסיסמה שוב').fill(password);
+  await page.getByRole('checkbox', { name: /תנאי השימוש/ }).check();
   await page.getByRole('button', { name: 'יצירת חשבון וכניסה' }).click();
   await expect(page.getByText('ההזמנה התקבלה בהצלחה')).toBeVisible();
   await page.getByRole('button', { name: 'כניסה ללוח הבקרה' }).click();
@@ -153,7 +154,7 @@ test('a customer on a phone submits without an account and lands on a private re
   await expect(page.getByRole('heading', { name: 'הבקשה נשלחה' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   state.trackUrl = page.url().replace('?sent=1', '');
-  const rows = await sql<{ id: string; total_minor: string }>(`select s.id, s.total_minor from public.submissions s join public.workflows w on w.id=s.workflow_id where w.public_slug like $1`, [`rose-%`]);
+  const rows = await sql<{ id: string; total_minor: string }>(`select s.id, s.total_minor from public.submissions s join public.workflows w on w.id=s.workflow_id where w.organization_id = (select id from public.organizations where slug = $1) order by s.created_at`, [`rose-${run}`]);
   expect(rows.length).toBeGreaterThan(0);
   state.requestId = rows[rows.length - 1]!.id;
   expect(problems).toEqual([]);

@@ -28,6 +28,13 @@ function getRepository() {
   return repositoryPromise;
 }
 
+/** Set while the document unloads, when the browser aborts in-flight requests. */
+let pageUnloading = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => (pageUnloading = true));
+  window.addEventListener('pageshow', () => (pageUnloading = false));
+}
+
 export function RepoProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const [repository, setRepository] = useState<FormangleRepository | null>(null);
@@ -145,8 +152,10 @@ export function useRepoQuery<T>(fn: (repo: FormangleRepository) => Promise<T>, d
       .current(repo)
       .then((data) => !cancelled && setState({ data, loading: false, error: null }))
       .catch((error: unknown) => {
+        // A request cut off by leaving the page or the screen is not a failure.
+        if (cancelled || pageUnloading) return;
         console.error('[formangle] query failed', error);
-        if (!cancelled) setState({ data: undefined, loading: false, error: error instanceof Error ? error : new Error(String(error)) });
+        setState({ data: undefined, loading: false, error: error instanceof Error ? error : new Error(String(error)) });
       });
     return () => {
       cancelled = true;

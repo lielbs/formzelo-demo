@@ -14,8 +14,11 @@ Deno.serve((request) => handleAccountOnboarding(request, {
     const row = data?.[0];
     return row ? { email: row.email, accountExists: row.account_exists } : null;
   },
-  async createAccount({ email, password }) {
-    const { error } = await service.auth.admin.createUser({ email, password, email_confirm: true });
+  async createAccount({ email, password, acceptedPrivacyVersion }) {
+    const { error } = await service.auth.admin.createUser({
+      email, password, email_confirm: true,
+      app_metadata: { privacy_version: acceptedPrivacyVersion, privacy_accepted_at: new Date().toISOString() },
+    });
     if (error) throw new Error('account creation failed');
   },
   async consumeRecovery(token) {

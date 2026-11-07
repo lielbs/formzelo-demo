@@ -6,6 +6,10 @@
 import type { ReactNode } from 'react';
 import { SiteFooter, SiteHeader } from '../components/SiteChrome';
 import { CONTACT_EMAIL, salesMailto } from '../lib/links';
+import { runtimeConfiguration } from '../production/runtime';
+
+/** Version of the production notice an account accepts when it is created. */
+export const PRIVACY_VERSION = '2026-11-08';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -17,6 +21,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function Privacy() {
+  if (runtimeConfiguration.mode === 'production') return <ProductionPrivacy />;
   return (
     <>
       <SiteHeader />
@@ -60,6 +65,51 @@ export function Privacy() {
           </Section>
         </div>
         <p className="mt-6 text-xs text-ink-soft">עודכן לגרסת RC 1.0 של הדמו.</p>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
+
+/**
+ * The production notice: what the operated service actually does. Facts that need the legal
+ * entity (registration number, address) stay pending in docs/LEGAL_PLACEHOLDERS.md.
+ */
+function ProductionPrivacy() {
+  return (
+    <>
+      <SiteHeader />
+      <main id="main" className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-14">
+        <p className="text-sm font-medium text-orange-700">פרטיות ותנאי שימוש</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">איך Formangle שומר על המידע</h1>
+        <p className="mt-3 text-ink-muted">Formangle הוא שירות של RockStack Digital Solutions שעסקים משתמשים בו כדי לקבל בקשות, לשלוח הצעות מחיר ולעדכן את הלקוחות שלהם. גרסה {PRIVACY_VERSION}.</p>
+        <div className="mt-8">
+          <Section title="מי אחראי למידע">
+            <p>כל עסק אחראי למידע שהלקוחות שלו שולחים בטפסים שלו. RockStack מפעילה את השירות עבור העסק ומעבדת את המידע רק כדי לספק אותו.</p>
+          </Section>
+          <Section title="מה נשמר ואיפה">
+            <p>תשובות לטפסים, הצעות מחיר, החלטות, הערות פנימיות, הגדרות מותג ותמונות שהעסק מעלה נשמרים בשרתי Supabase באירלנד (האיחוד האירופי), מוצפנים בתעבורה ובאחסון.</p>
+            <p>חשבונות של בעלי עסקים וצוות נוצרים רק בהזמנה. סיסמאות נשמרות כגיבוב בלבד, ואף אחד — כולל RockStack — אינו רואה אותן.</p>
+          </Section>
+          <Section title="מי רואה מה">
+            <p>כל עסק רואה רק את הבקשות שלו; ההפרדה נאכפת בבסיס הנתונים. לקוח רואה את הבקשה שלו רק דרך קישור פרטי שהעסק יכול לבטל בכל רגע, ולעולם לא רואה הערות פנימיות. צוות RockStack רואה נתוני ניהול בלבד (שמות עסקים וכמויות), לא את תוכן הבקשות.</p>
+          </Section>
+          <Section title="תשלומים, הודעות וחתימות">
+            <p>Formangle לא גובה תשלומים ולא שומר פרטי אשראי. אישור הצעת מחיר אינו חיוב ואינו חתימה אלקטרונית. השירות לא שולח הודעות SMS, וואטסאפ או אימייל בשם העסק.</p>
+          </Section>
+          <Section title="עוגיות ומעקב">
+            <p>אין עוגיות מעקב ואין כלי אנליטיקה או פרסום של צד שלישי. הדפדפן שומר רק את פרטי ההתחברות של בעלי עסקים וצוות.</p>
+          </Section>
+          <Section title="שמירה, גיבוי ומחיקה">
+            <p>המידע נשמר כל עוד העסק פעיל בשירות, ומגובה מדי יום לשבעה ימים. לקוח שרוצה לעיין במידע שלו או למחוק אותו פונה לעסק; עסק יכול לבקש מ-RockStack ייצוא או מחיקה של המידע שלו.</p>
+          </Section>
+          <Section title="יצירת קשר">
+            <p>
+              <a className="font-medium text-orange-700 underline" href={salesMailto('פנייה בנושא פרטיות', '')}>{CONTACT_EMAIL}</a>
+            </p>
+          </Section>
+        </div>
+        <p className="mt-6 text-xs text-ink-soft">הנוסח ממתין לבדיקה משפטית ולהשלמת פרטי הישות המשפטית (docs/LEGAL_PLACEHOLDERS.md).</p>
       </main>
       <SiteFooter />
     </>

@@ -15,7 +15,7 @@ const call = (body: unknown, origin = ORIGIN, method = 'POST') =>
 describe('account creation from an invitation', () => {
   it('creates one account for the invited address only', async () => {
     const createAccount = vi.fn(async () => undefined);
-    const res = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9', email: 'attacker@evil.test' }), {
+    const res = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9', email: 'attacker@evil.test', acceptedPrivacyVersion: '2026-11-08' }), {
       allowedOrigin: ORIGIN,
       target: async () => ({ email: 'owner@business.test', accountExists: false }),
       createAccount,
@@ -23,12 +23,12 @@ describe('account creation from an invitation', () => {
       setPassword: async () => undefined,
     });
     expect(res.status).toBe(201);
-    expect(createAccount).toHaveBeenCalledWith({ email: 'owner@business.test', password: 'correct-horse-9' });
+    expect(createAccount).toHaveBeenCalledWith({ email: 'owner@business.test', password: 'correct-horse-9', acceptedPrivacyVersion: '2026-11-08' });
   });
 
   it('never creates a second account and never reveals why a token failed', async () => {
     const createAccount = vi.fn(async () => undefined);
-    const existing = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9' }), {
+    const existing = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9', acceptedPrivacyVersion: '2026-11-08' }), {
       allowedOrigin: ORIGIN,
       target: async () => ({ email: 'o@b.test', accountExists: true }),
       createAccount,
@@ -36,7 +36,7 @@ describe('account creation from an invitation', () => {
       setPassword: async () => undefined,
     });
     expect(existing.status).toBe(409);
-    const unknown = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9' }), {
+    const unknown = await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9', acceptedPrivacyVersion: '2026-11-08' }), {
       allowedOrigin: ORIGIN,
       target: async () => null,
       createAccount,
@@ -54,6 +54,7 @@ describe('account creation from an invitation', () => {
     expect((await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9' }, 'https://evil.test'), deps)).status).toBe(403);
     expect((await handleAccountOnboarding(call({ invitationToken: 'nope', organizationId: ORG, password: 'correct-horse-9' }), deps)).status).toBe(400);
     expect((await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'short' }), deps)).status).toBe(400);
+    expect((await handleAccountOnboarding(call({ invitationToken: TOKEN, organizationId: ORG, password: 'correct-horse-9' }), deps)).status).toBe(400);
     expect((await handleAccountOnboarding(call({}, ORIGIN, 'GET'), deps)).status).toBe(405);
     expect(target).not.toHaveBeenCalled();
   });

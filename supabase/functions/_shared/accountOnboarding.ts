@@ -8,7 +8,8 @@ export interface AccountOnboardingDependencies {
   allowedOrigin?: string;
   /** The pending invitation's address, or null when the token is not valid for this organization. */
   target(input: { token: string; organizationId: string }): Promise<{ email: string; accountExists: boolean } | null>;
-  createAccount(input: { email: string; password: string }): Promise<void>;
+  /** `acceptedPrivacyVersion` is recorded on the account (who accepted which notice, and when). */
+  createAccount(input: { email: string; password: string; acceptedPrivacyVersion: string }): Promise<void>;
   /** Consumes a single-use password-recovery link; null when invalid, used, revoked or expired. */
   consumeRecovery(token: string): Promise<{ userId: string; email: string } | null>;
   setPassword(input: { userId: string; password: string }): Promise<void>;
@@ -65,13 +66,15 @@ export async function handleAccountOnboarding(request: Request, deps: AccountOnb
   const organizationId = typeof body.organizationId === 'string' ? body.organizationId.toLowerCase() : '';
   if (!TOKEN.test(token) || !UUID.test(organizationId)) return response(400, { error: 'invalid_request' }, origin);
   if (weak) return response(400, { error: 'weak_password' }, origin);
+  const accepted = typeof body.acceptedPrivacyVersion === 'string' ? body.acceptedPrivacyVersion : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(accepted)) return response(400, { error: 'terms_required' }, origin);
 
   try {
     const target = await deps.target({ token, organizationId });
     // Expired, revoked, accepted or forged: one answer, so tokens cannot be probed.
     if (!target) return response(404, { error: 'invitation_unavailable' }, origin);
     if (target.accountExists) return response(409, { error: 'account_exists', email: target.email }, origin);
-    await deps.createAccount({ email: target.email, password });
+    await deps.createAccount({ email: target.email, password, acceptedPrivacyVersion: accepted });
     return response(201, { email: target.email }, origin);
   } catch {
     return response(500, { error: 'onboarding_failed' }, origin);

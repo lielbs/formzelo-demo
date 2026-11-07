@@ -5,6 +5,7 @@ import { Button, Card, ErrorState, Spinner } from '../components/ui';
 import { useAuth } from '../auth/AuthProvider';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { runtimeConfiguration } from '../production/runtime';
+import { PRIVACY_VERSION } from './Privacy';
 
 type InviteState = { token: string; organizationId: string };
 
@@ -28,6 +29,7 @@ export function InviteAccept() {
   // New people create their password here; people who already have an account sign in.
   const [mode, setMode] = useState<'create' | 'login'>('create');
   const [confirm, setConfirm] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -68,12 +70,13 @@ export function InviteAccept() {
     if (!invite) return;
     if (password.length < 10) return setError('הסיסמה צריכה לכלול לפחות 10 תווים.');
     if (password !== confirm) return setError('שתי הסיסמאות אינן זהות.');
+    if (!agreed) return setError('כדי להמשיך יש לאשר את תנאי השימוש ומדיניות הפרטיות.');
     setBusy(true);
     setError(null);
     try {
       const client = await getProductionSupabaseClient();
       const { data, error: fnError } = await client.functions.invoke<{ email?: string; error?: string }>('account-onboarding', {
-        body: { invitationToken: invite.token, organizationId: invite.organizationId, password },
+        body: { invitationToken: invite.token, organizationId: invite.organizationId, password, acceptedPrivacyVersion: PRIVACY_VERSION },
       });
       const status = (fnError as { context?: Response } | null)?.context?.status;
       if (status === 409) {
@@ -115,6 +118,12 @@ export function InviteAccept() {
             <label className="block text-sm font-medium">סיסמה חדשה<input className={field} type="password" autoComplete="new-password" minLength={10} maxLength={72} required value={password} onChange={(e) => setPassword(e.target.value)} /></label>
             <label className="block text-sm font-medium">הסיסמה שוב<input className={field} type="password" autoComplete="new-password" minLength={10} maxLength={72} required value={confirm} onChange={(e) => setConfirm(e.target.value)} /></label>
             <p className="text-xs text-ink-muted">לפחות 10 תווים. מומלץ משפט קצר שקל לזכור.</p>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-orange-600" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>
+                קראתי ואני מסכים/ה ל<a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-orange-700 underline">תנאי השימוש ומדיניות הפרטיות</a>
+              </span>
+            </label>
             <Button type="submit" loading={busy} className="w-full">יצירת חשבון וכניסה</Button>
             <button type="button" className="block w-full text-center text-sm font-medium text-orange-700 underline-offset-2 hover:underline" onClick={() => { setMode('login'); setError(null); }}>
               כבר יש לי חשבון ב־Formangle
