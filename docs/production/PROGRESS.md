@@ -1,10 +1,27 @@
 # Formangle Production V1 Progress
 
-Last updated: 2026-11-07 (Asia/Jerusalem)
+Last updated: 2026-11-08 (Asia/Jerusalem)
 
 ## Current milestone
 
 Production V1 delivery (Claude Code session, continuing Codex's Milestone 2). All work is local on `production-v1`; nothing new is applied to Supabase Cloud, deployed, or pushed. Cloud still has only the four Milestone 0-1 migrations and `operator-invitations` v1.
+
+## 2026-11-08 Final hardening checkpoint (awaiting founder approval)
+
+All local work for Production V1 is complete and verified; nothing remote has changed. Release package: `docs/production/RELEASE-V1.md`. Operations: `docs/production/OPERATIONS.md`.
+
+- `c459b0d` production wording/titles/invite spinner; personal-case mode not offered in production (converted to public).
+- `ea4e557` password recovery: single-use 2-hour hashed links issued by operators (any account) or owners (their staff); the holder sets the password through `account-onboarding`; nobody else sees it.
+- `bca6d7c` brand media on Supabase Storage (`brand-assets`, public read, tenant-scoped writes, immutable objects, quotas).
+- `61f5cb1` order catalogs for flowers, cakes and balloons (product cards on the existing engine; server parity).
+- `0316714` responsive sweep 320–1440 (14 screens), select chevrons, dialog scroll lock and focus trap.
+- `f119fc2` production privacy notice (accepted and recorded at account creation), operations runbook, restore drill, scheduled smoke workflow.
+- `2b645ab`/`36de9ca`/`53851d8` one Pages artifact: demo unchanged at `/`, production app at `/live/` with deep-link hand-off.
+- Rollback script `supabase/rollback/release-v1-down.sql`, verified to restore the exact 4-migration schema.
+- Final validation: 11 migrations replayed; 233 pgTAP; lint clean; types match; 340 Vitest incl. parity/concurrency; Playwright journey 8/8 (3 consecutive runs) and responsive 14/14; build passes.
+
+### Handoff
+Next action is founder approval of the consolidated package (7 migrations, 2 Edge Functions, merge/push to `main`, first operator account, dashboard setting confirmations). After approval follow RELEASE-V1.md "Execution steps" exactly, then OPERATIONS.md §6 on the live site.
 
 ## 2026-11-07 Production V1 delivery checkpoint
 
