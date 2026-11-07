@@ -103,8 +103,8 @@ export function Dashboard() {
       <PageHeader
         eyebrow={
           <div className="flex items-center gap-2">
-            <DemoBadge />
-            <span className="text-xs text-ink-muted">{org.industry}</span>
+            {org.isDemo && <DemoBadge />}
+            {org.industry && <span className="text-xs text-ink-muted">{org.industry}</span>}
           </div>
         }
         title={`לוח בקרה · ${org.name}`}
@@ -132,7 +132,7 @@ export function Dashboard() {
               </span>
               <div>
                 <h2 className="font-semibold">ארבעה צעדים לתהליך הראשון שלכם</h2>
-                <p className="text-sm text-ink-muted">כ-3 דקות. הכול נשמר מקומית בדפדפן.</p>
+                <p className="text-sm text-ink-muted">כ-3 דקות. {org.isDemo ? 'בדמו הכול נשמר מקומית בדפדפן.' : 'הכול נשמר אוטומטית בחשבון שלכם.'}</p>
               </div>
             </div>
             <button

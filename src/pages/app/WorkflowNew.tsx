@@ -3,6 +3,8 @@
  * (describe / template / blank / duplicate), choose the experience (design
  * personality), then continue in the studio to customize, test and publish.
  */
+import { asPublicWorkflow } from '../../engine/templates';
+import { runtimeConfiguration } from '../../production/runtime';
 import { AlertTriangle, ArrowLeft, Copy, FilePlus2, LayoutTemplate, MessageSquareText, RotateCcw, Square, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -117,7 +119,7 @@ export function WorkflowNew() {
     if (!draft) return;
     setSaving(true);
     try {
-      const wf = await repo.createWorkflow(org.id, { config: draft.config, templateKey: draft.templateKey, sourcePrompt: draft.prompt, design: draft.theme });
+      const wf = await repo.createWorkflow(org.id, { config: runtimeConfiguration.mode === 'production' ? asPublicWorkflow(draft.config) : draft.config, templateKey: draft.templateKey, sourcePrompt: draft.prompt, design: draft.theme });
       // Limits the owner wrote ("עד 10 ביום", "נסגר ב-15.12") apply to the link from day one.
       if (draft.generation?.intake) await repo.updateIntake(org.id, wf.id, draft.generation.intake);
       toast('הטיוטה נוצרה — ממשיכים בסטודיו');
@@ -366,7 +368,7 @@ export function WorkflowNew() {
                 {r && r.reviewNotes.length > 0 && (
                   <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900" role="note">
                     <p className="flex items-center gap-1.5 font-semibold">
-                      <AlertTriangle className="h-4 w-4" aria-hidden /> דורש בדיקה או לא נתמך בדמו
+                      <AlertTriangle className="h-4 w-4" aria-hidden /> דורש בדיקה או לא נתמך כרגע
                     </p>
                     <ul className="mt-1.5 list-inside list-disc space-y-1 text-[13px]">
                       {r.reviewNotes.map((n) => (

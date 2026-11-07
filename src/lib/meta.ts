@@ -17,6 +17,10 @@ const ROUTE_TITLES: [RegExp, string][] = [
   [/^\/app\/analytics$/, 'אנליטיקה'],
   [/^\/app\/settings$/, 'הגדרות'],
   [/^\/app\/brand$/, 'ערכת מותג'],
+  [/^\/operator$/, 'מסוף מפעיל'],
+  [/^\/invite$/, 'הצטרפות'],
+  [/^\/reset$/, 'סיסמה חדשה'],
+  [/^\/track$/, 'הבקשה שלי'],
 ];
 
 /**

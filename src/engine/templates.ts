@@ -500,3 +500,16 @@ export const TEMPLATES: Record<TemplateKey, { label: string; description: string
 };
 
 export const buildGeneric = generic;
+
+/**
+ * Production has no owner-opened personal cases yet: a case workflow becomes a public one whose
+ * first step asks the customer for the case details. Approvals then run as a quote.
+ */
+export function asPublicWorkflow(config: WorkflowConfig): WorkflowConfig {
+  if (config.mode !== 'case') return config;
+  const next = structuredClone(config);
+  if (next.caseFields.length) next.steps.unshift({ id: newId('stp'), title: 'הפרטים שלכם', fields: next.caseFields.map((f) => ({ ...f })) });
+  next.mode = 'public';
+  next.caseFields = [];
+  return next;
+}

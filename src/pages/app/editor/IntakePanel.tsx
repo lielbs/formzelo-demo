@@ -2,6 +2,7 @@
  * "קבלת בקשות": when the public link is open and how many requests it takes.
  * Saved straight to the workflow (not the draft), so it applies at once without publishing.
  */
+import { runtimeConfiguration } from '../../../production/runtime';
 import { CircleCheck, CirclePause, PlayCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, cx, FieldLabel, Input, Textarea } from '../../../components/ui';
@@ -167,7 +168,7 @@ export function IntakePanel({ orgId, workflow, runs, published }: { orgId: strin
         <p className="mt-1 text-xs text-ink-muted">ריק = הודעה אוטומטית לפי הסיבה. הלקוח רואה גם את דרכי יצירת הקשר שלכם.</p>
       </div>
 
-      <p className="text-xs text-ink-soft">בדמו הספירה נעשית מבקשות שנשמרו בדפדפן הזה בלבד.</p>
+      {runtimeConfiguration.mode === 'demo' && <p className="text-xs text-ink-soft">בדמו הספירה נעשית מבקשות שנשמרו בדפדפן הזה בלבד.</p>}
     </Panel>
   );
 }

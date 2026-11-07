@@ -1,3 +1,4 @@
+import { runtimeConfiguration } from '../production/runtime';
 import { CalendarCheck, CalendarX, CheckCircle2, Clock, ExternalLink, ShieldCheck } from 'lucide-react';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { PaymentBadge, StatusBadge } from '../components/StatusBadge';
@@ -31,7 +32,7 @@ function nextSteps(run: WorkflowRun, config: WorkflowConfig) {
   } else {
     const hasDecisions = run.answers.some((a) => a.value === 'approved' || a.value === 'declined');
     steps.push({ label: hasDecisions ? 'העסק מקבל את ההחלטות ומבצע רק את מה שאישרתם' : 'העסק בודק את הפרטים', done: REVIEWED.includes(run.status) });
-    steps.push({ label: 'עדכון סטטוס יופיע בעמוד הזה (הודעות בדמו הן מדומות ואינן נשלחות)', done: DECIDED.includes(run.status) });
+    steps.push({ label: runtimeConfiguration.mode === 'demo' ? 'עדכון סטטוס יופיע בעמוד הזה (הודעות בדמו הן מדומות ואינן נשלחות)' : 'עדכון סטטוס יופיע בעמוד הבקשה שלכם', done: DECIDED.includes(run.status) });
   }
   if ((run.payment.status === 'deposit_requested' || run.payment.status === 'payment_requested') && run.status !== 'rejected' && run.status !== 'cancelled') {
     steps.push({ label: `נדרש ${run.payment.status === 'deposit_requested' ? 'מקדמה' : 'תשלום'} של ${formatCurrency(run.payment.amount)} — סימולציה בלבד, ללא חיוב`, done: false });

@@ -54,7 +54,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{activeOrg.name}</span>
-              <span className="block truncate text-xs text-white/50">{activeOrg.industry}{activeOrg.isDemo ? ' · דמו' : ''}</span>
+              <span className="block truncate text-xs text-white/50">{[activeOrg.industry, activeOrg.isDemo ? 'דמו' : ''].filter(Boolean).join(' · ') || 'סביבת העבודה שלכם'}</span>
             </span>
             <ChevronDown className="h-4 w-4 text-white/50" aria-hidden />
           </>

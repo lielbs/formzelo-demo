@@ -86,7 +86,7 @@ function mapOrganization(row: OrganizationProjection): Organization {
     id: row.id,
     slug: row.slug,
     name: row.name,
-    industry: typeof settings.industry === 'string' ? settings.industry : 'סביבת ייצור',
+    industry: typeof settings.industry === 'string' ? settings.industry : '',
     tagline: typeof settings.tagline === 'string' ? settings.tagline : '',
     brand: { primaryColor, logoText: row.name.slice(0, 40) },
     contactEmail: typeof settings.contactEmail === 'string' ? settings.contactEmail : '',

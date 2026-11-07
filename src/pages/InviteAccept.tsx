@@ -102,7 +102,7 @@ export function InviteAccept() {
         <h1 className="mt-7 text-2xl font-semibold text-ink">ברוכים הבאים ל־Formangle</h1>
         {!invite && !accepted && <ErrorState error="קישור ההזמנה חסר או אינו תקין." />}
         {error && <div className="mt-4"><ErrorState error={error} onRetry={() => { attempted.current = false; setError(null); }} /></div>}
-        {accepting && <Spinner label="מאמת ומקבל את ההזמנה…" />}
+        {accepting && !accepted && <Spinner label="מאמת ומקבל את ההזמנה…" />}
         {accepted && (
           <div className="mt-5">
             <p className="text-sm text-ink-muted">ההזמנה התקבלה בהצלחה והחברות בארגון פעילה.</p>
