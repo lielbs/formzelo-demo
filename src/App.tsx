@@ -1,5 +1,6 @@
+import { runtimeConfiguration } from './production/runtime';
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { ProductionRouteBoundary } from './auth/ProductionRouteBoundary';
 import { Spinner } from './components/ui';
 import { applyRouteMeta, pageTitle } from './lib/meta';
@@ -49,7 +50,7 @@ export function App() {
       <ScrollToTop />
       <Suspense fallback={<Spinner />}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={runtimeConfiguration.mode === 'production' ? <Navigate to="/app" replace /> : <Landing />} />
           <Route path="/demo" element={<Demo />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/themes" element={<Themes />} />

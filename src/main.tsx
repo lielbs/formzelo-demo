@@ -13,6 +13,17 @@ import { ToastProvider } from './components/Toast';
 import { RepoProvider } from './data/store';
 import { BASE_PATH } from './lib/links';
 
+// Reopen a deep link that the site-wide 404 page sent here (see public/live-fallback.js).
+try {
+  const deepLink = sessionStorage.getItem('formangle:deep-link');
+  if (deepLink) {
+    sessionStorage.removeItem('formangle:deep-link');
+    if (BASE_PATH && deepLink.startsWith(`${BASE_PATH}/`)) history.replaceState(null, '', deepLink);
+  }
+} catch {
+  // Storage unavailable: start at the requested page.
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

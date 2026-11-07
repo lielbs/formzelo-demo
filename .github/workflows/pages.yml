@@ -1,4 +1,4 @@
-name: Deploy demo to GitHub Pages
+name: Deploy site (demo + production app) to GitHub Pages
 
 on:
   push:
@@ -33,8 +33,26 @@ jobs:
           VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
           # Optional public address (e.g. a custom domain) for og:image / og:url; empty = the Pages URL.
           VITE_SITE_URL: https://formangle.rockstackds.com
-      # SPA fallback: deep links such as /f/<slug> load the app instead of a 404.
-      - run: cp dist/index.html dist/404.html
+      # Production app at /live/: the dedicated Formangle project only, publishable key only
+      # (public by design; the runtime refuses any other project or a secret key).
+      - name: Build the production app at /live/
+        run: npx vite build --outDir dist/live --emptyOutDir
+        env:
+          VITE_BASE: /live/
+          VITE_SITE_URL: https://formangle.rockstackds.com
+          VITE_FORMANGLE_MODE: production
+          VITE_SUPABASE_PROJECT_REF: ppgdbqhwbzlgzwsjmkor
+          VITE_SUPABASE_URL: https://ppgdbqhwbzlgzwsjmkor.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_f4SQeCD1MuE78Fgf-ZVr7Q_bxJhowCy
+      # SPA fallback: demo deep links (/f/<slug>) load the demo; /live/... deep links are handed
+      # to the production app by public/live-fallback.js, which runs before the demo bundle.
+      - run: sed 's#<head>#<head><script src="/live-fallback.js"></script>#' dist/index.html > dist/404.html
+      - name: Verify both apps are in the artifact
+        run: |
+          test -f dist/live/index.html && test -f dist/live/track.html && test -f dist/live/invite.html && test -f dist/live/reset.html
+          grep -q 'live-fallback.js' dist/404.html
+          # A real secret key or a service_role JWT (base64 of the role) must never ship.
+          ! grep -rqE 'sb_secret_[A-Za-z0-9_-]{16,}|c2VydmljZV9yb2xl' dist/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
