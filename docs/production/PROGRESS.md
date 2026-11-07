@@ -1,10 +1,27 @@
 # Formangle Production V1 Progress
 
-Last updated: 2026-11-04 (Asia/Jerusalem)
+Last updated: 2026-11-07 (Asia/Jerusalem)
 
 ## Current milestone
 
-Milestone 2 is implemented and validated locally as a production-data vertical slice. Two new migrations and the `operator-organizations` Edge Function package are prepared but are **not applied or deployed to Supabase Cloud**. The hosted application remains unchanged. Cloud activation, real operator/tenant creation, push and deployment remain explicit approval gates. No paid resource or provider was introduced.
+Production V1 delivery (Claude Code session, continuing Codex's Milestone 2). All work is local on `production-v1`; nothing new is applied to Supabase Cloud, deployed, or pushed. Cloud still has only the four Milestone 0-1 migrations and `operator-invitations` v1.
+
+## 2026-11-07 Production V1 delivery checkpoint
+
+- `bdc95a9` merged `main` (landing/advisor work) into `production-v1`.
+- `5bf0c56` fixed a real Milestone 2 defect: the server condition evaluator only knew `eq/neq`-style operators, while the editor writes `equals/isTrue/notEmpty/...`, so every conditional step or field was treated as hidden server-side (required conditional answers skipped, conditional prices dropped). Migration `20261107120000_server_rule_parity` mirrors the browser engine exactly and adds server-side booking rules, per-option places, per-day/week intake limits, closed dates and normalized one-open-request-per-contact under the workflow row lock, plus public availability/intake/option-usage RPCs. Parity test: 55 templates x 60 generated submissions through the real RPC match the browser (4 seeds, 13,200 cases); eight concurrent customers racing for one slot produce exactly one booking.
+- `c482242` customer portal data layer (`20261107140000_customer_portal_quotes`): hash-only 256-bit tracking tokens (fragment, 180 days, revocable), customer-safe `public_track_request`, immutable internal notes, customer actions, versioned interactive quotes with server totals (optional/adjustable items, discounts/fees, VAT modes), idempotent transactional decisions, customer cancellation. 2,000 generated quotes match the browser to the agora.
+- `b50410c` UI: quote composer with live branded preview, request-page link (copy, wa.me, revoke), `/track` customer page (status, interactive quote, actions, timeline, details, contact, cancel). Same repository contract in demo and production; production screens no longer show simulated messages/payments.
+- `341d43b` onboarding (`20261107160000_team_onboarding`): invitation roles, owner-managed staff invitations/removal, `account-onboarding` Edge Function (invitation token creates the invited address's account; sign-up stays disabled; no email), `/invite` create-password flow, `/operator` console (metadata only), production team card, dev-server-only local-stack runtime for E2E.
+- Validation at this checkpoint: clean replay of 9 migrations; 206 pgTAP assertions; db lint clean; 278 Vitest + 57 local-DB parity/concurrency tests; typecheck and build pass.
+
+### Remaining before launch (in order)
+
+1. Browser E2E (Playwright, local stack) of the full journey incl. tenant isolation and mobile.
+2. Production media (logos/images) without new Storage settings, branded order catalog templates.
+3. Responsive visual QA (320-1440), accessibility, performance.
+4. Operations: backup/restore drill, monitoring, incident/support runbooks, privacy text.
+5. Approval package -> founder approval -> apply migrations, deploy `account-onboarding` + `operator-organizations`, production frontend release, post-deploy smoke.
 
 ## 2026-11-04 Milestone 2 local completion
 
