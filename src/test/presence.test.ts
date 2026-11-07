@@ -261,7 +261,11 @@ describe('Formangle brand, metadata, sales contact and Pages routing', () => {
     const wf = pagesYml;
     expect(wf).toContain('VITE_BASE: /');
     expect(wf).toContain('VITE_SITE_URL: https://formangle.rockstackds.com');
-    expect(wf).toContain('cp dist/index.html dist/404.html');
+    // SPA fallback: the demo's index plus the hand-off of /live/ deep links to the production app.
+    expect(wf).toContain(`sed 's#<head>#<head><script src="/live-fallback.js"></script>#' dist/index.html > dist/404.html`);
+    expect(wf).toContain('VITE_BASE: /live/');
+    expect(wf).toContain('VITE_SUPABASE_URL: https://ppgdbqhwbzlgzwsjmkor.supabase.co');
+    expect(wf).not.toMatch(/sb_secret_[A-Za-z0-9_-]{16,}/);
     expect(viteConfig).toContain('VITE_BASE');
   });
 });

@@ -15,7 +15,7 @@ describe('deployment readiness', () => {
     expect(indexHtml).not.toMatch(/github\.io/);
     expect(indexHtml).toContain('__SITE_URL__/og-image.png');
     expect(workflowYml).toContain('VITE_SITE_URL');
-    expect(workflowYml).toContain('cp dist/index.html dist/404.html');
+    expect(workflowYml).toContain('dist/index.html > dist/404.html');
   });
 
   it('ships a strict policy with only the dedicated Formangle API origin', () => {
