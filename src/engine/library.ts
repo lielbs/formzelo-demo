@@ -1252,6 +1252,129 @@ export const TEMPLATE_LIBRARY: LibraryTemplate[] = [
         success: 'תודה על המשוב!',
       }),
   },
+  // ----- order catalogs: products with pictures, quantities, extras and delivery -----
+  {
+    id: 'flower_catalog',
+    category: 'retail',
+    title: 'קטלוג פרחים להזמנה',
+    description: 'זרים ומוצרים עם תמונה, כמות ומחיר, תוספות, ברכה ומשלוח — הזמנה מסודרת בלי אתר מסחר.',
+    preset: 'floral_boutique',
+    tags: 'קטלוג חנות זרים מוצרים משלוח פרחים',
+    build: () =>
+      flow({
+        title: 'הזמנה מהקטלוג',
+        description: 'בוחרים זרים ומוצרים, מוסיפים ברכה ומשלוח — ואנחנו מאשרים את ההזמנה.',
+        priced: true,
+        totalLabel: 'סה״כ להזמנה',
+        fees: [fee('משלוח', 35, when('delivery', 'equals', 'delivery'))],
+        steps: [
+          step('הזרים שלנו', [
+            field('bouquet_small', 'זר קטן ומחמיא', 'number', { appearance: 'stepper', min: 0, max: 10, price: 150, image: 'bouquet_s', helpText: '7–9 גבעולים עונתיים' }),
+            field('bouquet_medium', 'זר בינוני', 'number', { appearance: 'stepper', min: 0, max: 10, price: 250, image: 'bouquet_m', helpText: 'הבחירה הפופולרית' }),
+            field('bouquet_large', 'זר שופע', 'number', { appearance: 'stepper', min: 0, max: 10, price: 350, image: 'bouquet_l', helpText: 'כולל פרחי עונה מיוחדים' }),
+            field('bouquet_premium', 'זר פרימיום', 'number', { appearance: 'stepper', min: 0, max: 5, price: 520, image: 'bouquet_xl', helpText: 'עיצוב אישי של המעצבת' }),
+          ]),
+          step('התאמה אישית', [
+            field('palette', 'צבעוניות', 'radio', { appearance: 'swatches', options: [opt('pastel', 'פסטל', { swatch: '#F4C7D3' }), opt('bright', 'צבעוני', { swatch: '#E8573F' }), opt('white', 'לבן וירוק', { swatch: '#EDF2E6' }), opt('season', 'מה שיפה העונה', { swatch: '#B98AD1' })] }),
+            field('addons', 'תוספות', 'multiselect', { options: [opt('vase', 'אגרטל זכוכית', { price: 60 }), opt('chocolate', 'מארז שוקולד', { price: 45 }), opt('balloon', 'בלון הליום', { price: 25 })] }),
+            field('card', 'כרטיס ברכה', 'checkbox', { price: 12 }),
+            field('card_text', 'נוסח הברכה', 'textarea', { appearance: 'card_preview', max: 240, condition: when('card', 'isTrue'), placeholder: 'מזל טוב! באהבה, ...' }),
+          ]),
+          step('מסירה', [
+            field('delivery', 'איך תרצו לקבל?', 'radio', { required: true, appearance: 'tiles', options: [opt('pickup', 'איסוף מהחנות'), opt('delivery', 'משלוח', { description: '35 ₪ באזור' })] }),
+            field('address', 'כתובת למשלוח', 'text', { required: true, condition: when('delivery', 'equals', 'delivery') }),
+            field('date', 'תאריך', 'date', { required: true, role: 'date', min: 1, max: 30 }),
+            field('time', 'חלון שעות', 'time', { required: true, options: times('09:00', '12:00', '15:00') }),
+          ]),
+          contact('פרטים', [field('notes', 'הערות להזמנה', 'textarea')], false),
+        ],
+        consent: 'אני מאשר/ת שפרטי ההזמנה נכונים.',
+        success: 'ההזמנה התקבלה. נאשר זמינות ונחזור אליכם עם אישור.',
+        doneTitle: 'ההזמנה התקבלה',
+        nextSteps: ['נבדוק זמינות פרחים ומועד', 'תקבלו אישור והצעה סופית בעמוד ההזמנה', 'ביום המסירה — הזר בדרך'],
+      }),
+  },
+  {
+    id: 'cake_catalog',
+    category: 'food',
+    title: 'קטלוג עוגות ומאפים',
+    description: 'עוגות ומגשים עם תמונה וכמות, טעמים, כיתוב, רגישויות ואיסוף או משלוח.',
+    preset: 'bakery_sweet',
+    tags: 'קטלוג קונדיטוריה עוגות מאפים מגשים יום הולדת',
+    build: () =>
+      flow({
+        title: 'הזמנת עוגות ומאפים',
+        description: 'בחרו מהקטלוג, התאימו טעם וכיתוב, וקבעו מתי לאסוף או לקבל.',
+        priced: true,
+        totalLabel: 'סה״כ להזמנה',
+        fees: [fee('משלוח', 40, when('delivery', 'equals', 'delivery'))],
+        steps: [
+          step('הקטלוג', [
+            field('cake_round', 'עוגה מעוצבת עגולה', 'number', { appearance: 'stepper', min: 0, max: 5, price: 280, image: 'cake', helpText: '22 ס״מ, עד 14 מנות' }),
+            field('cake_tier', 'עוגת קומות', 'number', { appearance: 'stepper', min: 0, max: 2, price: 690, image: 'celebration', helpText: '2 קומות, עד 35 מנות' }),
+            field('cupcakes', 'מארז 12 קאפקייקס', 'number', { appearance: 'stepper', min: 0, max: 10, price: 140, image: 'gift', helpText: 'קישוט בצבעי האירוע' }),
+            field('cookies', 'מגש עוגיות חמאה', 'number', { appearance: 'stepper', min: 0, max: 10, price: 95, image: 'decoration', helpText: 'כ-30 עוגיות' }),
+          ]),
+          step('טעם וכיתוב', [
+            field('flavor', 'טעם', 'radio', { required: true, condition: when('cake_round', 'gt', 0), appearance: 'chips', options: [opt('chocolate', 'שוקולד בלגי'), opt('vanilla', 'וניל ופירות יער'), opt('lotus', 'לוטוס'), opt('pistachio', 'פיסטוק', { price: 30 })] }),
+            field('tier_flavor', 'טעם לעוגת הקומות', 'radio', { required: true, condition: when('cake_tier', 'gt', 0), appearance: 'chips', options: [opt('chocolate', 'שוקולד בלגי'), opt('vanilla', 'וניל ופירות יער'), opt('mixed', 'קומה מכל טעם', { price: 60 })] }),
+            field('inscription', 'כיתוב על העוגה', 'text', { max: 40, placeholder: 'מזל טוב נועה!' }),
+            field('allergies', 'רגישויות', 'multiselect', { options: [opt('gluten', 'ללא גלוטן', { price: 40 }), opt('dairy', 'פרווה', { price: 25 }), opt('nuts', 'ללא אגוזים')] }),
+          ]),
+          step('מסירה', [
+            field('delivery', 'איסוף או משלוח?', 'radio', { required: true, appearance: 'tiles', options: [opt('pickup', 'איסוף מהקונדיטוריה'), opt('delivery', 'משלוח', { description: '40 ₪' })] }),
+            field('address', 'כתובת', 'text', { required: true, condition: when('delivery', 'equals', 'delivery') }),
+            field('date', 'תאריך', 'date', { required: true, role: 'date', min: 2, max: 45, helpText: 'הזמנה לפחות יומיים מראש' }),
+            field('time', 'שעה', 'time', { required: true, options: times('10:00', '13:00', '16:00', '18:00') }),
+          ]),
+          contact('פרטים', [field('notes', 'משהו שחשוב שנדע?', 'textarea')], false),
+        ],
+        consent: 'אני מאשר/ת שפרטי ההזמנה והרגישויות נכונים.',
+        success: 'ההזמנה התקבלה. נאשר ונשלח הצעה סופית בהקדם.',
+        doneTitle: 'ההזמנה בדרך לתנור',
+        nextSteps: ['נבדוק את הפרטים והמועד', 'תקבלו הצעה סופית לאישור בעמוד ההזמנה', 'נתאם איסוף או משלוח'],
+      }),
+  },
+  {
+    id: 'balloon_catalog',
+    category: 'events',
+    title: 'קטלוג עיצוב בלונים',
+    description: 'קשתות, זרים ובלונים ממותגים עם תמונה, כמות, צבעים, כיתוב והתקנה באירוע.',
+    preset: 'celebration_party',
+    tags: 'קטלוג בלונים קשת עיצוב אירועים יום הולדת',
+    build: () =>
+      flow({
+        title: 'הזמנת עיצוב בלונים',
+        description: 'בוחרים פריטים וצבעים, מוסיפים כיתוב — ואנחנו מגיעים להקים.',
+        priced: true,
+        totalLabel: 'הערכת מחיר',
+        fees: [fee('הובלה והתקנה', 120, when('setup', 'equals', 'install'))],
+        steps: [
+          step('הפריטים', [
+            field('arch', 'קשת בלונים אורגנית', 'number', { appearance: 'stepper', min: 0, max: 3, price: 650, image: 'celebration', helpText: 'כ-4 מטר, מותאמת לצבעים' }),
+            field('bouquet', 'זר בלונים הליום', 'number', { appearance: 'stepper', min: 0, max: 20, price: 85, image: 'decoration', helpText: '5 בלונים בזר' }),
+            field('number_balloon', 'מספר / אות ענק', 'number', { appearance: 'stepper', min: 0, max: 6, price: 70, image: 'gift', helpText: '1 מטר, כסף או זהב' }),
+            field('table', 'עיצוב שולחן', 'number', { appearance: 'stepper', min: 0, max: 10, price: 120, image: 'decor', helpText: 'מרכזי שולחן וקונפטי' }),
+          ]),
+          step('צבעים וכיתוב', [
+            field('colors', 'פלטת צבעים', 'radio', { required: true, appearance: 'swatches', options: [opt('pink', 'ורוד וזהב', { swatch: '#F5A3C7' }), opt('blue', 'כחול וכסף', { swatch: '#7DB3F0' }), opt('rainbow', 'צבעוני', { swatch: '#F2C14E' }), opt('neutral', 'נייטרלי', { swatch: '#E9DFD3' })] }),
+            field('lettering', 'כיתוב אישי', 'checkbox', { price: 60 }),
+            field('lettering_text', 'מה לכתוב?', 'text', { max: 30, required: true, condition: when('lettering', 'isTrue') }),
+          ]),
+          step('האירוע', [
+            field('setup', 'הקמה', 'radio', { required: true, appearance: 'tiles', options: [opt('pickup', 'איסוף עצמי'), opt('install', 'הובלה והתקנה', { description: '120 ₪' })] }),
+            field('venue', 'כתובת האירוע', 'text', { required: true, condition: when('setup', 'equals', 'install') }),
+            field('date', 'תאריך האירוע', 'date', { required: true, role: 'date', min: 2, max: 90 }),
+            field('time', 'שעת הקמה', 'time', { required: true, options: times('08:00', '11:00', '14:00', '17:00') }),
+          ]),
+          contact('פרטים', [field('notes', 'הערות', 'textarea', { placeholder: 'גיל החוגג/ת, נושא האירוע...' })], false),
+        ],
+        consent: 'ידוע לי שזו הערכת מחיר ושההזמנה סופית אחרי אישור העסק.',
+        success: 'הבקשה התקבלה. נחזור עם הצעה סופית ותיאום הקמה.',
+        doneTitle: 'הבקשה התקבלה',
+        nextSteps: ['נבדוק זמינות לתאריך', 'תקבלו הצעת מחיר סופית לאישור', 'נתאם שעת הקמה'],
+      }),
+  },
 ];
 
 export const templateById = (id: string) => TEMPLATE_LIBRARY.find((t) => t.id === id);
