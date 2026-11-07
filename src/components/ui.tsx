@@ -119,7 +119,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   ref,
 ) {
   return (
-    <select ref={ref} aria-invalid={invalid || undefined} className={cx(inputClass(invalid), 'appearance-auto pe-3', className)} {...rest}>
+    <select ref={ref} aria-invalid={invalid || undefined} className={cx(inputClass(invalid), 'ui-select', className)} {...rest}>
       {children}
     </select>
   );
@@ -210,11 +210,25 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // The page behind a dialog stays put (no background scroll on touch screens).
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose();
+      // Keep Tab inside the dialog.
+      if (e.key !== 'Tab' || !panelRef.current) return;
+      const items = [...panelRef.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
     const t = setTimeout(() => panelRef.current?.querySelector<HTMLElement>('input,select,textarea,button:not([data-close])')?.focus(), 30);
     return () => {
       document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
       clearTimeout(t);
       prev?.focus?.();
     };
