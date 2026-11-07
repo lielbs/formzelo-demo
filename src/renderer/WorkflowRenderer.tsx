@@ -23,7 +23,7 @@ import { fieldDomId, FieldInput } from './FieldInput';
 import { DigitalPresence } from './presence';
 import { Promises, Ribbon, Welcome } from './extras';
 import { BusinessGallery, PagePhoto } from './media';
-import { artIn, CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper } from './parts';
+import { artIn, CheckoutPanel, decisionFields, Hero, PriceBar, PriceCard, ReservationCard, Review, Stepper, ONLINE_PAYMENTS_SIMULATED } from './parts';
 
 export interface RendererProps {
   config: WorkflowConfig;
@@ -99,7 +99,8 @@ export function WorkflowRenderer({
   const errors = formState.errors as Record<string, { message?: string } | undefined>;
   const hasDecisions = decisionFields(config).length > 0;
 
-  const plan = paymentPlan(config, price);
+  // Production never takes (or pretends to take) a payment in the form.
+  const plan = ONLINE_PAYMENTS_SIMULATED ? paymentPlan(config, price) : { ...paymentPlan(config, price), dueNow: 0, choice: false };
   const bookingDate = config.booking?.enabled ? values[config.booking.dateKey] : undefined;
 
   // Booking: refresh local slot usage when the date changes. The callback is read

@@ -12,6 +12,10 @@ import { bookingState, WEEKDAY_LABELS, weekdayOf } from '../engine/booking';
 import { COMPLETION_LABELS, completionOf, NO_COLLECTION, paymentPlan, safeExternalUrl } from '../engine/completion';
 import { formatDate } from '../lib/format';
 import { resolveAppearance } from './appearance';
+import { runtimeConfiguration } from '../production/runtime';
+
+/** Production collects no money online: amounts are shown and settled with the business directly. */
+export const ONLINE_PAYMENTS_SIMULATED = runtimeConfiguration.mode === 'demo';
 import { BusinessGallery, Photo, resolveMedia, type ResolvedMedia } from './media';
 
 // ---------- brand & hero ----------
@@ -278,6 +282,7 @@ export function DecisionTally({ fields, values }: { fields: WorkflowField[]; val
 function depositNote(config: WorkflowConfig, price: PriceResult) {
   const plan = paymentPlan(config, price);
   if (price.total <= 0) return null;
+  if (!ONLINE_PAYMENTS_SIMULATED) return plan.mode === 'quote' ? <p className="fz-help">הערכה בלבד — העסק ישלח הצעת מחיר סופית.</p> : null;
   if (plan.mode === 'deposit' && plan.dueAfterApproval > 0) {
     return (
       <p className="fz-help">
@@ -327,7 +332,9 @@ export function PriceCard({ config, price, values, title }: { config: WorkflowCo
         )}
       </div>
       {depositNote(config, price)}
-      <p className="fz-help">{NO_COLLECTION.includes(completionOf(config).mode) ? 'לא נגבה תשלום בתהליך זה.' : 'תשלומים בדמו הם סימולציה — לא מתבצע חיוב.'}</p>
+      <p className="fz-help">
+        {NO_COLLECTION.includes(completionOf(config).mode) ? 'לא נגבה תשלום בתהליך זה.' : ONLINE_PAYMENTS_SIMULATED ? 'תשלומים בדמו הם סימולציה — לא מתבצע חיוב.' : 'לא נגבה תשלום בטופס. התשלום מתואם ישירות מול העסק.'}
+      </p>
     </section>
   );
 }
@@ -551,6 +558,20 @@ export function CheckoutPanel({ config, price, payNow, onPayNow }: { config: Wor
       <section className="fz-checkout" data-mode="request" aria-label="סיום">
         <p className="font-semibold">אין תשלום בתהליך הזה</p>
         <p className="fz-help !mt-1">הבקשה תגיע לעסק לבדיקה ואישור.</p>
+      </section>
+    );
+  }
+  if (!ONLINE_PAYMENTS_SIMULATED && plan.mode !== 'external_link') {
+    return (
+      <section className="fz-checkout" data-mode="offline" aria-label="תשלום">
+        <p className="font-semibold">{plan.mode === 'quote' ? 'הערכת מחיר' : 'הסכום להזמנה'}</p>
+        {price.total > 0 && (
+          <div className="fz-total mt-3">
+            <span className="text-sm font-semibold">{config.pricing.totalLabel}</span>
+            <span className="fz-total-amount">{formatCurrency(price.total)}</span>
+          </div>
+        )}
+        <p className="fz-help">לא נגבה תשלום בטופס הזה. העסק יאשר את הבקשה ויתאם איתכם את התשלום ישירות.</p>
       </section>
     );
   }

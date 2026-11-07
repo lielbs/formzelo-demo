@@ -15,6 +15,9 @@ Production V1 delivery (Claude Code session, continuing Codex's Milestone 2). Al
 - `341d43b` onboarding (`20261107160000_team_onboarding`): invitation roles, owner-managed staff invitations/removal, `account-onboarding` Edge Function (invitation token creates the invited address's account; sign-up stays disabled; no email), `/invite` create-password flow, `/operator` console (metadata only), production team card, dev-server-only local-stack runtime for E2E.
 - Validation at this checkpoint: clean replay of 9 migrations; 206 pgTAP assertions; db lint clean; 278 Vitest + 57 local-DB parity/concurrency tests; typecheck and build pass.
 
+- E2E checkpoint: fixed a production-breaking defect (the production repository Proxy answered `then`, so awaiting it crashed every production page); added returning-user sign-in (previously an owner who signed out could never return); production forms no longer show simulated payments, demo wording stored in templates was neutralised, and file fields ask for a link instead of pretending to upload. Playwright (`e2e/journey.spec.ts`, Edge channel, local stack): operator onboarding of two businesses, invitation account creation, workflow create/publish, cross-device draft, phone customer submission to the private page, owner status/note/quote/link, customer approval, and tenant B isolation — 6/6 passed.
+- Known open items: invite page spinner stays visible after success; page titles for /operator and /track; dashboard text "נשמר מקומית" and a "דמו" label in production layout; operator-assisted password reset; production media (logos) and catalog templates; responsive visual QA; ops/backup drill; approval package.
+
 ### Remaining before launch (in order)
 
 1. Browser E2E (Playwright, local stack) of the full journey incl. tenant isolation and mobile.

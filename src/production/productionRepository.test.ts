@@ -42,4 +42,10 @@ describe('production repository boundary', () => {
     await repo.init();
     await expect(repo.resetDemoData()).rejects.toBeInstanceOf(ProductionCapabilityError);
   });
+
+  it('can be awaited: it is not mistaken for a promise', async () => {
+    const repo = createProductionRepository(clientWithOrganizations([organization]));
+    await expect(Promise.resolve(repo)).resolves.toBe(repo);
+    expect((repo as unknown as { then?: unknown }).then).toBeUndefined();
+  });
 });

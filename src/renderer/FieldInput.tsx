@@ -6,6 +6,7 @@ import type { Values } from '../engine/conditions';
 import type { PriceResult } from '../engine/pricing';
 import { formatCurrency, isoDay } from '../lib/format';
 import { hasArt, inferArt, OptionArt } from '../theme/art';
+import { runtimeConfiguration } from '../production/runtime';
 import { resolveAppearance } from './appearance';
 import { DisplayBlock, slotHint } from './blocks';
 
@@ -505,6 +506,28 @@ function DecisionCard({ field, value, onChange, onBlur, error, optionArt, illust
 function FileDrop({ field, value, onChange, error }: Pick<Props, 'field' | 'value' | 'onChange' | 'error'>) {
   const id = inputId(field.key);
   const [over, setOver] = useState(false);
+  // Production has no file upload: ask for a link instead of pretending to take the file.
+  if (runtimeConfiguration.mode === 'production') {
+    return (
+      <div className="fz-field">
+        <Label field={field} htmlFor={id} />
+        <input
+          id={id}
+          className="fz-input"
+          dir="auto"
+          inputMode="url"
+          maxLength={field.max ?? 500}
+          placeholder="קישור לקובץ (Google Drive, Dropbox…) או שם המסמך"
+          value={typeof value === 'string' ? value : ''}
+          aria-describedby={describedBy(field, error)}
+          aria-invalid={Boolean(error) || undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <p className="fz-help">את הקובץ עצמו שולחים לעסק בנפרד. כאן מספיק קישור או שם.</p>
+        <Help field={field} error={error} />
+      </div>
+    );
+  }
   // Only metadata is kept. The file content never leaves the browser input.
   const accept = (f?: File) => onChange(f ? `${f.name} (${Math.max(1, Math.round(f.size / 1024))} KB)` : '');
   return (

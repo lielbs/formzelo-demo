@@ -1,7 +1,7 @@
 import { LogOut, ShieldCheck } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from '../components/Brand';
-import { Button, Card, ErrorState, Spinner } from '../components/ui';
+import { Button, Card, ErrorState, FieldLabel, Input, Spinner } from '../components/ui';
 import { useAuth } from './AuthProvider';
 
 function AccessPage({ children }: { children: ReactNode }) {
@@ -18,6 +18,41 @@ function AccessPage({ children }: { children: ReactNode }) {
   );
 }
 
+/** Returning owners and staff sign in here. Accounts are created only from an invitation. */
+function SignIn() {
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(await signIn(email, password));
+    setBusy(false);
+  };
+  return (
+    <AccessPage>
+      <h1 className="mt-4 text-xl font-semibold text-ink">כניסה לסביבת העבודה</h1>
+      <form className="mt-5 space-y-3 text-start" onSubmit={submit}>
+        <div>
+          <FieldLabel htmlFor="signin-email">אימייל</FieldLabel>
+          <Input id="signin-email" type="email" dir="ltr" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div>
+          <FieldLabel htmlFor="signin-password">סיסמה</FieldLabel>
+          <Input id="signin-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        <Button type="submit" loading={busy} className="w-full">כניסה</Button>
+      </form>
+      <p className="mt-5 text-xs leading-5 text-ink-muted">
+        אין עדיין חשבון? הכניסה הראשונה היא מקישור ההזמנה שקיבלתם. שכחתם סיסמה? פנו ל־RockStack ונשלח לכם קישור חדש.
+      </p>
+    </AccessPage>
+  );
+}
+
 /** Protects workforce routes while preserving the existing demo until its replacement is validated. */
 export function ProductionRouteBoundary({ children }: { children: ReactNode }) {
   const { state, refresh, signOut } = useAuth();
@@ -25,16 +60,7 @@ export function ProductionRouteBoundary({ children }: { children: ReactNode }) {
   if (state.kind === 'loading') return <Spinner label="מאמת הרשאה…" />;
   if (state.kind === 'error') return <div className="mx-auto max-w-xl p-6"><ErrorState error={state.message} onRetry={() => void refresh()} /></div>;
 
-  if (state.kind === 'unauthenticated') {
-    return (
-      <AccessPage>
-        <h1 className="mt-4 text-xl font-semibold text-ink">כניסה בהזמנה בלבד</h1>
-        <p className="mt-2 text-sm leading-6 text-ink-muted">
-          Formangle אינו מאפשר הרשמה עצמית. יש לפתוח את קישור ההזמנה שקיבלתם מ־RockStack.
-        </p>
-      </AccessPage>
-    );
-  }
+  if (state.kind === 'unauthenticated') return <SignIn />;
 
   if (state.kind === 'unauthorized') {
     return (

@@ -718,6 +718,8 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
   return new Proxy(supported, {
     get(target, property, receiver) {
       if (property in target) return Reflect.get(target, property, receiver);
+      // Not a thenable: the repository is returned from async functions and awaited.
+      if (property === 'then') return undefined;
       if (typeof property === 'string') return async () => { throw new ProductionCapabilityError(property); };
       return undefined;
     },
