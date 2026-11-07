@@ -1,6 +1,6 @@
 # Formangle Production V1 — Release Package
 
-Status: **awaiting founder approval.** Nothing below has been applied remotely.
+Status: **approved and deployed on 2026-11-08** (migrations, Edge Functions, `main` at `af7e229`/`fe8a44c`). Evidence: `PROGRESS.md` → "2026-11-08 Release deployment". Remaining: first operator account and the signed-in live journey.
 
 ## Target (verified read-only, 2026-11-08)
 - Supabase project `FORMANGLE`, ref `ppgdbqhwbzlgzwsjmkor`, eu-west-1, PostgreSQL 17.11, ACTIVE_HEALTHY.

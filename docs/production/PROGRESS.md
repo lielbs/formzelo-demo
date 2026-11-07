@@ -4,9 +4,25 @@ Last updated: 2026-11-08 (Asia/Jerusalem)
 
 ## Current milestone
 
-Production V1 delivery (Claude Code session, continuing Codex's Milestone 2). All work is local on `production-v1`; nothing new is applied to Supabase Cloud, deployed, or pushed. Cloud still has only the four Milestone 0-1 migrations and `operator-invitations` v1.
+Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. Open before declaring launch complete: the first operator account (founder creates it in the dashboard) and the signed-in journey on the live site.
 
-## 2026-11-08 Final hardening checkpoint (awaiting founder approval)
+## 2026-11-08 Release deployment
+
+Pre-release snapshot (read-only, 2026-11-07 23:34 UTC): 4 migrations, 0 organizations/users/operators/buckets, 18 functions, digest `d641f6ae…`, 12 MB, `operator-invitations` v1. A logical `db dump --linked` was not taken (no database password or access token on this machine); the project held no rows, the schema is reproducible from the four committed migrations, and the daily Pro backup plus `supabase/rollback/release-v1-down.sql` remain the recovery path.
+
+- Migrations: the 7 release migrations applied in order through Supabase migration tooling; each tool-generated ledger version reconciled to the committed version under an exact name/version guard. Ledger = repository (11 versions).
+- Schema parity, cloud vs. the locally tested database: identical digests for 83 function definitions with their grants, 179 columns, 149 constraints, 62 triggers, 19 policies (incl. the Storage insert policy) and 80 table grants. The only extra cloud object is the platform's own `public.rls_auto_enable()`.
+- Functional check on Cloud inside one transaction that is always rolled back (no rows remain; counts verified 0 afterwards), 15/15: server-enforced conditional field, server price, tracking link opens only its request, altered token opens nothing, anonymous reads denied, tokens stored hash-only, quote total 318.60, staff is not an operator, second tenant sees no requests/quotes and cannot issue links or upload into the first tenant's folder, customer approval moves the request to approved, owner uploads into own folder and registers the asset, staff recovery link is single use.
+- Advisors: no errors. Security WARN `anon/authenticated_security_definer_function_executable` is by design (every RPC checks role or capability token inside; public RPCs are the customer API); INFO `rls_enabled_no_policy` on private deny-all tables. Performance: INFO unindexed `created_by`-style foreign keys and unused indexes on an empty database; Auth connection strategy INFO.
+- Edge Functions: `operator-organizations` v1 (verify_jwt on) and `account-onboarding` v1 (verify_jwt off). HTTPS smoke: no/invalid JWT 401; wrong origin 403; malformed token 400; missing privacy acceptance 400 `terms_required`; unknown invitation 404; unknown recovery link 404; CORS preflight 204. `operator-invitations` unchanged (v1, 401 without JWT).
+- REST/Storage smoke with the publishable key: unknown form and bogus tracking token return `null`; anonymous reads of submissions/quotes and operator RPCs return 42501; anonymous upload to `brand-assets` is refused by RLS.
+- Git: `af7e229` release merge (no-ff, tree identical to `production-v1`) pushed to `main`; `fe8a44c` fixes the CI credential guard, which matched the scanners' own `sb_secret_` patterns (now requires a real key length).
+- Public site: `/`, `/pricing`, `/app`, `/f/bloom-flowers` (demo, unchanged) and `/live/` routes return 200 with the CSP; `/live/app` shows the production sign-in; `/live/f/<unknown>` shows "הקישור אינו זמין" after the 404 hand-off and calls only `ppgdbqhwbzlgzwsjmkor` RPCs; `/live/track` with an invalid token shows the unavailable notice; `/live/privacy` shows version 2026-11-08.
+
+### Not yet verified on the live site
+The signed-in journey (OPERATIONS.md §6 steps 2–7) needs a real operator account. The founder creates the user in the Supabase dashboard (Authentication → Add user, auto-confirm) and supplies only the email; the `private.platform_operators` row is then added by SQL. No password is handled by the assistant.
+
+## 2026-11-08 Final hardening checkpoint (approved and deployed)
 
 All local work for Production V1 is complete and verified; nothing remote has changed. Release package: `docs/production/RELEASE-V1.md`. Operations: `docs/production/OPERATIONS.md`.
 
