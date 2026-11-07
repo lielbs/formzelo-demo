@@ -16,12 +16,28 @@ import type { FormangleRepository } from '../data/repository';
 import { DomainRuleError, NotFoundError } from '../data/repository';
 import { freezeTheme } from '../theme/brand';
 import type { Database, Json } from './database.generated';
-import { intakeState } from '../engine/intake';
+import { formatDay, type ClosedReason, type IntakeState } from '../engine/intake';
+import type { SlotAvailability } from '../engine/booking';
+import type { OptionUsage } from '../engine/capacity';
+import { throwRuleError } from './ruleErrors';
 
 export class ProductionCapabilityError extends Error {
   constructor(capability: string) {
     super(`Production capability is not available: ${capability}`);
     this.name = 'ProductionCapabilityError';
+  }
+}
+
+/** Customer-facing sentence for a closed form; mirrors intakeState() in src/engine/intake.ts. */
+function closedMessage(reason: ClosedReason, state: Record<string, unknown>): string {
+  switch (reason) {
+    case 'paused': return 'הטופס סגור כרגע לבקשות חדשות.';
+    case 'not_yet': return typeof state.opensOn === 'string' ? `ההרשמה נפתחת ב-${formatDay(state.opensOn)}.` : 'הטופס עוד לא נפתח.';
+    case 'ended': return 'ההרשמה הסתיימה.';
+    case 'holiday': return typeof state.nextOpen === 'string' ? `אנחנו סגורים היום. אפשר לשלוח בקשה החל מ-${formatDay(state.nextOpen)}.` : 'אנחנו סגורים היום.';
+    case 'total': return 'כל המקומות נתפסו.';
+    case 'day': return 'התקבלו כל הבקשות להיום. אפשר לחזור מחר.';
+    case 'week': return 'התקבלו כל הבקשות לשבוע הזה. אפשר לחזור ביום ראשון.';
   }
 }
 
@@ -137,6 +153,7 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
   const locks = new Map<string, number>();
   const submissionLocks = new Map<string, number>();
   const publicClientToken = crypto.randomUUID();
+  const pendingSubmissions = new Map<string, { payload: string; key: string }>();
   let organizations: Organization[] = [];
   let activeOrgId: string | null = null;
   const allowed = () => new Set(organizations.map((item) => item.id));
@@ -348,7 +365,12 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
     },
     async submitRun(slug: string, input: Parameters<FormangleRepository['submitRun']>[1]) {
       if (input.runId) throw new ProductionCapabilityError('public request resubmission token');
-      const idempotencyKey = crypto.randomUUID();
+      // A retry of the same answers (lost connection, double tap) reuses its key, so the server
+      // returns the stored request instead of creating a second one.
+      const payload = JSON.stringify([slug, input.values, input.consent]);
+      const pending = pendingSubmissions.get(slug);
+      const idempotencyKey = pending?.payload === payload ? pending.key : crypto.randomUUID();
+      pendingSubmissions.set(slug, { payload, key: idempotencyKey });
       const { data, error } = await client.rpc('submit_public_workflow', {
         p_slug: slug,
         p_answers: toJson(input.values),
@@ -356,26 +378,53 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
         p_idempotency_key: idempotencyKey,
         p_client_token: publicClientToken,
       });
-      if (error) fail(error, 'Unable to submit workflow');
+      if (error) {
+        // Without a database code the request may not have arrived: keep the key for the retry.
+        if (!error.code) throw new Error('Unable to submit workflow');
+        pendingSubmissions.delete(slug);
+        const resolved = error.message.startsWith('intake_') ? await supported.resolvePublic(slug).catch(() => null) : null;
+        throwRuleError(error, resolved?.workflow.intake?.closedMessage);
+        fail(error, 'Unable to submit workflow');
+      }
+      pendingSubmissions.delete(slug);
       const result = jsonObject(data);
-      const payload = jsonObject(result.answers as Json);
+      const stored = jsonObject(result.answers as Json);
       return {
         id: String(result.id), orgId: String(result.organizationId), workflowId: String(result.workflowId), versionId: String(result.versionId),
         versionNumber: Number(result.versionNumber), reference: String(result.id).slice(0, 8).toUpperCase(), status: 'submitted',
-        answers: Array.isArray(payload.answers) ? payload.answers as WorkflowRun['answers'] : [], caseAnswers: [],
-        priceLines: Array.isArray(payload.priceLines) ? payload.priceLines as WorkflowRun['priceLines'] : [], total: Number(result.totalMinor) / 100,
-        payment: { status: 'none', amount: 0, kind: 'none' }, customerName: typeof payload.customerName === 'string' ? payload.customerName : '',
-        customerContact: typeof payload.customerContact === 'string' ? payload.customerContact : '', consentAt: typeof payload.consentAt === 'string' ? payload.consentAt : undefined,
+        answers: Array.isArray(stored.answers) ? stored.answers as WorkflowRun['answers'] : [], caseAnswers: [],
+        priceLines: Array.isArray(stored.priceLines) ? stored.priceLines as WorkflowRun['priceLines'] : [], total: Number(result.totalMinor) / 100,
+        payment: { status: 'none', amount: 0, kind: 'none' }, customerName: typeof stored.customerName === 'string' ? stored.customerName : '',
+        customerContact: typeof stored.customerContact === 'string' ? stored.customerContact : '', consentAt: typeof stored.consentAt === 'string' ? stored.consentAt : undefined,
         submittedAt: String(result.createdAt), isDemo: false, createdAt: String(result.createdAt), updatedAt: String(result.updatedAt),
       };
     },
     async getPublicRun() { return null; },
-    async getIntakeState(slug: string) {
-      const resolved = await supported.resolvePublic(slug);
-      return intakeState(resolved?.workflow.intake, []);
+    async getIntakeState(slug: string): Promise<IntakeState> {
+      const { data, error } = await client.rpc('public_intake_state', { p_slug: slug });
+      if (error) fail(error, 'Unable to load intake state');
+      if (!data) return { open: false, reason: 'paused', message: 'הטופס אינו זמין.', counts: { total: 0, today: 0, week: 0 } };
+      const state = jsonObject(data);
+      const counts = jsonObject(state.counts as Json);
+      const reason = typeof state.reason === 'string' ? state.reason as ClosedReason : undefined;
+      const resolved = reason ? await supported.resolvePublic(slug).catch(() => null) : null;
+      return {
+        open: state.open === true,
+        reason,
+        message: reason ? resolved?.workflow.intake?.closedMessage || closedMessage(reason, state) : undefined,
+        counts: { total: Number(counts.total) || 0, today: Number(counts.today) || 0, week: Number(counts.week) || 0 },
+      };
     },
-    async getBookingAvailability() { return []; },
-    async getOptionUsage() { return {}; },
+    async getBookingAvailability(slug: string, date: string): Promise<SlotAvailability[]> {
+      const { data, error } = await client.rpc('public_booking_availability', { p_slug: slug, p_date: date });
+      if (error) fail(error, 'Unable to load availability');
+      return Array.isArray(data) ? (data as unknown as SlotAvailability[]) : [];
+    },
+    async getOptionUsage(slug: string): Promise<OptionUsage> {
+      const { data, error } = await client.rpc('public_option_usage', { p_slug: slug });
+      if (error) fail(error, 'Unable to load option usage');
+      return data && typeof data === 'object' && !Array.isArray(data) ? (data as unknown as OptionUsage) : {};
+    },
     async getAssetUrls() { return {}; },
     async listAssets() { return []; },
     async transitionRun(orgId: string, runId: string, to: RunStatus) {

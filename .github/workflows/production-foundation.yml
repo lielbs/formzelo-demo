@@ -75,6 +75,11 @@ jobs:
       - name: Test application
         run: npm test
 
+      - name: Verify browser and server rules match (synthetic local database)
+        env:
+          FORMANGLE_PARITY_DB: postgres://postgres:postgres@127.0.0.1:54322/postgres
+        run: npx vitest run src/production/serverParity.test.ts
+
       - name: Build production application
         run: npm run build
 

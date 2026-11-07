@@ -39,11 +39,11 @@ select is(public.resolve_public_workflow('private-draft'),null,'draft slug remai
 select throws_ok($$select * from public.submissions$$,'42501',null,'anonymous caller cannot read private submissions directly');
 select throws_ok(
   $$select public.submit_public_workflow('public-order','{"full_name":"ישראל","email":"bad","service":"premium","addon":true,"quantity":2}',true,'73000000-0000-4000-8000-000000000001','83000000-0000-4000-8000-000000000001')$$,
-  '22023','Invalid email','invalid field value is rejected server-side'
+  'P0001','invalid_email','invalid field value is rejected server-side'
 );
 select throws_ok(
   $$select public.submit_public_workflow('public-order','{"full_name":"ישראל","email":"test@example.com","service":"forged","addon":true,"quantity":2}',true,'73000000-0000-4000-8000-000000000002','83000000-0000-4000-8000-000000000001')$$,
-  '22023','Answer is not an allowed option','forged option is rejected'
+  'P0001','invalid_option','forged option is rejected'
 );
 select throws_ok(
   $$select public.submit_public_workflow('public-order','{"full_name":"ישראל","email":"test@example.com","service":"premium","addon":true,"quantity":2,"total":1}',true,'73000000-0000-4000-8000-000000000003','83000000-0000-4000-8000-000000000001')$$,

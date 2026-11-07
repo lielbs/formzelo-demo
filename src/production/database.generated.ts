@@ -306,6 +306,15 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"public_booking_availability":
+{ Args: { "p_date": string,"p_slug": string }; Returns: Json
+                           },
+"public_intake_state":
+{ Args: { "p_slug": string }; Returns: Json
+                           },
+"public_option_usage":
+{ Args: { "p_slug": string }; Returns: Json
+                           },
 "publish_workflow":
 { Args: { "engine_version"?: string,"expected_lock_version": number,"organization_id": string,"published_design": Json,"workflow_id": string }; Returns: {
               "config": NonNullable<Json>,
