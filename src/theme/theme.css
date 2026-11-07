@@ -2508,3 +2508,118 @@ button.fz-presence-item {
   font-size: 13px;
   line-height: 1.4;
 }
+
+/* ---------- Interactive quotes and the customer's request page ---------- */
+.fz-btn-secondary {
+  background: var(--fz-surface);
+  color: var(--fz-text);
+  border: 1.5px solid color-mix(in srgb, var(--fz-text) 16%, var(--fz-surface));
+}
+.fz-btn-secondary:hover:not(:disabled) {
+  border-color: var(--fz-primary);
+  background: var(--fz-primary-tint);
+}
+.fz-quote-items {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid color-mix(in srgb, var(--fz-text) 10%, transparent);
+}
+.fz-quote-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--fz-text) 10%, transparent);
+  transition: opacity 0.18s ease;
+}
+.fz-quote-item[data-off] {
+  opacity: 0.62;
+}
+.fz-quote-check {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--fz-primary);
+  flex-shrink: 0;
+}
+.fz-qty-sm button {
+  width: 36px;
+  min-height: 36px;
+}
+.fz-qty-sm output {
+  min-width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.fz-quote-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 15px;
+  color: var(--fz-muted);
+}
+.fz-quote-totals .fz-quote-total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1.5px solid color-mix(in srgb, var(--fz-text) 14%, transparent);
+  color: var(--fz-text);
+  font-size: 19px;
+  font-weight: 700;
+}
+.fz-track-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 16px;
+}
+.fz-track-steps li {
+  position: relative;
+  padding-top: 12px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--fz-muted);
+}
+.fz-track-steps li::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fz-text) 12%, transparent);
+}
+.fz-track-steps li[data-done]::before {
+  background: var(--fz-primary);
+}
+.fz-track-steps li[data-done] {
+  color: var(--fz-text);
+  font-weight: 600;
+}
+.fz-track-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fz-track-timeline li {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 10px;
+  font-size: 14px;
+}
+.fz-track-timeline li::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--fz-primary);
+  opacity: 0.75;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fz-quote-item {
+    transition: none;
+  }
+}

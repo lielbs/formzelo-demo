@@ -1,4 +1,4 @@
-import { Bell, CalendarCheck, CircleSlash, CreditCard, FilePlus2, Mail, MessageSquare, MessageSquareReply, RefreshCw, Send, SendHorizontal, StickyNote, Smartphone } from 'lucide-react';
+import { Bell, CalendarCheck, CircleSlash, CreditCard, FilePlus2, FileText, Link2, Mail, MessageSquare, MessageSquareReply, RefreshCw, Send, SendHorizontal, StickyNote, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { NotificationPreview, RunEvent, WorkflowRun } from '../domain/schema';
 import { formatDateTime, formatRelative } from '../lib/format';
@@ -16,6 +16,10 @@ const EVENT_ICON = {
   action_created: SendHorizontal,
   action_responded: MessageSquareReply,
   action_cancelled: CircleSlash,
+  quote_sent: FileText,
+  quote_decided: MessageSquareReply,
+  quote_withdrawn: CircleSlash,
+  link_shared: Link2,
 } as const;
 
 /** Formangle Actions read differently from internal notes and status changes. */
@@ -23,6 +27,9 @@ const EVENT_TAG: Partial<Record<RunEvent['type'], { label: string; tone: Paramet
   action_created: { label: 'ללקוח', tone: 'blue' },
   action_responded: { label: 'החלטת לקוח', tone: 'teal' },
   action_cancelled: { label: 'בוטל', tone: 'neutral' },
+  quote_sent: { label: 'הצעת מחיר', tone: 'blue' },
+  quote_decided: { label: 'החלטת לקוח', tone: 'teal' },
+  quote_withdrawn: { label: 'בוטל', tone: 'neutral' },
 };
 
 const ACTOR = { customer: 'לקוח/ה', owner: 'צוות', system: 'מערכת' } as const;
@@ -40,7 +47,7 @@ export function Timeline({ events, runs, showRun = false }: { events: RunEvent[]
             <span
               className={cx(
                 'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white',
-                e.type === 'note_added' ? 'bg-amber-50 text-amber-700' : e.type === 'action_responded' ? 'bg-teal-50 text-teal-600' : e.actor === 'customer' ? 'bg-orange-50 text-orange-700' : 'bg-cloud-200 text-ink-muted',
+                e.type === 'note_added' ? 'bg-amber-50 text-amber-700' : e.type === 'action_responded' || e.type === 'quote_decided' ? 'bg-teal-50 text-teal-600' : e.actor === 'customer' ? 'bg-orange-50 text-orange-700' : 'bg-cloud-200 text-ink-muted',
               )}
             >
               <Icon className="h-3.5 w-3.5" aria-hidden />

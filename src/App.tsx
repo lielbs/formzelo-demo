@@ -5,6 +5,7 @@ import { Spinner } from './components/ui';
 import { applyRouteMeta, pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
 import { PublicFlow } from './pages/PublicFlow';
+import { Track } from './pages/Track';
 
 // The public customer flow is bundled eagerly so shared links load fast on mobile;
 // owner-facing pages (and Recharts) are split into their own chunks.
@@ -54,6 +55,7 @@ export function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/invite" element={<InviteAccept />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
+          <Route path="/track" element={<Track />} />
           <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>
             <Route index element={<Dashboard />} />
             <Route path="workflows" element={<WorkflowList />} />

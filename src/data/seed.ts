@@ -131,6 +131,7 @@ function emptyData(organization: Organization): OrgData {
     usage: [],
     brandKit: defaultBrandKit(organization.name, at),
     actions: [],
+    quotes: [],
   };
 }
 

@@ -25,6 +25,7 @@ import {
   type Meta,
   type OrgData,
   type Organization,
+  type QuoteRecord,
   type RunEvent,
   type RunStatus,
   type UsageEvent,
@@ -34,13 +35,16 @@ import {
   type WorkflowVersion,
 } from '../domain/schema';
 import { ASSET_LIMITS, AssetSchema, BrandKitSchema, WorkflowThemeSchema, type Asset, type BrandKit, type WorkflowTheme } from '../domain/theme';
-import { actionSummary, buildAction, cancel as cancelAct, isDuplicate, respond as respondAct, type ActionInput } from '../engine/actions';
+import { actionStatus, actionSummary, buildAction, cancel as cancelAct, isDuplicate, respond as respondAct, type ActionInput } from '../engine/actions';
 import { CUSTOMER_CANCELLABLE, slotAvailability, validateBooking } from '../engine/booking';
 import { normalizeLink } from '../engine/presence';
 import { optionUsage, validateOptionCapacity } from '../engine/capacity';
 import { hasOpenRequestFrom, intakeState } from '../engine/intake';
 import { initialPayment, paymentOnApproval, simulatePaid } from '../engine/completion';
 import { computePrice } from '../engine/pricing';
+import { QuoteContentSchema, quoteTotals, type QuoteContent } from '../engine/quote';
+import { isoDay } from '../lib/format';
+import { trackPath, type QuoteDecisionInput, type TrackView } from './track';
 import { freezeTheme } from '../theme/brand';
 import { recommendTheme } from '../theme/resolver';
 import { migrateMeta, migrateOrgData } from './migrations';
@@ -881,6 +885,202 @@ export class LocalStorageRepository implements FormangleRepository {
       run.updatedAt = next.updatedAt;
       this.event(d, run, { type: 'action_responded', actor: 'customer', actionId: next.id, message: `הלקוח/ה בחר/ה "${next.response!.label}" — ${actionSummary(next)}` });
       return next;
+    });
+  }
+
+  // ---------- interactive quotes (demo: same rules as the server) ----------
+
+  async listQuotes(orgId: string, runId: string) {
+    return this.readOrg(orgId).quotes.filter((q) => q.runId === runId).sort((a, b) => b.revision - a.revision);
+  }
+
+  async saveQuoteDraft(orgId: string, runId: string, input: { quoteId?: string; content: QuoteContent }) {
+    const parsed = QuoteContentSchema.safeParse(input.content);
+    if (!parsed.success) throw new ValidationFailedError({ quote: parsed.error.issues[0]?.message ?? 'ההצעה אינה תקינה' });
+    const content = parsed.data;
+    const total = quoteTotals(content).total;
+    return this.mutate(orgId, (d) => {
+      const run = this.findRun(d, runId);
+      if (run.status === 'cancelled' || run.status === 'rejected') throw new DomainRuleError('הבקשה סגורה');
+      const at = nowIso();
+      if (input.quoteId) {
+        const q = d.quotes.find((x) => x.id === input.quoteId && x.runId === runId);
+        if (!q || q.status !== 'draft') throw new DomainRuleError('ההצעה השתנתה. רעננו ונסו שוב.');
+        Object.assign(q, { content, total, lockVersion: q.lockVersion + 1, updatedAt: at });
+        return q;
+      }
+      if (d.quotes.some((x) => x.runId === runId && x.status === 'draft')) throw new DomainRuleError('כבר יש טיוטת הצעה לבקשה הזו');
+      const revision = Math.max(0, ...d.quotes.filter((x) => x.runId === runId).map((x) => x.revision)) + 1;
+      const q: QuoteRecord = { id: newId('quo'), orgId, runId, revision, status: 'draft', content, total, lockVersion: 0, createdAt: at, updatedAt: at };
+      d.quotes.push(q);
+      return q;
+    });
+  }
+
+  async sendQuote(orgId: string, quoteId: string) {
+    return this.mutate(orgId, (d) => {
+      const q = d.quotes.find((x) => x.id === quoteId);
+      if (!q || q.status !== 'draft') throw new DomainRuleError('ההצעה השתנתה. רעננו ונסו שוב.');
+      const run = this.findRun(d, q.runId);
+      if (run.status === 'cancelled' || run.status === 'rejected') throw new DomainRuleError('הבקשה סגורה');
+      const content = QuoteContentSchema.parse(q.content);
+      if (content.validUntil && content.validUntil < isoDay()) throw new DomainRuleError('תאריך התוקף של ההצעה כבר עבר');
+      const at = nowIso();
+      for (const other of d.quotes) if (other.runId === q.runId && (other.status === 'sent' || other.status === 'changes_requested')) other.status = 'superseded';
+      Object.assign(q, { status: 'sent', sentAt: at, lockVersion: q.lockVersion + 1, updatedAt: at });
+      this.event(d, run, { type: 'quote_sent', actor: 'owner', message: `נשלחה הצעת מחיר: ${content.title}` });
+      return q;
+    });
+  }
+
+  async withdrawQuote(orgId: string, quoteId: string) {
+    return this.mutate(orgId, (d) => {
+      const q = d.quotes.find((x) => x.id === quoteId);
+      if (!q || !['draft', 'sent', 'changes_requested'].includes(q.status)) throw new DomainRuleError('אי אפשר לבטל את ההצעה הזו');
+      const wasSent = Boolean(q.sentAt);
+      Object.assign(q, { status: 'withdrawn', lockVersion: q.lockVersion + 1, updatedAt: nowIso() });
+      if (wasSent) this.event(d, this.findRun(d, q.runId), { type: 'quote_withdrawn', actor: 'owner', message: 'הצעת המחיר בוטלה' });
+      return q;
+    });
+  }
+
+  // ---------- the customer's request page (demo: this browser only) ----------
+
+  private demoAccess(access: string): { slug: string; runId: string } | null {
+    const m = /^demo~([a-z0-9-]+)~([A-Za-z0-9_-]+)$/.exec(access);
+    return m ? { slug: m[1]!, runId: m[2]! } : null;
+  }
+
+  async shareRequestLink(orgId: string, runId: string) {
+    return this.mutate(orgId, (d) => {
+      const run = this.findRun(d, runId);
+      const wf = this.findWorkflow(d, run.workflowId);
+      this.event(d, run, { type: 'link_shared', actor: 'owner', message: 'נוצר קישור לעמוד הבקשה של הלקוח', internal: true });
+      return trackPath(`demo~${wf.slug}~${run.id}`);
+    });
+  }
+
+  async revokeRequestLinks(): Promise<void> {
+    throw new DomainRuleError('בדמו הקישור לעמוד הבקשה קבוע ונשמר רק בדפדפן הזה.');
+  }
+
+  async customerAccess(slug: string, runId: string) {
+    return (await this.getPublicRun(slug, runId)) ? `demo~${slug}~${runId}` : null;
+  }
+
+  async trackRequest(access: string): Promise<TrackView | null> {
+    const ref = this.demoAccess(access);
+    const found = ref && (await this.getPublicRun(ref.slug, ref.runId));
+    if (!ref || !found) return null;
+    const d = this.readOrg(found.run.orgId);
+    const { run, version } = found;
+    const today = isoDay();
+    const shown = ['submitted', 'resubmitted', 'status_changed', 'action_created', 'action_responded', 'quote_sent', 'quote_decided', 'quote_withdrawn'];
+    return {
+      access,
+      business: { name: d.organization.name, description: d.brandKit.description || undefined, links: d.brandKit.links },
+      workflow: { slug: ref.slug, title: version.config.title, design: version.design, booking: Boolean(version.config.booking?.enabled) },
+      request: {
+        id: run.id,
+        reference: run.reference,
+        status: run.status,
+        createdAt: run.submittedAt ?? run.createdAt,
+        answers: run.answers,
+        priceLines: run.priceLines,
+        total: run.total,
+        cancellable: ['submitted', 'in_review', 'changes_requested'].includes(run.status),
+      },
+      timeline: d.events
+        .filter((e) => e.runId === run.id && !e.internal && shown.includes(e.type))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((e) => ({ type: e.type === 'status_changed' ? `status:${e.to ?? ''}` : e.type, at: e.createdAt })),
+      actions: d.actions
+        .filter((a) => a.runId === run.id && a.status !== 'cancelled')
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((a) => ({ ...a, status: actionStatus(a) })),
+      quotes: d.quotes
+        .filter((q) => q.runId === run.id && q.status !== 'draft' && q.status !== 'withdrawn')
+        .sort((a, b) => b.revision - a.revision)
+        .map((q) => {
+          const content = QuoteContentSchema.parse(q.content);
+          return {
+            id: q.id,
+            revision: q.revision,
+            content,
+            totals: quoteTotals(content),
+            sentAt: q.sentAt,
+            validUntil: content.validUntil,
+            decidedAt: q.decidedAt,
+            status: q.status === 'sent' && content.validUntil && content.validUntil < today ? 'expired' : q.status,
+            decision: q.decision && { decision: q.decision.decision, selections: q.decision.selections, comment: q.decision.comment, total: q.decision.total },
+          };
+        }),
+    };
+  }
+
+  async respondTracked(access: string, actionId: string, optionId: string) {
+    const ref = this.demoAccess(access);
+    if (!ref) throw new NotFoundError('Run');
+    const action = (await this.getPublicActions(ref.slug, ref.runId)).find((a) => a.id === actionId);
+    // The same answer again is a harmless retry, as on the server.
+    if (action?.status === 'responded' && action.response?.optionId === optionId) return;
+    await this.respondToAction(ref.slug, ref.runId, actionId, optionId);
+  }
+
+  async decideQuote(access: string, quoteId: string, input: QuoteDecisionInput) {
+    const ref = this.demoAccess(access);
+    const found = ref && (await this.getPublicRun(ref.slug, ref.runId));
+    if (!found) throw new NotFoundError('Run');
+    if (input.decision === 'changes_requested' && !input.comment?.trim()) throw new ValidationFailedError({ comment: 'כתבו מה לשנות' });
+    this.mutate(found.run.orgId, (d) => {
+      const q = d.quotes.find((x) => x.id === quoteId && x.runId === found.run.id);
+      if (!q || q.status === 'draft' || q.status === 'withdrawn') throw new NotFoundError('Quote');
+      if (q.decision?.key === input.key) return;
+      if (q.status !== 'sent') throw new DomainRuleError('ההצעה הזו כבר אינה פתוחה להחלטה');
+      const content = QuoteContentSchema.parse(q.content);
+      if (content.validUntil && content.validUntil < isoDay()) throw new DomainRuleError('תוקף ההצעה פג. פנו לעסק להצעה מעודכנת.');
+      let total: number;
+      try {
+        total = quoteTotals(content, input.decision === 'approved' ? input.selections : {}).total;
+      } catch {
+        throw new DomainRuleError('הבחירה אינה תואמת את ההצעה');
+      }
+      const at = nowIso();
+      const comment = input.comment?.trim() || undefined;
+      Object.assign(q, {
+        status: input.decision,
+        decidedAt: at,
+        lockVersion: q.lockVersion + 1,
+        updatedAt: at,
+        decision: { decision: input.decision, selections: input.decision === 'approved' ? input.selections : {}, comment, total, key: input.key },
+      });
+      const run = this.findRun(d, q.runId);
+      const verb = input.decision === 'approved' ? 'אישר/ה את' : input.decision === 'declined' ? 'דחה/תה את' : 'ביקש/ה שינויים ב';
+      this.event(d, run, { type: 'quote_decided', actor: 'customer', message: `הלקוח/ה ${verb}הצעת המחיר${comment ? ` — ${comment}` : ''}` });
+      if (input.decision === 'approved' && ['submitted', 'in_review', 'changes_requested'].includes(run.status)) {
+        const from = run.status;
+        run.status = 'approved';
+        run.updatedAt = at;
+        const version = d.versions.find((v) => v.id === run.versionId);
+        if (version) run.payment = paymentOnApproval(version.config, run.payment, at);
+        this.event(d, run, { type: 'status_changed', actor: 'customer', from, to: 'approved', message: 'הבקשה אושרה עם אישור הצעת המחיר' });
+      }
+    });
+  }
+
+  async cancelTracked(access: string) {
+    const ref = this.demoAccess(access);
+    const found = ref && (await this.getPublicRun(ref.slug, ref.runId));
+    if (!ref || !found) throw new NotFoundError('Run');
+    if (found.run.status === 'cancelled') return;
+    this.mutate(found.run.orgId, (d) => {
+      const run = this.findRun(d, ref.runId);
+      if (!['submitted', 'in_review', 'changes_requested'].includes(run.status)) throw new DomainRuleError('לא ניתן לבטל את הבקשה במצב הנוכחי');
+      const from = run.status;
+      run.status = 'cancelled';
+      run.updatedAt = nowIso();
+      for (const q of d.quotes) if (q.runId === run.id && q.status === 'sent') q.status = 'superseded';
+      this.event(d, run, { type: 'status_changed', actor: 'customer', from, to: 'cancelled', message: 'הלקוח ביטל את הבקשה מעמוד הבקשה' });
     });
   }
 

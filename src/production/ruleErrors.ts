@@ -57,3 +57,28 @@ export function throwRuleError(error: ServerError, closedMessage?: string): void
   const form = FORM_MESSAGES[error.message];
   if (form) throw new DomainRuleError(error.message.startsWith('intake_') && closedMessage ? closedMessage : form);
 }
+
+const PORTAL_MESSAGES: Record<string, string> = {
+  quote_invalid: 'ההצעה אינה תקינה. בדקו את הפריטים והמחירים.',
+  quote_draft_exists: 'כבר יש טיוטת הצעה לבקשה הזו. רעננו כדי להמשיך אותה.',
+  quote_expired: 'תוקף ההצעה פג. פנו לעסק להצעה מעודכנת.',
+  quote_closed: 'ההצעה הזו כבר אינה פתוחה להחלטה.',
+  selection_invalid: 'הבחירה אינה תואמת את ההצעה. רעננו ונסו שוב.',
+  comment_required: 'כתבו מה תרצו לשנות.',
+  decision_invalid: 'לא ניתן לשמור את ההחלטה.',
+  action_invalid: 'פרטי הפעולה אינם תקינים.',
+  action_answered: 'כבר עניתם על הבקשה הזו.',
+  action_closed: 'הבקשה הזו כבר אינה פתוחה.',
+  note_invalid: 'כתבו הערה (עד 2,000 תווים).',
+  message_too_long: 'ההודעה ללקוח ארוכה מדי (עד 500 תווים).',
+  request_closed: 'הבקשה סגורה.',
+  request_not_cancellable: 'לא ניתן לבטל את הבקשה במצב הנוכחי. פנו לעסק.',
+};
+
+/** Customer-page and quote errors: a clear sentence, never a database message. */
+export function throwPortalError(error: ServerError): void {
+  if (error.code === 'P0002') throw new DomainRuleError('הקישור אינו זמין. ייתכן שפג תוקפו או שהעסק יצר קישור חדש.');
+  if (error.code === '54000') throw new DomainRuleError('יותר מדי ניסיונות. נסו שוב מאוחר יותר.');
+  const message = error.message ? PORTAL_MESSAGES[error.message] : undefined;
+  if (message) throw new DomainRuleError(message);
+}

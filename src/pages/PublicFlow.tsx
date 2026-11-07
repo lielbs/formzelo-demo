@@ -17,12 +17,13 @@ import { WorkflowRenderer } from '../renderer/WorkflowRenderer';
 import { buildTheme } from '../theme/presets';
 import { ThemeScope } from '../theme/ThemeScope';
 import { runtimeConfiguration } from '../production/runtime';
+import { trackPath } from '../data/track';
 
 const EDITABLE: WorkflowRun['status'][] = ['awaiting_customer', 'changes_requested'];
 const NEUTRAL = buildTheme('modern_minimal');
 
 /** Page frame: the customer's business identity first, a quiet Formangle credit last. */
-function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; theme?: WorkflowTheme; orgName?: string }) {
+export function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; theme?: WorkflowTheme; orgName?: string }) {
   return (
     <ThemeScope theme={theme} className="fz-page flex flex-col">
       <main id="main" className="flex-1">
@@ -40,7 +41,7 @@ function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactNode; th
   );
 }
 
-function Notice({ icon: Icon, title, children }: { icon: typeof Lock; title: string; children: ReactNode }) {
+export function Notice({ icon: Icon, title, children }: { icon: typeof Lock; title: string; children: ReactNode }) {
   return (
     <div className="mx-auto max-w-lg px-3 py-10 sm:py-16">
       <div className="fz-card fz-pad text-center">
@@ -215,7 +216,12 @@ export function PublicFlow() {
         getOptionUsage={hasOptionCapacity(config) ? () => repo.getOptionUsage(slug) : undefined}
         onSubmit={async (values, consent, { payNow }) => {
           const run = await repo.submitRun(slug, { values, consent, runId: found?.run.id, payNow });
-          if (runtimeConfiguration.mode === 'production') setSubmitted({ run, version });
+          if (runtimeConfiguration.mode === 'production') {
+            // The customer's private request page; without it, the confirmation still shows here.
+            const access = await repo.customerAccess(slug, run.id).catch(() => null);
+            if (access) return navigate(trackPath(access, true), { replace: true });
+            setSubmitted({ run, version });
+          }
           navigate(`/f/${slug}?r=${run.id}&sent=1`, { replace: true });
         }}
       />

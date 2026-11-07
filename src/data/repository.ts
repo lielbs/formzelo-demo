@@ -6,6 +6,7 @@
  */
 import type {
   CustomerAction,
+  QuoteRecord,
   Intake,
   Membership,
   NotificationPreview,
@@ -26,6 +27,8 @@ import type { OptionUsage } from '../engine/capacity';
 import type { IntakeState } from '../engine/intake';
 import type { Values } from '../engine/conditions';
 import type { FieldErrors } from '../engine/validation';
+import type { QuoteContent } from '../engine/quote';
+import type { QuoteDecisionInput, TrackView } from './track';
 
 export interface PublicWorkflow {
   organization: Organization;
@@ -108,6 +111,27 @@ export interface FormangleRepository {
   getPublicActions(slug: string, runId: string): Promise<CustomerAction[]>;
   /** Customer: one answer per action. Production: authorised by a signed request token. */
   respondToAction(slug: string, runId: string, actionId: string, optionId: string): Promise<CustomerAction>;
+
+  // ---------- Interactive quotes ----------
+  /** Owner: every revision of the request's quotes, newest first. */
+  listQuotes(orgId: string, runId: string): Promise<QuoteRecord[]>;
+  /** Owner: creates the request's one draft, or saves it (optimistic lock on the revision). */
+  saveQuoteDraft(orgId: string, runId: string, input: { quoteId?: string; content: QuoteContent }): Promise<QuoteRecord>;
+  /** Owner: freezes the draft and shows it to the customer; an earlier open quote is superseded. */
+  sendQuote(orgId: string, quoteId: string): Promise<QuoteRecord>;
+  withdrawQuote(orgId: string, quoteId: string): Promise<QuoteRecord>;
+
+  // ---------- The customer's request page ----------
+  /** Owner: a link to the customer's own request page (production: a new secret link). */
+  shareRequestLink(orgId: string, runId: string): Promise<string>;
+  /** Owner: every link sent so far stops working. */
+  revokeRequestLinks(orgId: string, runId: string): Promise<void>;
+  /** Customer, right after submitting: the reference for their request page, if this browser has one. */
+  customerAccess(slug: string, runId: string): Promise<string | null>;
+  trackRequest(access: string): Promise<TrackView | null>;
+  respondTracked(access: string, actionId: string, optionId: string): Promise<void>;
+  decideQuote(access: string, quoteId: string, input: QuoteDecisionInput): Promise<void>;
+  cancelTracked(access: string): Promise<void>;
 
   listEvents(orgId: string, runId?: string): Promise<RunEvent[]>;
   listNotifications(orgId: string, runId?: string): Promise<NotificationPreview[]>;
