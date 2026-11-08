@@ -56,6 +56,15 @@ describe('operator invitation API boundary', () => {
     expect(await response.text()).toBe('{"error":"operation_not_permitted"}');
   });
 
+  it('answers the browser preflight for every header supabase-js sends', async () => {
+    const preflight = await handleOperatorInvitation(new Request(URL, { method: 'OPTIONS', headers: { origin: 'https://formangle.rockstackds.com' } }), {
+      allowedOrigin: 'https://formangle.rockstackds.com', authenticate: vi.fn(), createInvitation: vi.fn(),
+    });
+    expect(preflight.status).toBe(204);
+    const allowed = preflight.headers.get('access-control-allow-headers')!.split(',').map((h) => h.trim());
+    expect(allowed).toEqual(expect.arrayContaining(['authorization', 'apikey', 'content-type', 'x-client-info']));
+  });
+
   it('rejects requests from an unapproved browser origin', async () => {
     const response = await handleOperatorInvitation(new Request(URL, {
       method: 'POST',

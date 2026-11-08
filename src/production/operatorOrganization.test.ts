@@ -33,6 +33,16 @@ describe('operator organization provisioning boundary', () => {
     expect(provision).not.toHaveBeenCalled();
   });
 
+  it('answers the browser preflight for every header supabase-js sends', async () => {
+    const preflight = await handleOperatorOrganization(new Request(URL, { method: 'OPTIONS', headers: { origin: 'https://formangle.rockstackds.com' } }), {
+      allowedOrigin: 'https://formangle.rockstackds.com', authenticate: vi.fn(), provision: vi.fn(),
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('https://formangle.rockstackds.com');
+    const allowed = preflight.headers.get('access-control-allow-headers')!.split(',').map((h) => h.trim());
+    expect(allowed).toEqual(expect.arrayContaining(['authorization', 'apikey', 'content-type', 'x-client-info']));
+  });
+
   it('does not leak privileged failure details', async () => {
     const response = await handleOperatorOrganization(request({ slug: 'valid-business', name: 'Valid', ownerEmail: 'owner@example.com' }), {
       authenticate: async () => ({ userId: 'unauthorized' }),

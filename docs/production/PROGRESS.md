@@ -4,7 +4,7 @@ Last updated: 2026-11-08 (Asia/Jerusalem)
 
 ## Current milestone
 
-Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. Open before declaring launch complete: the first operator account (founder creates it in the dashboard) and the signed-in journey on the live site.
+Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. The first operator account exists (2026-11-08). Open before declaring launch complete: the signed-in journey on the live site.
 
 ## 2026-11-08 Release deployment
 
@@ -19,8 +19,19 @@ Pre-release snapshot (read-only, 2026-11-07 23:34 UTC): 4 migrations, 0 organiza
 - Git: `af7e229` release merge (no-ff, tree identical to `production-v1`) pushed to `main`; `fe8a44c` fixes the CI credential guard, which matched the scanners' own `sb_secret_` patterns (now requires a real key length).
 - Public site: `/`, `/pricing`, `/app`, `/f/bloom-flowers` (demo, unchanged) and `/live/` routes return 200 with the CSP; `/live/app` shows the production sign-in; `/live/f/<unknown>` shows "הקישור אינו זמין" after the 404 hand-off and calls only `ppgdbqhwbzlgzwsjmkor` RPCs; `/live/track` with an invalid token shows the unavailable notice; `/live/privacy` shows version 2026-11-08.
 
+### First operator account
+- The founder created the user in the Supabase dashboard (08:07 UTC, email confirmed, only user in the project) and supplied only its user id; no password was handled by the assistant.
+- `private.platform_operators` row added by SQL at 08:08 UTC (guarded on `email_confirmed_at`, `on conflict do nothing`).
+- Verified in a rolled-back check as that user: `is_platform_operator()` true, `operator_list_organizations()` answers, `private.assert_verified_platform_operator` passes. Organizations: 0.
+
+### Hotfix: operator function CORS (approved 2026-11-08)
+- Symptom: creating the first business on `/live/operator` failed with "הפעולה נכשלה"; function logs showed only the `OPTIONS` preflight, no `POST`.
+- Root cause: `operator-organizations` and `operator-invitations` allowed only `authorization, content-type` in their preflight, while supabase-js also sends `apikey` and `x-client-info`. Locally the API gateway answers preflights itself with a permissive list, which hid the defect from the E2E journey (`account-onboarding` already had the full list).
+- Fix: both handlers allow `authorization, apikey, content-type, x-client-info`; the exact-origin check is unchanged. Boundary tests now assert the preflight header list.
+- Deployed: `operator-organizations` v2 and `operator-invitations` v2 (verify_jwt true; entrypoints byte-identical to v1 apart from the header line). Cloud check: preflight 204 with the full list for the site origin, 403 for a foreign origin, anonymous POST 401.
+
 ### Not yet verified on the live site
-The signed-in journey (OPERATIONS.md §6 steps 2–7) needs a real operator account. The founder creates the user in the Supabase dashboard (Authentication → Add user, auto-confirm) and supplies only the email; the `private.platform_operators` row is then added by SQL. No password is handled by the assistant.
+The signed-in journey (OPERATIONS.md §6 steps 2–7): operator sign-in at `/live/app`, then the operator console, test business onboarding, workflow publish, customer submission, quote approval, tenant isolation, logo upload and password recovery.
 
 ## 2026-11-08 Final hardening checkpoint (approved and deployed)
 

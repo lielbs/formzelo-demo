@@ -24,7 +24,7 @@ export async function handleOperatorInvitation(request: Request, deps: OperatorI
     headers: {
       'access-control-allow-origin': origin ?? '',
       'access-control-allow-methods': 'POST',
-      'access-control-allow-headers': 'authorization, content-type',
+      'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
       'access-control-max-age': '600',
       vary: 'Origin',
     },
