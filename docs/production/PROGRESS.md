@@ -38,14 +38,14 @@ Pre-release snapshot (read-only, 2026-11-07 23:34 UTC): 4 migrations, 0 organiza
 ### Live journey (2026-11-08, founder-driven; evidence read from the database)
 - Operator console → business `impact-networks` (08:43 UTC) → owner invitation accepted (08:59) → brand kit and three images (09:00–09:10) → workflow published v1 (09:12) → public submission (09:14) → customer action created (09:17) and answered by the customer on the request page (10:48) → request completed (11:10).
 - Not exercised on the live site: quotes (0 rows), a second business (one organization) and password recovery (0 recovery tokens issued). Each is covered by the rolled-back Cloud functional check above (quote total and approval, second tenant denied, single-use recovery link); the founder reports the journey complete.
-- Tenant isolation, re-checked on Cloud (read-only): RLS on all 16 public tables, every policy scoped by `has_org_role`/`auth.uid()`, no direct `anon` reads; all 24 member RPCs call `private.has_org_role`, the operator RPCs call `is_platform_operator()`, public RPCs are slug- or token-scoped. Advisors unchanged from release; new security WARN `auth_leaked_password_protection` (founder setting).
+- Tenant isolation, re-checked on Cloud (read-only): RLS on all 16 public tables, every policy scoped by `has_org_role`/`auth.uid()`, no direct `anon` reads; all 24 member RPCs call `private.has_org_role`, the operator RPCs call `is_platform_operator()`, public RPCs are slug- or token-scoped. Advisors unchanged from release; `auth_leaked_password_protection` cleared after the founder enabled leaked-password protection (re-run of the advisors, 2026-11-08).
 
 ### Experience fixes (approved 2026-11-08, `a5b8c31`)
 Brand kit explains the disabled colour extraction and lists published forms that still show the previous brand; the no-membership screen names the signed-in account and leads operators to `/operator`; an invitation opened while signed in asks before accepting and offers to switch account; the operator console tells network failures from server and input errors and flags a taken business address; a new customer action or quote highlights the customer-link card (customers are never notified automatically). The live bundle contains all five.
 
-### Maintenance (local, pending deploy approval)
+### Maintenance (approved and deployed 2026-11-08, `71d7014`)
 - Unexpected server failures show Hebrew (`UnexpectedServerError`, technical context kept) instead of English fallbacks such as "Unable to load team".
-- `production-smoke.yml` checks the browser preflight of the three deployed Edge Functions from the site origin (verified passing against Cloud and failing for a foreign origin).
+- `production-smoke.yml` checks the browser preflight of the three deployed Edge Functions from the site origin (verified passing against Cloud and failing for a foreign origin; first scheduled-workflow run `42477762592` succeeded, the API step is skipped until the repository variable `FORMANGLE_PUBLISHABLE_KEY` is set).
 - `npm run lint` (ESLint 9, typescript-eslint, react-hooks) runs in `production-foundation.yml`. `minimatch` is overridden to 11.0.5 for typescript-estree (GHSA-g3hv-75wg-m249); `npm audit` reports 0. Lint found a real defect: the "no AI wording" test held literal backspaces instead of `\b`, so it never matched; it now checks properly and passes.
 
 ## 2026-11-08 Final hardening checkpoint (approved and deployed)
