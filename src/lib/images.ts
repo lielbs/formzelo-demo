@@ -60,9 +60,13 @@ export async function prepareImage(file: File, kind: Asset['kind']): Promise<Pic
  */
 export async function extractColors(dataUrl: string, count = 5): Promise<string[]> {
   const img = new Image();
-  img.decoding = 'async';
-  img.src = dataUrl;
-  await img.decode();
+  // Production logos live in Supabase Storage (another origin); without CORS the canvas is tainted and unreadable.
+  if (!dataUrl.startsWith('data:')) img.crossOrigin = 'anonymous';
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('Image could not be loaded'));
+    img.src = dataUrl;
+  });
   const size = 64;
   const canvas = document.createElement('canvas');
   canvas.width = size;
