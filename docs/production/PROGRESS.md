@@ -4,7 +4,7 @@ Last updated: 2026-11-08 (Asia/Jerusalem)
 
 ## Current milestone
 
-Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. The first operator account and the first business exist, and the operator → business → form → customer journey has run on the live site (2026-11-08). Open: a password recovery run on the live site, and the quote screen, which has not yet been used there (both are covered by the rolled-back Cloud check at release).
+Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. The first operator account and the first business exist, and the operator → business → form → customer journey has run on the live site (2026-11-08). **Launch checks complete (2026-11-08):** the live journey, a rolled-back quote and recovery run on the `impact-networks` business, tenant isolation on Cloud, advisors, and the production smoke workflow all pass. Not run end to end through the browser: choosing a new password from a recovery link (the server path is verified; the founder can try it from the operator console at any time).
 
 ## 2026-11-08 Release deployment
 
@@ -38,6 +38,8 @@ Pre-release snapshot (read-only, 2026-11-07 23:34 UTC): 4 migrations, 0 organiza
 ### Live journey (2026-11-08, founder-driven; evidence read from the database)
 - Operator console → business `impact-networks` (08:43 UTC) → owner invitation accepted (08:59) → brand kit and three images (09:00–09:10) → workflow published v1 (09:12) → public submission (09:14) → customer action created (09:17) and answered by the customer on the request page (10:48) → request completed (11:10).
 - Not exercised on the live site: quotes (0 rows), a second business (one organization) and password recovery (0 recovery tokens issued). Each is covered by the rolled-back Cloud functional check above (quote total and approval, second tenant denied, single-use recovery link); the founder reports the journey complete.
+- Quote and recovery on `impact-networks`, in one block on Cloud that ends in a forced exception (founder approval 2026-11-08): anonymous submission through `submit_public_workflow`; anonymous read of `quotes` denied; the owner drafts and sends a quote (status `sent`, `total_minor` 11800 = 100 + 18% VAT); the customer's request page shows it and the customer approves (quote and request `approved`); the operator issues a recovery link for the owner, which the server resolves to the owner once and then to nothing. Afterwards: 1 submission, 0 quotes, 0 recovery tokens, no new access tokens or audit rows.
+- Production smoke `42478061942` with the repository variable `FORMANGLE_PUBLISHABLE_KEY` set: site CSP, API keeps unknown forms private, Edge Function preflights — all pass.
 - `impact-networks` is a test business that may become a real one (founder, 2026-11-08): it stays active and nothing in it is removed. Before it goes into real use, its test request and customer action can be cleared, only with the founder's approval.
 - Tenant isolation, re-checked on Cloud (read-only): RLS on all 16 public tables, every policy scoped by `has_org_role`/`auth.uid()`, no direct `anon` reads; all 24 member RPCs call `private.has_org_role`, the operator RPCs call `is_platform_operator()`, public RPCs are slug- or token-scoped. Advisors unchanged from release; `auth_leaked_password_protection` cleared after the founder enabled leaked-password protection (re-run of the advisors, 2026-11-08).
 
@@ -46,7 +48,7 @@ Brand kit explains the disabled colour extraction and lists published forms that
 
 ### Maintenance (approved and deployed 2026-11-08, `71d7014`)
 - Unexpected server failures show Hebrew (`UnexpectedServerError`, technical context kept) instead of English fallbacks such as "Unable to load team".
-- `production-smoke.yml` checks the browser preflight of the three deployed Edge Functions from the site origin (verified passing against Cloud and failing for a foreign origin; first scheduled-workflow run `42477762592` succeeded, the API step is skipped until the repository variable `FORMANGLE_PUBLISHABLE_KEY` is set).
+- `production-smoke.yml` checks the browser preflight of the three deployed Edge Functions from the site origin (verified passing against Cloud and failing for a foreign origin; first scheduled-workflow run `42477762592` succeeded, the API step ran once the repository variable `FORMANGLE_PUBLISHABLE_KEY` was set, see below).
 - `npm run lint` (ESLint 9, typescript-eslint, react-hooks) runs in `production-foundation.yml`. `minimatch` is overridden to 11.0.5 for typescript-estree (GHSA-g3hv-75wg-m249); `npm audit` reports 0. Lint found a real defect: the "no AI wording" test held literal backspaces instead of `\b`, so it never matched; it now checks properly and passes.
 
 ## 2026-11-08 Final hardening checkpoint (approved and deployed)
