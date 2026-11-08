@@ -34,3 +34,18 @@ jobs:
           body="$(curl -fsS --max-time 20 -X POST "$API/rest/v1/rpc/resolve_public_workflow" \
             -H "apikey: $KEY" -H 'content-type: application/json' -d '{"p_slug":"smoke-check-unknown"}')"
           test "$body" = "null"
+      - name: Edge Functions answer the browser preflight from the site
+        # The local gateway answers every preflight itself, so a narrow allow-list only fails in the
+        # cloud (the November 2026 operator outage). Checked here against the deployed functions.
+        run: |
+          for fn in account-onboarding operator-invitations operator-organizations; do
+            headers="$(curl -sS --max-time 20 -o /dev/null -D - -X OPTIONS "$API/functions/v1/$fn" \
+              -H "Origin: $SITE" -H 'Access-Control-Request-Method: POST' \
+              -H 'Access-Control-Request-Headers: authorization, apikey, content-type, x-client-info' | tr -d '\r')"
+            echo "$headers" | grep -qE '^HTTP/[0-9.]+ 204' || { echo "$fn: preflight is not 204"; exit 1; }
+            echo "$headers" | grep -qi "^access-control-allow-origin: $SITE\$" || { echo "$fn: site origin not allowed"; exit 1; }
+            allowed="$(echo "$headers" | grep -i '^access-control-allow-headers:' | tr 'A-Z' 'a-z')"
+            for h in authorization apikey content-type x-client-info; do
+              echo "$allowed" | grep -q "$h" || { echo "$fn: header $h not allowed"; exit 1; }
+            done
+          done

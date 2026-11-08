@@ -5,6 +5,7 @@
  */
 import { DomainRuleError } from '../data/repository';
 import { publicBaseUrl } from '../lib/links';
+import { UnexpectedServerError, isNetworkFailure } from './serverErrors';
 import { getProductionSupabaseClient } from './supabaseClient';
 
 export interface TeamMember { userId: string; email: string; role: 'owner' | 'staff'; since: string; self: boolean }
@@ -30,19 +31,12 @@ const MESSAGES: Record<string, string> = {
   account_not_found: 'אין חשבון עם הכתובת הזו.',
 };
 
-const NETWORK = 'אין חיבור לשרת. בדקו את החיבור לאינטרנט ונסו שוב; אם זה חוזר, ייתכן שיש תקלה זמנית אצלנו.';
-
-/** The request never got an answer: offline, blocked, or refused by the browser (e.g. CORS). */
-export function isNetworkFailure(error: { name?: string; message?: string } | null | undefined) {
-  return error?.name === 'FunctionsFetchError' || /failed to fetch|networkerror|load failed|network request failed/i.test(error?.message ?? '');
-}
-
 function explain(error: { code?: string; message?: string } | null, fallback: string): never {
-  if (isNetworkFailure(error)) throw new DomainRuleError(NETWORK);
+  if (isNetworkFailure(error)) throw new UnexpectedServerError(fallback, true);
   if (error?.message && MESSAGES[error.message]) throw new DomainRuleError(MESSAGES[error.message]!);
   if (error?.code === '42501') throw new DomainRuleError('אין הרשאה לפעולה הזו.');
   if (error?.code === '54000') throw new DomainRuleError('נשלחו הרבה הזמנות בזמן קצר. נסו שוב בעוד שעה.');
-  throw new Error(fallback);
+  throw new UnexpectedServerError(fallback);
 }
 
 /** The link an invited person opens: secrets stay in the fragment. */
@@ -119,7 +113,7 @@ async function invokeOperator(name: 'operator-organizations' | 'operator-invitat
   const { data, error } = await client.functions.invoke<{ organizationId: string; invitationToken: string }>(name, { body });
   const status = (error as { context?: Response } | null)?.context?.status;
   if (!error && data) return data;
-  if (isNetworkFailure(error as { name?: string; message?: string })) throw new DomainRuleError(NETWORK);
+  if (isNetworkFailure(error as { name?: string; message?: string })) throw new UnexpectedServerError(name, true);
   if ((error as { name?: string } | null)?.name === 'FunctionsRelayError' || (status && status >= 500)) throw new DomainRuleError('השרת לא הצליח להשלים את הפעולה. נסו שוב בעוד דקה.');
   throw new DomainRuleError((status && FUNCTION_ERRORS[status]) || 'הפעולה נכשלה. נסו שוב.');
 }

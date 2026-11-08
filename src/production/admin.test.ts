@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isNetworkFailure } from './admin';
+import { isNetworkFailure, UnexpectedServerError } from './serverErrors';
 
 describe('operator error explanations', () => {
   it('recognises a request that never got an answer', () => {
@@ -13,5 +13,12 @@ describe('operator error explanations', () => {
     expect(isNetworkFailure({ name: 'FunctionsHttpError', message: 'Edge Function returned a non-2xx status code' })).toBe(false);
     expect(isNetworkFailure({ message: 'already_member' })).toBe(false);
     expect(isNetworkFailure(null)).toBe(false);
+  });
+
+  it('shows Hebrew to the person and keeps the technical context', () => {
+    const error = new UnexpectedServerError('Unable to load team');
+    expect(error.message).not.toMatch(/[a-z]/i);
+    expect(error.context).toBe('Unable to load team');
+    expect(new UnexpectedServerError('x', true).message).toContain('אין חיבור לשרת');
   });
 });

@@ -4,7 +4,7 @@ Last updated: 2026-11-08 (Asia/Jerusalem)
 
 ## Current milestone
 
-Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. The first operator account exists (2026-11-08). Open before declaring launch complete: the signed-in journey on the live site.
+Production V1 is deployed (founder approval 2026-11-08). Supabase Cloud `ppgdbqhwbzlgzwsjmkor` has all 11 migrations and the two new Edge Functions; `main` carries the release and GitHub Pages serves the demo at `/` and the production app at `/live/`. The first operator account and the first business exist, and the operator → business → form → customer journey has run on the live site (2026-11-08). Open: a password recovery run on the live site, and the quote screen, which has not yet been used there (both are covered by the rolled-back Cloud check at release).
 
 ## 2026-11-08 Release deployment
 
@@ -30,8 +30,23 @@ Pre-release snapshot (read-only, 2026-11-07 23:34 UTC): 4 migrations, 0 organiza
 - Fix: both handlers allow `authorization, apikey, content-type, x-client-info`; the exact-origin check is unchanged. Boundary tests now assert the preflight header list.
 - Deployed: `operator-organizations` v2 and `operator-invitations` v2 (verify_jwt true; entrypoints byte-identical to v1 apart from the header line). Cloud check: preflight 204 with the full list for the site origin, 403 for a foreign origin, anonymous POST 401.
 
-### Not yet verified on the live site
-The signed-in journey (OPERATIONS.md §6 steps 2–7): operator sign-in at `/live/app`, then the operator console, test business onboarding, workflow publish, customer submission, quote approval, tenant isolation, logo upload and password recovery.
+### Hotfix: brand colours from logos in Storage (approved 2026-11-08)
+- Symptom: "חילוץ צבעים מהלוגו" could not read a logo uploaded to the live site.
+- Root cause: production logos are Storage URLs on another origin; without `crossOrigin` the canvas is tainted and `getImageData` throws `SecurityError` (Storage answers `Access-Control-Allow-Origin: *`).
+- Fix: `extractColors` sets `crossOrigin='anonymous'` for non-`data:` URLs and waits on `onload` (`img.decode()` hung in a hidden tab). Checked on the real logo (`#152249`, `#E9096B`) and the data-URL path. `b555551`; the live chunk contains the change.
+
+### Live journey (2026-11-08, founder-driven; evidence read from the database)
+- Operator console → business `impact-networks` (08:43 UTC) → owner invitation accepted (08:59) → brand kit and three images (09:00–09:10) → workflow published v1 (09:12) → public submission (09:14) → customer action created (09:17) and answered by the customer on the request page (10:48) → request completed (11:10).
+- Not exercised on the live site: quotes (0 rows), a second business (one organization) and password recovery (0 recovery tokens issued). Each is covered by the rolled-back Cloud functional check above (quote total and approval, second tenant denied, single-use recovery link); the founder reports the journey complete.
+- Tenant isolation, re-checked on Cloud (read-only): RLS on all 16 public tables, every policy scoped by `has_org_role`/`auth.uid()`, no direct `anon` reads; all 24 member RPCs call `private.has_org_role`, the operator RPCs call `is_platform_operator()`, public RPCs are slug- or token-scoped. Advisors unchanged from release; new security WARN `auth_leaked_password_protection` (founder setting).
+
+### Experience fixes (approved 2026-11-08, `a5b8c31`)
+Brand kit explains the disabled colour extraction and lists published forms that still show the previous brand; the no-membership screen names the signed-in account and leads operators to `/operator`; an invitation opened while signed in asks before accepting and offers to switch account; the operator console tells network failures from server and input errors and flags a taken business address; a new customer action or quote highlights the customer-link card (customers are never notified automatically). The live bundle contains all five.
+
+### Maintenance (local, pending deploy approval)
+- Unexpected server failures show Hebrew (`UnexpectedServerError`, technical context kept) instead of English fallbacks such as "Unable to load team".
+- `production-smoke.yml` checks the browser preflight of the three deployed Edge Functions from the site origin (verified passing against Cloud and failing for a foreign origin).
+- `npm run lint` (ESLint 9, typescript-eslint, react-hooks) runs in `production-foundation.yml`. `minimatch` is overridden to 11.0.5 for typescript-estree (GHSA-g3hv-75wg-m249); `npm audit` reports 0. Lint found a real defect: the "no AI wording" test held literal backspaces instead of `\b`, so it never matched; it now checks properly and passes.
 
 ## 2026-11-08 Final hardening checkpoint (approved and deployed)
 

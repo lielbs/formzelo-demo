@@ -63,10 +63,10 @@ export default defineConfig(({ mode }) => {
           // Stable vendor chunks: cached across deploys and downloaded in parallel.
           manualChunks(id) {
             if (!id.includes('node_modules')) return undefined;
-            if (/[\/]node_modules[\/](react|react-dom|scheduler)[\/]/.test(id)) return 'vendor-react';
-            if (/[\/]node_modules[\/](react-router|react-router-dom|cookie|set-cookie-parser)[\/]/.test(id)) return 'vendor-router';
-            if (/[\/]node_modules[\/]zod[\/]/.test(id)) return 'vendor-zod';
-            if (/[\/]node_modules[\/]react-hook-form[\/]/.test(id)) return 'vendor-forms';
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'vendor-react';
+            if (/[\\/]node_modules[\\/](react-router|react-router-dom|cookie|set-cookie-parser)[\\/]/.test(id)) return 'vendor-router';
+            if (/[\\/]node_modules[\\/]zod[\\/]/.test(id)) return 'vendor-zod';
+            if (/[\\/]node_modules[\\/]react-hook-form[\\/]/.test(id)) return 'vendor-forms';
             return undefined;
           },
         },

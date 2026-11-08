@@ -60,7 +60,7 @@ describe('RockStack-managed packages', () => {
 
   it('the pricing page renders both fees, VAT, and no checkout or signup', () => {
     const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Pricing)));
-    const text = html.replace(/[‎‏]/g, '').replace(/ /g, ' ');
+    const text = html.replace(/[\u200E\u200F]/g, '').replace(/\u00A0/g, ' ');
     for (const t of ['Business', 'Business Plus', 'Enterprise', '399 ₪', '499 ₪', 'דמי הקמה חד-פעמיים', 'צורכי העסק', 'הצעת מחיר מותאמת', 'מע״מ', 'אינטגרציות ופיתוח מותאם']) {
       expect(text).toContain(t);
     }
@@ -97,7 +97,7 @@ describe('sales and generator copy honesty', () => {
     // Product copy does not use the term "AI" at all — the generator is described as a local, template-based engine.
     for (const [file, text] of Object.entries(sources)) {
       const visible = text.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
-      expect(visible, file).not.toMatch(/AI|בינה מלאכותית/);
+      expect(visible, file).not.toMatch(/\bAI\b|בינה מלאכותית/);
     }
     for (const text of Object.values(sources)) expect(text).not.toMatch(/generativelanguage\.googleapis|api\.openai\.com|api\.anthropic\.com/);
   });

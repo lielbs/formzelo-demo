@@ -20,6 +20,7 @@ export function parseInviteFragment(hash: string): InviteState | null {
 
 export function InviteAccept() {
   const auth = useAuth();
+  const { refresh } = auth;
   const navigate = useNavigate();
   const [invite, setInvite] = useState<InviteState | null>(() => parseInviteFragment(window.location.hash));
   const attempted = useRef(false);
@@ -57,12 +58,12 @@ export function InviteAccept() {
         if (rpcError) throw rpcError;
         setInvite(null);
         setAccepted(true);
-        return auth.refresh();
+        return refresh();
       })
       .catch(() => active && setError('לא ניתן לקבל את ההזמנה. ייתכן שפג תוקפה, בוטלה או שאינה שייכת לזהות זו.'))
       .finally(() => active && setAccepting(false));
     return () => { active = false; };
-  }, [auth.state.kind, auth.refresh, invite, accepted, confirmed]);
+  }, [auth.state.kind, refresh, invite, accepted, confirmed]);
 
   if (runtimeConfiguration.mode === 'demo') return <Navigate to="/demo" replace />;
   const submit = async (event: FormEvent) => {

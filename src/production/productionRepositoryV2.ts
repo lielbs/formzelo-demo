@@ -27,6 +27,7 @@ import { STATUS_LABELS } from '../engine/transitions';
 import type { SlotAvailability } from '../engine/booking';
 import type { OptionUsage } from '../engine/capacity';
 import { throwPortalError, throwRuleError } from './ruleErrors';
+import { UnexpectedServerError, isNetworkFailure } from './serverErrors';
 
 export class ProductionCapabilityError extends Error {
   constructor(capability: string) {
@@ -65,7 +66,7 @@ function fail(error: PostgrestError | null, fallback: string): never {
   if (error?.code === '40001') throw new DomainRuleError('התהליך השתנה במכשיר או חלון אחר. רעננו לפני שמירה נוספת.');
   if (error?.code === '42501') throw new DomainRuleError('אין הרשאה לבצע את הפעולה בסביבת העבודה הזו.');
   if (error?.code === '22023') throw new DomainRuleError('השרת דחה מסמך תהליך שאינו תקין.');
-  throw new Error(fallback);
+  throw new UnexpectedServerError(fallback, isNetworkFailure(error));
 }
 
 type OrganizationProjection = OrganizationRow & {
