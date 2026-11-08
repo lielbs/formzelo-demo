@@ -38,6 +38,7 @@ Pre-release snapshot (read-only, 2026-11-07 23:34 UTC): 4 migrations, 0 organiza
 ### Live journey (2026-11-08, founder-driven; evidence read from the database)
 - Operator console → business `impact-networks` (08:43 UTC) → owner invitation accepted (08:59) → brand kit and three images (09:00–09:10) → workflow published v1 (09:12) → public submission (09:14) → customer action created (09:17) and answered by the customer on the request page (10:48) → request completed (11:10).
 - Not exercised on the live site: quotes (0 rows), a second business (one organization) and password recovery (0 recovery tokens issued). Each is covered by the rolled-back Cloud functional check above (quote total and approval, second tenant denied, single-use recovery link); the founder reports the journey complete.
+- `impact-networks` is a test business that may become a real one (founder, 2026-11-08): it stays active and nothing in it is removed. Before it goes into real use, its test request and customer action can be cleared, only with the founder's approval.
 - Tenant isolation, re-checked on Cloud (read-only): RLS on all 16 public tables, every policy scoped by `has_org_role`/`auth.uid()`, no direct `anon` reads; all 24 member RPCs call `private.has_org_role`, the operator RPCs call `is_platform_operator()`, public RPCs are slug- or token-scoped. Advisors unchanged from release; `auth_leaked_password_protection` cleared after the founder enabled leaked-password protection (re-run of the advisors, 2026-11-08).
 
 ### Experience fixes (approved 2026-11-08, `a5b8c31`)
