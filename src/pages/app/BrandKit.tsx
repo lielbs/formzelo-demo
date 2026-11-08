@@ -41,7 +41,14 @@ export function BrandKitPage() {
   const q = useRepoQuery(
     async (r) => {
       const [kit, workflows, assets] = await Promise.all([r.getBrandKit(org.id), r.listWorkflows(org.id), r.listAssets(org.id)]);
-      return { kit, workflows, assets };
+      // Published versions freeze the brand as it was; find the ones published before the last brand change.
+      const live = workflows.filter((w) => w.status === 'published' && w.design.inheritBrand && w.publishedVersionId);
+      const versions = await Promise.all(live.map((w) => r.getVersion(org.id, w.publishedVersionId!)));
+      const stale = live.filter((_, i) => {
+        const v = versions[i];
+        return v && Date.parse(v.publishedAt) < Date.parse(kit.updatedAt);
+      });
+      return { kit, workflows, assets, stale };
     },
     [org.id],
   );
@@ -127,8 +134,10 @@ export function BrandKitPage() {
     }
   };
 
+  const logoForColors = kit.logoAssetId ?? kit.secondaryLogoAssetId;
+  const uploadedLogos = q.data.assets.filter((a) => a.kind === 'logo').length;
   const extract = async () => {
-    const url = kit.logoAssetId ? assetUrls[kit.logoAssetId] : undefined;
+    const url = logoForColors ? assetUrls[logoForColors] : undefined;
     if (!url) return toast('בחרו או העלו לוגו קודם', 'error');
     try {
       const colors = await extractColors(url);
@@ -202,6 +211,24 @@ export function BrandKitPage() {
           {dirty ? 'יש שינויים שלא נשמרו' : 'כל השינויים נשמרו'}
         </p>
       </div>
+      {q.data.stale.length > 0 && (
+        <div role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="flex items-center gap-1.5 font-medium">
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+            {q.data.stale.length === 1 ? 'טופס אחד שפורסם' : `${q.data.stale.length} טפסים שפורסמו`} עדיין {q.data.stale.length === 1 ? 'מציג' : 'מציגים'} ללקוחות את המותג מלפני השינוי האחרון.
+          </p>
+          <p className="mt-1 text-xs">כדי שהלקוחות יראו את השינויים, פתחו כל טופס ופרסמו גרסה חדשה:</p>
+          <ul className="mt-1.5 flex flex-wrap gap-2">
+            {q.data.stale.map((w) => (
+              <li key={w.id}>
+                <Link className="inline-flex rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-orange-700 ring-1 ring-amber-200 hover:bg-amber-100" to={`/app/workflows/${w.id}`}>
+                  {w.draft.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p className="mb-5 rounded-xl border border-cloud-200 bg-white p-3 text-xs leading-relaxed text-ink-muted">
         {inheriting.length} מתוך {q.data.workflows.length} תהליכים יורשים את המותג.{' '}
         <strong className="font-medium text-ink">גרסאות שכבר פורסמו לא משתנות</strong> — השינוי יופיע בקישור הציבורי רק אחרי פרסום גרסה חדשה. {runtimeConfiguration.mode === 'demo' ? 'התמונות נשמרות בדפדפן זה בלבד ואינן נשלחות לשום מקום.' : 'התמונות נשמרות באחסון המאובטח של העסק ומוצגות בטפסים שפורסמו.'}
@@ -261,9 +288,19 @@ export function BrandKitPage() {
               <ColorInput label="הדגשה" value={kit.palette.accent} onChange={(v) => set((k) => void (k.palette.accent = v))} />
               <ColorInput label="רקע" value={kit.palette.background} onChange={(v) => set((k) => void (k.palette.background = v))} />
             </div>
-            <Button size="sm" variant="secondary" icon={Pipette} onClick={extract} disabled={!kit.logoAssetId}>
-              חילוץ צבעים מהלוגו
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="secondary" icon={Pipette} onClick={extract} disabled={!logoForColors}>
+                חילוץ צבעים מהלוגו
+              </Button>
+              {!logoForColors && (
+                <p className="text-xs text-ink-muted">
+                  {uploadedLogos ? 'הלוגו הועלה אך עוד לא נבחר.' : 'עוד אין לוגו.'}{' '}
+                  <button type="button" className="font-medium text-orange-700 underline-offset-2 hover:underline" onClick={() => goTab('details')}>
+                    {uploadedLogos ? 'בחירת לוגו ראשי' : 'העלאת לוגו'} בלשונית ״פרטי העסק״
+                  </button>
+                </p>
+              )}
+            </div>
             {candidates.length > 0 && (
               <ul className="space-y-2" aria-label="צבעים שנמצאו בלוגו">
                 {candidates.map((c) => (

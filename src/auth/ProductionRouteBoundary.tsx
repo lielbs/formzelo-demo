@@ -1,7 +1,8 @@
-import { LogOut, ShieldCheck } from 'lucide-react';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { Building2, LogOut, ShieldCheck } from 'lucide-react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from '../components/Brand';
-import { Button, Card, ErrorState, FieldLabel, Input, Spinner } from '../components/ui';
+import { Button, ButtonLink, Card, ErrorState, FieldLabel, Input, Spinner } from '../components/ui';
+import { isPlatformOperator } from '../production/admin';
 import { useAuth } from './AuthProvider';
 
 function AccessPage({ children }: { children: ReactNode }) {
@@ -53,6 +54,37 @@ function SignIn() {
   );
 }
 
+/** Signed in, but not a member of any business: say who is signed in, and lead operators to their console. */
+function NoMembership({ email, onSignOut }: { email: string | null; onSignOut: () => void }) {
+  const [operator, setOperator] = useState(false);
+  useEffect(() => {
+    let active = true;
+    isPlatformOperator().then((ok) => active && setOperator(ok));
+    return () => {
+      active = false;
+    };
+  }, []);
+  return (
+    <AccessPage>
+      <h1 className="mt-4 text-xl font-semibold text-ink">{operator ? 'זה חשבון מפעיל' : 'אין חברות פעילה בארגון'}</h1>
+      {email && (
+        <p className="mt-2 text-sm text-ink-muted">
+          מחוברים כ־<span className="ltr font-medium text-ink">{email}</span>
+        </p>
+      )}
+      <p className="mt-2 text-sm leading-6 text-ink-muted">
+        {operator
+          ? 'לחשבון הזה אין עסק משלו. ניהול העסקים נמצא במסוף המפעיל. כדי להיכנס לעסק, התנתקו והתחברו עם החשבון של בעל/ת העסק.'
+          : 'החשבון הזה עוד לא שייך לאף עסק. אם קיבלתם קישור הזמנה, פתחו אותו שוב. אם התחברתם בחשבון הלא נכון, התנתקו והתחברו עם הכתובת שאליה נשלחה ההזמנה.'}
+      </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        {operator && <ButtonLink to="/operator" icon={Building2}>למסוף המפעיל</ButtonLink>}
+        <Button variant="secondary" icon={LogOut} onClick={onSignOut}>התנתקות</Button>
+      </div>
+    </AccessPage>
+  );
+}
+
 /** Protects workforce routes while preserving the existing demo until its replacement is validated. */
 export function ProductionRouteBoundary({ children }: { children: ReactNode }) {
   const { state, refresh, signOut } = useAuth();
@@ -62,17 +94,7 @@ export function ProductionRouteBoundary({ children }: { children: ReactNode }) {
 
   if (state.kind === 'unauthenticated') return <SignIn />;
 
-  if (state.kind === 'unauthorized') {
-    return (
-      <AccessPage>
-        <h1 className="mt-4 text-xl font-semibold text-ink">אין חברות פעילה בארגון</h1>
-        <p className="mt-2 text-sm leading-6 text-ink-muted">
-          הזהות אומתה, אך לא נמצאה חברות פעילה. פנו ל־RockStack או למנהל הארגון.
-        </p>
-        <Button variant="secondary" className="mt-5" icon={LogOut} onClick={() => void signOut()}>התנתקות</Button>
-      </AccessPage>
-    );
-  }
+  if (state.kind === 'unauthorized') return <NoMembership email={state.email} onSignOut={() => void signOut()} />;
 
   return children;
 }

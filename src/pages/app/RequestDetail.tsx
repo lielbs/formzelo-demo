@@ -97,6 +97,8 @@ export function RequestDetail() {
   const [pending, setPending] = useState<{ to: RunStatus; label: string } | null>(null);
   const [message, setMessage] = useState('');
   const [composing, setComposing] = useState(false);
+  const [customerNudge, setCustomerNudge] = useState(0);
+  const nudgeCustomer = () => setCustomerNudge((n) => n + 1);
 
   const q = useRepoQuery(
     async (r) => {
@@ -279,7 +281,7 @@ export function RequestDetail() {
               <p className="w-full text-xs text-ink-muted">{PRODUCTION ? 'אישור כאן הופך את הבקשה להזמנה מאושרת. המקום נשמר על השרת מרגע השליחה, ומשתחרר אם הבקשה נדחית או מבוטלת.' : 'אישור כאן הופך את הבקשה להזמנה מאושרת. בדמו אין יומן משותף ואין שמירת מקום בין מכשירים — הקיבולת מחושבת מבקשות בדפדפן זה.'}</p>
             </Card>
           )}
-          <QuotePanel orgId={org.id} run={run} design={version?.design} quotes={quotes} canAct={canAct} onChanged={q.reload} />
+          <QuotePanel orgId={org.id} run={run} design={version?.design} quotes={quotes} canAct={canAct} onChanged={q.reload} onSent={nudgeCustomer} />
           <Card className="p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -383,7 +385,7 @@ export function RequestDetail() {
         </div>
 
         <div className="space-y-6">
-          {workflow && <CustomerLinkCard orgId={org.id} run={run} production={PRODUCTION} />}
+          {workflow && <CustomerLinkCard orgId={org.id} run={run} production={PRODUCTION} nudge={customerNudge} />}
           <Card className="p-5">
             <h2 className="font-semibold">הערה פנימית</h2>
             <p className="mt-0.5 text-xs text-ink-muted">נראית רק לצוות, לא ללקוח.</p>
@@ -416,7 +418,7 @@ export function RequestDetail() {
         </div>
       </div>
 
-      <ActionComposer open={composing} onClose={() => setComposing(false)} orgId={org.id} business={org.name} run={run} design={version?.design} onCreated={q.reload} />
+      <ActionComposer open={composing} onClose={() => setComposing(false)} orgId={org.id} business={org.name} run={run} design={version?.design} onCreated={() => { q.reload(); nudgeCustomer(); }} />
 
       <Modal
         open={Boolean(pending)}

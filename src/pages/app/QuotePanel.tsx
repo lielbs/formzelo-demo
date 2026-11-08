@@ -5,7 +5,7 @@
  * copies the link or opens WhatsApp with it.
  */
 import { Copy, ExternalLink, FilePlus2, FileText, Link2, Link2Off, MessageCircle, Plus, Send, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, cx, Input, Modal, Select, Textarea } from '../../components/ui';
 import type { QuoteRecord, WorkflowRun } from '../../domain/schema';
@@ -26,11 +26,19 @@ const absolute = (path: string) => `${publicBaseUrl()}${path}`;
 const errorText = (e: unknown) => (e instanceof ValidationFailedError ? Object.values(e.errors)[0] : e instanceof Error ? e.message : 'הפעולה נכשלה');
 
 /** The private link to the customer's page: copy, WhatsApp, open, or cancel all links. */
-export function CustomerLinkCard({ orgId, run, production }: { orgId: string; run: WorkflowRun; production: boolean }) {
+/** `nudge` grows each time something new is ready for the customer, who is never notified automatically. */
+export function CustomerLinkCard({ orgId, run, production, nudge = 0 }: { orgId: string; run: WorkflowRun; production: boolean; nudge?: number }) {
   const { repo } = useRepo();
   const toast = useToast();
   const [link, setLink] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const [nudged, setNudged] = useState(false);
+  useEffect(() => {
+    if (!nudge) return;
+    setNudged(true);
+    card.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, [nudge]);
   const create = async () => {
     setBusy('create');
     try {
@@ -44,10 +52,18 @@ export function CustomerLinkCard({ orgId, run, production }: { orgId: string; ru
   const phone = run.customerContact.replace(/\D/g, '').replace(/^0/, '972');
   const whatsapp = link && `https://wa.me/${/^972\d{8,9}$/.test(phone) ? phone : ''}?text=${encodeURIComponent(`שלום${run.customerName ? ` ${run.customerName}` : ''}, זה העמוד האישי של הבקשה שלך (${run.reference}). אפשר לראות בו עדכונים והצעות מחיר: ${link}`)}`;
   return (
+    <div ref={card} className={cx('scroll-mt-6 rounded-2xl', nudged && 'ring-2 ring-amber-300 ring-offset-2')}>
     <Card className="p-5">
       <h2 className="flex items-center gap-2 font-semibold">
         <Link2 className="h-4 w-4 text-orange-700" aria-hidden /> עמוד הבקשה של הלקוח
       </h2>
+      {nudged && (
+        <p role="status" className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {link
+            ? 'יש עדכון חדש בעמוד. הלקוח לא מקבל התראה אוטומטית: שלחו לו את הקישור כדי שידע.'
+            : 'יש עדכון חדש בעמוד. הלקוח לא מקבל התראה אוטומטית: צרו קישור ושלחו לו אותו בוואטסאפ.'}
+        </p>
+      )}
       <p className="mt-1 text-xs text-ink-muted">
         {production
           ? 'קישור פרטי שנפתח בלי הרשמה: סטטוס, הצעות מחיר ושאלות שלכם. כל קישור חדש תקף ל-180 יום.'
@@ -65,7 +81,7 @@ export function CustomerLinkCard({ orgId, run, production }: { orgId: string; ru
               העתקה
             </Button>
             {whatsapp && (
-              <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1f8f4d] px-3 text-sm font-medium text-white hover:bg-[#187a41]">
+              <a href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => setNudged(false)} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1f8f4d] px-3 text-sm font-medium text-white hover:bg-[#187a41]">
                 <MessageCircle className="h-4 w-4" aria-hidden /> שליחה בוואטסאפ
               </a>
             )}
@@ -98,6 +114,7 @@ export function CustomerLinkCard({ orgId, run, production }: { orgId: string; ru
         </button>
       )}
     </Card>
+    </div>
   );
 }
 
@@ -140,7 +157,7 @@ function ItemEditor({ item, onChange, onRemove, canRemove }: { item: QuoteItem; 
 
 function QuoteComposer({
   open, onClose, orgId, run, design, draft, onSaved,
-}: { open: boolean; onClose: () => void; orgId: string; run: WorkflowRun; design?: WorkflowTheme; draft?: QuoteRecord; onSaved: () => void }) {
+}: { open: boolean; onClose: () => void; orgId: string; run: WorkflowRun; design?: WorkflowTheme; draft?: QuoteRecord; onSaved: (sent: boolean) => void }) {
   const { repo } = useRepo();
   const toast = useToast();
   const initial = (): QuoteContent => {
@@ -170,7 +187,7 @@ function QuoteComposer({
       const saved = await repo.saveQuoteDraft(orgId, run.id, { quoteId: draft?.id, content: valid.data });
       if (andSend) await repo.sendQuote(orgId, saved.id);
       toast(andSend ? 'ההצעה מוכנה בעמוד הבקשה של הלקוח. שלחו לו את הקישור.' : 'הטיוטה נשמרה');
-      onSaved();
+      onSaved(andSend);
       onClose();
     } catch (e) {
       setError(errorText(e));
@@ -278,7 +295,7 @@ function QuoteComposer({
 }
 
 /** The quotes of one request: the open draft, what was sent, and what the customer decided. */
-export function QuotePanel({ orgId, run, design, quotes, canAct, onChanged }: { orgId: string; run: WorkflowRun; design?: WorkflowTheme; quotes: QuoteRecord[]; canAct: boolean; onChanged: () => void }) {
+export function QuotePanel({ orgId, run, design, quotes, canAct, onChanged, onSent }: { orgId: string; run: WorkflowRun; design?: WorkflowTheme; quotes: QuoteRecord[]; canAct: boolean; onChanged: () => void; onSent?: () => void }) {
   const { repo } = useRepo();
   const toast = useToast();
   const [composing, setComposing] = useState<'new' | QuoteRecord | null>(null);
@@ -336,7 +353,7 @@ export function QuotePanel({ orgId, run, design, quotes, canAct, onChanged }: { 
                   {q.status === 'draft' && canAct && (
                     <>
                       <Button size="sm" variant="secondary" onClick={() => setComposing(q)}>עריכה</Button>
-                      <Button size="sm" icon={Send} loading={busy === q.id} onClick={() => act(q.id, () => repo.sendQuote(orgId, q.id), 'ההצעה מוכנה בעמוד הבקשה של הלקוח')}>שליחה</Button>
+                      <Button size="sm" icon={Send} loading={busy === q.id} onClick={() => act(q.id, async () => { await repo.sendQuote(orgId, q.id); onSent?.(); }, 'ההצעה מוכנה בעמוד הבקשה של הלקוח')}>שליחה</Button>
                     </>
                   )}
                   {(q.status === 'draft' || q.status === 'sent' || q.status === 'changes_requested') && canAct && (
@@ -362,7 +379,10 @@ export function QuotePanel({ orgId, run, design, quotes, canAct, onChanged }: { 
         run={run}
         design={design}
         draft={composing && composing !== 'new' ? composing : undefined}
-        onSaved={onChanged}
+        onSaved={(sent) => {
+          onChanged();
+          if (sent) onSent?.();
+        }}
       />
     </Card>
   );

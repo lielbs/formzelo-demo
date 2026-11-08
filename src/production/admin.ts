@@ -30,7 +30,15 @@ const MESSAGES: Record<string, string> = {
   account_not_found: 'אין חשבון עם הכתובת הזו.',
 };
 
+const NETWORK = 'אין חיבור לשרת. בדקו את החיבור לאינטרנט ונסו שוב; אם זה חוזר, ייתכן שיש תקלה זמנית אצלנו.';
+
+/** The request never got an answer: offline, blocked, or refused by the browser (e.g. CORS). */
+export function isNetworkFailure(error: { name?: string; message?: string } | null | undefined) {
+  return error?.name === 'FunctionsFetchError' || /failed to fetch|networkerror|load failed|network request failed/i.test(error?.message ?? '');
+}
+
 function explain(error: { code?: string; message?: string } | null, fallback: string): never {
+  if (isNetworkFailure(error)) throw new DomainRuleError(NETWORK);
   if (error?.message && MESSAGES[error.message]) throw new DomainRuleError(MESSAGES[error.message]!);
   if (error?.code === '42501') throw new DomainRuleError('אין הרשאה לפעולה הזו.');
   if (error?.code === '54000') throw new DomainRuleError('נשלחו הרבה הזמנות בזמן קצר. נסו שוב בעוד שעה.');
@@ -110,8 +118,10 @@ async function invokeOperator(name: 'operator-organizations' | 'operator-invitat
   const client = await getProductionSupabaseClient();
   const { data, error } = await client.functions.invoke<{ organizationId: string; invitationToken: string }>(name, { body });
   const status = (error as { context?: Response } | null)?.context?.status;
-  if (error || !data) throw new DomainRuleError((status && FUNCTION_ERRORS[status]) || 'הפעולה נכשלה. נסו שוב.');
-  return data;
+  if (!error && data) return data;
+  if (isNetworkFailure(error as { name?: string; message?: string })) throw new DomainRuleError(NETWORK);
+  if ((error as { name?: string } | null)?.name === 'FunctionsRelayError' || (status && status >= 500)) throw new DomainRuleError('השרת לא הצליח להשלים את הפעולה. נסו שוב בעוד דקה.');
+  throw new DomainRuleError((status && FUNCTION_ERRORS[status]) || 'הפעולה נכשלה. נסו שוב.');
 }
 
 /** Creates the business, its settings and Brand Kit, and the owner's invitation (one transaction). */

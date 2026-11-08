@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/Brand';
@@ -22,6 +23,9 @@ export function InviteAccept() {
   const navigate = useNavigate();
   const [invite, setInvite] = useState<InviteState | null>(() => parseInviteFragment(window.location.hash));
   const attempted = useRef(false);
+  // Someone who arrives already signed in confirms the account first; signing in here is consent enough.
+  const signedInHere = useRef(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,7 @@ export function InviteAccept() {
 
   useEffect(() => {
     if (!['authenticated', 'unauthorized'].includes(auth.state.kind) || !invite || accepted || attempted.current) return;
+    if (!signedInHere.current && !confirmed) return;
     let active = true;
     attempted.current = true;
     setAccepting(true);
@@ -57,12 +62,13 @@ export function InviteAccept() {
       .catch(() => active && setError('לא ניתן לקבל את ההזמנה. ייתכן שפג תוקפה, בוטלה או שאינה שייכת לזהות זו.'))
       .finally(() => active && setAccepting(false));
     return () => { active = false; };
-  }, [auth.state.kind, auth.refresh, invite, accepted]);
+  }, [auth.state.kind, auth.refresh, invite, accepted, confirmed]);
 
   if (runtimeConfiguration.mode === 'demo') return <Navigate to="/demo" replace />;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
+    signedInHere.current = true;
     setError(await auth.signIn(email, password));
     setBusy(false);
   };
@@ -92,10 +98,20 @@ export function InviteAccept() {
         setError(status === 404 ? 'ההזמנה אינה זמינה יותר. בקשו קישור חדש.' : status === 400 ? 'בדקו את הסיסמה (10 עד 72 תווים, בלי רווח בהתחלה או בסוף).' : 'יצירת החשבון נכשלה. נסו שוב.');
         return;
       }
+      signedInHere.current = true;
       setError(await auth.signIn(data.email, password));
     } finally {
       setBusy(false);
     }
+  };
+  const signedInEmail = auth.state.kind === 'authenticated' || auth.state.kind === 'unauthorized' ? auth.state.email : null;
+  const switchAccount = async () => {
+    attempted.current = false;
+    signedInHere.current = false;
+    setConfirmed(false);
+    setError(null);
+    setMode('login');
+    await auth.signOut();
   };
   const field = 'mt-1 w-full rounded-xl border border-cloud-300 px-3 py-2.5 text-base focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200';
 
@@ -106,6 +122,20 @@ export function InviteAccept() {
         <h1 className="mt-7 text-2xl font-semibold text-ink">ברוכים הבאים ל־Formangle</h1>
         {!invite && !accepted && <ErrorState error="קישור ההזמנה חסר או אינו תקין." />}
         {error && <div className="mt-4"><ErrorState error={error} onRetry={() => { attempted.current = false; setError(null); }} /></div>}
+        {error && invite && signedInEmail !== null && (
+          <Button variant="secondary" className="mt-3" icon={LogOut} onClick={switchAccount}>התנתקות והתחברות עם החשבון שהוזמן</Button>
+        )}
+        {invite && signedInEmail !== null && !signedInHere.current && !confirmed && !accepted && (
+          <div className="mt-5">
+            <p className="text-sm leading-6 text-ink-muted">
+              אתם כבר מחוברים{signedInEmail ? <> כ־<span className="ltr font-medium text-ink">{signedInEmail}</span></> : ''}. ההזמנה תתקבל לחשבון הזה, ורק אם היא נשלחה לכתובת שלו.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={() => setConfirmed(true)}>קבלת ההזמנה בחשבון הזה</Button>
+              <Button variant="secondary" icon={LogOut} onClick={switchAccount}>התנתקות והמשך עם חשבון אחר</Button>
+            </div>
+          </div>
+        )}
         {accepting && !accepted && <Spinner label="מאמת ומקבל את ההזמנה…" />}
         {accepted && (
           <div className="mt-5">

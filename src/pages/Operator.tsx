@@ -58,8 +58,11 @@ function Console() {
     void load();
   }, []);
 
+  // Checked here so a taken address gets a clear answer; the server still enforces uniqueness.
+  const slugTaken = Boolean(orgs?.some((o) => o.slug === form.slug.trim()));
   const create = async (event: FormEvent) => {
     event.preventDefault();
+    if (slugTaken) return;
     setBusy('create');
     try {
       const { link } = await provisionBusiness({ name: form.name.trim(), slug: form.slug.trim(), ownerEmail: form.ownerEmail.trim() });
@@ -88,14 +91,16 @@ function Console() {
             </div>
             <div>
               <FieldLabel htmlFor="op-slug" required>כתובת באתר</FieldLabel>
-              <Input id="op-slug" required dir="ltr" pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={80} value={form.slug} onChange={(e) => { setSlugTouched(true); setForm((f) => ({ ...f, slug: e.target.value.toLowerCase() })); }} placeholder="bloom-studio" />
-              <p className="mt-1 text-xs text-ink-muted">אותיות לטיניות קטנות, ספרות ומקפים. מופיעה בכתובות הטפסים.</p>
+              <Input id="op-slug" required dir="ltr" pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={80} invalid={slugTaken} aria-describedby="op-slug-hint" value={form.slug} onChange={(e) => { setSlugTouched(true); setForm((f) => ({ ...f, slug: e.target.value.toLowerCase() })); }} placeholder="bloom-studio" />
+              <p id="op-slug-hint" role={slugTaken ? 'alert' : undefined} className={slugTaken ? 'mt-1 text-xs text-red-700' : 'mt-1 text-xs text-ink-muted'}>
+                {slugTaken ? 'הכתובת הזו כבר שייכת לעסק אחר ברשימה. בחרו כתובת אחרת.' : 'אותיות לטיניות קטנות, ספרות ומקפים. מופיעה בכתובות הטפסים.'}
+              </p>
             </div>
             <div>
               <FieldLabel htmlFor="op-email" required>אימייל של בעל/ת העסק</FieldLabel>
               <Input id="op-email" required type="email" dir="ltr" maxLength={320} value={form.ownerEmail} onChange={(e) => setForm((f) => ({ ...f, ownerEmail: e.target.value }))} placeholder="owner@business.co.il" />
             </div>
-            <Button type="submit" loading={busy === 'create'} className="w-full">יצירת העסק והזמנת הבעלים</Button>
+            <Button type="submit" loading={busy === 'create'} disabled={slugTaken} className="w-full">יצירת העסק והזמנת הבעלים</Button>
           </form>
         </Card>
         {result && <LinkResult {...result} onDone={() => setResult(null)} />}
