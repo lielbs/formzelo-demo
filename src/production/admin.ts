@@ -19,6 +19,8 @@ export interface OperatorOrganization {
   owners: number;
   staff: number;
   workflows: number;
+  /** Formangle Tables module switch (operator-controlled kill switch). */
+  tablesEnabled?: boolean;
   pendingOwnerInvitation: { email: string; expiresAt: string } | null;
 }
 
@@ -100,6 +102,13 @@ export async function operatorOrganizations(): Promise<OperatorOrganization[]> {
   const { data, error } = await client.rpc('operator_list_organizations');
   if (error) explain(error, 'Unable to load organizations');
   return (data ?? []) as unknown as OperatorOrganization[];
+}
+
+/** Turns Formangle Tables on or off for one business. Off hides every Tables screen and public page at once. */
+export async function operatorSetTablesEnabled(organizationId: string, enabled: boolean): Promise<void> {
+  const client = await getProductionSupabaseClient();
+  const { error } = await client.rpc('operator_set_tables_enabled', { p_organization_id: organizationId, p_enabled: enabled });
+  if (error) explain(error, 'Unable to change Tables');
 }
 
 const FUNCTION_ERRORS: Record<number, string> = {

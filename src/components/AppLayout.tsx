@@ -1,4 +1,4 @@
-import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, Palette, Plus, Settings, Workflow, X } from 'lucide-react';
+import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, Palette, Plus, Settings, UtensilsCrossed, Workflow, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useRepo, useRepoQuery } from '../data/store';
@@ -12,6 +12,8 @@ const NAV = [
   { to: '/app', label: 'לוח בקרה', icon: LayoutDashboard, end: true },
   { to: '/app/workflows', label: 'תהליכים', icon: Workflow },
   { to: '/app/requests', label: 'בקשות', icon: Inbox, badge: true },
+  // Formangle Tables needs the real server, so it is not offered in the local demo.
+  ...(runtimeConfiguration.mode === 'production' ? [{ to: '/app/tables', label: 'שולחנות', icon: UtensilsCrossed }] : []),
   { to: '/app/brand', label: 'ערכת מותג', icon: Palette },
   { to: '/app/analytics', label: 'אנליטיקה', icon: BarChart3 },
   { to: '/app/settings', label: 'הגדרות', icon: Settings },
@@ -166,16 +168,16 @@ export function AppLayout() {
         <Sidebar pending={pending} />
       </aside>
 
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-cloud-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-cloud-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
         <Logo endorsement={false} to="/app" />
-        <div className="flex items-center gap-2">
-          <span className="max-w-[40vw] truncate text-sm font-medium text-ink-muted">{activeOrg.name}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 max-w-[40vw] truncate text-sm font-medium text-ink-muted">{activeOrg.name}</span>
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
             aria-label="פתיחת תפריט"
             aria-expanded={mobileOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-cloud-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cloud-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
           >
             <Menu className="h-5 w-5" />
           </button>

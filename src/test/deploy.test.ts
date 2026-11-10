@@ -23,6 +23,8 @@ describe('deployment readiness', () => {
     expect(CSP).not.toContain('unsafe-eval');
     // The dedicated project only: API calls (connect-src) and brand images from its storage (img-src).
     expect(new Set(CSP.match(/https?:\/\/[^ ;]+/g))).toEqual(new Set(['https://ppgdbqhwbzlgzwsjmkor.supabase.co']));
+    // Realtime (Formangle Tables host screen) uses the same project over a secure websocket only.
+    expect(new Set(CSP.match(/wss?:\/\/[^ ;]+/g))).toEqual(new Set(['wss://ppgdbqhwbzlgzwsjmkor.supabase.co']));
     expect(CSP).toMatch(/img-src 'self' data: blob: https:\/\/ppgdbqhwbzlgzwsjmkor\.supabase\.co;/);
     expect(CSP).toContain("object-src 'none'");
   });

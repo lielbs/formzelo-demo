@@ -21,7 +21,8 @@ export const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://ppgdbqhwbzlgzwsjmkor.supabase.co",
   "font-src 'self' data:",
-  "connect-src 'self' data: https://ppgdbqhwbzlgzwsjmkor.supabase.co",
+  // wss: the Tables host screen keeps one Realtime channel open to the same project.
+  "connect-src 'self' data: https://ppgdbqhwbzlgzwsjmkor.supabase.co wss://ppgdbqhwbzlgzwsjmkor.supabase.co",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",

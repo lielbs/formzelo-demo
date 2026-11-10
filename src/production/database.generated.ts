@@ -253,6 +253,490 @@ isOneToOne: false
       referencedColumns: ["organization_id","workflow_id","id"]
     }
                   ]
+                },"tables_allocations": {
+                  Row: {
+                    "created_at": string,"expires_at": string | null,"group_id": string,"id": string,"occupied_during": unknown,"organization_id": string,"physical_table_id": string,"released_at": string | null,"reservation_id": string | null,"state": string,"venue_id": string,"waitlist_entry_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"expires_at"?: string | null,"group_id": string,"id"?: string,"occupied_during": unknown,"organization_id": string,"physical_table_id": string,"released_at"?: string | null,"reservation_id"?: string | null,"state": string,"venue_id": string,"waitlist_entry_id"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"expires_at"?: string | null,"group_id"?: string,"id"?: string,"occupied_during"?: unknown,"organization_id"?: string,"physical_table_id"?: string,"released_at"?: string | null,"reservation_id"?: string | null,"state"?: string,"venue_id"?: string,"waitlist_entry_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_allocations_organization_id_venue_id_physical_table_fkey"
+      columns: ["organization_id","venue_id","physical_table_id"]
+isOneToOne: false
+      referencedRelation: "tables_physical_tables"
+      referencedColumns: ["organization_id","venue_id","id"]
+    },{
+      foreignKeyName: "tables_allocations_organization_id_venue_id_reservation_id_fkey"
+      columns: ["organization_id","venue_id","reservation_id"]
+isOneToOne: false
+      referencedRelation: "tables_reservations"
+      referencedColumns: ["organization_id","venue_id","id"]
+    },{
+      foreignKeyName: "tables_allocations_organization_id_venue_id_waitlist_entry_fkey"
+      columns: ["organization_id","venue_id","waitlist_entry_id"]
+isOneToOne: false
+      referencedRelation: "tables_waitlist_entries"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_combination_members": {
+                  Row: {
+                    "combination_id": string,"organization_id": string,"physical_table_id": string,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "combination_id": string,"organization_id": string,"physical_table_id": string,"venue_id": string
+                  }
+                  Update: {
+                    "combination_id"?: string,"organization_id"?: string,"physical_table_id"?: string,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_combination_members_organization_id_venue_id_combin_fkey"
+      columns: ["organization_id","venue_id","combination_id"]
+isOneToOne: false
+      referencedRelation: "tables_combinations"
+      referencedColumns: ["organization_id","venue_id","id"]
+    },{
+      foreignKeyName: "tables_combination_members_organization_id_venue_id_physic_fkey"
+      columns: ["organization_id","venue_id","physical_table_id"]
+isOneToOne: false
+      referencedRelation: "tables_physical_tables"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_combinations": {
+                  Row: {
+                    "active": boolean,"created_at": string,"id": string,"label": string,"max_covers": number,"min_covers": number,"organization_id": string,"priority": number,"updated_at": string,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"id": string,"label": string,"max_covers": number,"min_covers": number,"organization_id": string,"priority"?: number,"updated_at"?: string,"venue_id": string
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"id"?: string,"label"?: string,"max_covers"?: number,"min_covers"?: number,"organization_id"?: string,"priority"?: number,"updated_at"?: string,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_combinations_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"tables_guests": {
+                  Row: {
+                    "created_at": string,"display_name": string,"email": string | null,"id": string,"marketing_consent": boolean,"organization_id": string,"phone_e164": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"display_name": string,"email"?: string | null,"id"?: string,"marketing_consent"?: boolean,"organization_id": string,"phone_e164"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"display_name"?: string,"email"?: string | null,"id"?: string,"marketing_consent"?: boolean,"organization_id"?: string,"phone_e164"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_guests_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tables_layout_table_snapshots": {
+                  Row: {
+                    "geometry": NonNullable<Json>,"label": string,"max_covers": number,"min_covers": number,"organization_id": string,"physical_table_id": string,"shape": string,"venue_id": string,"version_id": string,"zone_id": string,"zone_name": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "geometry": NonNullable<Json>,"label": string,"max_covers": number,"min_covers": number,"organization_id": string,"physical_table_id": string,"shape": string,"venue_id": string,"version_id": string,"zone_id": string,"zone_name": string
+                  }
+                  Update: {
+                    "geometry"?: NonNullable<Json>,"label"?: string,"max_covers"?: number,"min_covers"?: number,"organization_id"?: string,"physical_table_id"?: string,"shape"?: string,"venue_id"?: string,"version_id"?: string,"zone_id"?: string,"zone_name"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_layout_table_snapshots_organization_id_venue_id_phy_fkey"
+      columns: ["organization_id","venue_id","physical_table_id"]
+isOneToOne: false
+      referencedRelation: "tables_physical_tables"
+      referencedColumns: ["organization_id","venue_id","id"]
+    },{
+      foreignKeyName: "tables_layout_table_snapshots_organization_id_venue_id_ver_fkey"
+      columns: ["organization_id","venue_id","version_id"]
+isOneToOne: false
+      referencedRelation: "tables_venue_versions"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_menu_versions": {
+                  Row: {
+                    "created_at": string,"id": string,"menu_id": string,"organization_id": string,"published_by": string,"snapshot": NonNullable<Json>,"venue_id": string,"version_number": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"menu_id": string,"organization_id": string,"published_by": string,"snapshot": NonNullable<Json>,"venue_id": string,"version_number": number
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"menu_id"?: string,"organization_id"?: string,"published_by"?: string,"snapshot"?: NonNullable<Json>,"venue_id"?: string,"version_number"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_menu_versions_organization_id_venue_id_menu_id_fkey"
+      columns: ["organization_id","venue_id","menu_id"]
+isOneToOne: false
+      referencedRelation: "tables_menus"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_menus": {
+                  Row: {
+                    "created_at": string,"draft": NonNullable<Json>,"id": string,"lock_version": number,"organization_id": string,"published_version_id": string | null,"sort_order": number,"status": string,"title": string,"updated_at": string,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"draft"?: NonNullable<Json>,"id"?: string,"lock_version"?: number,"organization_id": string,"published_version_id"?: string | null,"sort_order"?: number,"status"?: string,"title": string,"updated_at"?: string,"venue_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"draft"?: NonNullable<Json>,"id"?: string,"lock_version"?: number,"organization_id"?: string,"published_version_id"?: string | null,"sort_order"?: number,"status"?: string,"title"?: string,"updated_at"?: string,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_menu_published_version"
+      columns: ["published_version_id"]
+isOneToOne: false
+      referencedRelation: "tables_menu_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tables_menus_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"tables_notes": {
+                  Row: {
+                    "author_user_id": string,"body": string,"created_at": string,"guest_id": string | null,"id": string,"organization_id": string,"reservation_id": string | null,"venue_id": string,"visibility": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_user_id": string,"body": string,"created_at"?: string,"guest_id"?: string | null,"id"?: string,"organization_id": string,"reservation_id"?: string | null,"venue_id": string,"visibility": string
+                  }
+                  Update: {
+                    "author_user_id"?: string,"body"?: string,"created_at"?: string,"guest_id"?: string | null,"id"?: string,"organization_id"?: string,"reservation_id"?: string | null,"venue_id"?: string,"visibility"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_notes_organization_id_guest_id_fkey"
+      columns: ["organization_id","guest_id"]
+isOneToOne: false
+      referencedRelation: "tables_guests"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_notes_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_notes_organization_id_venue_id_reservation_id_fkey"
+      columns: ["organization_id","venue_id","reservation_id"]
+isOneToOne: false
+      referencedRelation: "tables_reservations"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_organization_features": {
+                  Row: {
+                    "enabled": boolean,"organization_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "enabled"?: boolean,"organization_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "enabled"?: boolean,"organization_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_organization_features_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: true
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tables_physical_tables": {
+                  Row: {
+                    "accessible": boolean,"active": boolean,"archived_at": string | null,"created_at": string,"id": string,"label": string,"max_covers": number,"min_covers": number,"organization_id": string,"shape": string,"updated_at": string,"venue_id": string,"zone_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accessible"?: boolean,"active"?: boolean,"archived_at"?: string | null,"created_at"?: string,"id": string,"label": string,"max_covers": number,"min_covers": number,"organization_id": string,"shape"?: string,"updated_at"?: string,"venue_id": string,"zone_id": string
+                  }
+                  Update: {
+                    "accessible"?: boolean,"active"?: boolean,"archived_at"?: string | null,"created_at"?: string,"id"?: string,"label"?: string,"max_covers"?: number,"min_covers"?: number,"organization_id"?: string,"shape"?: string,"updated_at"?: string,"venue_id"?: string,"zone_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_physical_tables_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_physical_tables_organization_id_venue_id_zone_id_fkey"
+      columns: ["organization_id","venue_id","zone_id"]
+isOneToOne: false
+      referencedRelation: "tables_zones"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_reservation_events": {
+                  Row: {
+                    "actor_type": string,"actor_user_id": string | null,"created_at": string,"event_type": string,"from_status": string | null,"id": string,"metadata": NonNullable<Json>,"organization_id": string,"reason": string | null,"reservation_id": string,"seq": number,"to_status": string | null,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor_type": string,"actor_user_id"?: string | null,"created_at"?: string,"event_type": string,"from_status"?: string | null,"id"?: string,"metadata"?: NonNullable<Json>,"organization_id": string,"reason"?: string | null,"reservation_id": string,"seq": number,"to_status"?: string | null,"venue_id": string
+                  }
+                  Update: {
+                    "actor_type"?: string,"actor_user_id"?: string | null,"created_at"?: string,"event_type"?: string,"from_status"?: string | null,"id"?: string,"metadata"?: NonNullable<Json>,"organization_id"?: string,"reason"?: string | null,"reservation_id"?: string,"seq"?: number,"to_status"?: string | null,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_reservation_events_organization_id_venue_id_reserva_fkey"
+      columns: ["organization_id","venue_id","reservation_id"]
+isOneToOne: false
+      referencedRelation: "tables_reservations"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_reservations": {
+                  Row: {
+                    "approval": string,"approval_rule": string | null,"arrived_at": string | null,"buffer_minutes": number,"cancelled_at": string | null,"client_token": string | null,"completed_at": string | null,"created_at": string,"created_by": string | null,"ends_at": string,"guest_email": string | null,"guest_id": string | null,"guest_name": string,"guest_phone": string | null,"id": string,"idempotency_key": string,"local_time": string,"lock_version": number,"organization_id": string,"override_reason": string | null,"party_size": number,"pending_expires_at": string | null,"reference": string,"request_hash": string,"requests": string | null,"seated_at": string | null,"service_date": string,"service_key": string,"source": string,"starts_at": string,"status": string,"terms_accepted_at": string | null,"updated_at": string,"venue_id": string,"version_id": string,"zone_preference": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approval": string,"approval_rule"?: string | null,"arrived_at"?: string | null,"buffer_minutes"?: number,"cancelled_at"?: string | null,"client_token"?: string | null,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"guest_email"?: string | null,"guest_id"?: string | null,"guest_name": string,"guest_phone"?: string | null,"id"?: string,"idempotency_key": string,"local_time": string,"lock_version"?: number,"organization_id": string,"override_reason"?: string | null,"party_size": number,"pending_expires_at"?: string | null,"reference": string,"request_hash": string,"requests"?: string | null,"seated_at"?: string | null,"service_date": string,"service_key": string,"source": string,"starts_at": string,"status": string,"terms_accepted_at"?: string | null,"updated_at"?: string,"venue_id": string,"version_id": string,"zone_preference"?: string | null
+                  }
+                  Update: {
+                    "approval"?: string,"approval_rule"?: string | null,"arrived_at"?: string | null,"buffer_minutes"?: number,"cancelled_at"?: string | null,"client_token"?: string | null,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"guest_email"?: string | null,"guest_id"?: string | null,"guest_name"?: string,"guest_phone"?: string | null,"id"?: string,"idempotency_key"?: string,"local_time"?: string,"lock_version"?: number,"organization_id"?: string,"override_reason"?: string | null,"party_size"?: number,"pending_expires_at"?: string | null,"reference"?: string,"request_hash"?: string,"requests"?: string | null,"seated_at"?: string | null,"service_date"?: string,"service_key"?: string,"source"?: string,"starts_at"?: string,"status"?: string,"terms_accepted_at"?: string | null,"updated_at"?: string,"venue_id"?: string,"version_id"?: string,"zone_preference"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_reservations_organization_id_guest_id_fkey"
+      columns: ["organization_id","guest_id"]
+isOneToOne: false
+      referencedRelation: "tables_guests"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_reservations_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_reservations_organization_id_venue_id_version_id_fkey"
+      columns: ["organization_id","venue_id","version_id"]
+isOneToOne: false
+      referencedRelation: "tables_venue_versions"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_service_exceptions": {
+                  Row: {
+                    "created_at": string,"created_by": string,"id": string,"kind": string,"note": string | null,"organization_id": string,"service_date": string,"service_key": string | null,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string,"id"?: string,"kind": string,"note"?: string | null,"organization_id": string,"service_date": string,"service_key"?: string | null,"venue_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"id"?: string,"kind"?: string,"note"?: string | null,"organization_id"?: string,"service_date"?: string,"service_key"?: string | null,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_service_exceptions_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"tables_shift_revisions": {
+                  Row: {
+                    "organization_id": string,"revision": number,"service_date": string,"updated_at": string,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "organization_id": string,"revision"?: number,"service_date": string,"updated_at"?: string,"venue_id": string
+                  }
+                  Update: {
+                    "organization_id"?: string,"revision"?: number,"service_date"?: string,"updated_at"?: string,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_shift_revisions_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"tables_table_states": {
+                  Row: {
+                    "organization_id": string,"physical_table_id": string,"reason": string | null,"state": string,"until": string | null,"updated_at": string,"updated_by": string | null,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "organization_id": string,"physical_table_id": string,"reason"?: string | null,"state": string,"until"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"venue_id": string
+                  }
+                  Update: {
+                    "organization_id"?: string,"physical_table_id"?: string,"reason"?: string | null,"state"?: string,"until"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_table_states_organization_id_venue_id_physical_tabl_fkey"
+      columns: ["organization_id","venue_id","physical_table_id"]
+isOneToOne: false
+      referencedRelation: "tables_physical_tables"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_venue_staff": {
+                  Row: {
+                    "created_at": string,"organization_id": string,"role": string,"status": string,"updated_at": string,"updated_by": string | null,"user_id": string,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"organization_id": string,"role": string,"status"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_id": string,"venue_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"organization_id"?: string,"role"?: string,"status"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_venue_staff_organization_id_user_id_fkey"
+      columns: ["organization_id","user_id"]
+isOneToOne: false
+      referencedRelation: "organization_memberships"
+      referencedColumns: ["organization_id","user_id"]
+    },{
+      foreignKeyName: "tables_venue_staff_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"tables_venue_versions": {
+                  Row: {
+                    "created_at": string,"id": string,"organization_id": string,"published_by": string,"snapshot": NonNullable<Json>,"venue_id": string,"version_number": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"organization_id": string,"published_by": string,"snapshot": NonNullable<Json>,"venue_id": string,"version_number": number
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"organization_id"?: string,"published_by"?: string,"snapshot"?: NonNullable<Json>,"venue_id"?: string,"version_number"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_venue_versions_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
+                },"tables_venues": {
+                  Row: {
+                    "created_at": string,"created_by": string,"current_version_id": string | null,"draft": NonNullable<Json>,"id": string,"lock_version": number,"name": string,"organization_id": string,"slug": string,"status": string,"timezone": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string,"current_version_id"?: string | null,"draft"?: NonNullable<Json>,"id"?: string,"lock_version"?: number,"name": string,"organization_id": string,"slug": string,"status"?: string,"timezone"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"current_version_id"?: string | null,"draft"?: NonNullable<Json>,"id"?: string,"lock_version"?: number,"name"?: string,"organization_id"?: string,"slug"?: string,"status"?: string,"timezone"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_venue_current_version"
+      columns: ["organization_id","id","current_version_id"]
+isOneToOne: false
+      referencedRelation: "tables_venue_versions"
+      referencedColumns: ["organization_id","venue_id","id"]
+    },{
+      foreignKeyName: "tables_venues_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tables_waitlist_entries": {
+                  Row: {
+                    "client_token": string | null,"closed_at": string | null,"created_at": string,"created_by": string | null,"guest_id": string | null,"guest_name": string,"guest_phone": string | null,"id": string,"idempotency_key": string,"joined_at": string,"lock_version": number,"notes": string | null,"offer_expires_at": string | null,"organization_id": string,"party_size": number,"priority": number,"priority_reason": string | null,"quoted_max": number | null,"quoted_min": number | null,"reservation_id": string | null,"service_date": string,"source": string,"status": string,"updated_at": string,"venue_id": string,"zone_preference": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "client_token"?: string | null,"closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"guest_id"?: string | null,"guest_name": string,"guest_phone"?: string | null,"id"?: string,"idempotency_key": string,"joined_at"?: string,"lock_version"?: number,"notes"?: string | null,"offer_expires_at"?: string | null,"organization_id": string,"party_size": number,"priority"?: number,"priority_reason"?: string | null,"quoted_max"?: number | null,"quoted_min"?: number | null,"reservation_id"?: string | null,"service_date": string,"source": string,"status"?: string,"updated_at"?: string,"venue_id": string,"zone_preference"?: string | null
+                  }
+                  Update: {
+                    "client_token"?: string | null,"closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"guest_id"?: string | null,"guest_name"?: string,"guest_phone"?: string | null,"id"?: string,"idempotency_key"?: string,"joined_at"?: string,"lock_version"?: number,"notes"?: string | null,"offer_expires_at"?: string | null,"organization_id"?: string,"party_size"?: number,"priority"?: number,"priority_reason"?: string | null,"quoted_max"?: number | null,"quoted_min"?: number | null,"reservation_id"?: string | null,"service_date"?: string,"source"?: string,"status"?: string,"updated_at"?: string,"venue_id"?: string,"zone_preference"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_waitlist_entries_organization_id_guest_id_fkey"
+      columns: ["organization_id","guest_id"]
+isOneToOne: false
+      referencedRelation: "tables_guests"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_waitlist_entries_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    },{
+      foreignKeyName: "tables_waitlist_entries_organization_id_venue_id_reservati_fkey"
+      columns: ["organization_id","venue_id","reservation_id"]
+isOneToOne: false
+      referencedRelation: "tables_reservations"
+      referencedColumns: ["organization_id","venue_id","id"]
+    }
+                  ]
+                },"tables_zones": {
+                  Row: {
+                    "active": boolean,"created_at": string,"id": string,"name": string,"organization_id": string,"sort_order": number,"updated_at": string,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"id": string,"name": string,"organization_id": string,"sort_order"?: number,"updated_at"?: string,"venue_id": string
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"id"?: string,"name"?: string,"organization_id"?: string,"sort_order"?: number,"updated_at"?: string,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_zones_organization_id_venue_id_fkey"
+      columns: ["organization_id","venue_id"]
+isOneToOne: false
+      referencedRelation: "tables_venues"
+      referencedColumns: ["organization_id","id"]
+    }
+                  ]
                 },"workflow_integration_overrides": {
                   Row: {
                     "capability": string,"connection_id": string,"organization_id": string,"workflow_id": string
@@ -470,6 +954,9 @@ isOneToOne: false
                            },
 "operator_list_organizations":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"operator_set_tables_enabled":
+{ Args: { "p_enabled": boolean,"p_organization_id": string }; Returns: Json
                            },
 "owner_issue_staff_recovery":
 { Args: { "p_organization_id": string,"p_user_id": string }; Returns: string
@@ -712,6 +1199,141 @@ isOneToOne: false
       } },
 "submit_public_workflow":
 { Args: { "p_answers": Json,"p_client_token": string,"p_consent": boolean,"p_idempotency_key": string,"p_slug": string }; Returns: Json
+                           },
+"tables_add_note":
+{ Args: { "p_body": string,"p_reservation_id": string,"p_visibility"?: string }; Returns: Json
+                           },
+"tables_analytics":
+{ Args: { "p_from": string,"p_to": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_anonymize_guest":
+{ Args: { "p_guest_id": string,"p_organization_id": string }; Returns: Json
+                           },
+"tables_assign_staff":
+{ Args: { "p_role": string,"p_user_id": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_create_venue":
+{ Args: { "p_name": string,"p_organization_id": string,"p_slug": string,"p_timezone"?: string }; Returns: Json
+                           },
+"tables_decide_pending":
+{ Args: { "p_decision": string,"p_expected_lock_version": number,"p_reason"?: string,"p_reservation_id": string }; Returns: Json
+                           },
+"tables_export_guest":
+{ Args: { "p_guest_id": string,"p_organization_id": string }; Returns: Json
+                           },
+"tables_find_guest":
+{ Args: { "p_organization_id": string,"p_phone": string }; Returns: Json
+                           },
+"tables_get_venue":
+{ Args: { "p_venue_id": string }; Returns: Json
+                           },
+"tables_list_staff":
+{ Args: { "p_venue_id": string }; Returns: Json
+                           },
+"tables_list_venues":
+{ Args: { "p_organization_id": string }; Returns: Json
+                           },
+"tables_menu_archive":
+{ Args: { "p_menu_id": string }; Returns: undefined
+                           },
+"tables_menu_create":
+{ Args: { "p_title": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_menu_list":
+{ Args: { "p_venue_id": string }; Returns: Json
+                           },
+"tables_menu_publish":
+{ Args: { "p_expected_lock_version": number,"p_menu_id": string }; Returns: Json
+                           },
+"tables_menu_save":
+{ Args: { "p_doc": Json,"p_expected_lock_version": number,"p_menu_id": string,"p_title": string }; Returns: Json
+                           },
+"tables_move":
+{ Args: { "p_expected_lock_version": number,"p_reason"?: string,"p_reservation_id": string,"p_table_ids": (string)[] }; Returns: Json
+                           },
+"tables_public_availability":
+{ Args: { "p_client": string,"p_date": string,"p_party": number,"p_slug": string,"p_zone": string }; Returns: Json
+                           },
+"tables_public_book":
+{ Args: { "p_client": string,"p_idempotency_key": string,"p_input": Json,"p_slug": string }; Returns: Json
+                           },
+"tables_public_cancel":
+{ Args: { "p_client": string,"p_token": string }; Returns: Json
+                           },
+"tables_public_manage":
+{ Args: { "p_client": string,"p_token": string }; Returns: Json
+                           },
+"tables_public_menus":
+{ Args: { "p_slug": string }; Returns: Json
+                           },
+"tables_public_modify":
+{ Args: { "p_client": string,"p_expected_lock_version": number,"p_input": Json,"p_token": string }; Returns: Json
+                           },
+"tables_public_modify_options":
+{ Args: { "p_client": string,"p_date": string,"p_party": number,"p_token": string }; Returns: Json
+                           },
+"tables_public_venue":
+{ Args: { "p_slug": string }; Returns: Json
+                           },
+"tables_public_waitlist_join":
+{ Args: { "p_client": string,"p_idempotency_key": string,"p_input": Json,"p_slug": string }; Returns: Json
+                           },
+"tables_public_waitlist_leave":
+{ Args: { "p_client": string,"p_token": string }; Returns: Json
+                           },
+"tables_public_waitlist_status":
+{ Args: { "p_client": string,"p_token": string }; Returns: Json
+                           },
+"tables_publish_venue":
+{ Args: { "p_expected_lock_version": number,"p_venue_id": string }; Returns: Json
+                           },
+"tables_reservation_detail":
+{ Args: { "p_reservation_id": string }; Returns: Json
+                           },
+"tables_save_draft":
+{ Args: { "p_draft": Json,"p_expected_lock_version": number,"p_venue_id": string }; Returns: Json
+                           },
+"tables_set_exception":
+{ Args: { "p_date": string,"p_kind": string,"p_note": string,"p_service_key"?: string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_set_table_state":
+{ Args: { "p_reason": string,"p_service_date": string,"p_state": string,"p_table_id": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_set_venue_status":
+{ Args: { "p_status": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_shift":
+{ Args: { "p_service_date": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_staff_availability":
+{ Args: { "p_date": string,"p_party": number,"p_venue_id": string,"p_zone"?: string }; Returns: Json
+                           },
+"tables_staff_create_reservation":
+{ Args: { "p_idempotency_key": string,"p_input": Json,"p_venue_id": string }; Returns: Json
+                           },
+"tables_staff_update_reservation":
+{ Args: { "p_expected_lock_version": number,"p_input": Json,"p_reservation_id": string }; Returns: Json
+                           },
+"tables_transition":
+{ Args: { "p_action": string,"p_expected_lock_version": number,"p_reason"?: string,"p_reservation_id": string }; Returns: Json
+                           },
+"tables_waitlist":
+{ Args: { "p_service_date": string,"p_venue_id": string }; Returns: Json
+                           },
+"tables_waitlist_add":
+{ Args: { "p_idempotency_key": string,"p_input": Json,"p_venue_id": string }; Returns: Json
+                           },
+"tables_waitlist_close":
+{ Args: { "p_entry_id": string,"p_expected_lock_version": number,"p_status": string }; Returns: Json
+                           },
+"tables_waitlist_offer":
+{ Args: { "p_entry_id": string,"p_expected_lock_version": number,"p_table_ids": (string)[] }; Returns: Json
+                           },
+"tables_waitlist_priority":
+{ Args: { "p_entry_id": string,"p_expected_lock_version": number,"p_priority": number,"p_reason": string }; Returns: Json
+                           },
+"tables_waitlist_seat":
+{ Args: { "p_entry_id": string,"p_expected_lock_version": number,"p_table_ids": (string)[] }; Returns: Json
                            },
 "transition_submission_status":
 { Args: { "p_expected_lock_version": number,"p_message"?: string,"p_organization_id": string,"p_submission_id": string,"p_to_status": string }; Returns: {

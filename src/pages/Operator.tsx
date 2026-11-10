@@ -10,7 +10,7 @@ import { Logo } from '../components/Brand';
 import { copyText, useToast } from '../components/Toast';
 import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner } from '../components/ui';
 import { formatDateTime } from '../lib/format';
-import { isPlatformOperator, issueAccountRecovery, operatorOrganizations, provisionBusiness, reinviteOwner, type OperatorOrganization } from '../production/admin';
+import { isPlatformOperator, issueAccountRecovery, operatorOrganizations, operatorSetTablesEnabled, provisionBusiness, reinviteOwner, type OperatorOrganization } from '../production/admin';
 import { runtimeConfiguration } from '../production/runtime';
 
 const slugFrom = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
@@ -155,6 +155,28 @@ function Console() {
                     איפוס סיסמה
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant={o.tablesEnabled ? 'secondary' : 'ghost'}
+                  aria-pressed={!!o.tablesEnabled}
+                  loading={busy === `t${o.id}`}
+                  onClick={async () => {
+                    const enable = !o.tablesEnabled;
+                    if (!window.confirm(enable ? `להפעיל את מודול השולחנות עבור ${o.name}?` : `לכבות את מודול השולחנות עבור ${o.name}? דפי ההזמנה שלו ייסגרו מיד (ההזמנות עצמן נשמרות).`)) return;
+                    setBusy(`t${o.id}`);
+                    try {
+                      await operatorSetTablesEnabled(o.id, enable);
+                      toast(enable ? 'מודול השולחנות הופעל' : 'מודול השולחנות כובה', 'success');
+                      await load();
+                    } catch (e) {
+                      toast(e instanceof Error ? e.message : 'השינוי נכשל', 'error');
+                    } finally {
+                      setBusy(null);
+                    }
+                  }}
+                >
+                  {o.tablesEnabled ? 'שולחנות: פעיל' : 'הפעלת שולחנות'}
+                </Button>
                 <Badge tone={o.status === 'active' ? 'teal' : 'amber'}>{o.status === 'active' ? 'פעיל' : o.status === 'suspended' ? 'מושעה' : 'בהקמה'}</Badge>
                 {o.owners === 0 && (
                   <Button

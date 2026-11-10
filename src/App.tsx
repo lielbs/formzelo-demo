@@ -7,6 +7,7 @@ import { applyRouteMeta, pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
 import { PublicFlow } from './pages/PublicFlow';
 import { Track } from './pages/Track';
+import { TablesRoot } from './tables/theme';
 
 // The public customer flow is bundled eagerly so shared links load fast on mobile;
 // owner-facing pages (and Recharts) are split into their own chunks.
@@ -32,6 +33,21 @@ const BrandKitPage = named(() => import('./pages/app/BrandKit'), 'BrandKitPage')
 const InviteAccept = named(() => import('./pages/InviteAccept'), 'InviteAccept');
 const Operator = named(() => import('./pages/Operator'), 'Operator');
 const ResetPassword = named(() => import('./pages/ResetPassword'), 'ResetPassword');
+// Formangle Tables: owner, host and guest bundles are separate chunks.
+const TablesHome = named(() => import('./tables/owner/TablesHome'), 'TablesHome');
+const VenueOverview = named(() => import('./tables/owner/VenueOverview'), 'VenueOverview');
+const VenueSetup = named(() => import('./tables/owner/VenueSetup'), 'VenueSetup');
+const MenusPage = named(() => import('./tables/owner/MenusPage'), 'MenusPage');
+const AnalyticsPage = named(() => import('./tables/owner/AnalyticsPage'), 'AnalyticsPage');
+const HostShift = named(() => import('./tables/host/HostShift'), 'HostShift');
+const BookingPage = named(() => import('./tables/public/BookingPage'), 'BookingPage');
+const ManagePage = named(() => import('./tables/public/ManagePage'), 'ManagePage');
+const WaitlistJoinPage = named(() => import('./tables/public/WaitlistPages'), 'WaitlistJoinPage');
+const WaitlistStatusPage = named(() => import('./tables/public/WaitlistPages'), 'WaitlistStatusPage');
+const MenuPage = named(() => import('./tables/public/MenuPage'), 'MenuPage');
+
+/** Tables needs the real server: in the local demo these routes show the not-found page instead of simulating. */
+const live = (el: JSX.Element, owner = false) => (runtimeConfiguration.mode === 'production' ? <TablesRoot owner={owner}>{el}</TablesRoot> : <NotFound />);
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -61,6 +77,12 @@ export function App() {
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/f/:slug" element={<PublicFlow />} />
           <Route path="/track" element={<Track />} />
+          <Route path="/t/r" element={live(<ManagePage />)} />
+          <Route path="/t/w" element={live(<WaitlistStatusPage />)} />
+          <Route path="/t/:slug" element={live(<BookingPage />)} />
+          <Route path="/t/:slug/menu" element={live(<MenuPage />)} />
+          <Route path="/t/:slug/waitlist" element={live(<WaitlistJoinPage />)} />
+          <Route path="/app/tables/:venueId/live" element={live(<ProductionRouteBoundary><HostShift /></ProductionRouteBoundary>)} />
           <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>
             <Route index element={<Dashboard />} />
             <Route path="workflows" element={<WorkflowList />} />
@@ -71,6 +93,11 @@ export function App() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
             <Route path="brand" element={<BrandKitPage />} />
+            <Route path="tables" element={live(<TablesHome />, true)} />
+            <Route path="tables/:venueId" element={live(<VenueOverview />, true)} />
+            <Route path="tables/:venueId/setup" element={live(<VenueSetup />, true)} />
+            <Route path="tables/:venueId/menus" element={live(<MenusPage />, true)} />
+            <Route path="tables/:venueId/analytics" element={live(<AnalyticsPage />, true)} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

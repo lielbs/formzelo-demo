@@ -1,0 +1,175 @@
+/*
+ * Formangle Tables — light and dark display.
+ *
+ * Light is the existing Formangle look. Dark is applied only while a Tables screen is open
+ * (html.fz-dark, set by useTablesTheme) so the rest of Formangle is never affected.
+ * Shared utility classes used on Tables screens are remapped here; every pair keeps
+ * WCAG AA contrast (text ≥ 4.5:1 on its surface, UI boundaries ≥ 3:1).
+ */
+
+:root {
+  --fz-floor-bg: #f8f7f4;
+  --fz-floor-grid: #e5e2dc;
+  --fz-floor-focus: #e96b3d;
+  --fz-floor-candidate: #0369a1;
+  --fz-t-ready-fill: #ffffff;
+  --fz-t-ready-stroke: #3a8a78;
+  --fz-t-ready-text: #1e2935;
+  --fz-t-soon-fill: #eff6ff;
+  --fz-t-soon-stroke: #0369a1;
+  --fz-t-soon-text: #0c4a6e;
+  --fz-t-occ-fill: #2f7263;
+  --fz-t-occ-stroke: #1e4f45;
+  --fz-t-occ-text: #ffffff;
+  --fz-t-clean-fill: #fef3c7;
+  --fz-t-clean-line: #f59e0b;
+  --fz-t-clean-stroke: #b45309;
+  --fz-t-clean-text: #78350f;
+  --fz-t-off-fill: #e8eaee;
+  --fz-t-off-line: #c3c8d0;
+  --fz-t-off-stroke: #5b6675;
+  --fz-t-off-text: #3d4654;
+}
+
+.fz-guest {
+  --fz-accent: var(--fz-accent-l);
+  --fz-on-accent: var(--fz-on-accent-l);
+}
+
+html.fz-dark {
+  color-scheme: dark;
+  --brand: #f08a62;
+  --fz-floor-bg: #121922;
+  --fz-floor-grid: #1f2a36;
+  --fz-floor-focus: #f59e72;
+  --fz-floor-candidate: #7cc4f0;
+  --fz-t-ready-fill: #1a2330;
+  --fz-t-ready-stroke: #5fbfa6;
+  --fz-t-ready-text: #e8edf2;
+  --fz-t-soon-fill: #10283a;
+  --fz-t-soon-stroke: #7cc4f0;
+  --fz-t-soon-text: #cfe9fb;
+  --fz-t-occ-fill: #2f8f78;
+  --fz-t-occ-stroke: #8fe0c9;
+  --fz-t-occ-text: #ffffff;
+  --fz-t-clean-fill: #3a2c0c;
+  --fz-t-clean-line: #a16207;
+  --fz-t-clean-stroke: #f5c66b;
+  --fz-t-clean-text: #fde68a;
+  --fz-t-off-fill: #262f3b;
+  --fz-t-off-line: #3a4656;
+  --fz-t-off-stroke: #94a3b8;
+  --fz-t-off-text: #cbd5e1;
+}
+
+html.fz-dark .fz-guest {
+  --fz-accent: var(--fz-accent-d);
+  --fz-on-accent: var(--fz-on-accent-d);
+}
+
+/* ---------- Surfaces ---------- */
+html.fz-dark body { background-color: #0f141b; color: #e8edf2; }
+html.fz-dark ::selection { background: #5a2c1a; }
+html.fz-dark .bg-white,
+html.fz-dark .bg-white\/95,
+html.fz-dark .bg-white\/90 { background-color: #171e27; }
+html.fz-dark .bg-cloud,
+html.fz-dark .bg-\[\#FAF9F7\] { background-color: #0f141b; }
+html.fz-dark .fz-tables .bg-cloud { background-color: #1f2833; }
+html.fz-dark .bg-cloud-200 { background-color: #26303c; }
+html.fz-dark .bg-cloud-300 { background-color: #3a4756; }
+html.fz-dark .hover\:bg-cloud:hover { background-color: #222c38; }
+html.fz-dark .hover\:bg-cloud-200:hover { background-color: #2a3542; }
+html.fz-dark .shadow-card { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25); }
+html.fz-dark .shadow-lift { box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55); }
+
+/* ---------- Text ---------- */
+html.fz-dark .text-ink { color: #e8edf2; }
+html.fz-dark .text-ink-muted { color: #aab5c1; }
+html.fz-dark .text-ink-soft,
+html.fz-dark .placeholder\:text-ink-soft::placeholder { color: #8b97a5; }
+html.fz-dark .hover\:text-ink:hover { color: #ffffff; }
+
+/* ---------- Borders ---------- */
+html.fz-dark .border-cloud-200,
+html.fz-dark .divide-cloud-200 > * + * { border-color: #2a3542; }
+html.fz-dark .border-cloud-300 { border-color: #3d4a59; }
+html.fz-dark .hover\:border-ink-soft:hover { border-color: #6b7888; }
+
+/* ---------- Inputs (native controls follow color-scheme) ---------- */
+html.fz-dark .fz-input,
+html.fz-dark .ui-select { background-color: #121922; color: #e8edf2; border-color: #3d4a59; }
+html.fz-dark .ui-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23AAB5C1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+html.fz-dark .border-red-400 { border-color: #f87171; }
+
+/* ---------- Selected / emphasis (midnight becomes a light chip on dark) ---------- */
+html.fz-dark .fz-tables .bg-midnight { background-color: #e5e9ef; color: #0f141b; }
+html.fz-dark .fz-tables .border-midnight { border-color: #e5e9ef; }
+html.fz-dark .fz-tables .hover\:bg-midnight-700:hover { background-color: #cbd3dc; }
+html.fz-dark .fz-tables .bg-midnight .bg-white\/20 { background-color: rgba(15, 20, 27, 0.15); }
+
+/* ---------- Tinted messages and status chips ---------- */
+html.fz-dark .bg-teal-50,
+html.fz-dark .bg-teal-50\/50,
+html.fz-dark .bg-teal-50\/60 { background-color: #0f2a25; }
+html.fz-dark .bg-amber-50 { background-color: #2e2410; }
+html.fz-dark .bg-red-50,
+html.fz-dark .hover\:bg-red-50:hover { background-color: #351719; }
+html.fz-dark .bg-red-100 { background-color: #4a1d20; }
+html.fz-dark .bg-orange-50 { background-color: #33190e; }
+html.fz-dark .bg-sky-50 { background-color: #0e2433; }
+html.fz-dark .bg-violet-50 { background-color: #22193a; }
+
+html.fz-dark .text-teal,
+html.fz-dark .text-teal-600,
+html.fz-dark .text-teal-700,
+html.fz-dark .text-teal-800,
+html.fz-dark .text-teal-900,
+html.fz-dark .text-teal-900\/80 { color: #7dd3bf; }
+html.fz-dark .text-amber-700,
+html.fz-dark .text-amber-800,
+html.fz-dark .text-amber-900 { color: #f5c66b; }
+html.fz-dark .text-red-700,
+html.fz-dark .text-red-800,
+html.fz-dark .text-red-900 { color: #fca5a5; }
+html.fz-dark .text-orange-700,
+html.fz-dark .text-orange-800,
+html.fz-dark .text-orange-900 { color: #f8b08f; }
+html.fz-dark .text-sky-700,
+html.fz-dark .text-sky-900 { color: #8ccbf0; }
+html.fz-dark .text-violet-900 { color: #c4b5fd; }
+
+html.fz-dark .border-teal-200,
+html.fz-dark .border-teal-300 { border-color: #1f5a4d; }
+html.fz-dark .border-amber-200,
+html.fz-dark .border-amber-300 { border-color: #6b5214; }
+html.fz-dark .border-red-200,
+html.fz-dark .border-red-300 { border-color: #7a2a2e; }
+html.fz-dark .border-orange-300 { border-color: #7a3a1d; }
+html.fz-dark .border-sky-200,
+html.fz-dark .border-sky-300,
+html.fz-dark .border-sky-400 { border-color: #1f5779; }
+html.fz-dark .border-violet-200 { border-color: #4c3a80; }
+
+/* Badges from the shared UI kit */
+html.fz-dark .bg-cloud-200.text-ink-muted { color: #c3ccd6; }
+
+/* ---------- Charts ---------- */
+html.fz-dark .recharts-cartesian-grid line { stroke: #2a3542; }
+html.fz-dark .recharts-text { fill: #aab5c1; }
+html.fz-dark .recharts-default-tooltip { background-color: #171e27 !important; border-color: #3d4a59 !important; color: #e8edf2; }
+html.fz-dark .recharts-tooltip-cursor { fill: #1f2833; }
+
+html.fz-dark .fz-page { background-color: #0f141b; }
+
+/* A <fieldset> defaults to min-inline-size:min-content, which let scrolling rows widen pages. */
+.fz-tables fieldset { min-width: 0; }
+html.fz-dark .text-midnight { color: #e8edf2; }
+html.fz-dark .text-orange-800 { color: #f8b08f; }
+/* Single-column grids get a shrinkable track: an implicit `auto` track would grow to the
+   min-content width of a horizontal scroller (e.g. the guest date strip) and widen the page. */
+.fz-tables .grid:not([class*='grid-cols']) { grid-template-columns: minmax(0, 1fr); }
+/* Visually hidden text must never extend the page: keep it inside its control. */
+.fz-tables button:has(> .sr-only), .fz-tables a:has(> .sr-only) { position: relative; }
