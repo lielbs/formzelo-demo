@@ -260,17 +260,18 @@ export function Modal({
 export function Stat({ label, value, hint, icon: Icon, tone = 'neutral' }: { label: string; value: ReactNode; hint?: ReactNode; icon: LucideIcon; tone?: 'neutral' | 'orange' | 'teal' }) {
   const iconTone = { neutral: 'bg-cloud text-ink-muted', orange: 'bg-orange-50 text-orange-700', teal: 'bg-teal-50 text-teal' }[tone];
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-ink-muted">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value}</p>
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] leading-snug text-ink-muted sm:text-sm">{label}</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-ink sm:text-2xl">{value}</p>
         </div>
-        <span className={cx('flex h-10 w-10 items-center justify-center rounded-xl', iconTone)}>
-          <Icon className="h-5 w-5" aria-hidden />
+        <span className={cx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10', iconTone)}>
+          <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" aria-hidden />
         </span>
       </div>
-      {hint && <p className="mt-3 text-xs text-ink-soft">{hint}</p>}
+      {/* Phones keep the number; the explanation shows from 640 px. */}
+      {hint && <p className="mt-3 hidden text-xs text-ink-soft sm:block">{hint}</p>}
     </Card>
   );
 }

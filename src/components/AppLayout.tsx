@@ -1,4 +1,4 @@
-import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, Palette, Plus, Settings, UtensilsCrossed, Workflow, X } from 'lucide-react';
+import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, MoreHorizontal, Palette, Plus, Settings, UtensilsCrossed, Workflow, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useRepo, useRepoQuery } from '../data/store';
@@ -102,6 +102,47 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
   );
 }
 
+/**
+ * Phone and tablet tab bar: the daily destinations one thumb-tap away, the new-workflow action in
+ * the middle and everything else under "עוד" (the full menu). Hidden from 1024 px (sidebar).
+ */
+function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => void; moreOpen: boolean }) {
+  const location = useLocation();
+  const tab = (to: string, label: string, Icon: typeof Inbox, end?: boolean, badge?: number) => (
+    <NavLink to={to} end={end}
+      className={({ isActive }) => cx('relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
+        isActive ? 'text-ink' : 'text-ink-muted hover:text-ink')}>
+      {({ isActive }) => (
+        <>
+          <span className={cx('flex h-7 w-12 items-center justify-center rounded-full transition-colors', isActive && 'bg-orange-50 text-orange-700')}>
+            <Icon className="h-5 w-5" aria-hidden />
+          </span>
+          <span>{label}</span>
+          {!!badge && <span className="absolute top-1 start-[calc(50%+6px)] min-w-[18px] rounded-full bg-orange-700 px-1 text-center text-[10px] font-semibold leading-[18px] text-white" aria-label={`${badge} ממתינות`}>{badge}</span>}
+        </>
+      )}
+    </NavLink>
+  );
+  const inMore = ['/app/brand', '/app/analytics', '/app/settings', '/app/tables'].some((p) => location.pathname.startsWith(p));
+  return (
+    <nav aria-label="ניווט מהיר" className="fz-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-cloud-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      <div className="mx-auto flex max-w-xl items-stretch gap-1 py-1">
+        {tab('/app', 'בית', LayoutDashboard, true)}
+        {tab('/app/requests', 'בקשות', Inbox, false, pending)}
+        <NavLink to="/app/workflows/new" aria-label="תהליך חדש" className="flex min-h-[56px] flex-1 items-center justify-center focus-visible:outline-none">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-700 text-white shadow-lift transition active:scale-95"><Plus className="h-5 w-5" aria-hidden /></span>
+        </NavLink>
+        {tab('/app/workflows', 'תהליכים', Workflow)}
+        <button type="button" onClick={onMore} aria-expanded={moreOpen} aria-label="עוד — התפריט המלא"
+          className={cx('relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', inMore ? 'text-ink' : 'text-ink-muted hover:text-ink')}>
+          <span className={cx('flex h-7 w-12 items-center justify-center rounded-full', inMore && 'bg-orange-50 text-orange-700')}><MoreHorizontal className="h-5 w-5" aria-hidden /></span>
+          <span>עוד</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 function Sidebar({ onNavigate, pending }: { onNavigate?: () => void; pending: number }) {
   return (
     <div className="flex h-full flex-col gap-6 bg-midnight px-4 py-5">
@@ -160,7 +201,7 @@ export function AppLayout() {
   if (!activeOrg) return <div className="p-6"><ErrorState error={runtimeConfiguration.mode === 'production' ? 'לא נמצאה סביבת עבודה פעילה. פנו ל-RockStack להשלמת ההקמה.' : 'לא נמצאה סביבת דמו.'} /></div>;
 
   return (
-    <div className="min-h-screen lg:ps-64">
+    <div className="fz-app min-h-screen lg:ps-64">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">
         דילוג לתוכן
       </a>
@@ -201,11 +242,12 @@ export function AppLayout() {
         </div>
       )}
 
-      <main id="main" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+      <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-[calc(var(--fz-tabbar,0px)+1.5rem)] pt-6 sm:px-6 lg:px-10 lg:py-10">
         <Suspense fallback={<Spinner />}>
           <Outlet />
         </Suspense>
       </main>
+      <TabBar pending={pending} moreOpen={mobileOpen} onMore={() => setMobileOpen(true)} />
     </div>
   );
 }

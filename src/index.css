@@ -89,3 +89,7 @@
 .fz-diagram .ph { fill: #f0b79c; }
 .fz-diagram .tx { fill: #18212d; }
 .fz-diagram .card { fill: #fff; stroke: #d9dde3; stroke-width: 0.8; }
+
+/* App tab bar height (phones/tablets): bottom-anchored bars and toasts sit above it. */
+:root:has(.fz-app) { --fz-tabbar: calc(64px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 1024px) { :root:has(.fz-app) { --fz-tabbar: 0px; } }

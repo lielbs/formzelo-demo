@@ -1,5 +1,5 @@
 import { runtimeConfiguration } from '../../production/runtime';
-import { FilePlus2, Inbox, Search } from 'lucide-react';
+import { FilePlus2, Inbox, Search, SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CreateCaseModal } from '../../components/CreateCaseModal';
@@ -20,6 +20,8 @@ export function Requests() {
   const [workflowFilter, setWorkflowFilter] = useState('all');
   const [payFilter, setPayFilter] = useState<'all' | 'none' | 'outstanding' | 'paid' | 'quote'>('all');
   const [sort, setSort] = useState<'new' | 'old' | 'amount'>('new');
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilters = [workflowFilter !== 'all', payFilter !== 'all', sort !== 'new'].filter(Boolean).length;
   const [caseWorkflow, setCaseWorkflow] = useState<Workflow | null>(null);
 
   const q = useRepoQuery(
@@ -76,10 +78,18 @@ export function Requests() {
       />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
-          <Input type="search" className="ps-9" placeholder="חיפוש לפי שם, טלפון או מספר בקשה" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="חיפוש בקשות" />
+        <div className="flex gap-2 sm:flex-1">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
+            <Input type="search" className="ps-9" placeholder="חיפוש לפי שם, טלפון או מספר בקשה" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="חיפוש בקשות" />
+          </div>
+          {/* Phones: the three filters fold into one button (with the number of active ones). */}
+          <button type="button" onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters} aria-controls="request-filters"
+            className={cx('relative flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium sm:hidden', activeFilters ? 'border-ink bg-ink text-white' : 'border-cloud-300 bg-white text-ink')}>
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />סינון{activeFilters ? ` · ${activeFilters}` : ''}
+          </button>
         </div>
+        <div id="request-filters" className={cx('grid gap-3 sm:flex sm:gap-3', !showFilters && 'hidden')}>
         <Select aria-label="סינון לפי תשלום" value={payFilter} onChange={(e) => setPayFilter(e.target.value as typeof payFilter)} className="sm:w-52">
           <option value="all">כל מצבי התשלום</option>
           <option value="none">ללא תשלום</option>
@@ -100,6 +110,7 @@ export function Requests() {
             </option>
           ))}
         </Select>
+        </div>
       </div>
 
       <div role="tablist" aria-label="סינון לפי סטטוס" className="mb-4 flex gap-1.5 overflow-x-auto pb-1">

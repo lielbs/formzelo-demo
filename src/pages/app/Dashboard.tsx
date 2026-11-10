@@ -47,6 +47,8 @@ export function Dashboard() {
   );
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all');
   const [dismissed, setDismissed] = useState(() => readDismissed(org.id));
+  // Phones: activity and simulated messages fold behind one button (always shown on desktop).
+  const [showFeed, setShowFeed] = useState(false);
 
   const stats = useMemo(() => {
     if (!q.data) return null;
@@ -342,7 +344,11 @@ export function Dashboard() {
           </div>
         </Card>
 
-        <div className="space-y-6">
+        <button type="button" onClick={() => setShowFeed((v) => !v)} aria-expanded={showFeed} aria-controls="dashboard-feed"
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-cloud-300 bg-white text-sm font-medium text-ink lg:hidden">
+          {showFeed ? 'הסתרת הפעילות וההודעות' : 'פעילות אחרונה והודעות'}
+        </button>
+        <div id="dashboard-feed" className={cx('space-y-6', !showFeed && 'hidden lg:block')}>
           <Card className="p-5">
             <h2 className="mb-4 font-semibold">פעילות אחרונה</h2>
             <Timeline events={events.slice(0, 7)} runs={runs} showRun />
