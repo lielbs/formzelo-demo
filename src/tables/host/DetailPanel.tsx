@@ -4,7 +4,7 @@ import { Button, cx, Textarea } from '../../components/ui';
 import { addNote, decidePending, reservationDetail, setTableState, transition, type ReservationDetail, type TransitionAction } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { displayPhone, telHref, whatsappHref } from '../domain/phone';
-import { isLate, SOURCE_HE, STATUS_HE, TABLE_STATE_HE } from '../domain/status';
+import { canSeatNow, isLate, SOURCE_HE, STATUS_HE, TABLE_STATE_HE } from '../domain/status';
 import { timeInTz } from '../domain/time';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
 import { Ltr, StatusChip } from '../ui';
@@ -133,7 +133,7 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
             <ActionButton label="דחייה" icon={Ban} busy={false} onClick={() => setConfirm('reject')} />
           </>}
           {r.status === 'confirmed' && <ActionButton label="הגיעו (ממתינים לשולחן)" icon={LogIn} busy={busy === 'arrive'} onClick={() => t('arrive', 'הגיעו')} />}
-          {(r.status === 'confirmed' || r.status === 'arrived') && new Date(r.startsAt).getTime() - now.getTime() <= 3 * 3600_000 && (r.tableIds.length
+          {(r.status === 'confirmed' || r.status === 'arrived') && canSeatNow(r, now) && (r.tableIds.length
             ? <ActionButton label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={busy === 'seat'} onClick={() => t('seat', `הושבו בשולחן ${tables}`)} />
             : <ActionButton label="שיבוץ שולחן" icon={Sparkles} variant="dark" busy={false} onClick={() => onAssign(r)} />)}
           {r.status === 'seated' && <ActionButton label="סיום הביקור — השולחן מתפנה" icon={CheckCircle2} variant="dark" busy={busy === 'complete'} onClick={() => t('complete', 'סיימו')} />}

@@ -53,14 +53,18 @@ export const isActive = (s: ReservationStatus) => ACTIVE.includes(s);
 
 export type HostAction = 'approve' | 'arrive' | 'seat' | 'complete' | 'assign';
 
+/** Same window as the server (tables_transition 'seat'): seating opens 3 hours before the booking. */
+export const canSeatNow = (r: Pick<ShiftReservation, 'startsAt'>, now: Date) => new Date(r.startsAt).getTime() - now.getTime() <= 3 * 3600_000;
+
 /** The single recommended next action for a row (one tap). */
 export function nextAction(r: ShiftReservation, now: Date): HostAction | null {
   switch (r.status) {
     case 'pending_approval': return 'approve';
     case 'confirmed':
       if (r.tableIds.length === 0) return 'assign';
-      return new Date(r.startsAt).getTime() - now.getTime() <= 3 * 3600_000 ? 'seat' : null;
-    case 'arrived': return r.tableIds.length === 0 ? 'assign' : 'seat';
+      return canSeatNow(r, now) ? 'seat' : null;
+    // A party that arrived very early still waits for the seating window (the server refuses earlier).
+    case 'arrived': return r.tableIds.length === 0 ? 'assign' : canSeatNow(r, now) ? 'seat' : null;
     case 'seated': return 'complete';
     default: return null;
   }

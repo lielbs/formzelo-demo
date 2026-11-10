@@ -76,6 +76,11 @@ describe('host states', () => {
     expect(nextAction(res({}), now)).toBe('seat');
     expect(nextAction(res({ status: 'seated' }), now)).toBe('complete');
     expect(nextAction(res({ status: 'completed' }), now)).toBeNull();
+    // An early arrival waits for the seating window, exactly like the server rule.
+    const early = new Date(new Date(res({}).startsAt).getTime() - 4 * 3600_000);
+    expect(nextAction(res({ status: 'arrived' }), early)).toBeNull();
+    expect(nextAction(res({ status: 'confirmed' }), early)).toBeNull();
+    expect(nextAction(res({ status: 'arrived' }), now)).toBe('seat');
   });
   it('counts and buckets the shift', () => {
     const list = [res({ status: 'pending_approval' }), res({ status: 'seated', party: 4 }), res({ tableIds: [] })];
