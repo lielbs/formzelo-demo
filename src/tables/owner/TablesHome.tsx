@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, PageHeader, Spinner } from '../../components/ui';
 import { useActiveOrg } from '../../data/store';
+import { BASE_PATH } from '../../lib/links';
 import { createVenue, listVenues } from '../data/client';
 import { newDraft } from '../domain/draft';
 import { saveDraft } from '../data/client';
@@ -116,7 +117,8 @@ export function TablesHome() {
             </div>
             <div>
               <p className="text-sm text-ink-muted">
-                הקישור שהאורחים יקבלו להזמנה: <Ltr className="font-medium text-ink">{window.location.host}/t/{effectiveSlug || '…'}</Ltr>
+                הקישור שהאורחים יקבלו להזמנה:
+                <Ltr className="block break-all text-end font-medium text-ink">{window.location.host}{BASE_PATH}/t/{effectiveSlug || '…'}</Ltr>
               </p>
               <p className="mt-0.5 text-xs text-ink-muted">הכתובת נקבעת עכשיו ולא משתנה אחר כך, כדי שקישורים שכבר שיתפתם ימשיכו לעבוד.</p>
               {!editSlug ? (

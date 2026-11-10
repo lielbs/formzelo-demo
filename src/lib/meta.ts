@@ -17,6 +17,11 @@ const ROUTE_TITLES: [RegExp, string][] = [
   [/^\/app\/analytics$/, 'אנליטיקה'],
   [/^\/app\/settings$/, 'הגדרות'],
   [/^\/app\/brand$/, 'ערכת מותג'],
+  [/^\/app\/tables$/, 'שולחנות'],
+  [/^\/app\/tables\/[^/]+$/, 'שולחנות · המקום'],
+  [/^\/app\/tables\/[^/]+\/setup$/, 'שולחנות · הקמה'],
+  [/^\/app\/tables\/[^/]+\/menus$/, 'שולחנות · תפריטים'],
+  [/^\/app\/tables\/[^/]+\/analytics$/, 'שולחנות · נתונים'],
   [/^\/operator$/, 'מסוף מפעיל'],
   [/^\/invite$/, 'הצטרפות'],
   [/^\/reset$/, 'סיסמה חדשה'],
@@ -29,7 +34,8 @@ const ROUTE_TITLES: [RegExp, string][] = [
  */
 export function pageTitle(pathname: string): string | null {
   const path = pathname.replace(/\/+$/, '') || '/';
-  if (path.startsWith('/f/')) return null;
+  // Customer pages and the host shift set their own title (business / venue name).
+  if (path.startsWith('/f/') || path.startsWith('/t/') || /^\/app\/tables\/[^/]+\/live$/.test(path)) return null;
   if (path === '/') return `${PRODUCT_LOCKUP} — ${BRAND_TAGLINE}`;
   const hit = ROUTE_TITLES.find(([re]) => re.test(path));
   return `${hit ? hit[1] : 'הדף לא נמצא'} · Formangle`;

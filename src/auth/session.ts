@@ -38,3 +38,18 @@ export function resolveWorkforceAccess(claims: ClaimsLike | null, memberships: r
     memberships: activeMemberships,
   };
 }
+
+/**
+ * True when a re-check found the same signed-in access (same user, email and memberships).
+ * Background re-checks (token refresh, tab focus) keep the current state in that case, so pages
+ * are not unmounted and unsaved input is not lost.
+ */
+export function sameAccess(a: { kind: string }, b: WorkforceAccess): boolean {
+  if (a.kind !== b.kind) return false;
+  if (b.kind === 'unauthenticated') return true;
+  const prev = a as Exclude<WorkforceAccess, { kind: 'unauthenticated' }>;
+  if (prev.userId !== b.userId || prev.email !== b.email) return false;
+  if (b.kind === 'unauthorized') return true;
+  const key = (m: readonly Membership[]) => m.map((x) => `${x.organization_id}:${x.role}:${x.status}`).sort().join('|');
+  return key((prev as Extract<WorkforceAccess, { kind: 'authenticated' }>).memberships) === key(b.memberships);
+}

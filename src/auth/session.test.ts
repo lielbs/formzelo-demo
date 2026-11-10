@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveWorkforceAccess } from './session';
+import { resolveWorkforceAccess, sameAccess } from './session';
 
 describe('resolveWorkforceAccess', () => {
   it('fails closed without verified claims', () => {
@@ -24,5 +24,16 @@ describe('resolveWorkforceAccess', () => {
       expiresAt: 1234,
       memberships: [{ organization_id: 'org-a', role: 'owner', status: 'active' }],
     });
+  });
+
+  it('treats a background re-check with the same user and memberships as unchanged', () => {
+    const m = [{ organization_id: 'org-a', role: 'owner', status: 'active' }] as const;
+    const a = resolveWorkforceAccess({ sub: 'user-a', email: 'o@example.test', exp: 1 }, [...m]);
+    const b = resolveWorkforceAccess({ sub: 'user-a', email: 'o@example.test', exp: 2 }, [...m]);
+    expect(sameAccess(a, b)).toBe(true);
+    expect(sameAccess({ kind: 'loading' }, b)).toBe(false);
+    expect(sameAccess(a, resolveWorkforceAccess({ sub: 'user-b', email: 'o@example.test' }, [...m]))).toBe(false);
+    expect(sameAccess(a, resolveWorkforceAccess({ sub: 'user-a', email: 'o@example.test' }, [{ organization_id: 'org-a', role: 'staff', status: 'active' }]))).toBe(false);
+    expect(sameAccess(a, resolveWorkforceAccess(null, []))).toBe(false);
   });
 });

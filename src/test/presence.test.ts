@@ -224,6 +224,12 @@ describe('Formangle brand, metadata, sales contact and Pages routing', () => {
     expect(pageTitle('/tour')).toBe('סיור מודרך · Formangle');
     expect(pageTitle('/app/brand/')).toBe('ערכת מותג · Formangle');
     expect(pageTitle('/f/bloom-flowers')).toBeNull();
+    // Formangle Tables: owner screens are titled; guest pages and the host shift title themselves.
+    expect(pageTitle('/app/tables')).toBe('שולחנות · Formangle');
+    expect(pageTitle('/app/tables/0f0e/setup')).toBe('שולחנות · הקמה · Formangle');
+    expect(pageTitle('/t/bistro')).toBeNull();
+    expect(pageTitle('/t/r')).toBeNull();
+    expect(pageTitle('/app/tables/0f0e/live')).toBeNull();
     expect(workflowTitle('הזמנת זר פרחים', 'Bloom Studio')).toBe('הזמנת זר פרחים · Bloom Studio');
   });
 

@@ -43,6 +43,7 @@ export function RepoProvider({ children }: { children: ReactNode }) {
   const [bootError, setBootError] = useState<string | null>(null);
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
+  const signedInAccess = auth.state.kind === 'authenticated' ? auth.state : null;
 
   useEffect(() => {
     let active = true;
@@ -83,7 +84,9 @@ export function RepoProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [repository, revision, auth.state.kind]);
+    // Re-boot when the signed-in access changes (another account, or memberships changed after an
+    // invitation); a background re-check of the same session keeps the same state object.
+  }, [repository, revision, auth.state.kind, signedInAccess]);
 
   const switchOrg = useCallback(async (orgId: string) => {
     if (!repository) throw new Error('Repository is not ready');

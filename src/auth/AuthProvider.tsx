@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Database } from '../production/database.generated';
 import { runtimeConfiguration } from '../production/runtime';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
-import { resolveWorkforceAccess, type WorkforceAccess } from './session';
+import { resolveWorkforceAccess, sameAccess, type WorkforceAccess } from './session';
 
 type AuthState =
   | { kind: 'demo' }
@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [state, setState] = useState<AuthState>(runtimeConfiguration.mode === 'demo' ? { kind: 'demo' } : { kind: 'loading' });
   const refreshGeneration = useRef(0);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     if (runtimeConfiguration.mode === 'demo') return;
@@ -48,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const generation = ++refreshGeneration.current;
-    setState({ kind: 'loading' });
+    // Auth events also fire for token refreshes and when the tab regains focus. Re-checking a
+    // signed-in session happens in the background: showing "loading" would unmount every page
+    // and lose what the user was typing (owner forms, a host's quick add mid-shift).
+    const background = stateRef.current.kind === 'authenticated';
+    if (!background) setState({ kind: 'loading' });
     try {
       const { data: claimsData, error: claimsError } = await client.auth.getClaims();
       if (generation !== refreshGeneration.current) return;
@@ -63,9 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (generation !== refreshGeneration.current) return;
       if (membershipError) throw membershipError;
 
-      setState(resolveWorkforceAccess(claimsData.claims, memberships ?? []));
+      const next = resolveWorkforceAccess(claimsData.claims, memberships ?? []);
+      setState((prev) => (sameAccess(prev, next) ? prev : next));
     } catch {
-      if (generation === refreshGeneration.current) {
+      // A transient failure while re-checking a valid session keeps the session; the next
+      // request or auth event checks again. A failed first check still shows the error.
+      if (generation === refreshGeneration.current && !background) {
         setState({ kind: 'error', message: 'לא ניתן לאמת את ההרשאה כרגע. נסו שוב.' });
       }
     }
