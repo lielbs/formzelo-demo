@@ -47,6 +47,9 @@ const HE: Record<string, string> = {
   menu_limit: 'אפשר עד 10 תפריטים למקום.',
   unavailable: 'ההזמנה כרגע לא זמינה במקום הזה.',
   not_published: 'צריך לפרסם את המקום לפני שמקבלים הזמנות.',
+  public_pages_invalid: 'הגדרות העיצוב של דפי ההזמנה לא תקינות (למשל תמונה שהוסרה מהספרייה). תקנו ונסו שוב.',
+  answers_invalid: 'אחת התשובות לשאלות הנוספות לא תקינה. רעננו את הדף ונסו שוב.',
+  answer_required: 'צריך לענות על כל השאלות המסומנות בכוכבית.',
   invalid: 'חלק מהפרטים לא תקינים.',
   unknown: 'הפעולה לא הושלמה. נסו שוב בעוד רגע.',
 };
@@ -71,6 +74,8 @@ const EN: Record<string, string> = {
   already_waiting: 'This number is already on the waitlist.',
   idempotency_conflict: 'This request was already sent with different details. Refresh and try again.',
   stale: 'This booking changed in the meantime. We refreshed it — please check and try again.',
+  answers_invalid: 'One of the answers is not valid. Refresh the page and try again.',
+  answer_required: 'Please answer every question marked with a star.',
   invalid: 'Some details are not valid.',
   unknown: 'Something went wrong. Please try again shortly.',
 };

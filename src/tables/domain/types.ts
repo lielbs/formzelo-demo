@@ -1,4 +1,5 @@
 /** Formangle Tables — shared shapes of the venue draft and the server projections. */
+import type { PublicPagesConfig } from './publicPages';
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export type TableShape = 'round' | 'square' | 'rect' | 'bar';
@@ -78,11 +79,16 @@ export interface VenueDraft {
   policy: Policy;
   guest: { intro?: string; terms: string; showWhatsapp?: boolean };
   progress?: { step: SetupStep; visited?: SetupStep[] };
+  /** Look and wording of the public booking and waitlist pages (absent = the standard pages). */
+  publicPages?: PublicPagesConfig;
 }
 
 export type SetupStep = 'basics' | 'hours' | 'seating' | 'rules' | 'guest' | 'review';
 
 export interface Problem { code: string; path: string }
+
+/** A guest's answer to an additional question, with the question label as it was when answered. */
+export interface CustomAnswer { id: string; label: string; kind: 'text' | 'textarea' | 'select' | 'checkbox'; value: string | boolean }
 
 export interface VenueSummary {
   id: string;
@@ -177,6 +183,7 @@ export interface WaitlistEntry {
   heldTableIds: string[];
   suggestion: { tableIds: string[]; label: string; kind: 'table' | 'combination' } | null;
   rank: number;
+  customAnswers?: CustomAnswer[] | null;
 }
 
 export interface Shift {

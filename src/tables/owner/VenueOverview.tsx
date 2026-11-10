@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, CalendarCheck, CalendarX, Copy, Download, ExternalLink, MessageCircle, Pause, Play, Settings2, UserCog } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarCheck, CalendarX, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { copyText, useToast } from '../../components/Toast';
@@ -113,6 +113,7 @@ export function VenueOverview() {
               <div className="mt-5 flex flex-wrap gap-2 border-t border-cloud-200 pt-4">
                 <Link to={`/app/tables/${venue.id}/setup`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><Settings2 className="h-4 w-4" aria-hidden /> שעות, שולחנות וכללים</Link>
                 <Link to={`/app/tables/${venue.id}/menus`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><BookOpen className="h-4 w-4" aria-hidden /> תפריטים</Link>
+                <Link to={`/app/tables/${venue.id}/design`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><Palette className="h-4 w-4" aria-hidden /> עיצוב דפי ההזמנה</Link>
                 <Link to={`/app/tables/${venue.id}/analytics`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><BarChart3 className="h-4 w-4" aria-hidden /> נתונים</Link>
                 {venue.role === 'owner' && (
                   <Button size="sm" variant={venue.status === 'paused' ? 'primary' : 'secondary'} icon={venue.status === 'paused' ? Play : Pause} loading={busy === 'pause'} onClick={togglePause} className="h-10">

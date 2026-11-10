@@ -1,11 +1,12 @@
 import { CalendarClock, CheckCircle2, Clock, Hourglass, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cx } from '../../components/ui';
-import { newKey, publicCancel, publicManage, publicModify, publicModifyOptions, type GuestReservation, type PublicAvailability } from '../data/client';
+import { newKey, publicCancel, publicManage, publicModify, publicModifyOptions, publicVenue, type GuestReservation, type PublicAvailability, type PublicVenue } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { addDays, dateInTz, formatDate, formatInstant } from '../domain/time';
 import { Ltr } from '../ui';
 import { STATUS_GUEST, tx, type Lang } from './i18n';
+import { lookFor } from './look';
 import { accentButton, PublicShell, useDocumentLanguage, useLang } from './PublicShell';
 
 /** Reads the capability token from the URL fragment, then removes it from the address bar. */
@@ -47,6 +48,11 @@ export function ManagePage() {
     try { setRes(await publicManage(token, lang)); setError(null); } catch (e) { setError((e as TablesError).message); }
   }, [token, lang]);
   useEffect(() => { void load(); }, [load]);
+  // The venue's published booking-page look (if any); a failure keeps the standard look.
+  const [venue, setVenue] = useState<PublicVenue | null>(null);
+  const slug = res?.venue.slug;
+  useEffect(() => { if (slug) publicVenue(slug, lang).then(setVenue).catch(() => setVenue(null)); }, [slug, lang]);
+  const design = useMemo(() => (venue ? lookFor(venue, 'booking') : null), [venue]);
 
   if (error && res === undefined) return <PublicShell lang={lang} venue={null}><p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{error}</p></PublicShell>;
   if (res === undefined) return <PublicShell lang={lang} venue={null}><div aria-hidden className="h-40 animate-pulse rounded-2xl bg-cloud-200" /><span className="sr-only" role="status">{s.loading}</span></PublicShell>;
@@ -57,7 +63,7 @@ export function ManagePage() {
     </PublicShell>
   );
   return (
-    <PublicShell lang={lang} venue={{ ...res.venue }}>
+    <PublicShell lang={lang} venue={{ ...res.venue, brand: venue?.brand }} design={design}>
       <Manage res={res} token={token!} lang={lang} onChange={setRes} />
     </PublicShell>
   );

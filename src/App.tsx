@@ -45,6 +45,8 @@ const ManagePage = named(() => import('./tables/public/ManagePage'), 'ManagePage
 const WaitlistJoinPage = named(() => import('./tables/public/WaitlistPages'), 'WaitlistJoinPage');
 const WaitlistStatusPage = named(() => import('./tables/public/WaitlistPages'), 'WaitlistStatusPage');
 const MenuPage = named(() => import('./tables/public/MenuPage'), 'MenuPage');
+const PagePreview = named(() => import('./tables/public/PagePreview'), 'PagePreview');
+const PublicPagesStudio = named(() => import('./tables/owner/PublicPagesStudio'), 'PublicPagesStudio');
 
 /** Tables needs the real server: in the local demo these routes show the not-found page instead of simulating. */
 const live = (el: JSX.Element, owner = false) => (runtimeConfiguration.mode === 'production' ? <TablesRoot owner={owner}>{el}</TablesRoot> : <NotFound />);
@@ -82,6 +84,7 @@ export function App() {
           <Route path="/t/:slug" element={live(<BookingPage />)} />
           <Route path="/t/:slug/menu" element={live(<MenuPage />)} />
           <Route path="/t/:slug/waitlist" element={live(<WaitlistJoinPage />)} />
+          <Route path="/t-preview" element={live(<PagePreview />)} />
           <Route path="/app/tables/:venueId/live" element={live(<ProductionRouteBoundary><HostShift /></ProductionRouteBoundary>)} />
           <Route path="/app" element={<ProductionRouteBoundary><AppLayout /></ProductionRouteBoundary>}>
             <Route index element={<Dashboard />} />
@@ -97,6 +100,7 @@ export function App() {
             <Route path="tables/:venueId" element={live(<VenueOverview />, true)} />
             <Route path="tables/:venueId/setup" element={live(<VenueSetup />, true)} />
             <Route path="tables/:venueId/menus" element={live(<MenusPage />, true)} />
+            <Route path="tables/:venueId/design" element={live(<PublicPagesStudio />, true)} />
             <Route path="tables/:venueId/analytics" element={live(<AnalyticsPage />, true)} />
           </Route>
           <Route path="*" element={<NotFound />} />

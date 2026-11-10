@@ -8,6 +8,7 @@ import { isLate, SOURCE_HE, STATUS_HE, TABLE_STATE_HE } from '../domain/status';
 import { timeInTz } from '../domain/time';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
 import { Ltr, StatusChip } from '../ui';
+import { CustomAnswers } from './CustomAnswers';
 
 export type Selection = { kind: 'reservation'; id: string } | { kind: 'table'; id: string } | null;
 type States = Map<string, { state: TableLiveState; current?: ShiftReservation; next?: ShiftReservation }>;
@@ -102,6 +103,7 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
           <bdi dir="ltr" className="font-semibold text-ink">{r.time}</bdi> · {r.party} סועדים · {tables ? `שולחן ${tables}` : 'בלי שולחן'} · {SOURCE_HE[r.source]} · קוד <Ltr>{r.reference}</Ltr>
         </p>
         {r.requests && <p className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-900"><span className="font-medium">בקשה: </span>{r.requests}</p>}
+        <CustomAnswers answers={detail?.customAnswers} />
         {(r.visits > 0 || r.noShows > 0) && (
           <p className="mt-2 text-sm text-ink-muted">ביקורים קודמים: {r.visits}{r.noShows ? ` · לא הגיעו: ${r.noShows}` : ''}</p>
         )}

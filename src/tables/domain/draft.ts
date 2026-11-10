@@ -1,4 +1,5 @@
 /** Venue draft defaults, the starter floor, and owner-facing problem messages. */
+import { normalizePublicPages } from './publicPages';
 import type { Problem, Policy, ServiceDef, TableDef, TableShape, VenueDraft, ZoneDef } from './types';
 
 export const uuid = () =>
@@ -92,6 +93,8 @@ export function normalizeDraft(d: Partial<VenueDraft> & { basics?: VenueDraft['b
     policy: { ...DEFAULT_POLICY, ...(d.policy ?? {}) },
     guest: { ...base.guest, ...(d.guest ?? {}) },
     progress: d.progress ?? base.progress,
+    // Public page design travels with the draft, so every editor that saves the draft keeps it.
+    ...(d.publicPages ? { publicPages: normalizePublicPages(d.publicPages) } : {}),
   };
 }
 

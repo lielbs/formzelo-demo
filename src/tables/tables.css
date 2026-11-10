@@ -173,3 +173,61 @@ html.fz-dark .text-orange-800 { color: #f8b08f; }
 .fz-tables .grid:not([class*='grid-cols']) { grid-template-columns: minmax(0, 1fr); }
 /* Visually hidden text must never extend the page: keep it inside its control. */
 .fz-tables button:has(> .sr-only), .fz-tables a:has(> .sr-only) { position: relative; }
+
+/* ---------- Customized public pages (VenueDraft.publicPages, published) ----------
+ * The shell carries light (--pp-l-*) and dark (--pp-d-*) sets computed from the owner's palette
+ * (contrast-repaired in domain/publicPages). These rules map the shared utility classes used by
+ * the guest pages onto them; they come last and use html-prefixed selectors so they win over
+ * the generic dark display above. Status tints (amber/teal/red) keep their own colours. */
+.fz-pp {
+  --pp-page: var(--pp-l-page); --pp-page-image: var(--pp-l-page-image); --pp-surface: var(--pp-l-surface);
+  --pp-surface-alt: var(--pp-l-surface-alt); --pp-input: var(--pp-l-input); --pp-text: var(--pp-l-text);
+  --pp-muted: var(--pp-l-muted); --pp-line: var(--pp-l-line); --pp-line-strong: var(--pp-l-line-strong);
+  --pp-skeleton: var(--pp-l-skeleton); --pp-accent: var(--pp-l-accent); --pp-on-accent: var(--pp-l-on-accent);
+  --pp-accent-soft: var(--pp-l-accent-soft);
+}
+html.fz-dark .fz-pp {
+  --pp-page: var(--pp-d-page); --pp-page-image: var(--pp-d-page-image); --pp-surface: var(--pp-d-surface);
+  --pp-surface-alt: var(--pp-d-surface-alt); --pp-input: var(--pp-d-input); --pp-text: var(--pp-d-text);
+  --pp-muted: var(--pp-d-muted); --pp-line: var(--pp-d-line); --pp-line-strong: var(--pp-d-line-strong);
+  --pp-skeleton: var(--pp-d-skeleton); --pp-accent: var(--pp-d-accent); --pp-on-accent: var(--pp-d-on-accent);
+  --pp-accent-soft: var(--pp-d-accent-soft);
+}
+html .fz-guest.fz-pp { --fz-accent: var(--pp-accent); --fz-on-accent: var(--pp-on-accent); }
+html .fz-pp.fz-page {
+  background-color: var(--pp-page); background-image: var(--pp-page-image); background-repeat: repeat;
+  color: var(--pp-text); font-family: var(--pp-font-body);
+}
+html .fz-pp[data-pp-bg='gradient'].fz-page, html .fz-pp[data-pp-bg='tint'].fz-page { background-repeat: no-repeat; }
+html .fz-pp h1, html .fz-pp h2, html .fz-pp .pp-display {
+  font-family: var(--pp-font-display); font-weight: var(--pp-display-weight); letter-spacing: -0.01em;
+}
+html .fz-pp .bg-white, html .fz-pp .bg-white\/95, html .fz-pp .bg-white\/90 { background-color: var(--pp-surface); }
+html .fz-pp header.bg-white { background-color: color-mix(in srgb, var(--pp-surface) 86%, transparent); backdrop-filter: blur(10px); }
+html .fz-pp .bg-cloud-200 { background-color: var(--pp-skeleton); }
+html .fz-pp .text-ink { color: var(--pp-text); }
+html .fz-pp .text-ink-muted, html .fz-pp .hover\:text-ink:hover { color: var(--pp-muted); }
+html .fz-pp .border-cloud-200 { border-color: var(--pp-line); }
+html .fz-pp .border-cloud-300 { border-color: var(--pp-line-strong); }
+html .fz-pp .fz-input, html .fz-pp .ui-select { background-color: var(--pp-input); color: var(--pp-text); border-color: var(--pp-line-strong); }
+html .fz-pp .fz-input:focus, html .fz-pp .ui-select:focus { outline: 2px solid var(--pp-accent); outline-offset: 1px; border-color: var(--pp-accent); }
+html .fz-pp .rounded-xl { border-radius: var(--pp-r); }
+html .fz-pp .rounded-2xl { border-radius: var(--pp-r-lg); }
+html .fz-pp .rounded-lg { border-radius: min(var(--pp-r), 10px); }
+html .fz-pp .pp-btn { border-radius: var(--pp-r-btn); }
+html .fz-pp[data-pp-button='sharp'] .pp-btn { letter-spacing: 0.04em; }
+/* Cards (marked .pp-card) follow the chosen card style. */
+html .fz-pp .pp-card { background-color: var(--pp-surface); border: 1px solid var(--pp-line); }
+html .fz-pp[data-pp-card='soft'] .pp-card { border-color: transparent; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 10px 30px -14px rgb(0 0 0 / 0.22); }
+html .fz-pp[data-pp-card='outlined'] .pp-card { border-color: var(--pp-line-strong); box-shadow: none; }
+html .fz-pp[data-pp-card='elevated'] .pp-card { border-color: transparent; box-shadow: 0 2px 6px rgb(0 0 0 / 0.08), 0 22px 50px -18px rgb(0 0 0 / 0.35); }
+html .fz-pp[data-pp-card='flat'] .pp-card { border-color: transparent; background-color: var(--pp-surface-alt); box-shadow: none; }
+html .fz-pp[data-pp-tone='dark'] .pp-card, html.fz-dark .fz-pp .pp-card { box-shadow: none; }
+html .fz-pp .pp-chip-on { background-color: var(--pp-accent); border-color: var(--pp-accent); color: var(--pp-on-accent); }
+html .fz-pp ::selection { background: var(--pp-accent-soft); }
+
+/* Calm entrance for page content; respects reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .fz-guest main > * { animation: fz-rise 260ms ease-out both; }
+  @keyframes fz-rise { from { transform: translateY(6px); } to { transform: none; } }
+}

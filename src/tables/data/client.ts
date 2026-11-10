@@ -5,7 +5,8 @@
 import { getProductionSupabaseClient } from '../../production/supabaseClient';
 import { toTablesError } from '../domain/errors';
 import type { AnalyticsResult } from '../domain/analytics';
-import type { Problem, Shift, VenueDetail, VenueDraft, VenueSummary, WaitlistEntry } from '../domain/types';
+import type { BrandKitLite, PublicPagesConfig } from '../domain/publicPages';
+import type { CustomAnswer, Problem, Shift, VenueDetail, VenueDraft, VenueSummary, WaitlistEntry } from '../domain/types';
 
 type Lang = 'he' | 'en';
 
@@ -90,6 +91,8 @@ export interface ReservationDetail {
   notes: { id: string; body: string; visibility: 'host' | 'manager'; at: string; mine: boolean }[];
   history: { date: string; time: string; party: number; status: string }[] | null;
   visits: number; noShows: number;
+  /** Answers to the page's additional questions (team only; null when none). */
+  customAnswers?: CustomAnswer[] | null;
 }
 export const reservationDetail = (id: string) => rpc<ReservationDetail>('tables_reservation_detail', { p_reservation_id: id });
 export const waitlistAdd = (venueId: string, input: Record<string, unknown>, key: string) =>
@@ -102,8 +105,15 @@ export const waitlistClose = (id: string, status: 'declined' | 'departed' | 'no_
   rpc<{ status: string }>('tables_waitlist_close', { p_entry_id: id, p_status: status, p_expected_lock_version: lockVersion });
 
 // ---------- Menus ----------
+export interface MenuHero {
+  imageAssetId?: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+}
 export interface MenuItem { name: string; description?: string; price?: string; dietary?: string[]; allergens?: string[]; imageAssetId?: string }
-export interface MenuDoc { sections: { title: string; items: MenuItem[] }[] }
+export interface MenuSection { title: string; imageAssetId?: string; items: MenuItem[] }
+export interface MenuDoc { hero?: MenuHero; gallery?: string[]; sections: MenuSection[] }
 export interface MenuRow { id: string; title: string; status: string; lockVersion: number; draft: MenuDoc; publishedVersion: number | null; hasUnpublishedChanges: boolean; problems: Problem[] }
 export const listMenus = (venueId: string) => rpc<MenuRow[]>('tables_menu_list', { p_venue_id: venueId });
 export const createMenu = (venueId: string, title: string) => rpc<{ id: string }>('tables_menu_create', { p_venue_id: venueId, p_title: title });
@@ -121,6 +131,11 @@ export interface PublicVenue {
   services: { key: string; name: string; weekdays: number[]; start: string; lastSeating: string }[];
   brand: { displayName: string | null; palette: Record<string, string> | null };
   serverNow: string;
+  /** Organization that owns the venue images (public bucket folder). */
+  assetOwner?: string;
+  /** Published page design (absent = the standard pages). */
+  pages?: PublicPagesConfig | null;
+  brandKit?: BrandKitLite | null;
 }
 export interface PublicAvailability {
   date: string; state: 'open' | 'closed' | 'full' | 'paused' | 'out_of_range' | 'party_size';

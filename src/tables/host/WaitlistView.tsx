@@ -7,6 +7,7 @@ import { displayPhone, telHref } from '../domain/phone';
 import { minutesBetween } from '../domain/time';
 import type { Shift, WaitlistEntry } from '../domain/types';
 import { Ltr } from '../ui';
+import { CustomAnswers } from './CustomAnswers';
 
 function Countdown({ until, now }: { until: string; now: Date }) {
   const left = Math.max(0, Math.ceil((new Date(until).getTime() - now.getTime()) / 60_000));
@@ -67,6 +68,7 @@ function WaitlistRow({ e, now, canAct, onDone, labels }: { e: WaitlistEntry; now
             {e.status === 'waiting' && <span>{suggestion ? `מתאים עכשיו: שולחן ${suggestion}` : 'אין עכשיו שולחן פנוי מתאים'}</span>}
             {e.notes && <span>הערה: {e.notes}</span>}
           </span>
+          <CustomAnswers answers={e.customAnswers} compact />
         </span>
         {e.guestPhone && (
           <a href={telHref(e.guestPhone)} className="inline-flex h-11 items-center gap-1 rounded-xl border border-cloud-300 px-3 text-sm">
