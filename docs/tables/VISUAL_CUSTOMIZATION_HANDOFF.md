@@ -81,6 +81,47 @@ was not touched.** Everything below ran against the disposable local stack only.
   ≥44 px targets.
 - The menu was rebuilt as card rows with fixed-ratio media.
 
+### Branded guest pages (2026-11-11 upgrade, frontend only)
+
+**Every venue is branded.** A venue that never published a design no longer gets the plain page. It
+gets the standard fields and wording, with this look:
+- The preset of its venue type: cafe → café, bar → cocktail bar, event hall → fine dining, anything else → casual.
+- On top of that, the workspace Brand Kit: logo, cover, colour, typography and button.
+
+This comes from `brandedDefaults()` and `lookFor()`; `pageOf()` still returns `null` for standard pages.
+The studio switch now starts from the same branded defaults.
+
+**Venue header.** The header shows the cover photo with a dark scrim, or a brand-colour band. The
+band colour is the accent deepened until white text reaches 4.5:1 (`--pp-hero-bg*`). On top of it:
+- The logo, or a monogram when there is no logo.
+- The venue name in the display typeface, and the intro line.
+- Glass chips for today's booking hours, the address (maps link), the phone and WhatsApp.
+
+The content sits on a raised sheet that overlaps the header.
+
+**Booking page layout.** It uses a two-column layout from 1024 px up, with a side panel for the
+weekly booking hours (today highlighted), location and contact, and the menu and waitlist links. On a
+phone the panel sits below the booking.
+
+**Booking flow:**
+- A 3-step indicator (when → details → confirmed).
+- Icon section titles.
+- Party chips with 10 across from 640 px.
+- A date strip with weekday, day and month.
+- Times grouped by service, with a sun, sunset or moon icon.
+- A details summary with icons, and long terms collapsed.
+
+**Confirmation.** A ticket with the brand band, date, time and party, the reference code, an `.ics`
+"add to calendar" file (made in the browser, nothing sent), "directions", and the manage-link actions.
+
+**Contrast.** Accent-coloured text now uses `--pp-accent-ink` (4.5:1). The plain accent stays for
+graphics (3:1).
+
+**Tests.** New unit tests are in `publicPages.test.ts` (branded defaults, header contrast) and
+`public/venueInfo.test.ts` (hours, maps, `.ics`). A new e2e test, "a venue that never published a
+design still wears the business brand", sweeps 8 widths in light/dark and he/en with axe, then books
+through to the ticket.
+
 ## 2. Database — `supabase/migrations/20261111090000_tables_visual_customization.sql`
 
 The migration is additive. Existing commands are **wrapped, not rewritten**: each original body is

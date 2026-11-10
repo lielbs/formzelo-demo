@@ -11,7 +11,8 @@ import { cx } from '../../components/ui';
 import type { BrandKitLite, PageKind, PublicPagesConfig } from '../domain/publicPages';
 import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
-import { lookFor } from './look';
+import { Stepper } from './BookingPage';
+import { lookFor, pageOf } from './look';
 import { accentButton, PublicShell, useDocumentLanguage } from './PublicShell';
 
 export interface PreviewPayload {
@@ -22,7 +23,7 @@ export interface PreviewPayload {
   brandKit: BrandKitLite | null;
   assetOwner: string;
   venue: {
-    name: string; address?: string; phone?: string; showWhatsapp?: boolean; intro?: string; terms: string;
+    name: string; venueType?: string | null; address?: string; phone?: string; showWhatsapp?: boolean; intro?: string; terms: string;
     minParty: number; maxParty: number; brand: { displayName: string | null; palette: Record<string, string> | null };
   };
 }
@@ -42,10 +43,10 @@ export function PagePreview() {
   }, []);
   const lang = data?.lang ?? 'he';
   useDocumentLanguage(lang, tx(lang).previewBanner);
-  const design = useMemo(() => (data ? lookFor({ pages: data.pages, brandKit: data.brandKit, assetOwner: data.assetOwner }, data.kind) : null), [data]);
+  const design = useMemo(() => (data ? lookFor({ pages: data.pages, brandKit: data.brandKit, assetOwner: data.assetOwner, venueType: data.venue.venueType }, data.kind) : null), [data]);
   if (!data) return <div aria-hidden className="fz-page min-h-screen bg-[#FAF9F7]" />;
   const s = tx(lang);
-  const page = design?.pages[data.kind] ?? null;
+  const page = pageOf(design, data.kind);
   return (
     <div className="relative">
       <p role="note" className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-midnight px-3 py-2 text-center text-xs font-medium text-white">
@@ -60,11 +61,10 @@ export function PagePreview() {
 
 function Chips({ count, start, selected }: { count: number; start: number; selected: number }) {
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
       {Array.from({ length: count }, (_, i) => start + i).map((n) => (
         <span key={n} aria-hidden
-          className={cx('flex h-12 items-center justify-center rounded-xl border text-base font-semibold tabular-nums',
-            n === selected ? 'border-[var(--fz-accent)] bg-[var(--fz-accent)] text-[var(--fz-on-accent)]' : 'border-cloud-300 bg-white')}>{n}</span>
+          className={cx('pp-chip flex h-12 items-center justify-center rounded-xl text-base font-semibold tabular-nums', n === selected && 'pp-chip-on')}>{n}</span>
       ))}
     </div>
   );
@@ -76,10 +76,11 @@ function BookingSample({ data, page }: { data: PreviewPayload; page: PublicPages
   const min = Math.max(1, data.venue.minParty);
   const count = Math.max(1, Math.min(10, data.venue.maxParty - min + 1));
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-7">
       <div>
-        <h1 className="text-2xl font-semibold">{page?.copy.title || s.bookTitle}</h1>
-        {(page?.copy.description || data.venue.intro) && <p className="mt-1 whitespace-pre-line text-ink-muted">{page?.copy.description || data.venue.intro}</p>}
+        <Stepper lang={data.lang} step={0} />
+        <h1 className="text-2xl font-semibold sm:text-3xl">{page?.copy.title || s.bookTitle}</h1>
+        {page?.copy.description && <p className="mt-1.5 whitespace-pre-line text-ink-muted">{page.copy.description}</p>}
       </div>
       <div>
         <p className="mb-2 text-base font-semibold">{s.party}</p>
@@ -87,9 +88,9 @@ function BookingSample({ data, page }: { data: PreviewPayload; page: PublicPages
       </div>
       <div>
         <p className="mb-2 text-base font-semibold">{s.time}</p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {['18:00', '18:30', '19:00', '19:30', '20:00', '20:30'].map((t) => (
-            <span key={t} aria-hidden className="flex h-14 items-center justify-center rounded-xl border border-cloud-300 bg-white text-lg font-semibold tabular-nums"><span dir="ltr">{t}</span></span>
+            <span key={t} aria-hidden className="pp-chip flex h-12 items-center justify-center rounded-xl text-base font-semibold tabular-nums"><span dir="ltr">{t}</span></span>
           ))}
         </div>
         <p className="mt-2 text-xs text-ink-muted">{s.previewTimes}</p>

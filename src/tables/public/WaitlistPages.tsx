@@ -6,10 +6,10 @@ import { newKey, publicVenue, publicWaitlistJoin, publicWaitlistLeave, publicWai
 import { messageFor, type TablesError } from '../domain/errors';
 import { answersPayload, missingAnswers } from '../domain/publicPages';
 import { normalizePhone } from '../domain/phone';
-import { formatInstant } from '../domain/time';
+import { dateInTz, formatInstant } from '../domain/time';
 import { GuestFields, type GuestValues } from './GuestFields';
 import { tx } from './i18n';
-import { lookFor } from './look';
+import { lookFor, pageOf } from './look';
 import { useFragmentToken } from './ManagePage';
 import { accentButton, PublicShell, useDocumentLanguage, useLang } from './PublicShell';
 
@@ -28,7 +28,7 @@ export function WaitlistJoinPage() {
   useDocumentLanguage(lang, venue ? `${venue.name} · ${s.waitlistTitle}` : s.waitlistTitle);
   useEffect(() => { publicVenue(slug, lang).then(setVenue).catch(() => setVenue(null)); }, [slug, lang]);
   const design = useMemo(() => (venue ? lookFor(venue, 'waitlist') : null), [venue]);
-  const page = design?.pages.waitlist ?? null;
+  const page = pageOf(design, 'waitlist');
   const text = (k: string) => (typeof values[k] === 'string' ? (values[k] as string).trim() : '');
   // Any change to the request makes a new idempotency key; a retry of the same request reuses it.
   useEffect(() => { key.current = newKey(); }, [values, form.party]);
@@ -65,16 +65,16 @@ export function WaitlistJoinPage() {
     <PublicShell lang={lang} venue={venue ?? null}><h1 className="text-xl font-semibold">{s.notFound}</h1><p className="mt-2 text-ink-muted">{s.notFoundBody}</p></PublicShell>
   );
   return (
-    <PublicShell lang={lang} venue={venue} design={design}>
-      <form onSubmit={submit} noValidate className="grid gap-4">
-        <h1 className="text-2xl font-semibold">{page?.copy.title || s.waitlistTitle}</h1>
+    <PublicShell lang={lang} venue={{ ...venue, today: dateInTz(new Date(venue.serverNow), venue.timezone) }} design={design}>
+      <form onSubmit={submit} noValidate className="grid gap-5">
+        <h1 className="text-2xl font-semibold sm:text-3xl">{page?.copy.title || s.waitlistTitle}</h1>
         <p className="whitespace-pre-line text-ink-muted">{page?.copy.description || s.waitlistIntro}</p>
         <fieldset>
-          <legend className="mb-2 font-semibold">{s.party}</legend>
-          <div className="grid grid-cols-5 gap-2">
+          <legend className="mb-3 text-base font-semibold">{s.party}</legend>
+          <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
             {Array.from({ length: Math.min(10, venue.policy.maxParty) }, (_, i) => i + 1).map((n) => (
               <button key={n} type="button" aria-pressed={form.party === n} onClick={() => setForm({ ...form, party: n })}
-                className={cx('h-12 rounded-xl border font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]', form.party === n ? 'border-[var(--fz-accent)] bg-[var(--fz-accent)] text-[var(--fz-on-accent)]' : 'border-cloud-300 bg-white')}>{n}</button>
+                className={cx('pp-chip h-12 rounded-xl font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', form.party === n && 'pp-chip-on')}>{n}</button>
             ))}
           </div>
         </fieldset>
@@ -113,7 +113,7 @@ export function WaitlistStatusPage() {
   if (st === null) return <PublicShell lang={lang} venue={null}><h1 className="text-xl font-semibold">{s.linkUnavailable}</h1><p className="mt-2 text-ink-muted">{s.linkUnavailableBody}</p></PublicShell>;
   const offered = st.status === 'offered' && st.offerExpiresAt && new Date(st.offerExpiresAt) > now;
   return (
-    <PublicShell lang={lang} venue={{ name: st.venue.name, brand: venue?.brand }} design={design}>
+    <PublicShell lang={lang} venue={{ name: st.venue.name, brand: venue?.brand }} compact design={design}>
       <div className="grid gap-4">
         {offered ? (
           <div role="alert" className="rounded-2xl border border-teal-300 bg-teal-50 p-5">

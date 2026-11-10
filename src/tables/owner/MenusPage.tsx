@@ -212,7 +212,7 @@ function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; on
           לפני פרסום צריך לתקן: {[...new Set(problems.map((p) => MENU_PROBLEM_HE[p.code] ?? MENU_PROBLEM_HE.invalid!))].join(' ')}
         </Hint>
       )}
-      <div className="sticky bottom-3 z-10 flex flex-wrap gap-2 rounded-2xl border border-cloud-200 bg-white/95 p-3 shadow-card backdrop-blur">
+      <div className="sticky bottom-[calc(var(--fz-tabbar,0px)+0.75rem)] z-10 flex flex-wrap gap-2 rounded-2xl border border-cloud-200 bg-white/95 p-3 shadow-card backdrop-blur">
         <Button icon={Save} variant="secondary" loading={busy === 'save'} disabled={!dirty} onClick={async () => { if (await save() != null) { toast('הטיוטה נשמרה', 'success'); await onSaved(); } }} className="h-11">{dirty ? 'שמירת טיוטה' : 'נשמר'}</Button>
         <Button icon={Rocket} loading={busy === 'publish'} onClick={async () => {
           const lv = dirty ? await save() : lock;

@@ -99,7 +99,9 @@ test('owner designs, saves, reloads and publishes the guest pages; a guest answe
   const g = await guest.newPage();
   await g.goto(`/t/${venue.slug}`);
   await expect(g.getByRole('heading', { name: 'הזמנת שולחן' })).toBeVisible();
-  await expect(g.locator('.fz-pp')).toHaveCount(0);
+  // Not yet published: the branded standard page (venue-type preset), none of the draft.
+  await expect(g.locator('.fz-pp')).toHaveAttribute('data-pp-bg', 'tint');
+  await expect(g.getByText('שולחן בבר')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'פרסום' }).click();
   await expect(page.getByText('דפי ההזמנה פורסמו — האורחים רואים את העיצוב החדש')).toBeVisible();
@@ -262,5 +264,61 @@ test('customized guest pages and the studio: 320–1440 px, light/dark, Hebrew/E
     await ctx.close();
   }
   fs.writeFileSync(path.join(OUT, 'findings.json'), JSON.stringify(problems, null, 2));
+  expect(problems).toEqual([]);
+});
+
+test('a venue that never published a design still wears the business brand', async ({ browser }) => {
+  const plain = await seedVenue(biz, { publicWaitlist: true, tables: 6 });
+  const problems: string[] = [];
+  for (const theme of ['light', 'dark'] as const) {
+    for (const lang of ['he', 'en'] as const) {
+      const ctx = await newContext(browser, { width: 390, height: 844 });
+      await ctx.addInitScript((t) => { try { localStorage.setItem('fz_tables_theme', t); } catch { /* */ } }, theme);
+      const page = await ctx.newPage();
+      const q = lang === 'en' ? '?lang=en' : '';
+      for (const [screen, url] of [['book', `/t/${plain.slug}${q}`], ['waitlist', `/t/${plain.slug}/waitlist${q}`]] as const) {
+        await page.goto(url);
+        await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+        // Branded header: the venue name in the brand band, the Brand Kit colour as the accent.
+        await expect(page.locator('header.pp-hero')).toContainText('ביסטרו הנמל');
+        await expect(page.locator('.fz-guest.fz-pp')).toHaveCount(1);
+        const accent = await page.locator('.fz-guest').evaluate((el) => getComputedStyle(el).getPropertyValue('--pp-hero-bg').trim().toLowerCase());
+        expect(accent).toMatch(/^#[0-9a-f]{6}$/);
+        for (const size of SIZES) {
+          await page.setViewportSize({ width: size.w, height: size.h });
+          await page.waitForTimeout(150);
+          const tag = `standard-${screen}-${lang}-${theme}-${size.w}`;
+          if ([320, 390, 1280].includes(size.w)) await shot(page, tag);
+          for (const o of await overflow(page)) problems.push(`${tag} overflow ${o}`);
+          for (const s of await smallTargets(page)) problems.push(`${tag} target ${s}`);
+          if (size.w === 390 || size.w === 1280) {
+            const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+            for (const v of r.violations.filter((x) => x.impact === 'serious' || x.impact === 'critical')) problems.push(`${tag} axe ${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`);
+          }
+        }
+      }
+      // Details step and the confirmation ticket (Hebrew, light only, phone and desktop).
+      if (lang === 'he' && theme === 'light') {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto(`/t/${plain.slug}`);
+        await page.getByRole('button', { name: 'מחר' }).first().click();
+        await page.locator('section[aria-labelledby="times-h"] button').first().click();
+        await expect(page.getByRole('heading', { name: 'הפרטים שלכם' })).toBeVisible();
+        await shot(page, 'standard-details-he-light-390');
+        await page.locator('#bk-name').fill('אורח בדיקה');
+        await page.locator('#bk-phone').fill('050-1234567');
+        await page.locator('#bk-terms').check();
+        await page.getByRole('button', { name: 'אישור ההזמנה' }).click();
+        await expect(page.getByRole('heading', { name: /ההזמנה מאושרת|ממתינה לאישור/ })).toBeVisible();
+        await shot(page, 'standard-ticket-he-light-390');
+        await page.setViewportSize({ width: 1280, height: 860 });
+        await page.waitForTimeout(150);
+        await shot(page, 'standard-ticket-he-light-1280');
+        for (const o of await overflow(page)) problems.push(`ticket overflow ${o}`);
+      }
+      await ctx.close();
+    }
+  }
+  fs.writeFileSync(path.join(OUT, 'findings-standard.json'), JSON.stringify(problems, null, 2));
   expect(problems).toEqual([]);
 });

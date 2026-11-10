@@ -104,6 +104,19 @@ const he = {
   photoOf: (n: number, total: number) => `תמונה ${n} מתוך ${total}`,
   previewBanner: 'תצוגה מקדימה של הטיוטה — שום דבר לא נשלח מכאן.',
   previewTimes: 'שעות לדוגמה. בדף האמיתי יוצגו רק שעות פנויות.',
+  stepWhen: 'מתי',
+  stepDetails: 'הפרטים שלכם',
+  stepDone: 'אישור',
+  openToday: (hours: string) => `הזמנות היום ${hours}`,
+  closedToday: 'אין הזמנות היום',
+  hoursTitle: 'שעות הזמנה',
+  aboutTitle: 'על המקום',
+  directions: 'ניווט',
+  call: 'התקשרות',
+  addToCalendar: 'הוספה ליומן',
+  partyOf: (n: number) => (n === 1 ? 'סועד אחד' : `${n} סועדים`),
+  readTerms: 'לתנאים המלאים',
+  calendarTitle: (venue: string) => `שולחן ב${venue}`,
 };
 
 const en: typeof he = {
@@ -209,6 +222,19 @@ const en: typeof he = {
   photoOf: (n: number, total: number) => `Photo ${n} of ${total}`,
   previewBanner: 'Draft preview — nothing is sent from here.',
   previewTimes: 'Sample times. The real page shows only free times.',
+  stepWhen: 'When',
+  stepDetails: 'Your details',
+  stepDone: 'Confirmed',
+  openToday: (hours: string) => `Booking today ${hours}`,
+  closedToday: 'No bookings today',
+  hoursTitle: 'Booking hours',
+  aboutTitle: 'About',
+  directions: 'Directions',
+  call: 'Call',
+  addToCalendar: 'Add to calendar',
+  partyOf: (n: number) => (n === 1 ? '1 guest' : `${n} guests`),
+  readTerms: 'Full terms',
+  calendarTitle: (venue: string) => `Table at ${venue}`,
 };
 
 type Strings = typeof he;

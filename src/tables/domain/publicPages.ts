@@ -170,6 +170,22 @@ export function defaultPublicPages(): PublicPagesConfig {
   };
 }
 
+/** The starting look for a venue type (used until the venue publishes its own design). */
+export function presetForVenueType(venueType: string | null | undefined): PagePreset {
+  return venueType === 'cafe' ? 'cafe' : venueType === 'bar' ? 'cocktail_bar' : venueType === 'event_hall' ? 'fine_dining' : 'casual';
+}
+
+/**
+ * The pages a venue shows before it publishes a design: the standard fields and wording, with the
+ * look taken from the workspace Brand Kit (logo, cover, colour, typography, button) on top of the
+ * preset of its venue type — so even an untouched venue page carries the business's identity.
+ */
+export function brandedDefaults(venueType: string | null | undefined): PublicPagesConfig {
+  const pages = defaultPublicPages();
+  pages.theme = { ...presetTheme(presetForVenueType(venueType)), inheritBrand: true };
+  return pages;
+}
+
 export const newQuestionKey = () =>
   `q_${Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')}`;
 
@@ -480,7 +496,14 @@ export function resolveLook(themeIn: PageTheme, kit?: BrandKitLite | null): Reso
   const dark = darkNative ? light : paletteVars(dbg, dsurf, '#E8EDF2', accent, t);
   const font = TYPOGRAPHY[t.typography];
   const [r, rl] = RADIUS_PX[t.radius];
+  // The brand band behind the venue header when there is no cover photo: the accent deepened
+  // until white text reads at 4.5:1, with a darker second stop. The same in light and dark display.
+  const heroBg = ensureContrast(darkNative ? mix(accent, background, 0.55) : accent, '#FFFFFF', 4.5);
   const vars: Record<string, string> = {
+    '--pp-hero-bg': heroBg,
+    '--pp-hero-bg-2': mix(heroBg, '#000000', 0.38),
+    '--pp-hero-glow': mix(heroBg, '#FFFFFF', 0.22),
+    '--pp-display-scale': String(font.scale),
     ...Object.fromEntries(Object.entries(light).map(([k, v]) => [k.replace('--pp-', '--pp-l-'), v])),
     ...Object.fromEntries(Object.entries(dark).map(([k, v]) => [k.replace('--pp-', '--pp-d-'), v])),
     '--pp-font-display': font.display,

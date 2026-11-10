@@ -63,7 +63,7 @@ export function ManagePage() {
     </PublicShell>
   );
   return (
-    <PublicShell lang={lang} venue={{ ...res.venue, brand: venue?.brand }} design={design}>
+    <PublicShell lang={lang} venue={{ ...res.venue, brand: venue?.brand }} compact design={design}>
       <Manage res={res} token={token!} lang={lang} onChange={setRes} />
     </PublicShell>
   );

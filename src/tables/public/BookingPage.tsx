@@ -1,6 +1,6 @@
-import { CalendarDays, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { CalendarDays, CalendarPlus, Check, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle, Moon, Navigation, ShieldCheck, Sun, Sunset, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useParams } from 'react-router-dom';
 import { cx } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { newKey, publicAvailability, publicBook, publicVenue, type BookResult, type PublicAvailability, type PublicVenue } from '../data/client';
@@ -11,8 +11,9 @@ import { addDays, dateInTz, formatDate, formatInstant } from '../domain/time';
 import { Ltr } from '../ui';
 import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
-import { lookFor } from './look';
-import { accentButton, PublicShell, useDocumentLanguage, useLang } from './PublicShell';
+import { lookFor, pageOf } from './look';
+import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
+import { calendarFile, mapsHref, VenueAside } from './VenueInfo';
 
 type Step = 'choose' | 'details' | 'result';
 type Choice = { serviceKey: string; time: string; approval: 'instant' | 'request' };
@@ -49,7 +50,13 @@ export function BookingPage() {
       <p className="mt-2 text-ink-muted">{s.notFoundBody}</p>
     </PublicShell>
   );
-  return <PublicShell lang={lang} venue={venue} design={design}><Booking venue={venue} lang={lang} page={design?.pages.booking ?? null} /></PublicShell>;
+  const today = dateInTz(new Date(venue.serverNow), venue.timezone);
+  return (
+    <PublicShell lang={lang} venue={{ ...venue, today }} design={design}
+      aside={<VenueAside lang={lang} today={today} venue={venue} />}>
+      <Booking venue={venue} lang={lang} page={pageOf(design, 'booking')} />
+    </PublicShell>
+  );
 }
 
 function BookingSkeleton() {
@@ -62,6 +69,39 @@ function BookingSkeleton() {
     </div>
   );
 }
+
+/** Where the guest is in the booking (choose → details → confirmed). */
+export function Stepper({ lang, step }: { lang: Lang; step: 0 | 1 | 2 }) {
+  const s = tx(lang);
+  const labels = [s.stepWhen, s.stepDetails, s.stepDone];
+  return (
+    <ol className="mb-5 flex items-center gap-2 text-xs font-medium sm:text-sm" aria-label={lang === 'he' ? 'שלבי ההזמנה' : 'Booking steps'}>
+      {labels.map((label, i) => (
+        <li key={label} className="pp-step flex min-w-0 items-center gap-2" aria-current={i === step ? 'step' : undefined} data-done={i < step ? '' : undefined}>
+          <span className="pp-step-dot flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums">
+            {i < step ? <Check className="h-3.5 w-3.5" aria-hidden /> : i + 1}
+          </span>
+          <span className={cx('truncate', i !== step && 'hidden sm:inline')}>{label}</span>
+          {i < labels.length - 1 && <span aria-hidden className="pp-step-line h-px w-6 shrink-0 sm:w-10" />}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Section heading inside the booking sheet. */
+function SectionTitle({ icon, children, id, as: As = 'h2' }: { icon: ReactNode; children: ReactNode; id?: string; as?: 'h2' | 'legend' }) {
+  return (
+    <As id={id} className="mb-3 flex items-center gap-2 text-base font-semibold">
+      <span aria-hidden className="pp-icon-chip flex h-7 w-7 items-center justify-center rounded-full">{icon}</span>{children}
+    </As>
+  );
+}
+
+const serviceIcon = (time: string | undefined) => {
+  const h = Number((time ?? '19:00').slice(0, 2));
+  return h < 15 ? <Sun className="h-4 w-4" aria-hidden /> : h < 18 ? <Sunset className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />;
+};
 
 function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: PageConfig | null }) {
   const s = tx(lang);
@@ -98,7 +138,9 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
   useEffect(() => { key.current = newKey(); }, [choice, date, party, zone, values]);
 
   const days = useMemo(() => Array.from({ length: Math.min(14, venue.policy.horizonDays + 1) }, (_, i) => addDays(today, i)), [today, venue.policy.horizonDays]);
-  const dayLabel = (d: string) => (d === today ? s.today : d === addDays(today, 1) ? s.tomorrow : new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-GB', { timeZone: 'UTC', weekday: 'short' }).format(new Date(`${d}T12:00:00Z`)));
+  const locale = lang === 'he' ? 'he-IL' : 'en-GB';
+  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...o }).format(new Date(`${d}T12:00:00Z`));
+  const dayLabel = (d: string) => (d === today ? s.today : d === addDays(today, 1) ? s.tomorrow : fmt(d, { weekday: 'short' }));
   const parties = Array.from({ length: Math.min(10, venue.policy.maxParty - venue.policy.minParty + 1) }, (_, i) => venue.policy.minParty + i);
   const cancelDeadline = choice ? deadline(date, choice.time, venue.timezone, venue.policy.cancelCutoffMinutes) : null;
 
@@ -138,13 +180,20 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
 
   if (step === 'details' && choice) {
     const errorList = Object.entries(errors);
+    const longTerms = venue.terms.length > 180;
     return (
       <form onSubmit={submit} noValidate className="grid gap-5">
+        <Stepper lang={lang} step={1} />
         <div>
-          <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">{s.details}</h1>
-          <div className="pp-card mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cloud-200 bg-white px-3 py-2.5">
-            <p className="font-medium">{s.summary(party, formatDate(date, lang, false), choice.time)}</p>
-            <button type="button" onClick={() => setStep('choose')} className="min-h-[44px] px-2 text-sm font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.change}</button>
+          <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none sm:text-3xl">{s.details}</h1>
+          <div className="pp-card mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cloud-200 bg-white px-4 py-3">
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
+              <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-[var(--fz-accent)]" aria-hidden />{formatDate(date, lang, false)}</span>
+              <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-[var(--fz-accent)]" aria-hidden /><Ltr>{choice.time}</Ltr></span>
+              <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4 text-[var(--fz-accent)]" aria-hidden />{s.partyOf(party)}</span>
+              <span className="sr-only">{s.summary(party, formatDate(date, lang, false), choice.time)}</span>
+            </p>
+            <button type="button" onClick={() => setStep('choose')} className="min-h-[44px] px-2 text-sm font-semibold text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.change}</button>
           </div>
           {choice.approval === 'request' && <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-800"><Hourglass className="h-4 w-4" aria-hidden />{s.requestNote}</p>}
         </div>
@@ -156,12 +205,17 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
         <GuestFields kind="booking" page={page} lang={lang} values={values} errors={errors} prefix="bk"
           onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))} />
         <section aria-labelledby="terms-h" className="pp-card rounded-xl border border-cloud-200 bg-white p-4">
-          <h2 id="terms-h" className="font-semibold">{s.terms}</h2>
-          <p className="mt-1 whitespace-pre-line text-sm text-ink-muted">{venue.terms}</p>
+          <h2 id="terms-h" className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4 text-[var(--fz-accent)]" aria-hidden />{s.terms}</h2>
           <p className="mt-2 flex items-start gap-1.5 text-sm font-medium">
             <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             {cancelDeadline ? <span>{s.cancelUntil} <span className="whitespace-nowrap">{formatInstant(cancelDeadline, venue.timezone, lang)}</span></span> : s.noCancelOnline}
           </p>
+          {longTerms ? (
+            <details className="mt-2 text-sm">
+              <summary className="min-h-[32px] cursor-pointer font-medium text-[var(--fz-accent)]">{s.readTerms}</summary>
+              <p className="mt-1 whitespace-pre-line text-ink-muted">{venue.terms}</p>
+            </details>
+          ) : <p className="mt-1 whitespace-pre-line text-sm text-ink-muted">{venue.terms}</p>}
           <label className="mt-3 flex min-h-[44px] items-center gap-3 text-sm">
             <input id="bk-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} aria-invalid={!!errors.terms} className="h-6 w-6 shrink-0 accent-[var(--fz-accent)]" />
             {s.agree}
@@ -176,20 +230,21 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
     );
   }
 
+  const slotCount = avail?.state === 'open' ? avail.services.reduce((n, sv) => n + sv.slots.length, 0) : 0;
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-7">
       <div>
-        <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">{page?.copy.title || s.bookTitle}</h1>
-        {(page?.copy.description || venue.intro) && <p className="mt-1 whitespace-pre-line text-ink-muted">{page?.copy.description || venue.intro}</p>}
+        <Stepper lang={lang} step={0} />
+        <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none sm:text-3xl">{page?.copy.title || s.bookTitle}</h1>
+        {page?.copy.description && <p className="mt-1.5 whitespace-pre-line text-ink-muted">{page.copy.description}</p>}
       </div>
       {venue.paused && <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">{s.paused}</p>}
       <fieldset>
-        <legend className="mb-2 text-base font-semibold">{s.party}</legend>
-        <div className="grid grid-cols-5 gap-2">
+        <SectionTitle as="legend" icon={<Users className="h-4 w-4" />}>{s.party}</SectionTitle>
+        <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
           {parties.map((n) => (
             <button key={n} type="button" aria-pressed={party === n} onClick={() => setParty(n)}
-              className={cx('h-12 rounded-xl border text-base font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]',
-                party === n ? 'border-[var(--fz-accent)] bg-[var(--fz-accent)] text-[var(--fz-on-accent)]' : 'border-cloud-300 bg-white')}>{n}</button>
+              className={cx('pp-chip h-12 rounded-xl text-base font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', party === n && 'pp-chip-on')}>{n}</button>
           ))}
         </div>
         {venue.policy.maxParty > parties[parties.length - 1]! && (
@@ -204,25 +259,24 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
         <p className="mt-2 text-xs text-ink-muted">{s.largerParty}</p>
       </fieldset>
       <fieldset>
-        <legend className="mb-2 text-base font-semibold">{s.date}</legend>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group">
+        <SectionTitle as="legend" icon={<CalendarDays className="h-4 w-4" />}>{s.date}</SectionTitle>
+        <div className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-7 sm:px-7" role="group">
           {days.map((d) => (
             <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)}
-              className={cx('relative flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]',
-                date === d ? 'border-[var(--fz-accent)] bg-[var(--fz-accent)] text-[var(--fz-on-accent)]' : 'border-cloud-300 bg-white')}>
-              <span className="text-xs">{dayLabel(d)}</span>
-              <span className="text-lg font-semibold tabular-nums">{Number(d.slice(8))}</span>
+              className={cx('pp-chip relative flex h-[76px] w-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', date === d && 'pp-chip-on')}>
+              <span className="text-[11px] font-medium">{dayLabel(d)}</span>
+              <span className="text-xl font-semibold leading-none tabular-nums">{Number(d.slice(8))}</span>
+              <span className="text-[11px]">{fmt(d, { month: 'short' })}</span>
               <span className="sr-only">, {formatDate(d, lang)}</span>
             </button>
           ))}
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-ink-muted" aria-hidden />
-          <label htmlFor="other-date" className="text-sm text-ink-muted">{s.otherDate}:</label>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="other-date" className="inline-flex items-center gap-1.5 text-sm text-ink-muted"><CalendarDays className="h-4 w-4" aria-hidden />{s.otherDate}:</label>
           <input id="other-date" type="date" dir="ltr" min={today} max={addDays(today, venue.policy.horizonDays)} value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
             className="fz-input h-11 rounded-xl border border-cloud-300 bg-white px-2 text-sm" />
+          <p className="text-sm font-medium">{formatDate(date, lang)}</p>
         </div>
-        <p className="mt-1 text-sm font-medium">{formatDate(date, lang)}</p>
       </fieldset>
       {venue.policy.zoneChoice && venue.zones.length > 1 && (
         <div>
@@ -234,29 +288,30 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
         </div>
       )}
       <section aria-labelledby="times-h" aria-busy={!avail && !availError}>
-        <h2 id="times-h" className="mb-2 text-base font-semibold">{s.time}</h2>
+        <SectionTitle id="times-h" icon={<Clock className="h-4 w-4" />}>{s.time}</SectionTitle>
         {availError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{availError}</p>
           : !avail ? (
-            <div aria-hidden className="grid animate-pulse grid-cols-3 gap-2 sm:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-14 rounded-xl bg-cloud-200" />)}</div>
+            <div aria-hidden className="grid animate-pulse grid-cols-3 gap-2 sm:grid-cols-5">{Array.from({ length: 10 }, (_, i) => <div key={i} className="h-12 rounded-xl bg-cloud-200" />)}</div>
           ) : avail.state !== 'open' ? (
-            <div role="status" className="rounded-xl border border-cloud-200 bg-white p-4">
+            <div role="status" className="pp-card rounded-xl border border-cloud-200 bg-white p-4">
               <p>{avail.state === 'closed' ? s.closed : avail.state === 'full' ? s.full : avail.state === 'paused' ? s.paused : avail.state === 'party_size' ? s.partySize : s.outOfRange}</p>
               {(avail.state === 'closed' || avail.state === 'full') && date < addDays(today, venue.policy.horizonDays) && (
                 <button type="button" onClick={() => setDate(addDays(date, 1))} className="mt-2 min-h-[44px] font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.tryNextDay}</button>
               )}
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-5">
+              <p className="sr-only" role="status">{lang === 'he' ? `${slotCount} שעות פנויות` : `${slotCount} times available`}</p>
               {avail.services.filter((sv) => sv.slots.length).map((sv) => (
                 <div key={sv.key}>
-                  <p className="mb-1.5 text-sm text-ink-muted">{sv.name}</p>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink-muted">{serviceIcon(sv.slots[0]?.time)}{sv.name}</p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                     {sv.slots.map((sl) => (
                       <button key={sl.time} type="button" onClick={() => { setChoice({ serviceKey: sv.key, time: sl.time, approval: sl.approval }); setStep('details'); }}
                         aria-label={`${sl.time}${sl.approval === 'request' ? `, ${s.requestNote}` : ''}`}
-                        className="flex h-14 flex-col items-center justify-center rounded-xl border border-cloud-300 bg-white font-semibold tabular-nums hover:border-[var(--fz-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]">
-                        <span dir="ltr" className="text-lg">{sl.time}</span>
-                        {sl.approval === 'request' && <span className="text-[11px] font-normal text-amber-800">{lang === 'he' ? 'בקשה' : 'Request'}</span>}
+                        className="pp-chip flex h-12 flex-col items-center justify-center rounded-xl font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2">
+                        <span dir="ltr" className="text-base leading-none">{sl.time}</span>
+                        {sl.approval === 'request' && <span className="mt-0.5 text-[10px] font-normal leading-none text-amber-800">{lang === 'he' ? 'בקשה' : 'Request'}</span>}
                       </button>
                     ))}
                   </div>
@@ -265,10 +320,6 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
             </div>
           )}
       </section>
-      <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label={lang === 'he' ? 'עוד באתר' : 'More'}>
-        <Link to={`/t/${venue.slug}/menu${lang === 'en' ? '?lang=en' : ''}`} className="min-h-[44px] py-2 font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.viewMenu}</Link>
-        {venue.policy.waitlistPublic && <Link to={`/t/${venue.slug}/waitlist${lang === 'en' ? '?lang=en' : ''}`} className="min-h-[44px] py-2 font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.joinWaitlist}</Link>}
-      </nav>
     </div>
   );
 }
@@ -281,6 +332,19 @@ export function deadline(date: string, time: string, tz: string, cutoffMinutes: 
   const local = new Date(new Intl.DateTimeFormat('sv-SE', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(guess).replace(' ', 'T') + ':00Z');
   const start = new Date(guess.getTime() - (local.getTime() - guess.getTime()));
   return new Date(start.getTime() - cutoffMinutes * 60_000).toISOString();
+}
+
+function downloadCalendar(venue: PublicVenue, startsAt: string, lang: Lang, reference?: string) {
+  const s = tx(lang);
+  const ics = calendarFile({ title: s.calendarTitle(venue.name), startsAt, minutes: 120, location: venue.address, details: reference ? `${s.reference}: ${reference}` : undefined });
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${venue.slug}-${startsAt.slice(0, 10)}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function Result({ result, lang, venue, party, date, heading, note, onPick, onRestart }: {
@@ -296,10 +360,10 @@ function Result({ result, lang, venue, party, date, heading, note, onPick, onRes
         {result.alternatives?.length ? (
           <>
             <p className="text-ink-muted">{s.unavailableBody}</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {result.alternatives.map((a) => (
                 <button key={`${a.serviceKey}-${a.time}`} type="button" onClick={() => onPick({ serviceKey: a.serviceKey, time: a.time, approval: a.approval })}
-                  className="h-14 rounded-xl border border-cloud-300 bg-white text-lg font-semibold tabular-nums hover:border-[var(--fz-accent)]"><span dir="ltr">{a.time}</span></button>
+                  className="pp-chip h-12 rounded-xl text-base font-semibold tabular-nums"><span dir="ltr">{a.time}</span></button>
               ))}
             </div>
           </>
@@ -310,33 +374,59 @@ function Result({ result, lang, venue, party, date, heading, note, onPick, onRes
   }
   const pending = result.result === 'pending';
   const url = result.token ? manageUrl(result.token, lang) : '';
+  const time = result.reservation?.time ?? '';
   return (
     <div className="grid gap-5">
-      <div className={cx('rounded-2xl border p-5', pending ? 'border-amber-300 bg-amber-50' : 'border-teal-200 bg-teal-50')}>
-        <h1 ref={heading} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold outline-none">
-          {pending ? <Hourglass className="h-6 w-6 text-amber-800" aria-hidden /> : <CheckCircle2 className="h-6 w-6 text-teal-700" aria-hidden />}
-          {pending ? s.pendingTitle : s.confirmedTitle}
-        </h1>
-        <p className="mt-2 text-lg font-medium">{s.summary(party, formatDate(date, lang), result.reservation?.time ?? '')}</p>
-        <p className="mt-1 text-ink-muted">{pending ? s.pendingBody : s.confirmedBody}</p>
-        <p className="mt-2 text-sm">{s.reference}: <Ltr className="font-semibold tracking-wider">{result.reference}</Ltr></p>
-        {venue.address && <p className="mt-1 text-sm text-ink-muted">{venue.address}</p>}
-        {note && <p className="mt-3 whitespace-pre-line border-t border-black/10 pt-3 text-sm">{note}</p>}
-      </div>
+      <Stepper lang={lang} step={2} />
+      <article className="pp-ticket overflow-hidden rounded-[var(--pp-r-lg,24px)] border border-cloud-200">
+        <div className="pp-ticket-head px-5 py-5 sm:px-6">
+          <h1 ref={heading} tabIndex={-1} className="flex items-center gap-2 text-xl font-semibold outline-none sm:text-2xl">
+            {pending ? <Hourglass className="h-6 w-6 shrink-0" aria-hidden /> : <CheckCircle2 className="h-6 w-6 shrink-0" aria-hidden />}
+            {pending ? s.pendingTitle : s.confirmedTitle}
+          </h1>
+          <p className="mt-1 text-sm text-white/85">{venue.name}</p>
+        </div>
+        <div className="grid gap-4 bg-[var(--pp-surface,#fff)] px-5 py-5 sm:px-6">
+          <dl className="grid grid-cols-3 gap-3">
+            <div className="min-w-0"><dt className="text-xs text-ink-muted">{lang === 'he' ? 'תאריך' : 'Date'}</dt><dd className="mt-0.5 font-semibold">{formatDate(date, lang, false)}</dd></div>
+            <div><dt className="text-xs text-ink-muted">{lang === 'he' ? 'שעה' : 'Time'}</dt><dd className="mt-0.5 text-2xl font-semibold tabular-nums leading-none"><Ltr>{time}</Ltr></dd></div>
+            <div><dt className="text-xs text-ink-muted">{lang === 'he' ? 'סועדים' : 'Guests'}</dt><dd className="mt-0.5 text-2xl font-semibold tabular-nums leading-none">{party}</dd></div>
+          </dl>
+          <p className="sr-only">{s.summary(party, formatDate(date, lang), time)}</p>
+          <p className="text-sm text-ink-muted">{pending ? s.pendingBody : s.confirmedBody}</p>
+          <div className="pp-ticket-cut flex flex-wrap items-center justify-between gap-2 pt-4">
+            <p className="text-sm">{s.reference}: <Ltr className="rounded-md bg-[var(--pp-accent-soft,#f3ede6)] px-2 py-0.5 font-mono text-base font-semibold tracking-[0.18em]">{result.reference}</Ltr></p>
+            {venue.address && <p className="text-sm text-ink-muted">{venue.address}</p>}
+          </div>
+          {note && <p className="whitespace-pre-line rounded-xl bg-[var(--pp-accent-soft,#f3ede6)] p-3 text-sm">{note}</p>}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {result.reservation?.startsAt && (
+              <button type="button" className={softButton} onClick={() => downloadCalendar(venue, result.reservation!.startsAt, lang, result.reference)}>
+                <CalendarPlus className="h-4 w-4" aria-hidden />{s.addToCalendar}
+              </button>
+            )}
+            {venue.address && (
+              <a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className={softButton}>
+                <Navigation className="h-4 w-4" aria-hidden />{s.directions}
+              </a>
+            )}
+          </div>
+        </div>
+      </article>
       {url && (
         <section aria-labelledby="manage-h" className="pp-card rounded-2xl border border-cloud-200 bg-white p-5">
           <h2 id="manage-h" className="font-semibold">{s.manageTitle}</h2>
           <p className="mt-1 text-sm text-ink-muted">{s.manageBody}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <button type="button" className={cx(accentButton, 'text-sm')} onClick={async () => {
+            <button type="button" className={cx(accentButton, 'min-h-[48px] text-sm')} onClick={async () => {
               try { await navigator.clipboard.writeText(url); setCopied(true); } catch { setCopied(false); }
             }}>
               <Copy className="h-4 w-4" aria-hidden /> {copied ? s.copied : s.copy}
             </button>
-            <a href={url} className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-cloud-300 px-3 text-sm font-medium">
+            <a href={url} className={softButton}>
               <ExternalLink className="h-4 w-4" aria-hidden /> {s.openManage}
             </a>
-            <a href={`https://wa.me/?text=${encodeURIComponent(`${venue.name}: ${url}`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-cloud-300 px-3 text-sm font-medium">
+            <a href={`https://wa.me/?text=${encodeURIComponent(`${venue.name}: ${url}`)}`} target="_blank" rel="noopener noreferrer" className={softButton}>
               <MessageCircle className="h-4 w-4" aria-hidden /> {s.shareSelf}
             </a>
           </div>
@@ -346,4 +436,3 @@ function Result({ result, lang, venue, party, date, heading, note, onPick, onRes
     </div>
   );
 }
-

@@ -184,14 +184,14 @@ html.fz-dark .text-orange-800 { color: #f8b08f; }
   --pp-surface-alt: var(--pp-l-surface-alt); --pp-input: var(--pp-l-input); --pp-text: var(--pp-l-text);
   --pp-muted: var(--pp-l-muted); --pp-line: var(--pp-l-line); --pp-line-strong: var(--pp-l-line-strong);
   --pp-skeleton: var(--pp-l-skeleton); --pp-accent: var(--pp-l-accent); --pp-on-accent: var(--pp-l-on-accent);
-  --pp-accent-soft: var(--pp-l-accent-soft);
+  --pp-accent-soft: var(--pp-l-accent-soft); --pp-accent-ink: var(--pp-l-accent-ink);
 }
 html.fz-dark .fz-pp {
   --pp-page: var(--pp-d-page); --pp-page-image: var(--pp-d-page-image); --pp-surface: var(--pp-d-surface);
   --pp-surface-alt: var(--pp-d-surface-alt); --pp-input: var(--pp-d-input); --pp-text: var(--pp-d-text);
   --pp-muted: var(--pp-d-muted); --pp-line: var(--pp-d-line); --pp-line-strong: var(--pp-d-line-strong);
   --pp-skeleton: var(--pp-d-skeleton); --pp-accent: var(--pp-d-accent); --pp-on-accent: var(--pp-d-on-accent);
-  --pp-accent-soft: var(--pp-d-accent-soft);
+  --pp-accent-soft: var(--pp-d-accent-soft); --pp-accent-ink: var(--pp-d-accent-ink);
 }
 html .fz-guest.fz-pp { --fz-accent: var(--pp-accent); --fz-on-accent: var(--pp-on-accent); }
 html .fz-pp.fz-page {
@@ -223,8 +223,81 @@ html .fz-pp[data-pp-card='outlined'] .pp-card { border-color: var(--pp-line-stro
 html .fz-pp[data-pp-card='elevated'] .pp-card { border-color: transparent; box-shadow: 0 2px 6px rgb(0 0 0 / 0.08), 0 22px 50px -18px rgb(0 0 0 / 0.35); }
 html .fz-pp[data-pp-card='flat'] .pp-card { border-color: transparent; background-color: var(--pp-surface-alt); box-shadow: none; }
 html .fz-pp[data-pp-tone='dark'] .pp-card, html.fz-dark .fz-pp .pp-card { box-shadow: none; }
+/* Accent-coloured text uses the 4.5:1 ink (the plain accent is tuned for 3:1 graphics). */
+html .fz-pp .text-\[var\(--fz-accent\)\] { color: var(--pp-accent-ink); }
 html .fz-pp .pp-chip-on { background-color: var(--pp-accent); border-color: var(--pp-accent); color: var(--pp-on-accent); }
 html .fz-pp ::selection { background: var(--pp-accent-soft); }
+
+/* ---------- Venue header (brand band or cover photo) and the content sheet ---------- */
+.fz-guest .pp-hero { color: #fff; }
+.fz-guest .pp-hero-band {
+  background-color: var(--pp-hero-bg, #1e2935);
+  background-image:
+    radial-gradient(90% 120% at 100% 0%, var(--pp-hero-glow, #3a4a5c) 0%, transparent 55%),
+    radial-gradient(70% 90% at 0% 100%, var(--pp-hero-bg-2, #0f141b) 0%, transparent 60%),
+    linear-gradient(160deg, var(--pp-hero-bg, #1e2935) 0%, var(--pp-hero-bg-2, #0f141b) 100%);
+}
+/* A faint brand texture over the band (the page pattern, lightened). */
+.fz-guest .pp-hero-band::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0.12;
+  background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 1.5px); background-size: 18px 18px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 85%); mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+}
+.fz-guest .pp-venue-name { font-family: var(--pp-font-display, inherit); font-weight: var(--pp-display-weight, 700); letter-spacing: -0.015em; text-wrap: balance; }
+.fz-guest .pp-hero-photo .pp-venue-name, .fz-guest .pp-hero-photo .pp-hero-text { text-shadow: 0 1px 18px rgb(0 0 0 / 0.35); }
+.fz-guest .pp-hero-text { color: rgb(255 255 255 / 0.88); text-wrap: pretty; }
+.fz-guest .pp-eyebrow { color: rgb(255 255 255 / 0.78); }
+.fz-guest .pp-monogram {
+  font-family: var(--pp-font-display, inherit); font-weight: var(--pp-display-weight, 700);
+  background: rgb(255 255 255 / 0.14); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+}
+/* Glass controls on the header (beat the surface remaps above: same specificity, later rule). */
+html .fz-guest .pp-glass, html .fz-guest .pp-glass:hover {
+  background-color: rgb(255 255 255 / 0.13); border-color: rgb(255 255 255 / 0.32); color: #fff;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+html .fz-guest a.pp-glass:hover, html .fz-guest button.pp-glass:hover { background-color: rgb(255 255 255 / 0.22); }
+html .fz-guest .pp-glass:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.fz-guest .pp-sheet {
+  background-color: var(--pp-surface, #fff); color: var(--pp-text, inherit);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 24px 60px -24px rgb(0 0 0 / 0.35);
+}
+html.fz-dark .fz-guest .pp-sheet { background-color: var(--pp-surface, #171e27); box-shadow: 0 0 0 1px var(--pp-line, #2a3542), 0 24px 60px -24px rgb(0 0 0 / 0.7); }
+html .fz-pp[data-pp-card='outlined'] .pp-sheet { box-shadow: 0 0 0 1px var(--pp-line-strong), 0 24px 60px -30px rgb(0 0 0 / 0.3); }
+/* Cards inside the sheet are quiet sub-panels. */
+html .fz-guest .pp-sheet .pp-card { box-shadow: none; border-color: var(--pp-line, #e5e2dc); background-color: var(--pp-surface-alt, #faf9f7); }
+
+/* ---------- Guest controls ---------- */
+.fz-guest .pp-chip {
+  border: 1px solid var(--pp-line-strong, #c9c4bb); background-color: var(--pp-input, #fff); color: var(--pp-text, inherit);
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+.fz-guest .pp-chip:hover { border-color: var(--fz-accent); }
+.fz-guest .pp-chip:active { transform: scale(0.97); }
+html .fz-guest .pp-chip-on, html .fz-guest .pp-chip-on:hover {
+  background-color: var(--fz-accent); border-color: var(--fz-accent); color: var(--fz-on-accent);
+  box-shadow: 0 6px 16px -8px var(--fz-accent);
+}
+.fz-guest .pp-soft-btn {
+  border: 1px solid var(--pp-line-strong, #c9c4bb); color: var(--pp-accent-ink, var(--fz-accent)); background-color: transparent;
+}
+.fz-guest .pp-soft-btn:hover { background-color: var(--pp-accent-soft, rgb(0 0 0 / 0.04)); border-color: var(--fz-accent); }
+.fz-guest .pp-icon-chip { background-color: var(--pp-accent-soft, #f3ede6); color: var(--pp-accent-ink, var(--fz-accent)); }
+.fz-guest .pp-today { background-color: var(--pp-accent-soft, #f3ede6); color: var(--pp-text, inherit); }
+.fz-guest .pp-step { color: var(--pp-muted, #5b6675); }
+.fz-guest .pp-step[aria-current='step'] { color: var(--pp-text, inherit); }
+.fz-guest .pp-step-dot { border: 1.5px solid var(--pp-line-strong, #c9c4bb); }
+.fz-guest .pp-step[aria-current='step'] .pp-step-dot, .fz-guest .pp-step[data-done] .pp-step-dot {
+  background-color: var(--fz-accent); border-color: var(--fz-accent); color: var(--fz-on-accent);
+}
+.fz-guest .pp-step-line { background-color: var(--pp-line, #e5e2dc); }
+.fz-guest .pp-scroll { scroll-snap-type: x proximity; scrollbar-width: none; }
+.fz-guest .pp-scroll::-webkit-scrollbar { display: none; }
+.fz-guest .pp-scroll > * { scroll-snap-align: start; }
+/* Booking ticket (confirmation). */
+.fz-guest .pp-ticket-head { background-color: var(--pp-hero-bg, #1e2935); background-image: linear-gradient(150deg, var(--pp-hero-bg, #1e2935), var(--pp-hero-bg-2, #0f141b)); color: #fff; }
+.fz-guest .pp-ticket-cut { border-top: 2px dashed var(--pp-line-strong, #c9c4bb); }
 
 /* Calm entrance for page content; respects reduced motion. */
 @media (prefers-reduced-motion: no-preference) {

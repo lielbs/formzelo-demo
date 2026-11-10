@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { contrastRatio } from '../../theme/color';
 import { normalizeDraft, newDraft } from './draft';
 import {
-  answersPayload, defaultPublicPages, inheritBrand, missingAnswers, normalizePublicPages, PAGE_PRESETS, pageTheme, presetTheme, PRESETS,
+  answersPayload, brandedDefaults, defaultPublicPages, inheritBrand, missingAnswers, normalizePublicPages, PAGE_PRESETS, pageTheme, presetForVenueType, presetTheme, PRESETS,
   publicPagesProblems, referencedAssets, resolveLook, visibleQuestions, type PublicPagesConfig,
 } from './publicPages';
 
@@ -145,5 +145,27 @@ describe('public pages: look', () => {
 
   it('hides the logo when the owner turns it off', () => {
     expect(resolveLook({ ...presetTheme('cafe'), logoAssetId: 'ast_logo00001', showLogo: false }).logoAssetId).toBeUndefined();
+  });
+});
+
+describe('public pages: branded defaults (no published design)', () => {
+  it('picks the preset of the venue type and inherits the Brand Kit', () => {
+    expect(presetForVenueType('cafe')).toBe('cafe');
+    expect(presetForVenueType('bar')).toBe('cocktail_bar');
+    expect(presetForVenueType('restaurant')).toBe('casual');
+    expect(presetForVenueType(null)).toBe('casual');
+    const pages = brandedDefaults('cafe');
+    expect(pages.theme.preset).toBe('cafe');
+    expect(pages.theme.inheritBrand).toBe(true);
+    expect(publicPagesProblems(pages)).toEqual([]);
+  });
+
+  it('the brand band always carries white text at 4.5:1', () => {
+    for (const accent of ['#FFE14D', '#1F6F5C', '#C9A45C', '#FFFFFF', '#111418']) {
+      const look = resolveLook(brandedDefaults('restaurant').theme, { palette: { primary: accent } });
+      expect(contrastRatio(look.vars['--pp-hero-bg']!, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    }
+    const dark = resolveLook(presetTheme('fine_dining'));
+    expect(contrastRatio(dark.vars['--pp-hero-bg']!, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
   });
 });

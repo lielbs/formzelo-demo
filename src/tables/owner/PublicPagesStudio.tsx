@@ -23,7 +23,7 @@ import { getVenue, publicVenue, publishVenue, saveDraft } from '../data/client';
 import { normalizeDraft, problemText } from '../domain/draft';
 import type { TablesError } from '../domain/errors';
 import {
-  defaultPublicPages, LIMITS, MANDATORY_FIELDS, newQuestionKey, normalizePublicPages, PAGE_BACKGROUNDS, PAGE_BUTTONS, PAGE_CARDS, PAGE_PATTERNS,
+  brandedDefaults, LIMITS, MANDATORY_FIELDS, newQuestionKey, normalizePublicPages, PAGE_BACKGROUNDS, PAGE_BUTTONS, PAGE_CARDS, PAGE_PATTERNS,
   PAGE_PRESETS, PAGES_PROBLEM_HE, presetTheme, PRESETS, publicPagesProblems, type BrandKitLite, type PageField, type PageKind, type PageTheme,
   type PublicPagesConfig, type QuestionKind,
 } from '../domain/publicPages';
@@ -175,9 +175,9 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
       <section className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cloud-200 bg-white p-4 shadow-card">
         <div className="min-w-0">
           <p className="font-semibold">עיצוב מותאם אישית</p>
-          <p className="text-sm text-ink-muted">{pages ? 'הדפים מעוצבים לפי ההגדרות כאן.' : 'כבוי — האורחים רואים את הדפים הרגילים של Formangle בצבע המותג.'}</p>
+          <p className="text-sm text-ink-muted">{pages ? 'הדפים מעוצבים לפי ההגדרות כאן.' : 'כבוי — האורחים רואים את הדף הרגיל, בעיצוב של מערכת המותג שלכם: לוגו, תמונת שער, צבעים וגופן.'}</p>
         </div>
-        <Switch label="עיצוב מותאם אישית" checked={!!pages} onChange={(on) => setPages(on ? (publishedPages ?? normalizePublicPages(defaultPublicPages())) : null)} />
+        <Switch label="עיצוב מותאם אישית" checked={!!pages} onChange={(on) => setPages(on ? (publishedPages ?? normalizePublicPages(brandedDefaults(baseDraft.basics.venueType))) : null)} />
       </section>
 
       {pages && theme && page && (
@@ -322,7 +322,7 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
               type: 'fz-pp-preview', kind, lang: previewLang, pages, assetOwner: orgId,
               brandKit: media.data?.kit ?? null,
               venue: {
-                name: baseDraft.basics.name, address: baseDraft.basics.address, phone: baseDraft.basics.phone, showWhatsapp: baseDraft.guest.showWhatsapp,
+                name: baseDraft.basics.name, venueType: baseDraft.basics.venueType, address: baseDraft.basics.address, phone: baseDraft.basics.phone, showWhatsapp: baseDraft.guest.showWhatsapp,
                 intro: baseDraft.guest.intro, terms: baseDraft.guest.terms, minParty: baseDraft.policy.minParty, maxParty: baseDraft.policy.maxParty,
                 brand: { displayName: media.data?.kit?.displayName ?? null, palette: (media.data?.kit?.palette as Record<string, string> | null | undefined) ?? null },
               },
@@ -330,7 +330,7 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
         </div>
       )}
 
-      <div className="sticky bottom-3 z-30 mt-5 rounded-2xl border border-cloud-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lift backdrop-blur">
+      <div className="sticky bottom-[calc(var(--fz-tabbar,0px)+0.75rem)] z-20 mt-5 rounded-2xl border border-cloud-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lift backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
           <Button icon={Save} variant="secondary" loading={busy === 'save'} disabled={!dirty || busy != null} className="h-11"
             onClick={async () => { if (await save() != null) toast('הטיוטה נשמרה. האורחים עדיין רואים את הגרסה שפורסמה.', 'success'); }}>
