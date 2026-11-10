@@ -5,10 +5,13 @@ import { cx } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { newKey, publicAvailability, publicBook, publicVenue, type BookResult, type PublicAvailability, type PublicVenue } from '../data/client';
 import { messageFor, type TablesError } from '../domain/errors';
+import { answersPayload, missingAnswers, type PageConfig } from '../domain/publicPages';
 import { normalizePhone } from '../domain/phone';
 import { addDays, dateInTz, formatDate, formatInstant } from '../domain/time';
 import { Ltr } from '../ui';
+import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
+import { lookFor } from './look';
 import { accentButton, PublicShell, useDocumentLanguage, useLang } from './PublicShell';
 
 type Step = 'choose' | 'details' | 'result';
@@ -36,6 +39,7 @@ export function BookingPage() {
   useEffect(() => {
     publicVenue(slug, lang).then(setVenue).catch((e) => setLoadError((e as TablesError).message));
   }, [slug, lang]);
+  const design = useMemo(() => (venue ? lookFor(venue, 'booking') : null), [venue]);
 
   if (loadError) return <PublicShell lang={lang} venue={null}><p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{loadError}</p></PublicShell>;
   if (venue === undefined) return <PublicShell lang={lang} venue={null}><BookingSkeleton /></PublicShell>;
@@ -45,7 +49,7 @@ export function BookingPage() {
       <p className="mt-2 text-ink-muted">{s.notFoundBody}</p>
     </PublicShell>
   );
-  return <PublicShell lang={lang} venue={venue}><Booking venue={venue} lang={lang} /></PublicShell>;
+  return <PublicShell lang={lang} venue={venue} design={design}><Booking venue={venue} lang={lang} page={design?.pages.booking ?? null} /></PublicShell>;
 }
 
 function BookingSkeleton() {
@@ -59,7 +63,7 @@ function BookingSkeleton() {
   );
 }
 
-function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
+function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: PageConfig | null }) {
   const s = tx(lang);
   const today = dateInTz(new Date(venue.serverNow), venue.timezone);
   const [step, setStep] = useState<Step>('choose');
@@ -69,7 +73,10 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
   const [avail, setAvail] = useState<PublicAvailability | null>(null);
   const [availError, setAvailError] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', requests: '', terms: false });
+  const [values, setValues] = useState<GuestValues>({});
+  const [terms, setTerms] = useState(false);
+  const shown = (key: string) => !page || page.fields.some((f) => f.key === key && !f.hidden);
+  const text = (key: string) => (typeof values[key] === 'string' ? (values[key] as string).trim() : '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -88,7 +95,7 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
   }, [venue.slug, date, party, zone, lang]);
 
   // Any change to the request makes a new idempotency key; a retry of the same request reuses it.
-  useEffect(() => { key.current = newKey(); }, [choice, date, party, zone, form.name, form.phone, form.email, form.requests]);
+  useEffect(() => { key.current = newKey(); }, [choice, date, party, zone, values]);
 
   const days = useMemo(() => Array.from({ length: Math.min(14, venue.policy.horizonDays + 1) }, (_, i) => addDays(today, i)), [today, venue.policy.horizonDays]);
   const dayLabel = (d: string) => (d === today ? s.today : d === addDays(today, 1) ? s.tomorrow : new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-GB', { timeZone: 'UTC', weekday: 'short' }).format(new Date(`${d}T12:00:00Z`)));
@@ -98,10 +105,11 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = messageFor('name_required', lang);
-    if (!normalizePhone(form.phone)) errs.phone = messageFor('phone_invalid', lang);
-    if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) errs.email = messageFor('email_invalid', lang);
-    if (!form.terms) errs.terms = messageFor('terms_required', lang);
+    if (!text('name')) errs.name = messageFor('name_required', lang);
+    if (!normalizePhone(text('phone'))) errs.phone = messageFor('phone_invalid', lang);
+    if (shown('email') && text('email') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(text('email'))) errs.email = messageFor('email_invalid', lang);
+    if (page) for (const k of missingAnswers(page, values)) errs[k] = s.answerRequired;
+    if (!terms) errs.terms = messageFor('terms_required', lang);
     setErrors(errs);
     if (Object.keys(errs).length) { document.getElementById('booking-errors')?.focus(); return; }
     setBusy(true);
@@ -109,7 +117,8 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
     try {
       const r = await publicBook(venue.slug, {
         serviceKey: choice!.serviceKey, date, time: choice!.time, party, zoneId: zone || null,
-        name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(), requests: form.requests.trim(), termsAccepted: true,
+        name: text('name'), phone: text('phone'), email: shown('email') ? text('email') : '', requests: shown('requests') ? text('requests') : '', termsAccepted: true,
+        ...(page && Object.keys(answersPayload(page, values)).length ? { customAnswers: answersPayload(page, values) } : {}),
       }, key.current, lang);
       setResult(r);
       setStep('result');
@@ -122,7 +131,7 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
   }
 
   if (step === 'result' && result) {
-    return <Result result={result} lang={lang} venue={venue} party={party} date={date} heading={heading}
+    return <Result result={result} lang={lang} venue={venue} party={party} date={date} heading={heading} note={page?.copy.successNote}
       onPick={(c) => { setChoice({ ...c, approval: c.approval }); setResult(null); setStep('details'); }}
       onRestart={() => { setResult(null); setChoice(null); setStep('choose'); }} />;
   }
@@ -133,7 +142,7 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
       <form onSubmit={submit} noValidate className="grid gap-5">
         <div>
           <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">{s.details}</h1>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cloud-200 bg-white px-3 py-2.5">
+          <div className="pp-card mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cloud-200 bg-white px-3 py-2.5">
             <p className="font-medium">{s.summary(party, formatDate(date, lang, false), choice.time)}</p>
             <button type="button" onClick={() => setStep('choose')} className="min-h-[44px] px-2 text-sm font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.change}</button>
           </div>
@@ -144,23 +153,9 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
             <ul className="list-inside list-disc">{errorList.map(([k, v]) => <li key={k}><a href={`#bk-${k}`} className="underline">{v}</a></li>)}</ul>
           </div>
         )}
-        <Field id="bk-name" label={s.name} error={errors.name} required>
-          <input id="bk-name" autoComplete="name" value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })}
-            aria-invalid={!!errors.name} aria-describedby={errors.name ? 'bk-name-err' : undefined} className={inputCls(!!errors.name)} />
-        </Field>
-        <Field id="bk-phone" label={s.phone} error={errors.phone} hint={s.phoneHint} required>
-          <input id="bk-phone" type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={form.phone} maxLength={24} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            aria-invalid={!!errors.phone} aria-describedby={`bk-phone-hint${errors.phone ? ' bk-phone-err' : ''}`} className={cx(inputCls(!!errors.phone), 'text-start')} />
-        </Field>
-        <Field id="bk-email" label={s.email} error={errors.email}>
-          <input id="bk-email" type="email" autoComplete="email" dir="ltr" value={form.email} maxLength={254} onChange={(e) => setForm({ ...form, email: e.target.value })}
-            aria-invalid={!!errors.email} className={cx(inputCls(!!errors.email), 'text-start')} />
-        </Field>
-        <Field id="bk-requests" label={s.requests} hint={s.requestsHint}>
-          <textarea id="bk-requests" value={form.requests} maxLength={500} onChange={(e) => setForm({ ...form, requests: e.target.value })} aria-describedby="bk-requests-hint"
-            className={cx(inputCls(false), 'min-h-[88px] py-2.5')} />
-        </Field>
-        <section aria-labelledby="terms-h" className="rounded-xl border border-cloud-200 bg-white p-4">
+        <GuestFields kind="booking" page={page} lang={lang} values={values} errors={errors} prefix="bk"
+          onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))} />
+        <section aria-labelledby="terms-h" className="pp-card rounded-xl border border-cloud-200 bg-white p-4">
           <h2 id="terms-h" className="font-semibold">{s.terms}</h2>
           <p className="mt-1 whitespace-pre-line text-sm text-ink-muted">{venue.terms}</p>
           <p className="mt-2 flex items-start gap-1.5 text-sm font-medium">
@@ -168,13 +163,13 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
             {cancelDeadline ? <span>{s.cancelUntil} <span className="whitespace-nowrap">{formatInstant(cancelDeadline, venue.timezone, lang)}</span></span> : s.noCancelOnline}
           </p>
           <label className="mt-3 flex min-h-[44px] items-center gap-3 text-sm">
-            <input id="bk-terms" type="checkbox" checked={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.checked })} aria-invalid={!!errors.terms} className="h-6 w-6 shrink-0 accent-[var(--fz-accent)]" />
+            <input id="bk-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} aria-invalid={!!errors.terms} className="h-6 w-6 shrink-0 accent-[var(--fz-accent)]" />
             {s.agree}
           </label>
         </section>
         {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{submitError}</p>}
         <button type="submit" disabled={busy} className={accentButton}>
-          {busy ? s.loading : choice.approval === 'request' ? s.sendRequest : s.confirm}
+          {busy ? s.loading : choice.approval === 'request' ? s.sendRequest : page?.copy.submitLabel || s.confirm}
         </button>
         <button type="button" onClick={() => setStep('choose')} className="min-h-[44px] text-sm text-ink-muted underline-offset-2 hover:underline">{s.back}</button>
       </form>
@@ -184,8 +179,8 @@ function Booking({ venue, lang }: { venue: PublicVenue; lang: Lang }) {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">{s.bookTitle}</h1>
-        {venue.intro && <p className="mt-1 whitespace-pre-line text-ink-muted">{venue.intro}</p>}
+        <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">{page?.copy.title || s.bookTitle}</h1>
+        {(page?.copy.description || venue.intro) && <p className="mt-1 whitespace-pre-line text-ink-muted">{page?.copy.description || venue.intro}</p>}
       </div>
       {venue.paused && <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">{s.paused}</p>}
       <fieldset>
@@ -288,23 +283,8 @@ export function deadline(date: string, time: string, tz: string, cutoffMinutes: 
   return new Date(start.getTime() - cutoffMinutes * 60_000).toISOString();
 }
 
-function inputCls(invalid: boolean) {
-  return cx('fz-input h-12 w-full rounded-xl border bg-white px-3.5 text-[16px] text-ink', invalid ? 'border-red-400' : 'border-cloud-300');
-}
-
-function Field({ id, label, error, hint, required, children }: { id: string; label: string; error?: string; hint?: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">{label}{required && <span aria-hidden className="ms-1 text-[var(--fz-accent)]">*</span>}</label>
-      {children}
-      {hint && <p id={`${id}-hint`} className="mt-1 text-xs text-ink-muted">{hint}</p>}
-      {error && <p id={`${id}-err`} className="mt-1 text-sm text-red-700">{error}</p>}
-    </div>
-  );
-}
-
-function Result({ result, lang, venue, party, date, heading, onPick, onRestart }: {
-  result: BookResult; lang: Lang; venue: PublicVenue; party: number; date: string; heading: React.RefObject<HTMLHeadingElement>;
+function Result({ result, lang, venue, party, date, heading, note, onPick, onRestart }: {
+  result: BookResult; lang: Lang; venue: PublicVenue; party: number; date: string; heading: React.RefObject<HTMLHeadingElement>; note?: string;
   onPick: (c: Choice) => void; onRestart: () => void;
 }) {
   const s = tx(lang);
@@ -341,9 +321,10 @@ function Result({ result, lang, venue, party, date, heading, onPick, onRestart }
         <p className="mt-1 text-ink-muted">{pending ? s.pendingBody : s.confirmedBody}</p>
         <p className="mt-2 text-sm">{s.reference}: <Ltr className="font-semibold tracking-wider">{result.reference}</Ltr></p>
         {venue.address && <p className="mt-1 text-sm text-ink-muted">{venue.address}</p>}
+        {note && <p className="mt-3 whitespace-pre-line border-t border-black/10 pt-3 text-sm">{note}</p>}
       </div>
       {url && (
-        <section aria-labelledby="manage-h" className="rounded-2xl border border-cloud-200 bg-white p-5">
+        <section aria-labelledby="manage-h" className="pp-card rounded-2xl border border-cloud-200 bg-white p-5">
           <h2 id="manage-h" className="font-semibold">{s.manageTitle}</h2>
           <p className="mt-1 text-sm text-ink-muted">{s.manageBody}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">

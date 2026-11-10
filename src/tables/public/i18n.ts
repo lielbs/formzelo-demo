@@ -95,6 +95,15 @@ const he = {
   notFoundBody: 'ייתכן שהקישור שגוי או שהמקום לא מקבל הזמנות באתר.',
   today: 'היום',
   tomorrow: 'מחר',
+  notes: 'הערה למקום (רשות)',
+  notesHint: 'למשל: כיסא תינוק או ישיבה בחוץ. בקשה בלבד.',
+  choose: 'בחירה…',
+  requiredMark: 'שדה חובה',
+  answerRequired: 'צריך לענות על השאלה הזו.',
+  galleryTitle: 'גלריה',
+  photoOf: (n: number, total: number) => `תמונה ${n} מתוך ${total}`,
+  previewBanner: 'תצוגה מקדימה של הטיוטה — שום דבר לא נשלח מכאן.',
+  previewTimes: 'שעות לדוגמה. בדף האמיתי יוצגו רק שעות פנויות.',
 };
 
 const en: typeof he = {
@@ -191,6 +200,15 @@ const en: typeof he = {
   notFoundBody: 'The link may be wrong, or the venue does not take online bookings.',
   today: 'Today',
   tomorrow: 'Tomorrow',
+  notes: 'Note for the venue (optional)',
+  notesHint: 'e.g. high chair or outdoor seating. A request only.',
+  choose: 'Choose…',
+  requiredMark: 'Required',
+  answerRequired: 'Please answer this question.',
+  galleryTitle: 'Gallery',
+  photoOf: (n: number, total: number) => `Photo ${n} of ${total}`,
+  previewBanner: 'Draft preview — nothing is sent from here.',
+  previewTimes: 'Sample times. The real page shows only free times.',
 };
 
 type Strings = typeof he;

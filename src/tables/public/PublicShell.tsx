@@ -2,8 +2,10 @@
 import { Globe, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { cx } from '../../components/ui';
 import { ensureContrast, readableOn } from '../../theme/color';
 import { displayPhone, normalizePhone, whatsappHref } from '../domain/phone';
+import type { ResolvedLook } from '../domain/publicPages';
 import { ThemeButton } from '../theme';
 import { Ltr } from '../ui';
 import { t, type Lang } from './i18n';
@@ -41,23 +43,33 @@ export function brandStyle(palette: Record<string, string> | null | undefined): 
   };
 }
 
-export function PublicShell({ lang, venue, children, compact }: {
+/** A published page design applied to the shell (see domain/publicPages). */
+export interface ShellDesign { look: ResolvedLook; logoUrl: string; heroUrl: string }
+
+export function PublicShell({ lang, venue, children, compact, design }: {
   lang: Lang;
   venue: { name: string; address?: string | null; phone?: string | null; showWhatsapp?: boolean; brand?: { displayName: string | null; palette: Record<string, string> | null } } | null;
   children: ReactNode;
   compact?: boolean;
+  design?: ShellDesign | null;
 }) {
-  const style = useMemo(() => brandStyle(venue?.brand?.palette), [venue?.brand?.palette]);
+  const style = useMemo(() => ({ ...brandStyle(venue?.brand?.palette), ...(design?.look.vars ?? {}) }) as CSSProperties, [venue?.brand?.palette, design]);
   const location = useLocation();
   const [params] = useSearchParams();
   const other = new URLSearchParams(params);
   if (lang === 'en') other.delete('lang'); else other.set('lang', 'en');
   const phone = venue?.phone ? normalizePhone(venue.phone) : null;
   return (
-    <div dir={lang === 'en' ? 'ltr' : 'rtl'} lang={lang} style={style} className="fz-guest fz-page min-h-screen bg-[#FAF9F7] text-ink">
+    <div dir={lang === 'en' ? 'ltr' : 'rtl'} lang={lang} style={style} {...(design?.look.attrs ?? {})}
+      className={cx('fz-guest fz-page min-h-screen bg-[#FAF9F7] text-ink', design && 'fz-pp')}>
       <a href="#guest-main" className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">{t(lang, 'skip')}</a>
       <header className="border-b border-cloud-200 bg-white">
         <div className="mx-auto flex max-w-xl items-start justify-between gap-3 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            {design?.logoUrl && (
+              <img src={design.logoUrl} alt="" width={48} height={48} decoding="async"
+                className="pp-logo h-12 w-12 shrink-0 rounded-[var(--pp-r)] bg-[var(--pp-surface)] object-contain p-1 ring-1 ring-[var(--pp-line)]" />
+            )}
           <div className="min-w-0">
             {venue?.brand?.displayName && venue.brand.displayName !== venue.name && <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{venue.brand.displayName}</p>}
             <p className={compact ? 'text-lg font-semibold' : 'text-xl font-semibold sm:text-2xl'}>{venue?.name ?? ''}</p>
@@ -77,6 +89,7 @@ export function PublicShell({ lang, venue, children, compact }: {
               </div>
             )}
           </div>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
           <ThemeButton lang={lang} />
           <Link to={`${location.pathname}${other.toString() ? `?${other}` : ''}${location.hash}`} lang={lang === 'en' ? 'he' : 'en'}
@@ -86,11 +99,23 @@ export function PublicShell({ lang, venue, children, compact }: {
           </div>
         </div>
       </header>
-      <main id="guest-main" className="mx-auto max-w-xl px-4 pb-16 pt-5">{children}</main>
+      {design?.heroUrl && design.look.heroStyle === 'banner' && (
+        <div className="mx-auto max-w-xl sm:px-4 sm:pt-4">
+          <img src={design.heroUrl} alt="" width={1200} height={675} decoding="async" fetchPriority="high"
+            className="pp-hero aspect-[16/9] w-full bg-[var(--pp-skeleton)] object-cover sm:rounded-[var(--pp-r-lg)] sm:aspect-[2/1]" />
+        </div>
+      )}
+      <main id="guest-main" className="mx-auto max-w-xl px-4 pb-16 pt-5">
+        {design?.heroUrl && design.look.heroStyle === 'inline' && (
+          <img src={design.heroUrl} alt="" width={1200} height={675} decoding="async"
+            className="pp-hero mb-5 aspect-[16/9] w-full rounded-[var(--pp-r-lg)] bg-[var(--pp-skeleton)] object-cover" />
+        )}
+        {children}
+      </main>
       <footer className="mx-auto max-w-xl px-4 pb-8 text-center text-xs text-ink-muted">{t(lang, 'poweredBy')}</footer>
     </div>
   );
 }
 
 /** Primary guest action in the venue accent colour. */
-export const accentButton = 'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold bg-[var(--fz-accent)] text-[var(--fz-on-accent)] hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--fz-accent)]';
+export const accentButton = 'pp-btn inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold bg-[var(--fz-accent)] text-[var(--fz-on-accent)] hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--fz-accent)]';

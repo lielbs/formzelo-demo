@@ -1,13 +1,29 @@
-import { BookOpen, ExternalLink, Plus, Rocket, Save, Trash2 } from 'lucide-react';
+import { BookOpen, ExternalLink, Image as ImageIcon, Images, Plus, Rocket, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
-import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner } from '../../components/ui';
-import { archiveMenu, createMenu, getVenue, listMenus, publishMenu, saveMenu, type MenuDoc, type MenuItem, type MenuRow } from '../data/client';
+import { ImagePicker } from '../../components/ImagePicker';
+import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner, Textarea } from '../../components/ui';
+import { useRepoQuery } from '../../data/store';
+import { archiveMenu, createMenu, getVenue, listMenus, publishMenu, saveMenu, type MenuDoc, type MenuHero, type MenuItem, type MenuRow } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { ALLERGENS, DIETARY } from '../public/MenuPage';
 import { Hint, useLoad } from '../ui';
+import { GalleryEditor, ImageSlot } from './MenuImages';
 import { bookingUrl } from './VenueOverview';
+
+const MENU_PROBLEM_HE: Record<string, string> = {
+  menu_section_required: 'צריך לפחות קטגוריה אחת.',
+  menu_section_title: 'לכל קטגוריה צריך שם.',
+  menu_item_invalid: 'לכל מנה צריך שם (ותיאור ומחיר באורך סביר).',
+  menu_items_invalid: 'יש קטגוריה לא תקינה.',
+  menu_tag_invalid: 'יש סימון לא מוכר באחת המנות.',
+  menu_too_large: 'התפריט גדול מדי (עד 30 קטגוריות ו-300 מנות).',
+  menu_image_missing: 'אחת התמונות הוסרה מספריית התמונות — החליפו או הסירו אותה.',
+  menu_hero_invalid: 'כותרת הפתיחה של התפריט ארוכה מדי.',
+  menu_gallery_invalid: 'הגלריה לא תקינה (עד 12 תמונות שונות).',
+  invalid: 'משהו בתפריט לא תקין.',
+};
 
 export function MenusPage() {
   const { venueId = '' } = useParams();
@@ -35,7 +51,7 @@ export function MenusPage() {
       </div>
       {menus.data.length === 0 ? (
         <EmptyState icon={BookOpen} title="עוד אין תפריט">
-          צרו תפריט: קטגוריות, מנות, מחיר לתצוגה, סימון טבעוני/ללא גלוטן ואלרגנים.
+          צרו תפריט: קטגוריות, מנות, מחיר לתצוגה, סימון טבעוני/ללא גלוטן ואלרגנים — ואם תרצו גם תמונות.
         </EmptyState>
       ) : (
         <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="בחירת תפריט">
@@ -58,13 +74,17 @@ export function MenusPage() {
         </div>
         <Button type="submit" variant="secondary" icon={Plus} className="h-11" disabled={!title.trim()}>יצירה</Button>
       </form>
-      {current && <MenuEditor key={current.id} menu={current} onSaved={menus.reload} />}
+      {current && <MenuEditor key={current.id} menu={current} orgId={venue.data.organizationId} onSaved={menus.reload} />}
     </div>
   );
 }
 
-function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<void> }) {
+function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; onSaved: () => Promise<void> }) {
   const toast = useToast();
+  const media = useRepoQuery(async (repo) => {
+    const assets = await repo.listAssets(orgId);
+    return { assets, urls: await repo.getAssetUrls(orgId, assets.map((a) => a.id)) };
+  }, [orgId]);
   const [doc, setDoc] = useState<MenuDoc>(menu.draft);
   const [title, setTitle] = useState(menu.title);
   const [lock, setLock] = useState(menu.lockVersion);
@@ -72,9 +92,24 @@ function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<v
   const [busy, setBusy] = useState<string | null>(null);
   const [problems, setProblems] = useState(menu.problems);
   useEffect(() => { setDoc(menu.draft); setTitle(menu.title); setLock(menu.lockVersion); setProblems(menu.problems); setDirty(false); }, [menu]);
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dirty]);
   const edit = (d: MenuDoc) => { setDoc(d); setDirty(true); };
+  const setSections = (sections: MenuDoc['sections']) => edit({ ...doc, sections });
   const setItem = (si: number, ii: number, p: Partial<MenuItem>) =>
-    edit({ sections: doc.sections.map((s, i) => (i !== si ? s : { ...s, items: s.items.map((it, j) => (j === ii ? { ...it, ...p } : it)) })) });
+    setSections(doc.sections.map((s, i) => (i !== si ? s : { ...s, items: s.items.map((it, j) => (j === ii ? withImage({ ...it, ...p }) : it)) })));
+  const setHero = (p: Partial<MenuHero>) => {
+    const hero: MenuHero = { ...(doc.hero ?? {}), ...p };
+    for (const k of Object.keys(hero) as (keyof MenuHero)[]) if (!hero[k]) delete hero[k];
+    const next: MenuDoc = { ...doc, hero };
+    if (!Object.keys(hero).length) delete next.hero;
+    edit(next);
+  };
+  const setGallery = (gallery: string[]) => { const next: MenuDoc = { ...doc, gallery }; if (!gallery.length) delete next.gallery; edit(next); };
 
   async function save(): Promise<number | null> {
     setBusy('save');
@@ -92,7 +127,7 @@ function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<v
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 pb-24">
       <Card className="flex flex-wrap items-end gap-3 p-4">
         <div className="min-w-[14rem] flex-1">
           <FieldLabel htmlFor="menu-title">שם התפריט</FieldLabel>
@@ -101,15 +136,39 @@ function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<v
         <Badge tone={menu.status === 'published' ? 'teal' : 'neutral'}>{menu.status === 'published' ? `פורסם (גרסה ${menu.publishedVersion})` : 'טיוטה'}</Badge>
         {menu.hasUnpublishedChanges && menu.status === 'published' && <Badge tone="amber">יש שינויים שלא פורסמו</Badge>}
       </Card>
+
+      <Card as="section" className="grid gap-4 p-4">
+        <h2 className="flex items-center gap-2 font-semibold"><ImageIcon className="h-5 w-5 text-orange-700" aria-hidden />פתיחת התפריט</h2>
+        <p className="-mt-2 text-sm text-ink-muted">תמונה גדולה וכותרת בראש התפריט. הכול רשות — בלי תמונה התפריט מוצג בעיצוב טיפוגרפי נקי.</p>
+        {media.error ? <ErrorState error={media.error} /> : !media.data ? <Spinner label="טוען תמונות…" /> : (
+          <ImagePicker kind="cover" label="תמונת פתיחה" hint="תמונה רחבה של המקום או מנת הדגל. נחתכת אוטומטית למסגרת רחבה."
+            selected={doc.hero?.imageAssetId} assets={media.data.assets} urls={media.data.urls} orgId={orgId}
+            onSelect={(id) => setHero({ imageAssetId: id })} />
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><FieldLabel htmlFor="hero-title">כותרת</FieldLabel><Input id="hero-title" value={doc.hero?.title ?? ''} maxLength={80} placeholder={title} onChange={(e) => setHero({ title: e.target.value })} /></div>
+          <div><FieldLabel htmlFor="hero-sub">כותרת משנה</FieldLabel><Input id="hero-sub" value={doc.hero?.subtitle ?? ''} maxLength={120} placeholder="למשל: מטבח עונתי מהשוק" onChange={(e) => setHero({ subtitle: e.target.value })} /></div>
+        </div>
+        <div><FieldLabel htmlFor="hero-desc">תיאור</FieldLabel><Textarea id="hero-desc" rows={3} value={doc.hero?.description ?? ''} maxLength={600} onChange={(e) => setHero({ description: e.target.value })} /></div>
+      </Card>
+
+      <Card as="section" className="grid gap-3 p-4">
+        <h2 className="flex items-center gap-2 font-semibold"><Images className="h-5 w-5 text-orange-700" aria-hidden />גלריה</h2>
+        <p className="-mt-1 text-sm text-ink-muted">תמונות של המקום והמנות, בסדר שתבחרו. מוצגות כרצועה שאפשר לגלול.</p>
+        {media.data && <GalleryEditor value={doc.gallery ?? []} media={media.data} orgId={orgId} onChange={setGallery} />}
+      </Card>
+
       {doc.sections.map((sec, si) => (
         <Card key={si} as="section" className="grid gap-3 p-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[12rem] flex-1">
               <FieldLabel htmlFor={`sec-${si}`}>שם הקטגוריה</FieldLabel>
-              <Input id={`sec-${si}`} value={sec.title} maxLength={80} onChange={(e) => edit({ sections: doc.sections.map((s, i) => (i === si ? { ...s, title: e.target.value } : s)) })} />
+              <Input id={`sec-${si}`} value={sec.title} maxLength={80} onChange={(e) => setSections(doc.sections.map((s, i) => (i === si ? { ...s, title: e.target.value } : s)))} />
             </div>
-            <Button size="sm" variant="ghost" icon={Trash2} onClick={() => edit({ sections: doc.sections.filter((_, i) => i !== si) })} className="h-10">מחיקת הקטגוריה</Button>
+            <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setSections(doc.sections.filter((_, i) => i !== si))} className="h-10">מחיקת הקטגוריה</Button>
           </div>
+          <ImageSlot label="תמונה לקטגוריה" wide value={sec.imageAssetId} media={media.data} orgId={orgId}
+            onChange={(id) => setSections(doc.sections.map((s, i) => (i === si ? withImage({ ...s, imageAssetId: id }) : s)))} />
           {sec.items.map((it, ii) => {
             const id = `it-${si}-${ii}`;
             return (
@@ -117,9 +176,10 @@ function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<v
                 <div className="grid gap-2 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
                   <div><FieldLabel htmlFor={`${id}-n`}>שם המנה</FieldLabel><Input id={`${id}-n`} value={it.name} maxLength={100} onChange={(e) => setItem(si, ii, { name: e.target.value })} /></div>
                   <div><FieldLabel htmlFor={`${id}-p`}>מחיר לתצוגה</FieldLabel><Input id={`${id}-p`} dir="ltr" value={it.price ?? ''} maxLength={24} placeholder="₪48" onChange={(e) => setItem(si, ii, { price: e.target.value })} /></div>
-                  <Button size="sm" variant="ghost" icon={Trash2} aria-label={`מחיקת ${it.name || 'המנה'}`} onClick={() => edit({ sections: doc.sections.map((s, i) => (i === si ? { ...s, items: s.items.filter((_, j) => j !== ii) } : s)) })} className="h-11" />
+                  <Button size="sm" variant="ghost" icon={Trash2} aria-label={`מחיקת ${it.name || 'המנה'}`} onClick={() => setSections(doc.sections.map((s, i) => (i === si ? { ...s, items: s.items.filter((_, j) => j !== ii) } : s)))} className="h-11" />
                 </div>
                 <div><FieldLabel htmlFor={`${id}-d`}>תיאור (רשות)</FieldLabel><Input id={`${id}-d`} value={it.description ?? ''} maxLength={400} onChange={(e) => setItem(si, ii, { description: e.target.value })} /></div>
+                <ImageSlot label="תמונה למנה" value={it.imageAssetId} media={media.data} orgId={orgId} onChange={(img) => setItem(si, ii, { imageAssetId: img })} />
                 <fieldset>
                   <legend className="mb-1 text-xs font-medium text-ink-muted">סימונים</legend>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -143,11 +203,15 @@ function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<v
               </div>
             );
           })}
-          <div><Button size="sm" variant="secondary" icon={Plus} onClick={() => edit({ sections: doc.sections.map((s, i) => (i === si ? { ...s, items: [...s.items, { name: '', price: '' }] } : s)) })} className="h-10">מנה חדשה</Button></div>
+          <div><Button size="sm" variant="secondary" icon={Plus} onClick={() => setSections(doc.sections.map((s, i) => (i === si ? { ...s, items: [...s.items, { name: '', price: '' }] } : s)))} className="h-10">מנה חדשה</Button></div>
         </Card>
       ))}
-      <div><Button variant="secondary" icon={Plus} onClick={() => edit({ sections: [...doc.sections, { title: 'קטגוריה חדשה', items: [] }] })}>קטגוריה חדשה</Button></div>
-      {problems.length > 0 && !dirty && <Hint tone="warn">יש פריטים שצריך להשלים לפני פרסום (לכל קטגוריה ולכל מנה צריך שם).</Hint>}
+      <div><Button variant="secondary" icon={Plus} onClick={() => setSections([...doc.sections, { title: 'קטגוריה חדשה', items: [] }])}>קטגוריה חדשה</Button></div>
+      {problems.length > 0 && !dirty && (
+        <Hint tone="warn">
+          לפני פרסום צריך לתקן: {[...new Set(problems.map((p) => MENU_PROBLEM_HE[p.code] ?? MENU_PROBLEM_HE.invalid!))].join(' ')}
+        </Hint>
+      )}
       <div className="sticky bottom-3 z-10 flex flex-wrap gap-2 rounded-2xl border border-cloud-200 bg-white/95 p-3 shadow-card backdrop-blur">
         <Button icon={Save} variant="secondary" loading={busy === 'save'} disabled={!dirty} onClick={async () => { if (await save() != null) { toast('הטיוטה נשמרה', 'success'); await onSaved(); } }} className="h-11">{dirty ? 'שמירת טיוטה' : 'נשמר'}</Button>
         <Button icon={Rocket} loading={busy === 'publish'} onClick={async () => {
@@ -160,4 +224,10 @@ function MenuEditor({ menu, onSaved }: { menu: MenuRow; onSaved: () => Promise<v
       </div>
     </div>
   );
+}
+
+/** Drops an empty image reference so stored documents stay minimal. */
+function withImage<T extends { imageAssetId?: string }>(v: T): T {
+  if (!v.imageAssetId) { const { imageAssetId: _drop, ...rest } = v; void _drop; return rest as T; }
+  return v;
 }
