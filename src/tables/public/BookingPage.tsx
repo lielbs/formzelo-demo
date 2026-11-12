@@ -301,7 +301,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
             </div>
           ) : (
             <div className="grid gap-5">
-              <p className="sr-only" role="status">{lang === 'he' ? `${slotCount} שעות פנויות` : `${slotCount} times available`}</p>
+              <p className="sr-only" role="status">{lang === 'he' ? (slotCount === 1 ? 'שעה אחת פנויה' : `${slotCount} שעות פנויות`) : slotCount === 1 ? '1 time available' : `${slotCount} times available`}</p>
               {avail.services.filter((sv) => sv.slots.length).map((sv) => (
                 <div key={sv.key}>
                   <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink-muted">{serviceIcon(sv.slots[0]?.time)}{sv.name}</p>
