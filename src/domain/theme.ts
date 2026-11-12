@@ -265,6 +265,29 @@ export const BrandKitSchema = z.object({
 });
 export type BrandKit = z.infer<typeof BrandKitSchema>;
 
+/**
+ * A stored brand kit, completed with the defaults every new workspace gets (same as the server's
+ * provisioning): each field is taken from the record only when it is valid, so an older or partial
+ * record opens the Brand Kit instead of failing.
+ */
+export function completeBrandKit(raw: Record<string, unknown>, fallbackName = 'העסק שלי'): BrandKit {
+  const defaults: BrandKit = {
+    displayName: fallbackName, description: '', typography: 'neutral', button: 'solid', density: 'comfortable', logoPlacement: 'start',
+    decorations: false, personality: 'modern_minimal', links: [], updatedAt: new Date(0).toISOString(),
+    palette: { primary: '#EA580C', secondary: '#0F172A', accent: '#14B8A6', background: '#F8FAFC' },
+  };
+  const out: Record<string, unknown> = { ...defaults };
+  for (const key of Object.keys(BrandKitSchema.shape) as (keyof BrandKit)[]) {
+    if (key === 'palette') continue;
+    const one = BrandKitSchema.shape[key].safeParse(raw[key]);
+    if (one.success && one.data !== undefined) out[key] = one.data;
+  }
+  const palette = (raw.palette && typeof raw.palette === 'object' ? raw.palette : {}) as Record<string, unknown>;
+  out.palette = Object.fromEntries((Object.keys(defaults.palette) as (keyof BrandKit['palette'])[])
+    .map((k) => [k, typeof palette[k] === 'string' && /^#[0-9a-fA-F]{6}$/.test(palette[k] as string) ? palette[k] : defaults.palette[k]]));
+  return BrandKitSchema.parse(out);
+}
+
 /** Uploaded local image. Stored in its own localStorage key per workspace, never inside versions. */
 export const AssetSchema = z.object({
   id: ThemeAssetRefSchema,

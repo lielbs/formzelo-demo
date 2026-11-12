@@ -6,6 +6,7 @@ import { runtimeConfiguration } from '../production/runtime';
 import { createProductionRepository } from '../production/productionRepository';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { useAuth } from '../auth/AuthProvider';
+import { PageLoader } from '../components/ui';
 
 interface RepoState {
   repo: FormangleRepository;
@@ -106,7 +107,7 @@ export function RepoProvider({ children }: { children: ReactNode }) {
     }),
     [repository, revision, ready, bootError, orgs, activeOrgId, switchOrg],
   );
-  if (!repository) return bootError ? <div role="alert">{bootError}</div> : null;
+  if (!repository) return bootError ? <div role="alert">{bootError}</div> : <PageLoader />;
   return <RepoContext.Provider value={value}>{children}</RepoContext.Provider>;
 }
 

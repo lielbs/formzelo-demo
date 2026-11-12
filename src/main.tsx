@@ -15,12 +15,14 @@ import { framedByOtherOrigin, isFrameProtectedPath, routePath } from './lib/fram
 import { BASE_PATH } from './lib/links';
 import { installPressFeedback } from './lib/press';
 
-// Reopen a deep link that the site-wide 404 page sent here (see public/live-fallback.js).
+// Reopen a deep link that the site-wide 404 page sent here (see public/site-fallback.js): the demo
+// at the root takes non-/live paths; the production app at /live/ takes its own.
 try {
   const deepLink = sessionStorage.getItem('formangle:deep-link');
   if (deepLink) {
     sessionStorage.removeItem('formangle:deep-link');
-    if (BASE_PATH && deepLink.startsWith(`${BASE_PATH}/`)) history.replaceState(null, '', deepLink);
+    const ours = BASE_PATH ? deepLink.startsWith(`${BASE_PATH}/`) : deepLink.startsWith('/') && !deepLink.startsWith('/live/');
+    if (ours) history.replaceState(null, '', deepLink);
   }
 } catch {
   // Storage unavailable: start at the requested page.

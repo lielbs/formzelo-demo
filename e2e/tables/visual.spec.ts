@@ -140,7 +140,7 @@ for (const theme of THEMES) {
     const ctx = await newContext(browser);
     await themed(ctx, theme);
     const page = await ctx.newPage();
-    await signIn(page, biz.hosts[0]!, `/app/tables/${venue.id}/live`);
+    await signIn(page, biz.hosts[0]!, `/app/tables/${venue.id}/live?date=${today()}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByText('הושבו').first()).toBeVisible();
     await sweep(page, 'host-list', theme);

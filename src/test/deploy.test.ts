@@ -15,7 +15,8 @@ describe('deployment readiness', () => {
     expect(indexHtml).not.toMatch(/github\.io/);
     expect(indexHtml).toContain('__SITE_URL__/og-image.png');
     expect(workflowYml).toContain('VITE_SITE_URL');
-    expect(workflowYml).toContain('dist/index.html > dist/404.html');
+    // The site-wide 404 is the production app (customer deep links load once); see public/site-fallback.js.
+    expect(workflowYml).toContain('dist/live/index.html > dist/404.html');
   });
 
   it('ships a strict policy with only the dedicated Formangle API origin', () => {

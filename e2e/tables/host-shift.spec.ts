@@ -49,7 +49,7 @@ async function open(browser: import('@playwright/test').Browser, size: { width: 
   const ctx = await newContext(browser, size, size.width < 1024);
   await ctx.addInitScript((t) => { try { localStorage.setItem('fz_tables_theme', t); } catch { /* */ } }, theme);
   const page = await ctx.newPage();
-  await signIn(page, biz.hosts[0]!, `/app/tables/${venue.id}/live`);
+  await signIn(page, biz.hosts[0]!, `/app/tables/${venue.id}/live?date=${today()}`);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: /^הכול:/ })).toBeVisible();
   return { ctx, page };

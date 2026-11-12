@@ -75,13 +75,12 @@ export function ThemeButton({ lang = 'he', className }: { lang?: 'he' | 'en'; cl
   );
 }
 
-/** Root of every Tables screen: applies the theme and the scope used by tables.css. */
-export function TablesRoot({ children, owner = false }: { children: ReactNode; owner?: boolean }) {
+/**
+ * Root of every Tables screen: applies the theme and the scope used by tables.css. The light/dark
+ * switch lives where it matters (the host shift and the guest pages); owner screens follow the
+ * saved choice without a toggle of their own taking a row of the page.
+ */
+export function TablesRoot({ children }: { children: ReactNode; owner?: boolean }) {
   useTablesTheme();
-  return (
-    <div className="fz-tables">
-      {owner && <div className="mb-3 flex justify-end"><ThemeButton /></div>}
-      {children}
-    </div>
-  );
+  return <div className="fz-tables">{children}</div>;
 }

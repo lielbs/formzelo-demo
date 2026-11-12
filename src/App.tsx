@@ -2,19 +2,19 @@ import { runtimeConfiguration } from './production/runtime';
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { ProductionRouteBoundary } from './auth/ProductionRouteBoundary';
-import { Spinner } from './components/ui';
+import { PageLoader } from './components/ui';
 import { applyRouteMeta, pageTitle } from './lib/meta';
 import { NotFound } from './pages/NotFound';
-import { PublicFlow } from './pages/PublicFlow';
-import { Track } from './pages/Track';
 import { TablesRoot } from './tables/theme';
 
-// The public customer flow is bundled eagerly so shared links load fast on mobile;
-// owner-facing pages (and Recharts) are split into their own chunks.
+// Every screen is its own chunk. The customer form (with its design themes and fonts, the heaviest
+// CSS) loads only on form links, so the app, Tables and booking pages start lighter.
 const named = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) =>
   lazy(() => loader().then((m) => ({ default: m[name] })));
 
 const AppLayout = named(() => import('./components/AppLayout'), 'AppLayout');
+const PublicFlow = named(() => import('./pages/PublicFlow'), 'PublicFlow');
+const Track = named(() => import('./pages/Track'), 'Track');
 const Landing = named(() => import('./pages/Landing'), 'Landing');
 const Demo = named(() => import('./pages/Demo'), 'Demo');
 const Pricing = named(() => import('./pages/Pricing'), 'Pricing');
@@ -66,7 +66,7 @@ export function App() {
   return (
     <>
       <ScrollToTop />
-      <Suspense fallback={<Spinner />}>
+      <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={runtimeConfiguration.mode === 'production' ? <Navigate to="/app" replace /> : <Landing />} />
           <Route path="/demo" element={<Demo />} />

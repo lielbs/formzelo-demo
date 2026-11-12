@@ -18,8 +18,9 @@ for (const size of [{ width: 1280, height: 860, tag: 'd' }, { width: 390, height
     const page = await ctx.newPage();
     const problems = watch(page);
     await signIn(page, biz.owner);
-    if (size.width < 1024) await page.getByRole('button', { name: 'פתיחת תפריט' }).click();
-    await page.getByRole('link', { name: 'שולחנות' }).click();
+    // Phones reach Tables straight from the bottom dock; desktops from the sidebar.
+    const nav = page.getByRole('navigation', { name: size.width < 1024 ? 'ניווט מהיר' : 'ניווט ראשי' });
+    await nav.getByRole('link', { name: 'שולחנות' }).click();
     await expect(page.getByRole('heading', { name: 'שולחנות' })).toBeVisible();
     await page.screenshot({ path: shots(`${size.tag}-01-home`), fullPage: true });
 

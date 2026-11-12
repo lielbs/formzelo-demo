@@ -1,7 +1,7 @@
 import { Building2, LogOut, ShieldCheck } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from '../components/Brand';
-import { Button, ButtonLink, Card, ErrorState, FieldLabel, Input, Spinner } from '../components/ui';
+import { Button, ButtonLink, Card, ErrorState, FieldLabel, Input, PageLoader } from '../components/ui';
 import { isPlatformOperator } from '../production/admin';
 import { useAuth } from './AuthProvider';
 
@@ -89,7 +89,7 @@ function NoMembership({ email, onSignOut }: { email: string | null; onSignOut: (
 export function ProductionRouteBoundary({ children }: { children: ReactNode }) {
   const { state, refresh, signOut } = useAuth();
   if (state.kind === 'demo') return children;
-  if (state.kind === 'loading') return <Spinner label="מאמת הרשאה…" />;
+  if (state.kind === 'loading') return <PageLoader label="מאמת הרשאה…" />;
   if (state.kind === 'error') return <div className="mx-auto max-w-xl p-6"><ErrorState error={state.message} onRetry={() => void refresh()} /></div>;
 
   if (state.kind === 'unauthenticated') return <SignIn />;

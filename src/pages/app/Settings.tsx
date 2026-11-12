@@ -67,8 +67,9 @@ export function Settings() {
   return (
     <>
       <PageHeader title="הגדרות" description={`סביבת העבודה ${org.name}`} />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-2">
+      {/* grid-cols-1 = minmax(0,1fr): a long email in the team card can no longer widen the page on phones. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="min-w-0 p-5 lg:col-span-2">
           <h2 className="font-semibold">מותג וסביבת עבודה</h2>
           <form onSubmit={handleSubmit(onSave)} noValidate className="mt-4 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -98,7 +99,7 @@ export function Settings() {
             </div>
             <div>
               <FieldLabel htmlFor="s-color">צבע מותג</FieldLabel>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   id="s-color"
                   type="color"
@@ -107,7 +108,7 @@ export function Settings() {
                   className="h-11 w-14 cursor-pointer rounded-xl border border-cloud-300 bg-white p-1"
                 />
                 <Input aria-label="קוד צבע" dir="ltr" className="max-w-[140px]" invalid={Boolean(err.primaryColor)} {...register('primaryColor', { pattern: { value: /^#[0-9a-fA-F]{6}$/, message: 'פורמט #RRGGBB' } })} />
-                <span className="text-xs text-ink-muted">משמש לתהליכים חדשים ולסביבת העבודה.</span>
+                <span className="min-w-0 basis-full text-xs text-ink-muted sm:basis-auto">משמש לתהליכים חדשים ולסביבת העבודה.</span>
               </div>
               {err.primaryColor && <p role="alert" className="mt-1 text-xs text-red-600">{err.primaryColor.message}</p>}
             </div>

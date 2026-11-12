@@ -270,3 +270,20 @@ describe('design persistence and version immutability', () => {
     expect((await repo.listAssets(DEMO_ORG_IDS.bloom)).filter((a) => !a.id.startsWith('ast_sh'))).toEqual([]);
   });
 });
+
+describe('brand kit records', () => {
+  it('opens a partial or older record with the workspace defaults instead of failing', async () => {
+    const { completeBrandKit } = await import('../domain/theme');
+    const kit = completeBrandKit({ displayName: 'ביסטרו', palette: { primary: '#1F6F5C' }, links: [] });
+    expect(kit.displayName).toBe('ביסטרו');
+    expect(kit.palette).toEqual({ primary: '#1F6F5C', secondary: '#0F172A', accent: '#14B8A6', background: '#F8FAFC' });
+    expect(kit.typography).toBe('neutral');
+    // Invalid fields fall back one by one; valid ones are kept.
+    const odd = completeBrandKit({ displayName: '', palette: { primary: 'red' }, button: 'pill', typography: 'comic', description: 'x'.repeat(500) });
+    expect(odd.displayName).toBe('העסק שלי');
+    expect(odd.palette.primary).toBe('#EA580C');
+    expect(odd.button).toBe('pill');
+    expect(odd.typography).toBe('neutral');
+    expect(odd.description).toBe('');
+  });
+});

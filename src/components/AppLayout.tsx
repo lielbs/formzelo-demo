@@ -5,7 +5,7 @@ import { useRepo, useRepoQuery } from '../data/store';
 import { PENDING_STATUSES } from '../engine/transitions';
 import { Logo } from './Brand';
 import { GlassDock, type DockItem } from './GlassDock';
-import { ButtonLink, cx, ErrorState, Spinner } from './ui';
+import { ButtonLink, cx, ErrorState, PageLoader, Spinner } from './ui';
 import { useToast } from './Toast';
 import { runtimeConfiguration } from '../production/runtime';
 
@@ -112,17 +112,22 @@ function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => 
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname.replace(/\/+$/, '') || '/';
-  const inMore = ['/app/brand', '/app/analytics', '/app/settings', '/app/tables'].some((p) => path.startsWith(p));
+  // Tables (restaurants) gets its own place where the real server runs; everything else is under "עוד".
+  const tables = runtimeConfiguration.mode === 'production';
+  const inMore = ['/app/brand', '/app/analytics', '/app/settings', ...(tables ? [] : ['/app/tables'])].some((p) => path.startsWith(p));
   const items: DockItem[] = [
     { key: 'home', label: 'בית', icon: LayoutDashboard, to: '/app' },
     { key: 'requests', label: 'בקשות', icon: Inbox, to: '/app/requests', badge: pending, badgeLabel: `${pending} ממתינות` },
     { key: 'workflows', label: 'תהליכים', icon: Workflow, to: '/app/workflows' },
+    ...(tables ? [{ key: 'tables', label: 'שולחנות', icon: UtensilsCrossed, to: '/app/tables' }] : []),
     { key: 'more', label: 'עוד', icon: MoreHorizontal, onSelect: onMore, ariaLabel: 'עוד — התפריט המלא', expanded: moreOpen },
   ];
-  const active = moreOpen || inMore ? 3
-    : path === '/app' ? 0
-    : path.startsWith('/app/requests') ? 1
-    : path.startsWith('/app/workflows') && path !== '/app/workflows/new' ? 2 : -1;
+  const at = (key: string) => items.findIndex((it) => it.key === key);
+  const active = moreOpen || inMore ? at('more')
+    : path === '/app' ? at('home')
+    : path.startsWith('/app/requests') ? at('requests')
+    : path.startsWith('/app/tables') ? at('tables')
+    : path.startsWith('/app/workflows') && path !== '/app/workflows/new' ? at('workflows') : -1;
   return (
     <GlassDock label="ניווט מהיר" mode="nav" hideFrom="lg" items={items} active={active}
       onChoose={(i) => { const it = items[i]!; if (it.to) navigate(it.to); else it.onSelect?.(); }}
@@ -184,7 +189,7 @@ export function AppLayout() {
   }, [location.pathname]);
 
   if (bootError) return <div className="p-6"><ErrorState error={bootError} /></div>;
-  if (!ready) return <Spinner label="טוען סביבת עבודה…" />;
+  if (!ready) return <PageLoader label="טוען סביבת עבודה…" />;
   if (!activeOrg) return <div className="p-6"><ErrorState error={runtimeConfiguration.mode === 'production' ? 'לא נמצאה סביבת עבודה פעילה. פנו ל-RockStack להשלמת ההקמה.' : 'לא נמצאה סביבת דמו.'} /></div>;
 
   return (
@@ -205,7 +210,7 @@ export function AppLayout() {
             onClick={() => setMobileOpen(true)}
             aria-label="פתיחת תפריט"
             aria-expanded={mobileOpen}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cloud-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cloud-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
           >
             <Menu className="h-5 w-5" />
           </button>

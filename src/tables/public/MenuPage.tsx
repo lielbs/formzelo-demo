@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PageLoader } from '../../components/ui';
 import { Link, useParams } from 'react-router-dom';
 import { publicMenus, publicVenue, type MenuDoc, type PublicMenus, type PublicVenue } from '../data/client';
 import { tx, type Lang } from './i18n';
@@ -28,7 +29,7 @@ export function MenuPage() {
     const d = venue ? lookFor(venue, 'booking') : null;
     return d ? { ...d, heroUrl: '' } : null;
   }, [venue]);
-  if (data === undefined) return <PublicShell lang={lang} venue={null}><div aria-hidden className="h-60 animate-pulse rounded-2xl bg-cloud-200" /></PublicShell>;
+  if (data === undefined) return <PageLoader label={s.loading} />;
   if (data === null) return <PublicShell lang={lang} venue={null}><h1 className="text-xl font-semibold">{s.notFound}</h1><p className="mt-2 text-ink-muted">{s.notFoundBody}</p></PublicShell>;
   const owner = data.venue.assetOwner;
   const single = data.menus.length === 1;

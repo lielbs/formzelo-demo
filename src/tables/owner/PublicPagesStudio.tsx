@@ -70,12 +70,13 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
   const orgId = venue.organizationId;
   const media = useRepoQuery(async (repo) => {
     const [assets, full] = await Promise.all([repo.listAssets(orgId), repo.getBrandKit(orgId).catch(() => null)]);
-    // The preview must inherit exactly what guests inherit. A Brand Kit that the strict editor
-    // schema cannot read (e.g. an older, partial one) still has public basics: use those.
+    // The preview must inherit exactly what guests inherit: once the venue is published, use the
+    // same public Brand Kit basics guests get (an older, partial kit is completed for the editor
+    // but not for guests); before that, the workspace Brand Kit.
     let kit: (BrandKitLite & { displayName?: string | null }) | null = full;
-    if (!kit && venue.published) {
+    if (venue.published) {
       const pub = await publicVenue(venue.slug, 'he').catch(() => null);
-      kit = pub?.brandKit ? { ...pub.brandKit, displayName: pub.brand.displayName } : null;
+      if (pub?.brandKit) kit = { ...pub.brandKit, displayName: pub.brand.displayName };
     }
     return { assets, kit, urls: await repo.getAssetUrls(orgId, assets.map((a) => a.id)) };
   }, [orgId, venue.published, venue.slug]);

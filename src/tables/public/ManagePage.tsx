@@ -1,6 +1,6 @@
 import { CalendarClock, CheckCircle2, Clock, Hourglass, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { cx } from '../../components/ui';
+import { cx, PageLoader } from '../../components/ui';
 import { newKey, publicCancel, publicManage, publicModify, publicModifyOptions, publicVenue, type GuestReservation, type PublicAvailability, type PublicVenue } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { addDays, dateInTz, formatDate, formatInstant } from '../domain/time';
@@ -55,7 +55,7 @@ export function ManagePage() {
   const design = useMemo(() => (venue ? lookFor(venue, 'booking') : null), [venue]);
 
   if (error && res === undefined) return <PublicShell lang={lang} venue={null}><p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{error}</p></PublicShell>;
-  if (res === undefined) return <PublicShell lang={lang} venue={null}><div aria-hidden className="h-40 animate-pulse rounded-2xl bg-cloud-200" /><span className="sr-only" role="status">{s.loading}</span></PublicShell>;
+  if (res === undefined) return <PageLoader label={s.loading} />;
   if (res === null) return (
     <PublicShell lang={lang} venue={null}>
       <h1 className="text-xl font-semibold">{s.linkUnavailable}</h1>

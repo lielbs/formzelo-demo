@@ -155,7 +155,27 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
               )}
             </div>
           )}
-          {!venue && <div className="h-24" />}
+          {/* Same shape as the loaded header, so the booking card does not jump when the venue arrives. */}
+          {!venue && (
+            <div aria-hidden className={cx('flex animate-pulse flex-col gap-4', compact ? 'pb-16 pt-3 sm:pb-20' : 'pb-20 pt-6 sm:pb-24 sm:pt-10 lg:pb-28')}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <span className={cx('shrink-0 rounded-[var(--pp-r-lg,16px)] bg-white/25', compact ? 'h-12 w-12' : 'h-16 w-16 sm:h-20 sm:w-20')} />
+                <span className="grid gap-2">
+                  <span className="h-3 w-24 rounded bg-white/20" />
+                  <span className={cx('rounded bg-white/30', compact ? 'h-6 w-40' : 'h-8 w-56 sm:h-10 sm:w-72')} />
+                </span>
+              </div>
+              {!compact && (
+                <>
+                  <span className="grid gap-2"><span className="h-4 w-3/4 max-w-md rounded bg-white/20" /><span className="h-4 w-1/2 max-w-xs rounded bg-white/15" /></span>
+                  <span className="flex flex-wrap gap-2">
+                    <span className="h-9 w-40 rounded-full bg-white/20" /><span className="h-9 w-36 rounded-full bg-white/20" />
+                    <span className="h-9 w-32 rounded-full bg-white/20" /><span className="h-9 w-28 rounded-full bg-white/20" />
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

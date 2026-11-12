@@ -1,7 +1,7 @@
 import { BellRing, Clock, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { cx } from '../../components/ui';
+import { cx, PageLoader } from '../../components/ui';
 import { newKey, publicVenue, publicWaitlistJoin, publicWaitlistLeave, publicWaitlistStatus, type PublicVenue, type WaitlistStatus } from '../data/client';
 import { messageFor, type TablesError } from '../domain/errors';
 import { answersPayload, missingAnswers } from '../domain/publicPages';
@@ -60,7 +60,7 @@ export function WaitlistJoinPage() {
     }
   }
 
-  if (venue === undefined) return <PublicShell lang={lang} venue={null}><div aria-hidden className="h-40 animate-pulse rounded-2xl bg-cloud-200" /></PublicShell>;
+  if (venue === undefined) return <PageLoader label={s.loading} />;
   if (!venue || !venue.policy.waitlistPublic) return (
     <PublicShell lang={lang} venue={venue ?? null}><h1 className="text-xl font-semibold">{s.notFound}</h1><p className="mt-2 text-ink-muted">{s.notFoundBody}</p></PublicShell>
   );
@@ -109,7 +109,7 @@ export function WaitlistStatusPage() {
   useEffect(() => { if (venueSlug) publicVenue(venueSlug, lang).then(setVenue).catch(() => setVenue(null)); }, [venueSlug, lang]);
   const design = useMemo(() => (venue ? lookFor(venue, 'waitlist') : null), [venue]);
 
-  if (st === undefined) return <PublicShell lang={lang} venue={null}><div aria-hidden className="h-40 animate-pulse rounded-2xl bg-cloud-200" /></PublicShell>;
+  if (st === undefined) return <PageLoader label={s.loading} />;
   if (st === null) return <PublicShell lang={lang} venue={null}><h1 className="text-xl font-semibold">{s.linkUnavailable}</h1><p className="mt-2 text-ink-muted">{s.linkUnavailableBody}</p></PublicShell>;
   const offered = st.status === 'offered' && st.offerExpiresAt && new Date(st.offerExpiresAt) > now;
   return (

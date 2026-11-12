@@ -44,13 +44,14 @@ jobs:
           VITE_SUPABASE_PROJECT_REF: ppgdbqhwbzlgzwsjmkor
           VITE_SUPABASE_URL: https://ppgdbqhwbzlgzwsjmkor.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_f4SQeCD1MuE78Fgf-ZVr7Q_bxJhowCy
-      # SPA fallback: demo deep links (/f/<slug>) load the demo; /live/... deep links are handed
-      # to the production app by public/live-fallback.js, which runs before the demo bundle.
-      - run: sed 's#<head>#<head><script src="/live-fallback.js"></script>#' dist/index.html > dist/404.html
+      # SPA fallback: the site-wide 404.html is the production app, so customer deep links
+      # (/live/t/<venue>, /live/f/<form>) open in one load; public/site-fallback.js sends any other
+      # unknown path back to the demo at the root.
+      - run: sed 's#<head>#<head><script src="/site-fallback.js"></script>#' dist/live/index.html > dist/404.html
       - name: Verify both apps are in the artifact
         run: |
           test -f dist/live/index.html && test -f dist/live/track.html && test -f dist/live/invite.html && test -f dist/live/reset.html
-          grep -q 'live-fallback.js' dist/404.html
+          grep -q 'site-fallback.js' dist/404.html && grep -q '/live/assets/' dist/404.html && test -f dist/site-fallback.js
           # A real secret key or a service_role JWT (base64 of the role) must never ship.
           ! grep -rqE 'sb_secret_[A-Za-z0-9_-]{16,}|c2VydmljZV9yb2xl' dist/
       - uses: actions/upload-pages-artifact@v3

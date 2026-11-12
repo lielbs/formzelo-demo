@@ -19,9 +19,25 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      .fz-splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: #f6f4f0; }
+      .fz-splash svg { border-radius: 15px; box-shadow: 0 14px 34px -14px rgb(24 33 45 / 0.55); animation: fz-splash-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+      .fz-splash-bar { position: relative; width: 72px; height: 3px; overflow: hidden; border-radius: 3px; background: rgb(24 33 45 / 0.1); }
+      .fz-splash-bar span { position: absolute; inset-block: 0; width: 40%; border-radius: 3px; background: #e96b3d; animation: fz-splash-run 1s ease-in-out infinite; }
+      @keyframes fz-splash-in { from { opacity: 0; transform: scale(0.86); } }
+      @keyframes fz-splash-run { from { inset-inline-start: -40%; } to { inset-inline-start: 100%; } }
+      @media (prefers-color-scheme: dark) { .fz-splash { background: #0f141b; } .fz-splash-bar { background: rgb(255 255 255 / 0.12); } }
+      @media (prefers-reduced-motion: reduce) { .fz-splash svg, .fz-splash-bar span { animation: none; } .fz-splash-bar span { inset-inline-start: 30%; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- First paint before the app loads (CSS only; React replaces it). Light and dark, no motion when reduced. -->
+    <div id="root">
+      <div class="fz-splash" role="status" aria-label="טוען את Formangle">
+        <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#18212D"/><path d="M17 14h31l-6 9H26v7h13l-5.5 8H26v12h-9z" fill="#fff"/><path d="M50 50H34l16-16z" fill="#E96B3D"/></svg>
+        <span class="fz-splash-bar"><span></span></span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

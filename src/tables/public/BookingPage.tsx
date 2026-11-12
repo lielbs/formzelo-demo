@@ -1,7 +1,7 @@
 import { CalendarDays, CalendarPlus, Check, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle, Moon, Navigation, ShieldCheck, Sun, Sunset, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { cx } from '../../components/ui';
+import { cx, PageLoader } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { newKey, publicAvailability, publicBook, publicVenue, type BookResult, type PublicAvailability, type PublicVenue } from '../data/client';
 import { messageFor, type TablesError } from '../domain/errors';
@@ -43,7 +43,8 @@ export function BookingPage() {
   const design = useMemo(() => (venue ? lookFor(venue, 'booking') : null), [venue]);
 
   if (loadError) return <PublicShell lang={lang} venue={null}><p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{loadError}</p></PublicShell>;
-  if (venue === undefined) return <PublicShell lang={lang} venue={null}><BookingSkeleton /></PublicShell>;
+  // Keep the branded loader until the venue arrives, then show the whole page at once (no jumping).
+  if (venue === undefined) return <PageLoader label={s.loading} />;
   if (venue === null) return (
     <PublicShell lang={lang} venue={null}>
       <h1 className="text-xl font-semibold">{s.notFound}</h1>
@@ -56,17 +57,6 @@ export function BookingPage() {
       aside={<VenueAside lang={lang} today={today} venue={venue} />}>
       <Booking venue={venue} lang={lang} page={pageOf(design, 'booking')} />
     </PublicShell>
-  );
-}
-
-function BookingSkeleton() {
-  return (
-    <div aria-hidden className="grid animate-pulse gap-4">
-      <div className="h-6 w-40 rounded bg-cloud-200" />
-      <div className="grid grid-cols-5 gap-2">{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-12 rounded-xl bg-cloud-200" />)}</div>
-      <div className="h-6 w-32 rounded bg-cloud-200" />
-      <div className="grid grid-cols-3 gap-2">{Array.from({ length: 9 }, (_, i) => <div key={i} className="h-14 rounded-xl bg-cloud-200" />)}</div>
-    </div>
   );
 }
 

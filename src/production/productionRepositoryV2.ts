@@ -13,7 +13,7 @@ import {
   type WorkflowRun,
   type WorkflowVersion,
 } from '../domain/schema';
-import { BrandKitSchema, PresenceLinkSchema, WorkflowThemeSchema, type Asset, type BrandKit } from '../domain/theme';
+import { BrandKitSchema, completeBrandKit, PresenceLinkSchema, WorkflowThemeSchema, type Asset, type BrandKit } from '../domain/theme';
 import { runtimeConfiguration } from './runtime';
 import type { FormangleRepository } from '../data/repository';
 import { DomainRuleError, NotFoundError, ValidationFailedError } from '../data/repository';
@@ -580,7 +580,7 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
       assertOrg(orgId);
       const { data, error } = await client.from('brand_configurations').select('config').eq('organization_id', orgId).single();
       if (error) fail(error, 'Unable to load brand settings');
-      return BrandKitSchema.parse(jsonObject(data.config));
+      return completeBrandKit(jsonObject(data.config) as Record<string, unknown>);
     },
     async updateBrandKit(orgId: string, kit: BrandKit) {
       assertOrg(orgId);

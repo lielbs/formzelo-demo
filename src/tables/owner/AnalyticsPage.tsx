@@ -14,7 +14,10 @@ function Tile({ label, value, def, sample }: { label: string; value: string; def
   return (
     <Card className="p-4">
       <p className="text-sm text-ink-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {/* "Not enough data" reads as a quiet note, never louder than a real number. */}
+      {value === NO_DATA
+        ? <p className="mt-2 flex min-h-[2rem] items-center text-sm font-medium text-ink-muted">{value}</p>
+        : <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>}
       {sample && <p className="text-xs text-ink-muted">{sample}</p>}
       <details className="mt-2 text-xs text-ink-muted">
         <summary className="inline-flex cursor-pointer items-center gap-1"><Info className="h-3.5 w-3.5" aria-hidden /> איך מחושב</summary>
@@ -24,7 +27,8 @@ function Tile({ label, value, def, sample }: { label: string; value: string; def
   );
 }
 
-const pct = (r: Rate) => (percent(r) == null ? 'אין מספיק נתונים' : `${percent(r)}%`);
+const NO_DATA = 'אין מספיק נתונים';
+const pct = (r: Rate) => (percent(r) == null ? NO_DATA : `${percent(r)}%`);
 
 export function AnalyticsPage() {
   const { venueId = '' } = useParams();
@@ -56,7 +60,7 @@ export function AnalyticsPage() {
             <Tile label="לא הגיעו" value={pct(sum.noShowRate)} def={DEFINITIONS_HE.noShowRate} sample={`${sum.noShowRate.numerator} מתוך ${sum.noShowRate.denominator}`} />
             <Tile label="ניצול מקומות ישיבה" value={pct(sum.seatUtilization)} def={DEFINITIONS_HE.seatUtilization} />
             <Tile label="המרה מרשימת המתנה" value={pct(sum.waitlistConversion)} def={DEFINITIONS_HE.waitlistConversion} sample={`${sum.waitlistConversion.numerator} מתוך ${sum.waitlistConversion.denominator}`} />
-            <Tile label="זמן ישיבה ממוצע" value={sum.avgSeated.avgMinutes == null ? 'אין מספיק נתונים' : `${sum.avgSeated.avgMinutes} דק׳`} def={DEFINITIONS_HE.avgSeated} sample={`מתוך ${sum.avgSeated.sample} ביקורים`} />
+            <Tile label="זמן ישיבה ממוצע" value={sum.avgSeated.avgMinutes == null ? NO_DATA : `${sum.avgSeated.avgMinutes} דק׳`} def={DEFINITIONS_HE.avgSeated} sample={`מתוך ${sum.avgSeated.sample} ביקורים`} />
             <Card className="p-4">
               <p className="text-sm text-ink-muted">מקור ההזמנות</p>
               <ul className="mt-1 text-sm">

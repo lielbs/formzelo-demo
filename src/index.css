@@ -247,3 +247,23 @@ html.fz-dark {
   .fz-stagger > :nth-child(n + 8) { animation-delay: 210ms; }
   @keyframes fz-item-in { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: none; } }
 }
+
+/* ---------- Whole-screen loader (same look as the first paint in index.html) ---------- */
+.fz-splash { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: #f6f4f0; }
+html.fz-dark .fz-splash { background: #0f141b; }
+.fz-splash svg { border-radius: 15px; box-shadow: 0 14px 34px -14px rgb(24 33 45 / 0.55); }
+.fz-splash-bar { position: relative; width: 72px; height: 3px; overflow: hidden; border-radius: 3px; background: rgb(24 33 45 / 0.1); }
+.fz-splash-bar span { position: absolute; inset-block: 0; width: 40%; border-radius: 3px; background: #e96b3d; animation: fz-splash-run 1s ease-in-out infinite; }
+@keyframes fz-splash-run { from { inset-inline-start: -40%; } to { inset-inline-start: 100%; } }
+@media (prefers-color-scheme: dark) { :root:not(.fz-light) .fz-splash { background: #0f141b; } }
+@media (prefers-reduced-motion: reduce) { .fz-splash-bar span { animation: none; inset-inline-start: 30%; } }
+
+/* ---------- Touch targets: at least 44 px on touch screens (Apple HIG / WCAG 2.5.5) ----------
+ * Inside the app, Tables and guest pages every control gets a finger-sized box on touch
+ * screens; icon-only controls get the width too. Mouse users keep the compact layout.
+ * Inline text links are unaffected (min-height does not apply to inline boxes). */
+@media (pointer: coarse), (max-width: 1023px) {
+  .fz-tap { min-height: 44px; min-width: 44px; }
+  :is(.fz-app, .fz-tables, .fz-guest) :is(button, a[href], [role="button"], [role="radio"], [role="tab"], select):not(.fz-no-tap) { min-height: 44px; }
+  :is(.fz-app, .fz-tables, .fz-guest) :is(button, a[href], [role="button"]):has(> svg:only-child):not(.fz-no-tap) { min-width: 44px; }
+}

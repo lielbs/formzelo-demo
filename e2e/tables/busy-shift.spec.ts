@@ -62,7 +62,7 @@ test('three hosts work one busy shift while guests book; every screen converges 
   const hosts = await Promise.all(sizes.map(async (size, i) => {
     const ctx = await newContext(browser, size, i < 2);
     const page = await ctx.newPage();
-    await signIn(page, biz.hosts[i]!, `/app/tables/${venueId}/live`);
+    await signIn(page, biz.hosts[i]!, `/app/tables/${venueId}/live?date=${day()}`);
     await expect(page.getByText(/מחובר/).first()).toBeVisible({ timeout: 20_000 });
     return { ctx, page };
   }));

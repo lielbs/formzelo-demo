@@ -5,7 +5,7 @@
 import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Users, Wifi, WifiOff } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Button, cx, ErrorState, Spinner } from '../../components/ui';
+import { Button, cx, ErrorState, PageLoader } from '../../components/ui';
 import { useShiftSync, type Connection } from '../data/useShiftSync';
 import { filterCount, inTile, isDone, matchesFilters, matchesQuery, NO_FILTERS, tileCounts, timeline, type ShiftFilters, type SortKey, type TileKey } from '../domain/shiftList';
 import { bucketOf, BUCKET_HE, deriveTableStates, type Bucket } from '../domain/status';
@@ -91,7 +91,7 @@ export function HostShift() {
   const narrowing = tile !== 'active' || filterCount(filters) > 0 || query.trim() !== '';
 
   if (error && !shift) return <div className="p-6"><ErrorState error={error} onRetry={refetch} /></div>;
-  if (!shift) return <Spinner label="טוען את המשמרת…" />;
+  if (!shift) return <PageLoader label="טוען את המשמרת…" />;
   if (!shift.published) return <div className="p-6"><ErrorState error="המקום עוד לא פורסם. סיימו את ההקמה כדי לפתוח משמרת." /></div>;
 
   const canAct = shift.role !== 'viewer' && connection !== 'offline';
