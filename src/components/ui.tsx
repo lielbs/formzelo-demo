@@ -32,8 +32,6 @@ const sizes: Record<Size, string> = {
 export const buttonClass = (variant: Variant = 'primary', size: Size = 'md', extra?: string) =>
   cx(
     'inline-flex items-center justify-center font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out select-none whitespace-nowrap',
-    // Tactile press everywhere; skipped for reduced-motion users.
-    'motion-safe:active:scale-[0.97]',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2',
     'disabled:opacity-50 disabled:pointer-events-none',
     variants[variant],

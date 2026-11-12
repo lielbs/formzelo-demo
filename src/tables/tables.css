@@ -274,7 +274,6 @@ html .fz-guest .pp-sheet .pp-card { box-shadow: none; border-color: var(--pp-lin
   transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
 }
 .fz-guest .pp-chip:hover { border-color: var(--fz-accent); }
-.fz-guest .pp-chip:active { transform: scale(0.97); }
 html .fz-guest .pp-chip-on, html .fz-guest .pp-chip-on:hover {
   background-color: var(--fz-accent); border-color: var(--fz-accent); color: var(--fz-on-accent);
   box-shadow: 0 6px 16px -8px var(--fz-accent);

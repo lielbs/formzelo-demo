@@ -93,3 +93,9 @@
 /* App tab bar height (phones/tablets): bottom-anchored bars and toasts sit above it. */
 :root:has(.fz-app) { --fz-tabbar: calc(64px + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 1024px) { :root:has(.fz-app) { --fz-tabbar: 0px; } }
+
+/* App-like taps: no grey flash or double-tap zoom delay on controls (press motion: src/lib/press.ts). */
+button, a, summary, [role="button"], [role="radio"], [role="tab"], [role="menuitem"], [role="option"], label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}

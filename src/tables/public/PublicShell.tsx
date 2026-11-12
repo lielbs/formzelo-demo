@@ -173,7 +173,7 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
 }
 
 /** Primary guest action in the venue accent colour. */
-export const accentButton = 'pp-btn inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold bg-[var(--fz-accent)] text-[var(--fz-on-accent)] shadow-sm transition hover:brightness-[1.06] active:scale-[0.99] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--fz-accent)]';
+export const accentButton = 'pp-btn inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold bg-[var(--fz-accent)] text-[var(--fz-on-accent)] shadow-sm transition hover:brightness-[1.06] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--fz-accent)]';
 
 /** Secondary guest action (outlined, accent text). */
 export const softButton = 'pp-soft-btn inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold';

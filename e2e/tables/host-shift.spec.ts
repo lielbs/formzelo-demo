@@ -72,6 +72,20 @@ for (const theme of ['light', 'dark'] as const) {
     await seated.click();
     await expect(page.getByRole('button', { name: /^הכול:/ })).toHaveAttribute('aria-pressed', 'true');
 
+    // Tap feedback: a control sinks while pressed and springs back after release.
+    const filterBtn = page.getByRole('button', { name: /^סינון וסידור/ });
+    const box = (await filterBtn.boundingBox())!;
+    const scaleOf = () => filterBtn.evaluate((el) => Number(getComputedStyle(el).scale === 'none' ? 1 : getComputedStyle(el).scale));
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(160);
+    expect(await scaleOf()).toBeLessThan(0.95);
+    await page.mouse.up();
+    await page.waitForTimeout(700);
+    expect(await scaleOf()).toBe(1);
+    await page.getByRole('dialog', { name: 'סינון וסידור' }).getByRole('button', { name: 'סגירה' }).click();
+    await expect(page.getByRole('dialog', { name: 'סינון וסידור' })).toBeHidden();
+
     // Filter sheet: the footer previews the result before applying.
     await page.getByRole('button', { name: /^סינון וסידור/ }).click();
     const sheet = page.getByRole('dialog', { name: 'סינון וסידור' });

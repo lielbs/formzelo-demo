@@ -81,7 +81,6 @@ html.fz-dark .fz-tables {
   transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
 }
 .hs-qchip:hover { border-color: var(--hs-line-strong); }
-.hs-qchip:active { transform: scale(0.97); }
 .hs-qchip:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 2px; }
 .hs-qchip-dot { height: 9px; width: 9px; flex: none; border-radius: 3px; background: var(--hs-tone); }
 .hs-qchip-n {
@@ -199,7 +198,6 @@ html.fz-dark .fz-tables {
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
 }
-.hs-pill:active { transform: scale(0.97); }
 .hs-pill:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 2px; }
 .hs-pill[aria-pressed="true"] { background: var(--hs-ink); border-color: var(--hs-ink); color: var(--hs-surface); }
 .hs-pill:disabled { opacity: 0.45; }
@@ -268,7 +266,6 @@ html.fz-dark .fz-tables {
   transition: border-color 0.15s, background-color 0.15s, transform 0.1s;
 }
 .hs-choice:hover { border-color: var(--hs-accent); background: var(--hs-accent-soft); }
-.hs-choice:active { transform: scale(0.99); }
 .hs-choice:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 2px; }
 .hs-choice-icon {
   display: inline-flex;
@@ -361,7 +358,6 @@ html.fz-dark .fz-tables {
   -webkit-tap-highlight-color: transparent;
   transition: color 0.2s ease, transform 0.15s ease;
 }
-.hs-tab:active { transform: scale(0.92); }
 .hs-tab-icon { transition: transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1); }
 .hs-tab[aria-checked="true"] { color: var(--hs-tab-on); }
 .hs-dock-tabs[data-dragging] .hs-tab[aria-checked="true"]:not([data-hot]) { color: var(--hs-tab-ink); }
@@ -397,7 +393,6 @@ html.fz-dark .fz-tables {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s cubic-bezier(0.34, 1.5, 0.64, 1);
 }
-.hs-dock-add:active { transform: scale(0.9); }
 .hs-dock-add:focus-visible { outline: 3px solid var(--hs-accent); outline-offset: 2px; }
 .hs-dock-add:disabled { opacity: 0.5; }
 
@@ -430,7 +425,6 @@ html.fz-dark .fz-tables {
     100% { box-shadow: 0 0 0 14px transparent; }
   }
   .hs-card { transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s; }
-  .hs-card:active { transform: scale(0.995); }
 
   .hs-pulse-bar > span { transition: flex-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .hs-nowmark::before { animation: hs-breathe 2.4s ease-in-out infinite; }

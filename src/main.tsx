@@ -13,6 +13,7 @@ import { ToastProvider } from './components/Toast';
 import { RepoProvider } from './data/store';
 import { framedByOtherOrigin, isFrameProtectedPath, routePath } from './lib/frameGuard';
 import { BASE_PATH } from './lib/links';
+import { installPressFeedback } from './lib/press';
 
 // Reopen a deep link that the site-wide 404 page sent here (see public/live-fallback.js).
 try {
@@ -24,6 +25,8 @@ try {
 } catch {
   // Storage unavailable: start at the requested page.
 }
+
+installPressFeedback();
 
 const root = createRoot(document.getElementById('root')!);
 if (isFrameProtectedPath(routePath(window.location.pathname, BASE_PATH)) && framedByOtherOrigin(window)) {

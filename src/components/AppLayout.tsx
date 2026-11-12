@@ -130,7 +130,7 @@ function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => 
         {tab('/app', 'בית', LayoutDashboard, true)}
         {tab('/app/requests', 'בקשות', Inbox, false, pending)}
         <NavLink to="/app/workflows/new" aria-label="תהליך חדש" className="flex min-h-[56px] flex-1 items-center justify-center focus-visible:outline-none">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-700 text-white shadow-lift transition active:scale-95"><Plus className="h-5 w-5" aria-hidden /></span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-700 text-white shadow-lift transition"><Plus className="h-5 w-5" aria-hidden /></span>
         </NavLink>
         {tab('/app/workflows', 'תהליכים', Workflow)}
         <button type="button" onClick={onMore} aria-expanded={moreOpen} aria-label="עוד — התפריט המלא"
