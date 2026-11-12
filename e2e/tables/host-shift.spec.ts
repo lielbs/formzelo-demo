@@ -155,3 +155,56 @@ for (const theme of ['light', 'dark'] as const) {
     });
   }
 }
+
+for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 860 }]) {
+  test(`book from a table — walk-in now and a later time (${size.width})`, async ({ browser }) => {
+    const { ctx, page } = await open(browser, size, 'light');
+    await page.locator('[role=radio]:visible', { hasText: 'מפה' }).click();
+    const freeTables = page.locator('[role=button][aria-label*="מוכן"]');
+    await expect(freeTables.first()).toBeVisible();
+    const before = await page.locator('[role=button][aria-label*="תפוס"]').count();
+
+    // Walk-in now on a free table.
+    const first = (await freeTables.first().getAttribute('aria-label'))!.match(/שולחן (\S+),/)![1]!;
+    await freeTables.first().click();
+    const panel = page.getByRole('complementary', { name: 'פרטים' });
+    await expect(panel.getByRole('heading', { name: 'הוספה לשולחן הזה' })).toBeVisible();
+    await panel.getByRole('button', { name: 'הושבה עכשיו' }).click();
+    const sheet = page.getByRole('dialog', { name: `שולחן ${first}` });
+    await expect(sheet).toBeVisible();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${OUT}/table-walkin-${size.width}.png` });
+    await sheet.getByRole('textbox', { name: 'שם' }).fill('זוג מהרחוב');
+    await page.getByRole('button', { name: `הושבה עכשיו בשולחן ${first}` }).click();
+    await expect(sheet).toBeHidden();
+    await expect.poll(() => page.locator('[role=button][aria-label*="תפוס"]').count()).toBe(before + 1);
+
+    // A later time on another free table: only that table's free times are offered.
+    const panelClose = page.getByRole('button', { name: 'סגירת הפרטים' });
+    if (await panelClose.isVisible()) await panelClose.click();
+    const second = page.locator('[role=button][aria-label*="מוכן"]').last();
+    const label = (await second.getAttribute('aria-label'))!.match(/שולחן (\S+),/)![1]!;
+    await second.click();
+    await panel.getByRole('button', { name: 'הזמנה לשעה' }).click();
+    const later = page.getByRole('dialog', { name: `שולחן ${label}` });
+    await expect(later.getByRole('group', { name: 'שעה פנויה בשולחן הזה' })).toBeVisible();
+    await expect(later.locator('[aria-busy=true]')).toHaveCount(0);
+    const slot = later.locator('button[aria-label$=" פנוי"]').last(); // the latest free time, away from the lead-time edge
+    if (await slot.count()) {
+      const time = (await slot.getAttribute('aria-label'))!.split(' ')[0]!;
+      await slot.click();
+      await later.getByRole('textbox', { name: /שם/ }).fill(`הזמנה מהמפה ${size.width}`);
+      await page.screenshot({ path: `${OUT}/table-later-${size.width}.png` });
+      await page.getByRole('button', { name: `שמירת הזמנה ל-${time}` }).click();
+      await expect(later).toBeHidden();
+      // The table panel lists the new booking straight away.
+      await expect(panel.getByText(`הזמנה מהמפה ${size.width}`)).toBeVisible();
+      await page.getByRole('button', { name: 'סגירת הפרטים' }).click();
+      await page.locator('[role=radio]:visible', { hasText: 'רשימה' }).click();
+      const card = page.locator('#shift-main .hs-card', { hasText: `הזמנה מהמפה ${size.width}` });
+      await expect(card).toBeVisible();
+      await expect(card).toContainText(label);
+    }
+    await ctx.close();
+  });
+}

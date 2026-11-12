@@ -29,6 +29,25 @@ export async function rpc<T>(fn: string, args: Record<string, unknown>, lang: La
 
 export const newKey = () => crypto.randomUUID();
 
+/**
+ * Minutes kept free after each booking on a table (the published policy). Venue staff can read the
+ * published version under RLS; 0 when it cannot be read, since the server checks again anyway.
+ */
+export async function venueBufferMinutes(venueId: string): Promise<number> {
+  try {
+    const client = await getProductionSupabaseClient();
+    const venue = await client.from('tables_venues').select('current_version_id').eq('id', venueId).maybeSingle();
+    const versionId = (venue.data as { current_version_id: string | null } | null)?.current_version_id;
+    if (!versionId) return 0;
+    const version = await client.from('tables_venue_versions').select('snapshot').eq('id', versionId).maybeSingle();
+    const raw = (version.data as { snapshot?: { policy?: { bufferMinutes?: unknown } } } | null)?.snapshot?.policy?.bufferMinutes;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 && n <= 240 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** A stable anonymous browser token for public rate limits and idempotent replays. */
 export function clientToken(): string {
   try {

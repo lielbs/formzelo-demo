@@ -29,7 +29,8 @@ export function Sheet({ title, subtitle, onClose, children, footer }: {
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); dismissRef.current(); return; }
+      // Capture phase + stopImmediatePropagation: Escape closes only this sheet, not a panel behind it.
+      if (e.key === 'Escape') { e.stopImmediatePropagation(); dismissRef.current(); return; }
       if (e.key !== 'Tab' || !panel.current) return;
       const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
       if (!items.length) return;
@@ -38,10 +39,10 @@ export function Sheet({ title, subtitle, onClose, children, footer }: {
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     const t = setTimeout(() => panel.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus() ?? panel.current?.focus(), 20);
     return () => {
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
       document.body.style.overflow = overflow;
       clearTimeout(t);
       opener?.focus?.();

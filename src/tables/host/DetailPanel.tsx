@@ -1,14 +1,16 @@
-import { Ban, CheckCircle2, LogIn, MessageCircle, Phone, Sparkles, Undo2, UserX, Wrench, X } from 'lucide-react';
+import { Ban, CalendarClock, CheckCircle2, Footprints, LogIn, MessageCircle, Phone, Sparkles, Undo2, UserX, Wrench, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button, cx, Textarea } from '../../components/ui';
 import { addNote, decidePending, reservationDetail, setTableState, transition, type ReservationDetail, type TransitionAction } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { displayPhone, telHref, whatsappHref } from '../domain/phone';
 import { canSeatNow, isLate, SOURCE_HE, STATUS_HE, TABLE_STATE_HE } from '../domain/status';
+import { walkInWindow } from '../domain/tableBooking';
 import { timeInTz } from '../domain/time';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
 import { Ltr, StatusChip } from '../ui';
 import { CustomAnswers } from './CustomAnswers';
+import { TableBook, type TableBookMode } from './TableBook';
 
 export type Selection = { kind: 'reservation'; id: string } | { kind: 'table'; id: string } | null;
 type States = Map<string, { state: TableLiveState; current?: ShiftReservation; next?: ShiftReservation }>;
@@ -43,7 +45,7 @@ export function DetailPanel({ shift, selection, selected, states, now, canAct, o
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-1">
         {selection.kind === 'reservation' && selected && <ReservationDetailView r={selected} shift={shift} now={now} canAct={canAct} onDone={onDone} onAssign={onAssign} />}
         {selection.kind === 'reservation' && !selected && <p className="py-6 text-sm text-ink-muted">ההזמנה לא נמצאת יותר במשמרת הזו.</p>}
-        {selection.kind === 'table' && <TableDetail shift={shift} tableId={selection.id} states={states} canAct={canAct} onDone={onDone} onSelect={onSelect} />}
+        {selection.kind === 'table' && <TableDetail shift={shift} tableId={selection.id} states={states} now={now} canAct={canAct} onDone={onDone} onSelect={onSelect} />}
       </div>
     </aside>
   );
@@ -209,13 +211,14 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
   );
 }
 
-function TableDetail({ shift, tableId, states, canAct, onDone, onSelect }: {
-  shift: Shift; tableId: string; states: States; canAct: boolean; onDone: (m: string) => void; onSelect: (s: Selection) => void;
+function TableDetail({ shift, tableId, states, now, canAct, onDone, onSelect }: {
+  shift: Shift; tableId: string; states: States; now: Date; canAct: boolean; onDone: (m: string) => void; onSelect: (s: Selection) => void;
 }) {
   const table = shift.tables.find((t) => t.id === tableId);
   const live = states.get(tableId);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [book, setBook] = useState<TableBookMode | null>(null);
   if (!table || !live) return <p className="py-6 text-sm text-ink-muted">השולחן לא נמצא.</p>;
   const upcoming = shift.reservations.filter((r) => r.tableIds.includes(tableId) && ['pending_approval', 'confirmed', 'arrived', 'seated'].includes(r.status))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -238,6 +241,24 @@ function TableDetail({ shift, tableId, states, canAct, onDone, onSelect }: {
         <p className="text-sm text-ink-muted"><bdi dir="ltr">{table.minCovers}–{table.maxCovers}</bdi> מקומות · {shift.zones.find((z) => z.id === table.zoneId)?.name} · <span className="font-medium text-ink">{TABLE_STATE_HE[live.state]}</span>{table.opReason ? ` (${table.opReason})` : ''}</p>
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {canAct && (() => {
+        const walk = walkInWindow(shift, tableId, live.state, now, shift.services[0]?.durationMinutes ?? 90);
+        return (
+          <section aria-labelledby="tbl-add" className="grid gap-2">
+            <h3 id="tbl-add" className="text-sm font-semibold">הוספה לשולחן הזה</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Button icon={Footprints} onClick={() => setBook('now')} disabled={!walk.ok} className="h-12">הושבה עכשיו</Button>
+              <Button variant="secondary" icon={CalendarClock} onClick={() => setBook('later')} className="h-12">הזמנה לשעה</Button>
+            </div>
+            <p className="text-xs text-ink-muted">
+              {walk.ok ? (walk.until ? `פנוי עכשיו עד ${walk.until}.` : 'פנוי עכשיו.')
+                : walk.reason === 'occupied' ? 'תפוס עכשיו — אפשר להזמין לשעה מאוחרת יותר.'
+                  : walk.reason === 'too_short' ? `ההזמנה הבאה ב-${walk.until} — קצר מדי להושבה עכשיו.`
+                    : walk.reason === 'cleaning' ? 'בניקוי — סמנו כמוכן כדי להושיב.' : 'מסומן כלא זמין.'}
+            </p>
+          </section>
+        );
+      })()}
       {canAct && (
         <div className="grid grid-cols-3 gap-2" role="group" aria-label="מצב השולחן">
           <Button variant={live.state === 'cleaning' ? 'dark' : 'secondary'} icon={Sparkles} loading={busy === 'cleaning'} onClick={() => void setState('cleaning')} className="h-12">ניקוי</Button>
@@ -262,6 +283,7 @@ function TableDetail({ shift, tableId, states, canAct, onDone, onSelect }: {
           </ul>
         )}
       </section>
+      {book && <TableBook shift={shift} table={table} state={live.state} now={now} initial={book} onClose={() => setBook(null)} onDone={(m) => { setBook(null); onDone(m); }} />}
     </div>
   );
 }
