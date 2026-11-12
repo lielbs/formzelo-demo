@@ -1,6 +1,7 @@
 import { BookOpen, ExternalLink, Image as ImageIcon, Images, Plus, Rocket, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { confirmAction } from '../../components/Confirm';
 import { useToast } from '../../components/Toast';
 import { ImagePicker } from '../../components/ImagePicker';
 import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner, Textarea } from '../../components/ui';
@@ -220,7 +221,12 @@ function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; on
           setBusy('publish');
           try { await publishMenu(menu.id, lv); toast('התפריט פורסם', 'success'); await onSaved(); } catch (e) { toast((e as TablesError).message, 'error'); } finally { setBusy(null); }
         }} className="h-11">פרסום התפריט</Button>
-        <Button variant="ghost" icon={Trash2} onClick={async () => { if (window.confirm('להסיר את התפריט? הוא יירד מהאתר.')) { await archiveMenu(menu.id); await onSaved(); } }} className="h-11 ms-auto">הסרה</Button>
+        <Button variant="ghost" icon={Trash2} onClick={async () => {
+          if (await confirmAction({ title: `למחוק את "${title || menu.title}"?`, message: 'התפריט יירד מדפי ההזמנה מיד ולא יופיע יותר ברשימה.', confirmLabel: 'מחיקה', destructive: true, action: () => archiveMenu(menu.id).then(() => undefined) })) {
+            toast('התפריט נמחק', 'success');
+            await onSaved();
+          }
+        }} className="h-11 ms-auto text-red-700 hover:bg-red-50 hover:text-red-800">מחיקה</Button>
       </div>
     </div>
   );

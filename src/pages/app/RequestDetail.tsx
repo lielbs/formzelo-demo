@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, formatDateTime } from '../../lib/format';
 import { publicFlowUrl } from '../../lib/links';
 import { runtimeConfiguration } from '../../production/runtime';
 import { CustomerLinkCard, QuotePanel } from './QuotePanel';
+import { confirmAction } from '../../components/Confirm';
 
 const PRODUCTION = runtimeConfiguration.mode === 'production';
 
@@ -299,7 +300,7 @@ export function RequestDetail() {
                 actions={runActions}
                 busy={busy}
                 onCancel={async (a) => {
-                  if (!window.confirm(`לבטל את "${a.title}"? הלקוח יראה שהבקשה בוטלה.`)) return;
+                  if (!(await confirmAction({ title: `לבטל את "${a.title}"?`, message: 'הלקוח יראה שהבקשה בוטלה.', confirmLabel: 'ביטול הפעולה', cancelLabel: 'השארה', destructive: true }))) return;
                   setBusy(a.id);
                   try {
                     await repo.cancelAction(org.id, a.id);

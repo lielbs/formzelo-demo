@@ -425,3 +425,7 @@ enabled = true
 # Public endpoint: authorises with the invitation token itself (see _shared/accountOnboarding.ts).
 [functions.account-onboarding]
 verify_jwt = false
+
+# Authorises with the caller's own session token inside the function (see _shared/accountDeletion.ts).
+[functions.account-deletion]
+verify_jwt = false

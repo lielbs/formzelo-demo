@@ -138,3 +138,17 @@ export async function reinviteOwner(organizationId: string, email: string) {
   const data = await invokeOperator('operator-invitations', { organizationId, email });
   return invitationLink(data.invitationToken, organizationId);
 }
+
+/** The signed-in person deletes their own account (App Store 5.1.1(v)). The caller signs out after. */
+export async function deleteMyAccount(): Promise<void> {
+  const client = await getProductionSupabaseClient();
+  const { data, error } = await client.functions.invoke<{ deleted?: boolean }>('account-deletion', { body: { confirm: 'delete-my-account' } });
+  if (!error && data?.deleted) return;
+  const response = (error as { context?: Response } | null)?.context;
+  if (isNetworkFailure(error as { name?: string; message?: string })) throw new UnexpectedServerError('account-deletion', true);
+  if (response?.status === 409) {
+    throw new DomainRuleError('אתם הבעלים היחידים של עסק שיש בו עוד אנשי צוות. הסירו אותם מ״צוות״ (או הזמינו בעלים נוסף), ואז אפשר למחוק את החשבון.');
+  }
+  if (response?.status === 401) throw new DomainRuleError('פג תוקף ההתחברות. התחברו מחדש ונסו שוב.');
+  throw new DomainRuleError('המחיקה לא הושלמה. נסו שוב בעוד דקה.');
+}

@@ -1,6 +1,7 @@
-import { Archive, ArchiveRestore, Copy, ExternalLink, Link2, Pencil, Plus, Search, Workflow as WorkflowIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, Copy, ExternalLink, Link2, Pencil, Plus, Search, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { confirmAction } from '../../components/Confirm';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, Input, PageHeader, Spinner } from '../../components/ui';
 import type { Workflow } from '../../domain/schema';
@@ -159,8 +160,8 @@ export function WorkflowList() {
                         size="sm"
                         variant="ghost"
                         icon={Archive}
-                        onClick={() => {
-                          if (window.confirm('להעביר לארכיון? הקישור הציבורי יפסיק לעבוד, הבקשות הקיימות יישמרו.')) {
+                        onClick={async () => {
+                          if (await confirmAction({ title: 'להעביר לארכיון?', message: 'הקישור הציבורי יפסיק לעבוד. הבקשות הקיימות נשמרות, ואפשר לשחזר מהארכיון בכל רגע.', confirmLabel: 'העברה לארכיון' })) {
                             void act(w.id, () => repo.setArchived(org.id, w.id, true), 'הועבר לארכיון');
                           }
                         }}
@@ -168,6 +169,27 @@ export function WorkflowList() {
                         ארכיון
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={Trash2}
+                      className="ms-auto text-red-700 hover:bg-red-50 hover:text-red-800"
+                      onClick={() => {
+                        const requests = runCount(w.id);
+                        void confirmAction({
+                          title: `למחוק את "${w.draft.title}"?`,
+                          message: requests
+                            ? `התהליך ו־${formatNumber(requests)} הבקשות שהתקבלו בו יוסרו מהמערכת, והקישור הציבורי יפסיק לעבוד. אי אפשר לבטל את המחיקה.`
+                            : 'התהליך יוסר מהמערכת והקישור הציבורי יפסיק לעבוד. אי אפשר לבטל את המחיקה.',
+                          confirmLabel: 'מחיקה לצמיתות',
+                          destructive: true,
+                          typeToConfirm: requests ? w.draft.title : undefined,
+                          action: () => repo.deleteWorkflow(org.id, w.id),
+                        }).then((ok) => ok && toast('התהליך נמחק'));
+                      }}
+                    >
+                      מחיקה
+                    </Button>
                   </div>
                 </Card>
               </li>

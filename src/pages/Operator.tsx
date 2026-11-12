@@ -12,6 +12,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner
 import { formatDateTime } from '../lib/format';
 import { isPlatformOperator, issueAccountRecovery, operatorOrganizations, operatorSetTablesEnabled, provisionBusiness, reinviteOwner, type OperatorOrganization } from '../production/admin';
 import { runtimeConfiguration } from '../production/runtime';
+import { confirmAction } from '../components/Confirm';
 
 const slugFrom = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
 
@@ -162,7 +163,7 @@ function Console() {
                   loading={busy === `t${o.id}`}
                   onClick={async () => {
                     const enable = !o.tablesEnabled;
-                    if (!window.confirm(enable ? `להפעיל את מודול השולחנות עבור ${o.name}?` : `לכבות את מודול השולחנות עבור ${o.name}? דפי ההזמנה שלו ייסגרו מיד (ההזמנות עצמן נשמרות).`)) return;
+                    if (!(await confirmAction(enable ? { title: `להפעיל שולחנות עבור ${o.name}?`, confirmLabel: 'הפעלה' } : { title: `לכבות שולחנות עבור ${o.name}?`, message: 'דפי ההזמנה שלו ייסגרו מיד. ההזמנות עצמן נשמרות.', confirmLabel: 'כיבוי', destructive: true }))) return;
                     setBusy(`t${o.id}`);
                     try {
                       await operatorSetTablesEnabled(o.id, enable);

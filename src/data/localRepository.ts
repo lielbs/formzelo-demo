@@ -426,6 +426,28 @@ export class LocalStorageRepository implements FormangleRepository {
     });
   }
 
+  async deleteWorkflow(orgId: string, workflowId: string) {
+    let slug = '';
+    this.mutate(orgId, (d) => {
+      const wf = this.findWorkflow(d, workflowId);
+      slug = wf.slug;
+      const runIds = new Set(d.runs.filter((r) => r.workflowId === workflowId).map((r) => r.id));
+      d.workflows = d.workflows.filter((w) => w.id !== workflowId);
+      d.versions = d.versions.filter((v) => v.workflowId !== workflowId);
+      d.runs = d.runs.filter((r) => !runIds.has(r.id));
+      d.events = d.events.filter((e) => !e.runId || !runIds.has(e.runId));
+      d.notifications = d.notifications.filter((n) => !n.runId || !runIds.has(n.runId));
+      d.actions = d.actions.filter((a) => !runIds.has(a.runId));
+      d.quotes = d.quotes.filter((q) => !runIds.has(q.runId));
+      d.usage = d.usage.filter((u) => u.workflowId !== workflowId);
+    });
+    const meta = this.readMeta();
+    if (slug && meta.slugIndex[slug]) {
+      const { [slug]: _gone, ...rest } = meta.slugIndex;
+      this.writeMeta({ ...meta, slugIndex: rest });
+    }
+  }
+
   async updateIntake(orgId: string, workflowId: string, intake: Intake) {
     const parsed = IntakeSchema.parse(intake);
     return this.mutate(orgId, (d) => {

@@ -73,6 +73,9 @@ export const publishVenue = (venueId: string, lockVersion: number) =>
   rpc<{ versionId: string; versionNumber: number; status: string; lockVersion: number }>('tables_publish_venue', { p_venue_id: venueId, p_expected_lock_version: lockVersion });
 export const setVenueStatus = (venueId: string, status: 'published' | 'paused') =>
   rpc<{ status: string }>('tables_set_venue_status', { p_venue_id: venueId, p_status: status });
+/** Owner: removes the venue (no upcoming bookings or open waitlist allowed). `name` must match exactly. */
+export const deleteVenue = (venueId: string, name: string) =>
+  rpc<{ deleted: boolean }>('tables_delete_venue', { p_venue_id: venueId, p_confirm_name: name });
 export const listStaff = (venueId: string) =>
   rpc<{ userId: string; email: string; orgRole: string; venueRole: string | null }[]>('tables_list_staff', { p_venue_id: venueId });
 export const assignStaff = (venueId: string, userId: string, role: string | null) =>

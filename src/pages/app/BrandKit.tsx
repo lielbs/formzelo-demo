@@ -25,6 +25,7 @@ import { PresenceEditor, presenceErrors } from './editor/PresenceEditor';
 import { PLATFORMS, validLinks } from '../../engine/presence';
 import { PresenceIcon } from '../../renderer/presence';
 import { DevicePreview, DeviceToggle, type Device } from './editor/DevicePreview';
+import { confirmAction } from '../../components/Confirm';
 
 const PLACEMENT = { start: 'בצד', center: 'במרכז', hidden: 'מוסתר' } as const;
 
@@ -157,8 +158,8 @@ export function BrandKitPage() {
           <>
             <Button
               variant="ghost"
-              onClick={() => {
-                if (!window.confirm('לאפס צבעים, גופן, כפתורים וריווח לברירת המחדל של הסגנון שנבחר? השם, התיאור והתמונות נשמרים. השינוי יחול רק אחרי שמירה.')) return;
+              onClick={async () => {
+                if (!(await confirmAction({ title: 'לאפס את העיצוב?', message: 'צבעים, גופן, כפתורים וריווח יחזרו לברירת המחדל של הסגנון שנבחר. השם, התיאור והתמונות נשמרים, והשינוי יחול רק אחרי שמירה.', confirmLabel: 'איפוס' }))) return;
                 const preset = buildTheme(kit.personality);
                 set((k) => {
                   k.palette = { primary: preset.palette.primary, secondary: preset.palette.secondary, accent: preset.palette.accent, background: preset.palette.background };

@@ -18,6 +18,7 @@ import { publicBaseUrl } from '../../lib/links';
 import { QuoteCard } from '../../renderer/QuoteCard';
 import { buildTheme } from '../../theme/presets';
 import { ThemeScope } from '../../theme/ThemeScope';
+import { confirmAction } from '../../components/Confirm';
 
 const NEUTRAL = buildTheme('modern_minimal');
 
@@ -97,7 +98,7 @@ export function CustomerLinkCard({ orgId, run, production, nudge = 0 }: { orgId:
           className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-ink-muted underline-offset-2 hover:text-red-700 hover:underline disabled:opacity-50"
           disabled={busy === 'revoke'}
           onClick={async () => {
-            if (!window.confirm('לבטל את כל הקישורים שנשלחו ללקוח? הם יפסיקו לעבוד מיד, ותוכלו ליצור קישור חדש.')) return;
+            if (!(await confirmAction({ title: 'לבטל את כל הקישורים ללקוח?', message: 'הקישורים שנשלחו יפסיקו לעבוד מיד. אפשר ליצור קישור חדש אחר כך.', confirmLabel: 'ביטול הקישורים', cancelLabel: 'השארה', destructive: true }))) return;
             setBusy('revoke');
             try {
               await repo.revokeRequestLinks(orgId, run.id);
@@ -361,7 +362,7 @@ export function QuotePanel({ orgId, run, design, quotes, canAct, onChanged, onSe
                       size="sm"
                       variant="ghost"
                       className={cx(busy === `w${q.id}` && 'opacity-60')}
-                      onClick={() => window.confirm(q.status === 'draft' ? 'למחוק את הטיוטה?' : 'לבטל את ההצעה? הלקוח יראה שהיא בוטלה.') && act(`w${q.id}`, () => repo.withdrawQuote(orgId, q.id), q.status === 'draft' ? 'הטיוטה נמחקה' : 'ההצעה בוטלה')}
+                      onClick={async () => (await confirmAction(q.status === 'draft' ? { title: 'למחוק את הטיוטה?', confirmLabel: 'מחיקה', destructive: true } : { title: 'לבטל את ההצעה?', message: 'הלקוח יראה שהיא בוטלה.', confirmLabel: 'ביטול ההצעה', cancelLabel: 'השארה', destructive: true })) && act(`w${q.id}`, () => repo.withdrawQuote(orgId, q.id), q.status === 'draft' ? 'הטיוטה נמחקה' : 'ההצעה בוטלה')}
                     >
                       {q.status === 'draft' ? 'מחיקה' : 'ביטול'}
                     </Button>

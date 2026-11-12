@@ -389,6 +389,14 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
       emit();
       return remember(data[0]);
     },
+    async deleteWorkflow(orgId: string, workflowId: string) {
+      assertOrg(orgId);
+      const { error } = await client.rpc('delete_workflow' as never, { p_organization_id: orgId, p_workflow_id: workflowId } as never);
+      if (error?.code === '42501') throw new DomainRuleError('רק בעלי העסק יכולים למחוק תהליכים. אפשר להעביר לארכיון.');
+      if (error?.code === 'P0002') throw new DomainRuleError('התהליך כבר נמחק.');
+      if (error) fail(error, 'Unable to delete workflow');
+      emit();
+    },
     async updateIntake(orgId: string, workflowId: string, intake: Parameters<FormangleRepository['updateIntake']>[2]) {
       assertOrg(orgId);
       const { data, error } = await client.rpc('update_workflow_intake', {

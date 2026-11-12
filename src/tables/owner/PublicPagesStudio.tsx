@@ -34,6 +34,7 @@ import type { Lang } from '../public/i18n';
 import type { PreviewPayload } from '../public/PagePreview';
 import { Hint, Segmented, useLoad } from '../ui';
 import { bookingUrl } from './VenueOverview';
+import { confirmAction } from '../../components/Confirm';
 
 const DEVICES = { phone: { w: 390, h: 780, icon: Smartphone, label: 'טלפון' }, tablet: { w: 768, h: 1000, icon: Tablet, label: 'טאבלט' }, desktop: { w: 1280, h: 860, icon: Monitor, label: 'מחשב' } } as const;
 type Device = keyof typeof DEVICES;
@@ -108,7 +109,7 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirty]);
-  const leave = (to: string) => { if (!dirty || window.confirm('יש שינויים שלא נשמרו. לצאת בלי לשמור?')) navigate(to); };
+  const leave = async (to: string) => { if (!dirty || await confirmAction({ title: 'לצאת בלי לשמור?', message: 'יש שינויים שלא נשמרו.', confirmLabel: 'יציאה', cancelLabel: 'המשך עריכה', destructive: true })) navigate(to); };
 
   const assetIds = useMemo(() => new Set((media.data?.assets ?? []).map((a) => a.id)), [media.data]);
   const problems = useMemo(() => (pages && media.data ? publicPagesProblems(pages, assetIds) : []), [pages, media.data, assetIds]);

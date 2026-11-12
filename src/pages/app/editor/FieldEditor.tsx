@@ -6,6 +6,7 @@ import { describeCondition, needsValue, operatorsFor } from '../../../engine/log
 import { OPERATOR_LABELS } from '../../../engine/conditions';
 import { fieldHasPrice } from '../../../engine/pricing';
 import { newId } from '../../../lib/id';
+import { confirmAction } from '../../../components/Confirm';
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   text: 'טקסט קצר',
@@ -357,12 +358,12 @@ export function FieldListEditor({
             others={allFields.filter((o) => o.key !== f.key && o.type !== 'info')}
             onChange={(nf) => onChange(fields.map((x) => (x.id === f.id ? nf : x)))}
             onMove={(dir) => onChange(move(fields, i, dir))}
-            onDelete={() => {
+            onDelete={async () => {
               const dependents = allFields.filter((x) => x.condition?.fieldKey === f.key || x.multiplyByKey === f.key);
               const msg = dependents.length
                 ? `השדה "${f.label}" משמש בתנאים או בחישוב של: ${dependents.map((d) => d.label).join(', ')}. למחוק בכל זאת?`
                 : `למחוק את השדה "${f.label}"?`;
-              if (window.confirm(msg)) onChange(fields.filter((x) => x.id !== f.id));
+              if (await confirmAction({ title: msg, confirmLabel: 'מחיקה', destructive: true })) onChange(fields.filter((x) => x.id !== f.id));
             }}
           />
         ))}

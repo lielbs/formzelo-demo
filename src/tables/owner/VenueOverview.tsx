@@ -1,11 +1,12 @@
-import { BarChart3, BookOpen, CalendarCheck, CalendarX, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, UserCog } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarCheck, CalendarX, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, Trash2, UserCog } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { confirmAction } from '../../components/Confirm';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, ErrorState, FieldLabel, Input, Select, Spinner } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { qrSvg, whatsappShareUrl } from '../../lib/share';
-import { assignStaff, getVenue, listStaff, setException, setVenueStatus } from '../data/client';
+import { assignStaff, deleteVenue, getVenue, listStaff, setException, setVenueStatus } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { addDays, dateInTz, formatDate } from '../domain/time';
 import { Hint, Ltr, useLoad } from '../ui';
@@ -135,6 +136,7 @@ export function VenueOverview() {
       {published && canManage && <Closures venueId={venue.id} timezone={venue.timezone} />}
       {venue.role === 'owner' && <Team venueId={venue.id} />}
       {venue.role === 'owner' && <GuestPrivacy organizationId={venue.organizationId} />}
+      {venue.role === 'owner' && <DeleteVenue venueId={venue.id} name={venue.name} />}
     </div>
   );
 }
@@ -229,5 +231,46 @@ function Team({ venueId }: { venueId: string }) {
       )}
       {data && data.length === 1 && <div className="mt-3"><Hint>עוד אין אנשי צוות בעסק. הזמינו אותם מ״הגדרות ← צוות״, ואז תוכלו לתת להם גישה כאן.</Hint></div>}
     </Card>
+  );
+}
+
+/** Owner only. Refused by the server while guests still expect the venue (upcoming bookings, waitlist). */
+function DeleteVenue({ venueId, name }: { venueId: string; name: string }) {
+  const toast = useToast();
+  const navigate = useNavigate();
+  return (
+    <section className="mt-6 rounded-2xl border border-red-200/80 bg-red-50/40 p-5">
+      <h2 className="flex items-center gap-2 font-semibold text-red-900"><Trash2 className="h-5 w-5" aria-hidden /> מחיקת המקום</h2>
+      <p className="mt-1 text-sm text-ink-muted [text-wrap:pretty]">
+        המקום, המפה, התפריטים ודפי ההזמנה יוסרו, והקישורים יפסיקו לעבוד. אפשר למחוק רק כשאין הזמנות עתידיות ואין אורחים ברשימת ההמתנה.
+        רוצים רק לעצור הזמנות? אפשר להשהות למעלה.
+      </p>
+      <Button variant="danger" icon={Trash2} className="mt-4"
+        onClick={() => void confirmAction({
+          title: `למחוק את ${name}?`,
+          message: 'המקום ייעלם מהרשימה, כל הקישורים שלו יפסיקו לעבוד ואי אפשר יהיה לשחזר אותו.',
+          confirmLabel: 'מחיקת המקום',
+          destructive: true,
+          typeToConfirm: name,
+          action: async () => {
+            try {
+              await deleteVenue(venueId, name);
+            } catch (e) {
+              const err = e as TablesError;
+              const d = err.detail as { upcoming?: number; waiting?: number } | undefined;
+              if (err.code === 'venue_has_guests' && d) {
+                const parts = [
+                  d.upcoming ? (d.upcoming === 1 ? 'הזמנה עתידית אחת' : `${d.upcoming} הזמנות עתידיות`) : '',
+                  d.waiting ? (d.waiting === 1 ? 'אורח אחד ברשימת ההמתנה' : `${d.waiting} אורחים ברשימת ההמתנה`) : '',
+                ].filter(Boolean).join(' ו־');
+                throw new Error(`עדיין יש ${parts}. סגרו אותם במשמרת, ואז אפשר למחוק. רוצים רק לעצור הזמנות חדשות? אפשר להשהות.`);
+              }
+              throw e;
+            }
+          },
+        }).then((ok) => { if (ok) { toast('המקום נמחק', 'success'); navigate('/app/tables'); } })}>
+        מחיקת המקום
+      </Button>
+    </section>
   );
 }

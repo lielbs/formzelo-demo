@@ -62,6 +62,8 @@ export interface FormangleRepository {
   publishWorkflow(orgId: string, workflowId: string): Promise<WorkflowVersion>;
   duplicateWorkflow(orgId: string, workflowId: string): Promise<Workflow>;
   setArchived(orgId: string, workflowId: string, archived: boolean): Promise<Workflow>;
+  /** Owner: removes the process and its requests from the workspace; its public link stops at once. */
+  deleteWorkflow(orgId: string, workflowId: string): Promise<void>;
   /** When and how much the public link accepts. Applies at once — no publish needed. */
   updateIntake(orgId: string, workflowId: string, intake: Intake): Promise<Workflow>;
   listVersions(orgId: string, workflowId: string): Promise<WorkflowVersion[]>;

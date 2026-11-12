@@ -8,6 +8,7 @@ import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, ErrorState, Input, Spinner } from '../../components/ui';
 import { formatDateTime } from '../../lib/format';
 import { inviteStaff, issueStaffRecovery, listTeam, removeMember, revokeInvitation, type TeamInvitation, type TeamMember } from '../../production/admin';
+import { confirmAction } from '../../components/Confirm';
 
 export function TeamCard({ orgId }: { orgId: string }) {
   const toast = useToast();
@@ -82,7 +83,7 @@ export function TeamCard({ orgId }: { orgId: string }) {
                   icon={UserMinus}
                   aria-label={`הסרת ${m.email}`}
                   loading={busy === m.userId}
-                  onClick={() => window.confirm(`להסיר את ${m.email}? הגישה נחסמת מיד.`) && run(m.userId, () => removeMember(orgId, m.userId))}
+                  onClick={async () => (await confirmAction({ title: 'להסיר מהצוות?', message: <><span className="ltr inline-block max-w-full truncate align-bottom font-medium">{m.email}</span> לא יוכל/תוכל להיכנס יותר. הגישה נחסמת מיד.</>, confirmLabel: 'הסרה', destructive: true })) && run(m.userId, () => removeMember(orgId, m.userId))}
                 />
               )}
             </li>

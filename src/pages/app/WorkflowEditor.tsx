@@ -72,6 +72,7 @@ import { BookingInspector, CompletionInspector, FieldInspector, NextStepsEditor,
 import { IntakePanel } from './editor/IntakePanel';
 import { PresenceInspector } from './editor/PresenceInspector';
 import { StudioCoach } from './editor/StudioCoach';
+import { confirmAction } from '../../components/Confirm';
 
 type Selection =
   | { kind: 'workflow' }
@@ -398,7 +399,7 @@ export function WorkflowEditor() {
       }
     }, `field-${f.id}`);
 
-  const deleteField = (f: WorkflowField) => {
+  const deleteField = async (f: WorkflowField) => {
     const dependents = allFields.filter((x) => x.condition?.fieldKey === f.key || x.multiplyByKey === f.key);
     const usedByBooking = config.booking?.enabled && [config.booking.dateKey, config.booking.timeKey, config.booking.guestsKey].includes(f.key);
     const msg = usedByBooking
@@ -407,7 +408,7 @@ export function WorkflowEditor() {
         ? `"${f.label}" משמש בתנאים או בחישוב של: ${dependents.map((d) => d.label).join(', ')}. למחוק בכל זאת?`
         : `למחוק את "${f.label}"?`;
     // Rules depend on this field: ask first. Otherwise delete at once — the toast offers undo.
-    if ((usedByBooking || dependents.length) && !window.confirm(msg)) return;
+    if ((usedByBooking || dependents.length) && !(await confirmAction({ title: msg, confirmLabel: 'מחיקה', destructive: true }))) return;
     const pos = locate(f.id);
     const stepId = pos ? config.steps[pos.si]!.id : undefined;
     apply((s) => {
@@ -633,9 +634,9 @@ export function WorkflowEditor() {
             earlier={earlierAnswerFields(config, { stepId: config.steps[stepIndex]!.id })}
             onChange={(st) => update((d) => void (d.steps[stepIndex] = st), `step-${st.id}`)}
             onMove={(dir) => update((d) => void (d.steps = move(d.steps, stepIndex, dir)), `stepmove-${Date.now()}`)}
-            onDelete={() => {
+            onDelete={async () => {
               const st = config.steps[stepIndex]!;
-              if (!window.confirm(`למחוק את השלב "${st.title}" וכל ${st.fields.length} הרכיבים בו?`)) return;
+              if (!(await confirmAction({ title: `למחוק את השלב "${st.title}"?`, message: `גם ${st.fields.length} הרכיבים שבו יימחקו.`, confirmLabel: 'מחיקה', destructive: true }))) return;
               update((d) => void d.steps.splice(stepIndex, 1), `stepdel-${st.id}`);
               setSel({ kind: 'workflow' });
             }}
@@ -726,7 +727,7 @@ export function WorkflowEditor() {
                           variant="ghost"
                           icon={RotateCcw}
                           onClick={async () => {
-                            if (dirty && !window.confirm('השינויים שלא נשמרו יוחלפו בגרסה זו. להמשיך?')) return;
+                            if (dirty && !(await confirmAction({ title: 'לשחזר את הגרסה?', message: 'השינויים שלא נשמרו יוחלפו בגרסה זו.', confirmLabel: 'שחזור' }))) return;
                             const wf = await repo.restoreVersionToDraft(org.id, workflow.id, v.id);
                             const s = { config: structuredClone(wf.draft), design: structuredClone(wf.design) };
                             setSnap(s);
@@ -923,8 +924,8 @@ export function WorkflowEditor() {
             icon={RotateCcw}
             aria-label="ביטול שינויים"
             disabled={!dirty}
-            onClick={() => {
-              if (!window.confirm('לבטל את כל השינויים שלא נשמרו (תוכן ועיצוב)?')) return;
+            onClick={async () => {
+              if (!(await confirmAction({ title: 'לבטל את השינויים?', message: 'כל מה שלא נשמר (תוכן ועיצוב) יחזור למצב השמור האחרון.', confirmLabel: 'ביטול השינויים', cancelLabel: 'המשך עריכה', destructive: true }))) return;
               setSnap(structuredClone(savedSnap));
             }}
           >

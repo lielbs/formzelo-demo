@@ -9,6 +9,7 @@ import { formatDate, formatNumber } from '../../lib/format';
 import { PaymentConnectors } from './PaymentConnectors';
 import { runtimeConfiguration } from '../../production/runtime';
 import { TeamCard } from './TeamCard';
+import { AccountCard } from './AccountCard';
 
 interface FormValues {
   name: string;
@@ -189,6 +190,7 @@ export function Settings() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {runtimeConfiguration.mode === 'demo' && <PaymentConnectors />}
+        {runtimeConfiguration.mode === 'production' && <AccountCard />}
       </div>
 
       <Modal
