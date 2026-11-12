@@ -1,15 +1,33 @@
-import { Info, MessageSquareText, MoreHorizontal, Phone, Repeat2 } from 'lucide-react';
+import { AlertTriangle, Armchair, Info, MessageSquareText, MoreHorizontal, NotebookPen, Repeat2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Button, cx } from '../../components/ui';
 import { decidePending, transition } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import { ACTION_HE, isLate, nextAction, SOURCE_HE } from '../domain/status';
+import { displayPhone } from '../domain/phone';
+import { isDone } from '../domain/shiftList';
+import { ACTION_HE, bucketOf, isLate, nextAction, SOURCE_HE } from '../domain/status';
 import type { ShiftReservation } from '../domain/types';
 import { StatusChip } from '../ui';
 
-/** One row: time · guest/party · status · table · note cue · the single next action. */
-export function ReservationRow({ r, now, labels, selected, canAct, onSelect, onDone, onAssign }: {
-  r: ShiftReservation; now: Date; labels: Map<string, string>; selected: boolean; canAct: boolean;
+const duration = (r: ShiftReservation) => {
+  const m = Math.max(0, Math.round((new Date(r.endsAt).getTime() - new Date(r.startsAt).getTime()) / 60_000));
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+};
+
+function tone(r: ShiftReservation, now: Date) {
+  if (isDone(r)) return 'done';
+  if (bucketOf(r, now) === 'attention') return 'attention';
+  if (r.status === 'arrived') return 'arrived';
+  if (r.status === 'seated') return 'seated';
+  return 'upcoming';
+}
+
+/**
+ * One booking card: time and length, guest and phone, table and party, what to know, and the
+ * single next action one tap away. The card body opens the full details.
+ */
+export function ReservationRow({ r, now, labels, selected, canAct, next = false, onSelect, onDone, onAssign }: {
+  r: ShiftReservation; now: Date; labels: Map<string, string>; selected: boolean; canAct: boolean; next?: boolean;
   onSelect: () => void; onDone: (message: string) => void; onAssign: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -17,6 +35,7 @@ export function ReservationRow({ r, now, labels, selected, canAct, onSelect, onD
   const action = nextAction(r, now);
   const late = isLate(r, now);
   const tables = r.tableIds.map((id) => labels.get(id) ?? '?').join('+');
+  const needsTable = !isDone(r) && r.tableIds.length === 0;
 
   async function run() {
     if (!action) return;
@@ -37,44 +56,64 @@ export function ReservationRow({ r, now, labels, selected, canAct, onSelect, onD
   }
 
   return (
-    <li>
-      <div className={cx('grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-xl border bg-white px-3 py-2 sm:grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_5rem_auto]',
-        selected ? 'border-orange ring-2 ring-orange/40' : 'border-cloud-200', r.status === 'completed' || r.status === 'cancelled' || r.status === 'no_show' ? 'opacity-70' : '')}>
-        <button type="button" onClick={onSelect} className="col-span-2 grid min-h-[44px] grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-3 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange rounded-lg sm:col-span-2"
->
-          <span className="text-lg font-semibold tabular-nums text-ink" dir="ltr">{r.time}</span>
-          <span className="min-w-0">
-            <span className="flex items-center gap-1.5">
-              <span className="truncate font-medium text-ink">{r.guestName}</span>
-              <span className="shrink-0 rounded-md bg-cloud px-1.5 text-sm font-semibold tabular-nums text-ink">{r.party}<span className="sr-only"> סועדים</span></span>
-              {r.requests && <MessageSquareText className="h-4 w-4 shrink-0 text-orange-800" aria-label="יש בקשה מיוחדת" />}
-              {r.notesCount > 0 && <span className="shrink-0 text-xs text-ink-muted" aria-label={`${r.notesCount} הערות`}>•{r.notesCount}</span>}
-              {r.visits > 0 && <Repeat2 className="h-4 w-4 shrink-0 text-teal-700" aria-label={`ביקור חוזר (${r.visits})`} />}
-              {r.noShows > 0 && <span className="shrink-0 text-xs font-medium text-red-700">לא הגיעו בעבר: {r.noShows}</span>}
+    <li className={cx('hs-item', `hs-tone-${tone(r, now)}`)}>
+      <div className="hs-card" data-next={next || undefined} data-selected={selected || undefined} data-dim={isDone(r) || undefined}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
+          <button type="button" onClick={onSelect}
+            className="flex min-h-[48px] min-w-0 flex-1 basis-[55%] items-center gap-3 rounded-lg text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hs-accent)]">
+            <span className="flex w-[3.4rem] shrink-0 flex-col">
+              <span className="hs-time" dir="ltr">{r.time}</span>
+              <span className="hs-muted text-xs tabular-nums" dir="ltr" aria-label={`משך ${duration(r)} שעות`}>{duration(r)}</span>
             </span>
-            <span className="flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
-              <span>{SOURCE_HE[r.source]}</span>
-              {r.guestPhone && <Phone className="h-3 w-3" aria-hidden />}
-              <span className="sm:hidden">{tables ? `שולחן ${tables}` : 'בלי שולחן'}</span>
+            <span className="min-w-0 flex-1">
+              {next && <span className="hs-nextlabel block">הבאים בתור</span>}
+              <span data-guest-name className="block truncate text-[15px] font-semibold">{r.guestName}</span>
+              <span className="hs-muted flex min-w-0 items-center gap-1.5 text-[13px]">
+                {r.guestPhone && <bdi dir="ltr" className="truncate tabular-nums">{displayPhone(r.guestPhone)}</bdi>}
+                {r.guestPhone && <span aria-hidden>·</span>}
+                <span className="shrink-0">{SOURCE_HE[r.source]}</span>
+              </span>
+              <span className="sr-only"> — פתיחת פרטים</span>
             </span>
-            <span className="sr-only"> — פתיחת פרטים</span>
+          </button>
+
+          <span className="hs-seat shrink-0" data-warn={needsTable || undefined}>
+            <span title={tables ? `שולחן ${tables}` : 'עוד לא שובץ שולחן'}>
+              <Armchair className="h-3.5 w-3.5" aria-hidden />
+              {tables ? <span><span className="sr-only">שולחן </span>{tables}</span> : <span>בלי שולחן</span>}
+            </span>
+            <span title={`${r.party} סועדים`}>
+              <Users className="h-3.5 w-3.5" aria-hidden />{r.party}<span className="sr-only"> סועדים</span>
+            </span>
           </span>
-        </button>
-        <span className="col-start-3 row-start-1 justify-self-end sm:col-start-auto sm:row-start-auto sm:justify-self-start"><StatusChip status={r.status} late={late} /></span>
-        <span className={cx('hidden text-sm font-semibold tabular-nums sm:block', tables ? 'text-ink' : 'text-red-700')}>{tables ? `שולחן ${tables}` : 'בלי שולחן'}</span>
-        <span className={cx('col-span-3 items-center justify-end gap-1.5 sm:col-span-1 sm:flex', action && canAct ? 'flex' : 'hidden')}>
-          {action && canAct && (
-            <Button size="md" variant={action === 'approve' ? 'primary' : action === 'assign' ? 'secondary' : 'dark'} loading={busy} onClick={run} className="h-11 min-w-[6rem]">
-              {ACTION_HE[action]}
-            </Button>
-          )}
-          <Button size="md" variant="ghost" icon={MoreHorizontal} onClick={onSelect} aria-label={`עוד פעולות עבור ${r.guestName}`} className="h-11 w-11 px-0" />
-        </span>
-        {err && <p role="alert" className="col-span-full text-sm text-red-700">{err}</p>}
-        {r.status === 'pending_approval' && r.pendingExpiresAt && (
-          <p className="col-span-full text-xs text-amber-800">ממתין לאישור שלכם{r.approvalRule && r.approvalRule !== 'venue_default' ? ' (לפי כלל)' : ''}</p>
+
+          <span className="flex w-full items-center gap-2 sm:w-auto">
+            <StatusChip status={r.status} late={late} />
+            <span className="hs-muted flex min-w-0 items-center gap-2 text-xs">
+              {r.requests && <span className="inline-flex items-center gap-0.5 text-[var(--hs-attention)]" title={r.requests}><MessageSquareText className="h-4 w-4" aria-hidden /><span className="sr-only">יש בקשה מיוחדת</span></span>}
+              {r.notesCount > 0 && <span className="inline-flex items-center gap-0.5" title={`${r.notesCount} הערות צוות`}><NotebookPen className="h-4 w-4" aria-hidden />{r.notesCount}<span className="sr-only"> הערות צוות</span></span>}
+              {r.visits > 0 && <span className="inline-flex items-center gap-0.5 text-[var(--hs-seated)]" title={`ביקור חוזר (${r.visits})`}><Repeat2 className="h-4 w-4" aria-hidden />{r.visits}<span className="sr-only"> ביקורים קודמים</span></span>}
+              {r.noShows > 0 && <span className="inline-flex items-center gap-0.5 font-medium text-red-700" title={`לא הגיעו בעבר: ${r.noShows}`}><AlertTriangle className="h-4 w-4" aria-hidden />{r.noShows}<span className="sr-only"> פעמים לא הגיעו בעבר</span></span>}
+            </span>
+            <span className="ms-auto flex items-center gap-1.5">
+              {action && canAct && (
+                <Button size="md" variant={action === 'approve' ? 'primary' : action === 'assign' ? 'secondary' : 'dark'} loading={busy} onClick={run} className="h-11 min-w-[6rem]">
+                  {ACTION_HE[action]}
+                </Button>
+              )}
+              <Button size="md" variant="ghost" icon={MoreHorizontal} onClick={onSelect} aria-label={`עוד פעולות עבור ${r.guestName}`} className="h-11 w-11 px-0" />
+            </span>
+          </span>
+        </div>
+        {(err || (r.status === 'pending_approval' && r.pendingExpiresAt) || r.overrideReason) && (
+          <div className="grid gap-1 border-t border-[var(--hs-line)] px-4 py-2 text-xs">
+            {err && <p role="alert" className="text-sm text-red-700">{err}</p>}
+            {r.status === 'pending_approval' && r.pendingExpiresAt && (
+              <p className="text-amber-800">ממתין לאישור שלכם{r.approvalRule && r.approvalRule !== 'venue_default' ? ' (לפי כלל)' : ''}</p>
+            )}
+            {r.overrideReason && <p className="hs-muted"><Info className="inline h-3 w-3" aria-hidden /> חריגה באישור מנהל: {r.overrideReason}</p>}
+          </div>
         )}
-        {r.overrideReason && <p className="col-span-full text-xs text-ink-muted"><Info className="inline h-3 w-3" aria-hidden /> חריגה באישור מנהל: {r.overrideReason}</p>}
       </div>
     </li>
   );
