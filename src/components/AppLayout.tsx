@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useRepo, useRepoQuery } from '../data/store';
 import { PENDING_STATUSES } from '../engine/transitions';
 import { Logo } from './Brand';
+import { GlassDock, type DockItem } from './GlassDock';
 import { ButtonLink, cx, ErrorState, Spinner } from './ui';
 import { useToast } from './Toast';
 import { runtimeConfiguration } from '../production/runtime';
@@ -103,43 +104,29 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
 }
 
 /**
- * Phone and tablet tab bar: the daily destinations one thumb-tap away, the new-workflow action in
- * the middle and everything else under "עוד" (the full menu). Hidden from 1024 px (sidebar).
+ * Phone and tablet tab bar: the daily destinations in a glass dock (tap or drag along it), the
+ * new-workflow action beside it and everything else under "עוד" (the full menu). Hidden from
+ * 1024 px, where the sidebar takes over.
  */
 function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => void; moreOpen: boolean }) {
   const location = useLocation();
-  const tab = (to: string, label: string, Icon: typeof Inbox, end?: boolean, badge?: number) => (
-    <NavLink to={to} end={end}
-      className={({ isActive }) => cx('relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-        isActive ? 'text-ink' : 'text-ink-muted hover:text-ink')}>
-      {({ isActive }) => (
-        <>
-          <span className={cx('flex h-7 w-12 items-center justify-center rounded-full transition-colors', isActive && 'bg-orange-50 text-orange-700')}>
-            <Icon className="h-5 w-5" aria-hidden />
-          </span>
-          <span>{label}</span>
-          {!!badge && <span className="absolute top-1 start-[calc(50%+6px)] min-w-[18px] rounded-full bg-orange-700 px-1 text-center text-[10px] font-semibold leading-[18px] text-white" aria-label={`${badge} ממתינות`}>{badge}</span>}
-        </>
-      )}
-    </NavLink>
-  );
-  const inMore = ['/app/brand', '/app/analytics', '/app/settings', '/app/tables'].some((p) => location.pathname.startsWith(p));
+  const navigate = useNavigate();
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const inMore = ['/app/brand', '/app/analytics', '/app/settings', '/app/tables'].some((p) => path.startsWith(p));
+  const items: DockItem[] = [
+    { key: 'home', label: 'בית', icon: LayoutDashboard, to: '/app' },
+    { key: 'requests', label: 'בקשות', icon: Inbox, to: '/app/requests', badge: pending, badgeLabel: `${pending} ממתינות` },
+    { key: 'workflows', label: 'תהליכים', icon: Workflow, to: '/app/workflows' },
+    { key: 'more', label: 'עוד', icon: MoreHorizontal, onSelect: onMore, ariaLabel: 'עוד — התפריט המלא', expanded: moreOpen },
+  ];
+  const active = moreOpen || inMore ? 3
+    : path === '/app' ? 0
+    : path.startsWith('/app/requests') ? 1
+    : path.startsWith('/app/workflows') && path !== '/app/workflows/new' ? 2 : -1;
   return (
-    <nav aria-label="ניווט מהיר" className="fz-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-cloud-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-      <div className="mx-auto flex max-w-xl items-stretch gap-1 py-1">
-        {tab('/app', 'בית', LayoutDashboard, true)}
-        {tab('/app/requests', 'בקשות', Inbox, false, pending)}
-        <NavLink to="/app/workflows/new" aria-label="תהליך חדש" className="flex min-h-[56px] flex-1 items-center justify-center focus-visible:outline-none">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-700 text-white shadow-lift transition"><Plus className="h-5 w-5" aria-hidden /></span>
-        </NavLink>
-        {tab('/app/workflows', 'תהליכים', Workflow)}
-        <button type="button" onClick={onMore} aria-expanded={moreOpen} aria-label="עוד — התפריט המלא"
-          className={cx('relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', inMore ? 'text-ink' : 'text-ink-muted hover:text-ink')}>
-          <span className={cx('flex h-7 w-12 items-center justify-center rounded-full', inMore && 'bg-orange-50 text-orange-700')}><MoreHorizontal className="h-5 w-5" aria-hidden /></span>
-          <span>עוד</span>
-        </button>
-      </div>
-    </nav>
+    <GlassDock label="ניווט מהיר" mode="nav" hideFrom="lg" items={items} active={active}
+      onChoose={(i) => { const it = items[i]!; if (it.to) navigate(it.to); else it.onSelect?.(); }}
+      action={{ label: 'תהליך חדש', icon: Plus, to: '/app/workflows/new' }} />
   );
 }
 
@@ -244,7 +231,10 @@ export function AppLayout() {
 
       <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-[calc(var(--fz-tabbar,0px)+1.5rem)] pt-6 sm:px-6 lg:px-10 lg:py-10">
         <Suspense fallback={<Spinner />}>
-          <Outlet />
+          {/* Each screen eases in when you move between sections (skipped for reduced motion). */}
+          <div key={location.pathname} className="fz-route">
+            <Outlet />
+          </div>
         </Suspense>
       </main>
       <TabBar pending={pending} moreOpen={mobileOpen} onMore={() => setMobileOpen(true)} />

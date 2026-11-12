@@ -91,11 +91,159 @@
 .fz-diagram .card { fill: #fff; stroke: #d9dde3; stroke-width: 0.8; }
 
 /* App tab bar height (phones/tablets): bottom-anchored bars and toasts sit above it. */
-:root:has(.fz-app) { --fz-tabbar: calc(64px + env(safe-area-inset-bottom, 0px)); }
+:root:has(.fz-app) { --fz-tabbar: calc(84px + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 1024px) { :root:has(.fz-app) { --fz-tabbar: 0px; } }
 
 /* App-like taps: no grey flash or double-tap zoom delay on controls (press motion: src/lib/press.ts). */
 button, a, summary, [role="button"], [role="radio"], [role="tab"], [role="menuitem"], [role="option"], label {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+/* ---------- Glass dock (src/components/GlassDock.tsx): phones and tablets ---------- */
+:root {
+  --fz-glass-bg: rgb(255 255 255 / 0.72);
+  --fz-glass-edge: rgb(255 255 255 / 0.75);
+  --fz-glass-line: rgb(30 41 53 / 0.1);
+  --fz-glass-shadow: 0 10px 30px -8px rgb(15 20 27 / 0.28), 0 2px 8px rgb(15 20 27 / 0.08);
+  --fz-dock-glow: rgb(30 41 53 / 0.08);
+  --fz-dock-ink: #374151;
+  --fz-dock-on: #9a3412;
+  --fz-dock-accent: #c2410c;
+  --fz-dock-on-accent: #ffffff;
+  --fz-dock-ring: #ffffff;
+}
+html.fz-dark {
+  --fz-glass-bg: rgb(30 38 49 / 0.66);
+  --fz-glass-edge: rgb(255 255 255 / 0.14);
+  --fz-glass-line: rgb(255 255 255 / 0.08);
+  --fz-glass-shadow: 0 12px 34px -8px rgb(0 0 0 / 0.7), 0 2px 8px rgb(0 0 0 / 0.35);
+  --fz-dock-glow: rgb(255 255 255 / 0.1);
+  --fz-dock-ink: #c9d2dc;
+  --fz-dock-on: #fbb592;
+  --fz-dock-accent: #f08a62;
+  --fz-dock-on-accent: #1a0f0a;
+  --fz-dock-ring: #171e27;
+}
+.fz-glass {
+  background: var(--fz-glass-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--fz-glass-line);
+  box-shadow: var(--fz-glass-shadow), inset 0 1px 0 var(--fz-glass-edge);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .fz-glass { background: #ffffff; }
+  html.fz-dark .fz-glass { background: #171e27; }
+}
+.fz-dock {
+  position: fixed;
+  inset-inline: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-inline: auto;
+  max-width: 560px;
+  pointer-events: none;
+}
+.fz-dock > * { pointer-events: auto; }
+@media (min-width: 768px) { .fz-dock-phone { display: none; } }
+@media (min-width: 1024px) { .fz-dock-handheld { display: none; } }
+.fz-dock-items {
+  position: relative;
+  display: flex;
+  height: 64px;
+  flex: 1;
+  border-radius: 999px;
+  padding: 5px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fz-dock-glow {
+  position: absolute;
+  inset-block: 5px;
+  inset-inline-start: 5px;
+  width: calc((100% - 10px) / var(--fz-dock-n, 3));
+  border-radius: 999px;
+  background: var(--fz-dock-glow);
+  box-shadow: inset 0 1px 0 var(--fz-glass-edge);
+  transition: transform 0.42s cubic-bezier(0.34, 1.32, 0.64, 1), opacity 0.2s ease;
+}
+.fz-dock-items[data-dragging] .fz-dock-glow { transition: transform 0.06s linear; background: color-mix(in srgb, var(--fz-dock-glow) 140%, transparent); }
+.fz-dock-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 999px;
+  color: var(--fz-dock-ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  -webkit-user-drag: none;
+  transition: color 0.2s ease;
+}
+.fz-dock-item[aria-checked="true"], .fz-dock-item[data-on], .fz-dock-item[data-hot] { color: var(--fz-dock-on); }
+.fz-dock-items[data-dragging] .fz-dock-item:not([data-hot]) { color: var(--fz-dock-ink); }
+.fz-dock-item:focus-visible { outline: 2px solid var(--fz-dock-accent); outline-offset: -3px; }
+.fz-dock-icon { transition: transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1); }
+.fz-dock-item[aria-checked="true"] .fz-dock-icon, .fz-dock-item[data-on] .fz-dock-icon { transform: translateY(-1px) scale(1.08); }
+.fz-dock-badge {
+  position: absolute;
+  top: 4px;
+  inset-inline-start: calc(50% + 6px);
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--fz-dock-accent);
+  color: var(--fz-dock-on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  padding-inline: 4px;
+  box-shadow: 0 0 0 2px var(--fz-dock-ring);
+}
+.fz-dock-action {
+  display: inline-flex;
+  height: 64px;
+  width: 64px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--fz-dock-accent);
+}
+.fz-dock-action:focus-visible { outline: 3px solid var(--fz-dock-accent); outline-offset: 2px; }
+.fz-dock-action:disabled { opacity: 0.5; }
+@media (prefers-reduced-motion: no-preference) {
+  .fz-dock { animation: fz-dock-in 0.45s cubic-bezier(0.34, 1.32, 0.64, 1) both; }
+  @keyframes fz-dock-in { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .fz-dock-item[aria-checked="true"] .fz-dock-icon, .fz-dock-item[data-on] .fz-dock-icon { animation: fz-dock-pop 0.42s cubic-bezier(0.34, 1.6, 0.64, 1); }
+  @keyframes fz-dock-pop { 0% { transform: scale(0.82); } 60% { transform: translateY(-2px) scale(1.14); } 100% { transform: translateY(-1px) scale(1.08); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fz-dock-glow, .fz-dock-item, .fz-dock-icon { transition: none; }
+}
+
+/* ---------- Motion across the app: screen changes and list entry ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .fz-route { animation: fz-route-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  @keyframes fz-route-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .fz-stagger > * { animation: fz-item-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .fz-stagger > :nth-child(2) { animation-delay: 30ms; }
+  .fz-stagger > :nth-child(3) { animation-delay: 60ms; }
+  .fz-stagger > :nth-child(4) { animation-delay: 90ms; }
+  .fz-stagger > :nth-child(5) { animation-delay: 120ms; }
+  .fz-stagger > :nth-child(6) { animation-delay: 150ms; }
+  .fz-stagger > :nth-child(7) { animation-delay: 180ms; }
+  .fz-stagger > :nth-child(n + 8) { animation-delay: 210ms; }
+  @keyframes fz-item-in { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: none; } }
 }

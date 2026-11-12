@@ -99,7 +99,7 @@ export function WorkflowList() {
           {needle ? 'נסו מילת חיפוש אחרת.' : 'כתבו בעברית מה אתם צריכים, וקבלו תהליך מוכן לעריכה.'}
         </EmptyState>
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2">
+        <ul className="fz-stagger grid gap-4 md:grid-cols-2">
           {list.map((w) => {
             const s = STATUS[w.status];
             return (

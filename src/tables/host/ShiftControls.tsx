@@ -1,5 +1,6 @@
 import { ClipboardList, Footprints, LayoutGrid, List, PhoneCall, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { GlassDock } from '../../components/GlassDock';
 import { cx } from '../../components/ui';
 import { FLAG_HE, PARTY_MAX, TILE_HE, type ShiftFilters, type TileCount, type TileKey } from '../domain/shiftList';
 import { SOURCE_HE, STATUS_HE } from '../domain/status';
@@ -132,81 +133,16 @@ export function AddChooser({ onPick, onClose }: { onPick: (m: QuickAddMode) => v
   );
 }
 
-/**
- * Phone dock: a floating glass capsule with the three views. Tap a view, or drag a finger along
- * the capsule — the highlight follows and settles on the nearest view when released. Arrow keys
- * move between views. A round glass add button sits beside it.
- */
+/** Phone dock for the shift: the three views (drag or tap) and the add button. */
 export function ShiftDock({ view, onView, waiting, onAdd, canAdd }: { view: View; onView: (v: View) => void; waiting: number; onAdd: () => void; canAdd: boolean }) {
-  const tabs: { v: View; label: string; icon: typeof List }[] = [
-    { v: 'list', label: 'רשימה', icon: List },
-    { v: 'floor', label: 'מפה', icon: LayoutGrid },
-    { v: 'waitlist', label: 'המתנה', icon: ClipboardList },
-  ];
-  const index = Math.max(0, tabs.findIndex((t) => t.v === view));
-  const box = useRef<HTMLDivElement>(null);
-  const press = useRef<{ id: number; x: number; dragging: boolean } | null>(null);
-  const [drag, setDrag] = useState<{ x: number; hot: number } | null>(null);
-  const [bump, setBump] = useState(0);
-
-  /** Distance of the finger from the capsule's start edge (right in RTL), as a highlight offset. */
-  const measure = (clientX: number) => {
-    const r = box.current!.getBoundingClientRect();
-    const rtl = getComputedStyle(box.current!).direction === 'rtl';
-    const tab = (r.width - 10) / tabs.length;
-    const fromStart = rtl ? r.right - 5 - clientX : clientX - r.left - 5;
-    const offset = Math.min(Math.max(fromStart - tab / 2, 0), tab * (tabs.length - 1));
-    return { x: rtl ? -offset : offset, hot: Math.round(offset / tab) };
-  };
-  const choose = (i: number) => { if (tabs[i] && tabs[i]!.v !== view) { onView(tabs[i]!.v); setBump((b) => b + 1); } };
-
+  const views: View[] = ['list', 'floor', 'waitlist'];
   return (
-    <nav aria-label="תצוגות המשמרת" className="hs-dock md:hidden">
-      <div ref={box} role="radiogroup" aria-label="תצוגה" className="hs-glass hs-dock-tabs" data-dragging={drag ? '' : undefined}
-        onPointerDown={(e) => { if (e.button === 0) press.current = { id: e.pointerId, x: e.clientX, dragging: false }; }}
-        onPointerMove={(e) => {
-          const p = press.current;
-          if (!p || p.id !== e.pointerId) return;
-          if (!p.dragging && Math.abs(e.clientX - p.x) < 8) return;
-          if (!p.dragging) { p.dragging = true; box.current?.setPointerCapture(e.pointerId); }
-          const m = measure(e.clientX);
-          setDrag((d) => {
-            if (d && d.hot !== m.hot) navigator.vibrate?.(6);
-            return { x: m.x, hot: m.hot };
-          });
-        }}
-        onPointerUp={(e) => {
-          const p = press.current;
-          press.current = null;
-          if (!p || !p.dragging) return;
-          choose(measure(e.clientX).hot);
-          setDrag(null);
-        }}
-        onPointerCancel={() => { press.current = null; setDrag(null); }}
-        onKeyDown={(e) => {
-          const rtl = getComputedStyle(e.currentTarget).direction === 'rtl';
-          const step = e.key === 'ArrowLeft' ? (rtl ? 1 : -1) : e.key === 'ArrowRight' ? (rtl ? -1 : 1) : 0;
-          if (!step) return;
-          e.preventDefault();
-          const next = (index + step + tabs.length) % tabs.length;
-          choose(next);
-          box.current?.querySelectorAll<HTMLButtonElement>('[role=radio]')[next]?.focus();
-        }}>
-        {/* RTL: the first view is on the right, so the next one is further left. */}
-        <span className="hs-dock-glow" aria-hidden
-          style={{ transform: drag ? `translateX(${drag.x}px) scale(1.06, 1.08)` : `translateX(${-100 * index}%)` }} />
-        {tabs.map(({ v, label, icon: Icon }, i) => (
-          <button key={v} type="button" role="radio" aria-checked={view === v} tabIndex={view === v ? 0 : -1}
-            data-hot={drag?.hot === i ? '' : undefined} onClick={() => choose(i)} className="hs-tab">
-            <Icon key={view === v ? `on-${bump}` : 'off'} className="hs-tab-icon h-[22px] w-[22px]" aria-hidden />
-            <span>{label}</span>
-            {v === 'waitlist' && waiting > 0 && <span className="hs-badge" aria-label={`${waiting} ממתינים`}>{waiting}</span>}
-          </button>
-        ))}
-      </div>
-      <button type="button" onClick={onAdd} disabled={!canAdd} aria-label="הוספה" title="הוספה" className="hs-glass hs-dock-add">
-        <Plus className="h-7 w-7" aria-hidden />
-      </button>
-    </nav>
+    <GlassDock label="תצוגות המשמרת" mode="radio" hideFrom="md" active={views.indexOf(view)} onChoose={(i) => onView(views[i]!)}
+      items={[
+        { key: 'list', label: 'רשימה', icon: List },
+        { key: 'floor', label: 'מפה', icon: LayoutGrid },
+        { key: 'waitlist', label: 'המתנה', icon: ClipboardList, badge: waiting, badgeLabel: `${waiting} ממתינים` },
+      ]}
+      action={{ label: 'הוספה', icon: Plus, onClick: onAdd, disabled: !canAdd }} />
   );
 }

@@ -153,7 +153,7 @@ export function Dashboard() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="fz-stagger mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((s, i) => (
               <li key={s.label}>
                 <Link to={s.to} className={cx('flex items-center gap-2.5 rounded-xl border p-3 text-sm transition hover:border-ink-soft', s.done ? 'border-teal-50 bg-teal-50/50 text-ink-muted' : 'border-cloud-200')}>
@@ -192,7 +192,7 @@ export function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
+      <div className="fz-stagger grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
         <Stat label="תהליכים פעילים" value={formatNumber(stats.active)} icon={WorkflowIcon} hint={stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined} />
         <Stat label="בקשות ב-7 ימים" value={formatNumber(stats.incoming)} icon={Inbox} tone="orange" />
         <Stat label="ממתינות לטיפול" value={formatNumber(stats.pending)} icon={Clock} tone="orange" />
@@ -283,7 +283,7 @@ export function Dashboard() {
             <h2 className="font-semibold">לפי מטרת התהליך</h2>
             <p className="text-xs text-ink-muted">כל תהליך נמדד לפי מה שהוא נועד לעשות — לא כל תהליך הוא מכירה.</p>
           </div>
-          <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="fz-stagger mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {stats.outcomes.map(({ w, outcome }) => (
               <li key={w.id}>
                 <Link to={`/app/workflows/${w.id}`} className="block h-full rounded-xl border border-cloud-200 p-4 transition hover:border-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange">

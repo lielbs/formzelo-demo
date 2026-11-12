@@ -35,7 +35,7 @@ export function RunsTable({ runs, workflows, actions }: { runs: WorkflowRun[]; w
               <th className="w-8" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="fz-stagger">
             {runs.map((r) => (
               <tr
                 key={r.id}
@@ -68,7 +68,7 @@ export function RunsTable({ runs, workflows, actions }: { runs: WorkflowRun[]; w
           </tbody>
         </table>
       </div>
-      <ul className="divide-y divide-cloud-200 md:hidden">
+      <ul className="fz-stagger divide-y divide-cloud-200 md:hidden">
         {runs.map((r) => (
           <li key={r.id}>
             <button type="button" onClick={() => open(r.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-start hover:bg-cloud/60">
