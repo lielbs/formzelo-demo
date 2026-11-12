@@ -11,6 +11,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RepoProvider } from './data/store';
+import { framedByOtherOrigin, isFrameProtectedPath, routePath } from './lib/frameGuard';
 import { BASE_PATH } from './lib/links';
 
 // Reopen a deep link that the site-wide 404 page sent here (see public/live-fallback.js).
@@ -24,7 +25,16 @@ try {
   // Storage unavailable: start at the requested page.
 }
 
-createRoot(document.getElementById('root')!).render(
+const root = createRoot(document.getElementById('root')!);
+if (isFrameProtectedPath(routePath(window.location.pathname, BASE_PATH)) && framedByOtherOrigin(window)) {
+  // Staff and account screens never run inside another site's frame (clickjacking).
+  root.render(
+    <main dir="rtl" lang="he" style={{ padding: 24, fontFamily: 'Rubik, system-ui, sans-serif', textAlign: 'center' }}>
+      <p>מטעמי אבטחה, המסך הזה נפתח רק בחלון נפרד.</p>
+      <p><a href={window.location.href} target="_blank" rel="noopener noreferrer">פתיחה בחלון חדש</a></p>
+    </main>,
+  );
+} else root.render(
   <StrictMode>
     <ErrorBoundary>
     <BrowserRouter basename={BASE_PATH || undefined}>
