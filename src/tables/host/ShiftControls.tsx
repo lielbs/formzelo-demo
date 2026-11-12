@@ -108,29 +108,33 @@ export function AddChooser({ onPick, onClose }: { onPick: (m: QuickAddMode) => v
   );
 }
 
-/** Phone dock: the three views plus the add button, attached to the bottom edge. */
+/**
+ * Phone dock: a floating glass capsule with the three views and a highlight that slides to the
+ * chosen one, plus a round glass add button. Motion is skipped for reduced-motion users.
+ */
 export function ShiftDock({ view, onView, waiting, onAdd, canAdd }: { view: View; onView: (v: View) => void; waiting: number; onAdd: () => void; canAdd: boolean }) {
   const tabs: { v: View; label: string; icon: typeof List }[] = [
     { v: 'list', label: 'רשימה', icon: List },
     { v: 'floor', label: 'מפה', icon: LayoutGrid },
     { v: 'waitlist', label: 'המתנה', icon: ClipboardList },
   ];
+  const index = Math.max(0, tabs.findIndex((t) => t.v === view));
   return (
-    <nav aria-label="תצוגות המשמרת" className="hs-dock fixed inset-x-0 bottom-0 z-30 md:hidden">
-      <div className="mx-auto flex max-w-lg items-center gap-2 px-2">
-        <div role="radiogroup" aria-label="תצוגה" className="flex flex-1">
-          {tabs.map(({ v, label, icon: Icon }) => (
-            <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => onView(v)} className="hs-tab">
-              <span className="hs-tab-icon"><Icon className="h-5 w-5" aria-hidden /></span>
-              <span>{label}</span>
-              {v === 'waitlist' && waiting > 0 && <span className="hs-badge" aria-label={`${waiting} ממתינים`}>{waiting}</span>}
-            </button>
-          ))}
-        </div>
-        <button type="button" onClick={onAdd} disabled={!canAdd} className="hs-dock-add">
-          <Plus className="h-5 w-5" aria-hidden /> הוספה
-        </button>
+    <nav aria-label="תצוגות המשמרת" className="hs-dock md:hidden">
+      <div role="radiogroup" aria-label="תצוגה" className="hs-glass hs-dock-tabs">
+        {/* RTL: the first tab is on the right, so moving to the next one goes left. */}
+        <span className="hs-dock-glow" aria-hidden style={{ transform: `translateX(${-100 * index}%)` }} />
+        {tabs.map(({ v, label, icon: Icon }) => (
+          <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => onView(v)} className="hs-tab">
+            <Icon className="hs-tab-icon h-[22px] w-[22px]" aria-hidden />
+            <span>{label}</span>
+            {v === 'waitlist' && waiting > 0 && <span className="hs-badge" aria-label={`${waiting} ממתינים`}>{waiting}</span>}
+          </button>
+        ))}
       </div>
+      <button type="button" onClick={onAdd} disabled={!canAdd} aria-label="הוספה" title="הוספה" className="hs-glass hs-dock-add">
+        <Plus className="h-7 w-7" aria-hidden />
+      </button>
     </nav>
   );
 }
