@@ -17,6 +17,7 @@ import { ImagePicker } from '../../components/ImagePicker';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, cx, ErrorState, FieldLabel, Input, Select, Spinner, Textarea } from '../../components/ui';
 import { useRepoQuery } from '../../data/store';
+import { appHref } from '../../lib/links';
 import { TYPOGRAPHY } from '../../theme/tokens';
 import { contrastRatio } from '../../theme/color';
 import { getVenue, publicVenue, publishVenue, saveDraft } from '../data/client';
@@ -549,7 +550,7 @@ function PreviewPanel({ open, onClose, device, setDevice, lang, setLang, payload
       </div>
       <div ref={box} className="w-full">
         <div dir="ltr" className="relative mx-auto overflow-hidden rounded-[22px] border border-cloud-300 bg-white shadow-lift" style={{ width: d.w * scale, height: d.h * scale }}>
-          <iframe ref={frame} title="תצוגה מקדימה של דף האורחים" src="/t-preview" onLoad={post}
+          <iframe ref={frame} title="תצוגה מקדימה של דף האורחים" src={appHref('/t-preview')} onLoad={post}
             style={{ position: 'absolute', top: 0, left: 0, width: d.w, height: d.h, transform: `scale(${scale})`, transformOrigin: '0 0', border: 0 }} />
         </div>
       </div>
