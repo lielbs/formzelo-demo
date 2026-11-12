@@ -104,12 +104,12 @@ export function Dashboard() {
     <>
       <PageHeader
         eyebrow={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {org.isDemo && <DemoBadge />}
-            {org.industry && <span className="text-xs text-ink-muted">{org.industry}</span>}
+            <span className="break-words text-[13px] font-semibold uppercase tracking-wide text-ink-muted">{org.name}{org.industry ? ` · ${org.industry}` : ''}</span>
           </div>
         }
-        title={`לוח בקרה · ${org.name}`}
+        title="לוח בקרה"
         description={org.tagline}
         actions={
           <>
@@ -235,7 +235,7 @@ export function Dashboard() {
                   {openActions.map((a) => (
                     <li key={a.id}>
                       <Link to={`/app/requests/${a.runId}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-cloud">
-                        <span className="min-w-0 truncate">{a.title}</span>
+                        <span className="line-clamp-2 min-w-0 break-words">{a.title}</span>
                         <span className="shrink-0 text-xs text-ink-muted">
                           {runOf(a.runId)?.customerName || runOf(a.runId)?.reference} · {formatRelative(a.createdAt)}
                         </span>
@@ -288,7 +288,7 @@ export function Dashboard() {
               <li key={w.id}>
                 <Link to={`/app/workflows/${w.id}`} className="block h-full rounded-xl border border-cloud-200 p-4 transition hover:border-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 truncate text-sm font-semibold">{w.draft.title}</p>
+                    <p className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug">{w.draft.title}</p>
                     <Badge tone="neutral">{outcome.objectiveLabel}</Badge>
                   </div>
                   <p className="mt-3 flex items-baseline gap-2">

@@ -275,7 +275,7 @@ function TableDetail({ shift, tableId, states, now, canAct, onDone, onSelect }: 
                 <button type="button" onClick={() => onSelect({ kind: 'reservation', id: r.id })}
                   className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-cloud-200 px-3 text-start hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
                   <bdi dir="ltr" className="font-semibold tabular-nums">{r.time}</bdi>
-                  <span className="min-w-0 flex-1 truncate">{r.guestName} · {r.party}</span>
+                  <span className="line-clamp-2 min-w-0 flex-1 break-words">{r.guestName} · {r.party}</span>
                   <StatusChip status={r.status} />
                 </button>
               </li>

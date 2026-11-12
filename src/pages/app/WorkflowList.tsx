@@ -1,7 +1,7 @@
-import { Archive, ArchiveRestore, Copy, ExternalLink, Link2, Pencil, Plus, Search, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, Copy, ExternalLink, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { confirmAction } from '../../components/Confirm';
+import { chooseAction, confirmAction } from '../../components/Confirm';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, Input, PageHeader, Spinner } from '../../components/ui';
 import type { Workflow } from '../../domain/schema';
@@ -53,6 +53,40 @@ export function WorkflowList() {
       toast(e instanceof Error ? e.message : 'הפעולה נכשלה', 'error');
     } finally {
       setBusy(null);
+    }
+  };
+
+  const more = async (w: Workflow) => {
+    const key = await chooseAction({
+      title: w.draft.title,
+      options: [
+        ...(w.status === 'published' ? [{ key: 'open', label: 'פתיחת הטופס כמו לקוח', icon: ExternalLink }] : []),
+        { key: 'duplicate', label: 'שכפול כטיוטה', icon: Copy },
+        w.status === 'archived'
+          ? { key: 'restore', label: 'שחזור מהארכיון', icon: ArchiveRestore }
+          : { key: 'archive', label: 'העברה לארכיון', icon: Archive, hint: 'הקישור נסגר, הבקשות נשמרות' },
+        { key: 'delete', label: 'מחיקה', icon: Trash2, destructive: true },
+      ],
+    });
+    if (key === 'open') window.open(appHref(`/f/${w.slug}`), '_blank', 'noopener');
+    if (key === 'duplicate') await act(w.id + 'dup', () => repo.duplicateWorkflow(org.id, w.id), 'נוצר עותק כטיוטה');
+    if (key === 'restore') await act(w.id, () => repo.setArchived(org.id, w.id, false), 'התהליך שוחזר מהארכיון');
+    if (key === 'archive' && await confirmAction({ title: 'להעביר לארכיון?', message: 'הקישור הציבורי יפסיק לעבוד. הבקשות הקיימות נשמרות, ואפשר לשחזר מהארכיון בכל רגע.', confirmLabel: 'העברה לארכיון' })) {
+      await act(w.id, () => repo.setArchived(org.id, w.id, true), 'הועבר לארכיון');
+    }
+    if (key === 'delete') {
+      const requests = runCount(w.id);
+      const ok = await confirmAction({
+        title: `למחוק את "${w.draft.title}"?`,
+        message: requests
+          ? `התהליך ו־${formatNumber(requests)} הבקשות שהתקבלו בו יוסרו מהמערכת, והקישור הציבורי יפסיק לעבוד. אי אפשר לבטל את המחיקה.`
+          : 'התהליך יוסר מהמערכת והקישור הציבורי יפסיק לעבוד. אי אפשר לבטל את המחיקה.',
+        confirmLabel: 'מחיקה לצמיתות',
+        destructive: true,
+        typeToConfirm: requests ? w.draft.title : undefined,
+        action: () => repo.deleteWorkflow(org.id, w.id),
+      });
+      if (ok) toast('התהליך נמחק');
     }
   };
 
@@ -125,71 +159,33 @@ export function WorkflowList() {
                   <p className="mt-4 text-xs text-ink-soft">
                     {formatNumber(runCount(w.id))} בקשות · {w.draft.steps.length} שלבים · עודכן {formatRelative(w.updatedAt)}
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-cloud-200 pt-4">
+                  <div className="mt-4 flex items-center gap-2 border-t border-ink/[0.06] pt-4">
                     <Button size="sm" variant="dark" icon={Pencil} onClick={() => navigate(`/app/workflows/${w.id}`)}>
                       עריכה
                     </Button>
                     {w.status === 'published' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          icon={Link2}
-                          onClick={async () => {
-                            const ok = await copyText(publicFlowUrl(w.slug));
-                            await repo.trackUsage(org.id, 'link_copied', w.id);
-                            toast(ok ? 'הקישור הועתק' : 'לא ניתן להעתיק — העתיקו ידנית מהעורך', ok ? 'success' : 'error');
-                          }}
-                        >
-                          העתקת קישור
-                        </Button>
-                        <a href={appHref(`/f/${w.slug}`)} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud">
-                          <ExternalLink className="h-4 w-4" aria-hidden /> פתיחה
-                        </a>
-                      </>
-                    )}
-                    <Button size="sm" variant="ghost" icon={Copy} loading={busy === w.id + 'dup'} onClick={() => act(w.id + 'dup', () => repo.duplicateWorkflow(org.id, w.id), 'נוצר עותק כטיוטה')}>
-                      שכפול
-                    </Button>
-                    {w.status === 'archived' ? (
-                      <Button size="sm" variant="ghost" icon={ArchiveRestore} onClick={() => act(w.id, () => repo.setArchived(org.id, w.id, false), 'התהליך שוחזר מהארכיון')}>
-                        שחזור
-                      </Button>
-                    ) : (
                       <Button
                         size="sm"
-                        variant="ghost"
-                        icon={Archive}
+                        variant="secondary"
+                        icon={Link2}
                         onClick={async () => {
-                          if (await confirmAction({ title: 'להעביר לארכיון?', message: 'הקישור הציבורי יפסיק לעבוד. הבקשות הקיימות נשמרות, ואפשר לשחזר מהארכיון בכל רגע.', confirmLabel: 'העברה לארכיון' })) {
-                            void act(w.id, () => repo.setArchived(org.id, w.id, true), 'הועבר לארכיון');
-                          }
+                          const ok = await copyText(publicFlowUrl(w.slug));
+                          await repo.trackUsage(org.id, 'link_copied', w.id);
+                          toast(ok ? 'הקישור הועתק' : 'לא ניתן להעתיק — העתיקו ידנית מהעורך', ok ? 'success' : 'error');
                         }}
                       >
-                        ארכיון
+                        העתקת קישור
                       </Button>
                     )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      icon={Trash2}
-                      className="ms-auto text-red-700 hover:bg-red-50 hover:text-red-800"
-                      onClick={() => {
-                        const requests = runCount(w.id);
-                        void confirmAction({
-                          title: `למחוק את "${w.draft.title}"?`,
-                          message: requests
-                            ? `התהליך ו־${formatNumber(requests)} הבקשות שהתקבלו בו יוסרו מהמערכת, והקישור הציבורי יפסיק לעבוד. אי אפשר לבטל את המחיקה.`
-                            : 'התהליך יוסר מהמערכת והקישור הציבורי יפסיק לעבוד. אי אפשר לבטל את המחיקה.',
-                          confirmLabel: 'מחיקה לצמיתות',
-                          destructive: true,
-                          typeToConfirm: requests ? w.draft.title : undefined,
-                          action: () => repo.deleteWorkflow(org.id, w.id),
-                        }).then((ok) => ok && toast('התהליך נמחק'));
-                      }}
-                    >
-                      מחיקה
-                    </Button>
+                      icon={MoreHorizontal}
+                      aria-label={`פעולות נוספות: ${w.draft.title}`}
+                      loading={busy === w.id || busy === w.id + 'dup'}
+                      className="ms-auto h-9 w-9 rounded-full px-0"
+                      onClick={() => void more(w)}
+                    />
                   </div>
                 </Card>
               </li>

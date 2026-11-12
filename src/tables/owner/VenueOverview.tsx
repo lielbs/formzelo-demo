@@ -51,7 +51,7 @@ export function VenueOverview() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <Link to="/app/tables" className="text-sm text-ink-muted hover:text-ink">← כל המקומות</Link>
-          <h1 className="mt-1 truncate text-2xl font-semibold text-ink">{venue.name}</h1>
+          <h1 className="mt-1 break-words text-[28px] font-bold leading-tight tracking-tight text-ink">{venue.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
             <Badge tone={venue.status === 'published' ? 'teal' : venue.status === 'paused' ? 'amber' : 'neutral'}>
               {venue.status === 'published' ? 'מקבל הזמנות' : venue.status === 'paused' ? 'הזמנות חדשות מושהות' : 'עוד לא פורסם'}
@@ -209,7 +209,7 @@ function Team({ venueId }: { venueId: string }) {
         <ul className="mt-3 divide-y divide-cloud-200">
           {data.map((m) => (
             <li key={m.userId} className="flex flex-wrap items-center justify-between gap-3 py-3">
-              <Ltr className="min-w-0 truncate text-sm">{m.email}</Ltr>
+              <Ltr className="min-w-0 break-all text-sm">{m.email}</Ltr>
               {m.orgRole === 'owner' ? <Badge tone="dark">בעלים — גישה מלאה</Badge> : (
                 <div className="w-full sm:w-64">
                   <label className="sr-only" htmlFor={`role-${m.userId}`}>הרשאה של {m.email}</label>

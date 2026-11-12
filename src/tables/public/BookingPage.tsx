@@ -131,7 +131,8 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
   const locale = lang === 'he' ? 'he-IL' : 'en-GB';
   const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...o }).format(new Date(`${d}T12:00:00Z`));
   const dayLabel = (d: string) => (d === today ? s.today : d === addDays(today, 1) ? s.tomorrow : fmt(d, { weekday: 'short' }));
-  const parties = Array.from({ length: Math.min(10, venue.policy.maxParty - venue.policy.minParty + 1) }, (_, i) => venue.policy.minParty + i);
+  const parties = Array.from({ length: Math.min(12, venue.policy.maxParty - venue.policy.minParty + 1) }, (_, i) => venue.policy.minParty + i);
+  const [serviceTab, setServiceTab] = useState<string | null>(null);
   const cancelDeadline = choice ? deadline(date, choice.time, venue.timezone, venue.policy.cancelCutoffMinutes) : null;
 
   async function submit(e: FormEvent) {
@@ -231,10 +232,10 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
       {venue.paused && <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">{s.paused}</p>}
       <fieldset>
         <SectionTitle as="legend" icon={<Users className="h-4 w-4" />}>{s.party}</SectionTitle>
-        <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+        <div className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 py-1 sm:-mx-7 sm:px-7" role="group">
           {parties.map((n) => (
             <button key={n} type="button" aria-pressed={party === n} onClick={() => setParty(n)}
-              className={cx('pp-chip h-12 rounded-xl text-base font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', party === n && 'pp-chip-on')}>{n}</button>
+              className={cx('pp-chip h-12 w-12 shrink-0 rounded-full text-[17px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', party === n && 'pp-chip-on')}>{n}</button>
           ))}
         </div>
         {venue.policy.maxParty > parties[parties.length - 1]! && (
@@ -292,21 +293,37 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
           ) : (
             <div className="grid gap-5">
               <p className="sr-only" role="status">{lang === 'he' ? (slotCount === 1 ? 'שעה אחת פנויה' : `${slotCount} שעות פנויות`) : slotCount === 1 ? '1 time available' : `${slotCount} times available`}</p>
-              {avail.services.filter((sv) => sv.slots.length).map((sv) => (
-                <div key={sv.key}>
-                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink-muted">{serviceIcon(sv.slots[0]?.time)}{sv.name}</p>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                    {sv.slots.map((sl) => (
-                      <button key={sl.time} type="button" onClick={() => { setChoice({ serviceKey: sv.key, time: sl.time, approval: sl.approval }); setStep('details'); }}
-                        aria-label={`${sl.time}${sl.approval === 'request' ? `, ${s.requestNote}` : ''}`}
-                        className="pp-chip flex h-12 flex-col items-center justify-center rounded-xl font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2">
-                        <span dir="ltr" className="text-base leading-none">{sl.time}</span>
-                        {sl.approval === 'request' && <span className="mt-0.5 text-[10px] font-normal leading-none text-amber-800">{lang === 'he' ? 'בקשה' : 'Request'}</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              {(() => {
+                // One service at a time (lunch / dinner / late): a short, scannable set instead of a wall of times.
+                const open = avail.services.filter((sv) => sv.slots.length);
+                const busiest = open.reduce((a, b) => (b.slots.length > a.slots.length ? b : a), open[0]!);
+                const current = open.find((sv) => sv.key === serviceTab) ?? busiest;
+                return (
+                  <>
+                    {open.length > 1 && (
+                      <div role="tablist" aria-label={s.time} className="pp-seg flex gap-1 rounded-full p-1">
+                        {open.map((sv) => (
+                          <button key={sv.key} type="button" role="tab" aria-selected={sv.key === current.key} onClick={() => setServiceTab(sv.key)}
+                            className="pp-seg-btn flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]">
+                            {serviceIcon(sv.slots[0]?.time)}<span>{sv.name}</span>
+                            <span className="pp-seg-n text-xs font-medium tabular-nums">{sv.slots.length}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div key={current.key} role={open.length > 1 ? 'tabpanel' : undefined} aria-label={current.name} className="pp-slots grid grid-cols-3 gap-2 min-[380px]:grid-cols-4 sm:grid-cols-5">
+                      {current.slots.map((sl) => (
+                        <button key={sl.time} type="button" data-slot onClick={() => { setChoice({ serviceKey: current.key, time: sl.time, approval: sl.approval }); setStep('details'); }}
+                          aria-label={sl.time + (sl.approval === 'request' ? ', ' + s.requestNote : '')}
+                          className="pp-chip flex h-12 flex-col items-center justify-center rounded-full font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2">
+                          <span dir="ltr" className="text-[15px] leading-none">{sl.time}</span>
+                          {sl.approval === 'request' && <span className="mt-0.5 text-[10px] font-normal leading-none text-amber-800">{lang === 'he' ? 'בקשה' : 'Request'}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
       </section>

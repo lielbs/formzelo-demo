@@ -46,10 +46,21 @@ export function MenuPage() {
         <section key={m.id} aria-labelledby={`menu-${m.id}`} className="mt-6 first:mt-0">
           <MenuHeroBlock id={`menu-${m.id}`} title={m.title} hero={m.doc.hero} owner={owner} asPageTitle={single} note={single ? s.menuNote : undefined} />
           {m.doc.gallery?.length ? <Gallery ids={m.doc.gallery} owner={owner} lang={lang} /> : null}
+          {m.doc.sections.length > 2 && (
+            <nav aria-label={lang === 'he' ? 'קטגוריות בתפריט' : 'Menu sections'} className="pp-menu-nav sticky top-0 z-10 -mx-5 mt-5 px-5 py-2 sm:-mx-7 sm:px-7">
+              <ul className="pp-scroll flex gap-2 overflow-x-auto">
+                {m.doc.sections.map((sec, i) => (
+                  <li key={i} className="shrink-0">
+                    <a href={`#sec-${m.id}-${i}`} className="pp-chip inline-flex min-h-[38px] items-center rounded-full px-4 text-sm font-semibold">{sec.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
           {m.doc.sections.map((sec, i) => {
             const img = publicAssetUrl(owner, sec.imageAssetId);
             return (
-              <div key={i} className="mt-6">
+              <div key={i} id={`sec-${m.id}-${i}`} className="mt-8 scroll-mt-16">
                 {img ? (
                   <div className="relative overflow-hidden rounded-2xl bg-cloud-200">
                     <img src={img} alt="" loading="lazy" decoding="async" width={1200} height={514} className="aspect-[21/9] w-full object-cover" />
@@ -57,32 +68,34 @@ export function MenuPage() {
                     <h3 className="absolute inset-x-0 bottom-0 p-4 text-xl font-semibold text-white">{sec.title}</h3>
                   </div>
                 ) : (
-                  <h3 className="flex items-center gap-3 text-lg font-semibold">
-                    <span>{sec.title}</span>
-                    <span aria-hidden className="h-px flex-1 bg-[var(--fz-accent)] opacity-30" />
+                  <h3 className="pp-menu-section flex items-baseline gap-3">
+                    <span className="text-[22px] leading-tight">{sec.title}</span>
+                    <span aria-hidden className="h-px flex-1 translate-y-[-4px] bg-[var(--fz-accent)] opacity-25" />
+                    <span className="text-xs font-medium tabular-nums text-ink-muted">{sec.items.length}</span>
                   </h3>
                 )}
-                <ul className="mt-3 grid gap-3">
+                <ul className="pp-menu-list mt-2">
                   {sec.items.map((it, j) => {
                     const dish = publicAssetUrl(owner, it.imageAssetId);
                     return (
-                      <li key={j} className="pp-card flex gap-3 rounded-2xl border border-cloud-200 bg-white p-3">
-                        {dish && (
-                          <img src={dish} alt="" loading="lazy" decoding="async" width={88} height={88} className="h-[88px] w-[88px] shrink-0 rounded-xl bg-cloud-200 object-cover" />
-                        )}
+                      <li key={j} className="pp-menu-item flex gap-4 py-4">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline justify-between gap-3">
-                            <p className="font-medium">{it.name}</p>
-                            {it.price && <bdi dir="ltr" className="shrink-0 font-semibold tabular-nums">{it.price}</bdi>}
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-[16px] font-semibold leading-snug">{it.name}</p>
+                            {it.price && <span aria-hidden className="pp-menu-leader min-w-[12px] flex-1 translate-y-[-3px]" />}
+                            {it.price && <bdi dir="ltr" className="shrink-0 text-[16px] font-semibold tabular-nums">{priceText(it.price)}</bdi>}
                           </div>
-                          {it.description && <p className="text-sm text-ink-muted">{it.description}</p>}
+                          {it.description && <p className="mt-1 text-[14px] leading-relaxed text-ink-muted">{it.description}</p>}
                           {(it.dietary?.length || it.allergens?.length) ? (
                             <p className="mt-1 flex flex-wrap gap-1 text-xs">
-                              {it.dietary?.map((d) => <span key={d} className="rounded-full border border-teal-200 bg-teal-50 px-2 text-teal-900">{DIETARY[lang][d] ?? d}</span>)}
+                              {it.dietary?.map((d) => <span key={d} className="pp-tag rounded-full px-2 py-0.5 font-medium">{DIETARY[lang][d] ?? d}</span>)}
                               {it.allergens?.length ? <span className="text-ink-muted">{lang === 'he' ? 'אלרגנים: ' : 'Allergens: '}{it.allergens.map((a) => ALLERGENS[lang][a] ?? a).join(', ')}</span> : null}
                             </p>
                           ) : null}
                         </div>
+                        {dish && (
+                          <img src={dish} alt="" loading="lazy" decoding="async" width={96} height={96} className="h-24 w-24 shrink-0 rounded-[18px] bg-cloud-200 object-cover shadow-sm" />
+                        )}
                       </li>
                     );
                   })}
@@ -95,6 +108,12 @@ export function MenuPage() {
       <Link to={`/t/${data.venue.slug}${lang === 'en' ? '?lang=en' : ''}`} className={`${accentButton} mt-8`}>{s.book}</Link>
     </PublicShell>
   );
+}
+
+/** "46" → "₪46"; text with its own currency or words stays as typed. */
+export function priceText(price: string): string {
+  const p = price.trim();
+  return /^\d+(?:[.,]\d{1,2})?$/.test(p) ? `₪${p}` : p;
 }
 
 function MenuHeroBlock({ id, title, hero, owner, asPageTitle, note }: { id: string; title: string; hero: MenuDoc['hero']; owner: string; asPageTitle: boolean; note?: string }) {

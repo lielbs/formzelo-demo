@@ -82,7 +82,7 @@ export function StudioCoach({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">העוזר שלכם</span>
-          <span className="block truncate text-xs text-ink-muted">{summary}</span>
+          <span className="line-clamp-2 break-words text-xs text-ink-muted">{summary}</span>
         </span>
         {steps && (
           <span className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-cloud-200 sm:block" aria-hidden>

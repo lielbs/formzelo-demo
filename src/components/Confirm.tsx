@@ -7,7 +7,7 @@
  *
  * Mount <ConfirmHost /> once near the root. Calls queue: one dialog at a time.
  */
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { cx } from './ui';
 
@@ -148,6 +148,89 @@ function ConfirmDialog({ dialog }: { dialog: Pending }) {
             {dialog.cancelLabel ?? 'ביטול'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Action sheet: a short list of choices about one item ----------
+
+export interface SheetOption {
+  key: string;
+  label: string;
+  icon?: LucideIcon;
+  destructive?: boolean;
+  hint?: string;
+}
+
+interface PendingSheet { title?: string; message?: string; options: SheetOption[]; resolve: (key: string | null) => void }
+
+let sheets: PendingSheet[] = [];
+const sheetListeners = new Set<() => void>();
+const sheetEmit = () => sheetListeners.forEach((l) => l());
+const sheetSubscribe = (l: () => void) => { sheetListeners.add(l); return () => { sheetListeners.delete(l); }; };
+const currentSheet = () => sheets[0] ?? null;
+
+/** Resolves with the chosen option's key, or null when dismissed. */
+export function chooseAction(input: Omit<PendingSheet, 'resolve'>): Promise<string | null> {
+  return new Promise((resolve) => { sheets = [...sheets, { ...input, resolve }]; sheetEmit(); });
+}
+
+export function ActionSheetHost() {
+  const sheet = useSyncExternalStore(sheetSubscribe, currentSheet, currentSheet);
+  return sheet ? <ActionSheet key={sheets.length + (sheet.title ?? '')} sheet={sheet} /> : null;
+}
+
+function ActionSheet({ sheet }: { sheet: PendingSheet }) {
+  const titleId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const [leaving, setLeaving] = useState(false);
+  const done = (key: string | null) => {
+    if (leaving) return;
+    setLeaving(true);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => {
+      const [head, ...rest] = sheets;
+      sheets = rest;
+      head?.resolve(key);
+      sheetEmit();
+    }, reduce ? 0 : 160);
+  };
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    const t = window.setTimeout(() => panel.current?.querySelector<HTMLElement>('button')?.focus(), 40);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); done(null); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => { window.clearTimeout(t); document.removeEventListener('keydown', onKey, true); prev?.focus?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div className="fz-confirm fz-sheet" data-leaving={leaving ? '' : undefined} role="presentation">
+      <button type="button" aria-label="סגירה" tabIndex={-1} className="fz-confirm-scrim" onClick={() => done(null)} />
+      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={sheet.title ? titleId : undefined} aria-label={sheet.title ? undefined : 'פעולות'} className="fz-sheet-panel" dir="rtl">
+        <div className="fz-sheet-group">
+          {(sheet.title || sheet.message) && (
+            <div className="fz-sheet-head">
+              {sheet.title && <p id={titleId} className="line-clamp-2 break-words text-[13px] font-semibold">{sheet.title}</p>}
+              {sheet.message && <p className="mt-0.5 text-[13px]">{sheet.message}</p>}
+            </div>
+          )}
+          {sheet.options.map((o) => {
+            const Icon = o.icon;
+            return (
+              <button key={o.key} type="button" onClick={() => done(o.key)} className={cx('fz-sheet-opt', o.destructive && 'fz-sheet-danger')}>
+                {Icon && <Icon className="h-5 w-5 shrink-0" aria-hidden />}
+                <span className="min-w-0 flex-1 text-start">
+                  <span className="block">{o.label}</span>
+                  {o.hint && <span className="fz-sheet-hint block">{o.hint}</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <button type="button" onClick={() => done(null)} className="fz-sheet-cancel">ביטול</button>
       </div>
     </div>
   );

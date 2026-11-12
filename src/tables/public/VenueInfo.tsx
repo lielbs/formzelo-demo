@@ -30,20 +30,37 @@ const dayName = (weekday: number, lang: Lang) =>
 export function HoursList({ services, today, lang }: { services: VenueService[]; today: string; lang: Lang }) {
   const s = tx(lang);
   const todayWd = weekdayOf(today);
+  const week = [0, 1, 2, 3, 4, 5, 6].map((wd) => ({ wd, h: hoursOn(services, wd) }));
+  const same = week.every((d) => d.h === week[0]!.h);
+  const todayHours = week[todayWd]!.h;
+  const rows = (
+    <dl className="mt-2 grid gap-0.5 text-sm">
+      {week.map(({ wd, h }) => (
+        <div key={wd} className={cx('flex items-center justify-between gap-3 rounded-lg px-2.5 py-1.5', wd === todayWd && 'pp-today font-semibold')}>
+          <dt>{dayName(wd, lang)}</dt>
+          <dd className={cx('tabular-nums', !h && 'text-ink-muted')}>{h ? <Ltr>{h}</Ltr> : '—'}</dd>
+        </div>
+      ))}
+    </dl>
+  );
   return (
     <section aria-labelledby="hours-h">
       <h2 id="hours-h" className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-[var(--fz-accent)]" aria-hidden />{s.hoursTitle}</h2>
-      <dl className="mt-3 grid gap-1 text-sm">
-        {[0, 1, 2, 3, 4, 5, 6].map((wd) => {
-          const h = hoursOn(services, wd);
-          return (
-            <div key={wd} className={cx('flex items-center justify-between gap-3 rounded-lg px-2.5 py-1.5', wd === todayWd && 'pp-today font-semibold')}>
-              <dt>{dayName(wd, lang)}</dt>
-              <dd className={cx('tabular-nums', !h && 'text-ink-muted')}>{h ? <Ltr>{h}</Ltr> : '—'}</dd>
-            </div>
-          );
-        })}
-      </dl>
+      {same ? (
+        <p className="mt-2 flex items-center justify-between gap-3 rounded-lg px-2.5 py-1.5 text-sm">
+          <span>{lang === 'en' ? 'Every day' : 'כל ימות השבוע'}</span>
+          <span className="font-semibold tabular-nums">{todayHours ? <Ltr>{todayHours}</Ltr> : '—'}</span>
+        </p>
+      ) : (
+        <details className="group mt-2">
+          <summary className="pp-today flex min-h-[40px] cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-2.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            <span>{lang === 'en' ? 'Today' : 'היום'}</span>
+            <span className="flex items-center gap-2 tabular-nums">{todayHours ? <Ltr>{todayHours}</Ltr> : (lang === 'en' ? 'Closed' : 'סגור')}
+              <span aria-hidden className="text-xs font-medium text-ink-muted transition-transform group-open:rotate-180">▾</span></span>
+          </summary>
+          {rows}
+        </details>
+      )}
     </section>
   );
 }

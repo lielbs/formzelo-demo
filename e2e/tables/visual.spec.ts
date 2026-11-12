@@ -171,7 +171,7 @@ for (const theme of THEMES) {
       await page.getByRole('button', { name: lang === 'en' ? 'Tomorrow' : 'מחר' }).first().click().catch(() => undefined);
       await page.waitForTimeout(800);
       await sweep(page, `guest-${lang}-book`, theme);
-      const slot = page.locator('section[aria-labelledby="times-h"] button').first();
+      const slot = page.locator('section[aria-labelledby="times-h"] [data-slot]').first();
       if (await slot.count()) {
         await slot.click();
         await sweep(page, `guest-${lang}-details`, theme);

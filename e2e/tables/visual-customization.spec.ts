@@ -116,7 +116,7 @@ test('owner designs, saves, reloads and publishes the guest pages; a guest answe
   await page.reload();
   expect(await accent(frame.locator('.fz-pp'))).toBe(await accent(g.locator('.fz-pp')));
   await g.getByRole('button', { name: 'מחר' }).first().click();
-  await g.locator('section[aria-labelledby="times-h"] button').first().click();
+  await g.locator('section[aria-labelledby="times-h"] [data-slot]').first().click();
   await g.getByLabel('שם מלא').fill('נועה בדיקה');
   await g.getByLabel('טלפון נייד').fill('050-5550199');
   await g.getByLabel('קראתי ואני מסכים/ה לתנאי ההזמנה').check();
@@ -302,7 +302,7 @@ test('a venue that never published a design still wears the business brand', asy
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(`/t/${plain.slug}`);
         await page.getByRole('button', { name: 'מחר' }).first().click();
-        await page.locator('section[aria-labelledby="times-h"] button').first().click();
+        await page.locator('section[aria-labelledby="times-h"] [data-slot]').first().click();
         await expect(page.getByRole('heading', { name: 'הפרטים שלכם' })).toBeVisible();
         await shot(page, 'standard-details-he-light-390');
         await page.locator('#bk-name').fill('אורח בדיקה');

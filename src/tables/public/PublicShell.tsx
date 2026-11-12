@@ -137,8 +137,8 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
                     </li>
                   )}
                   {venue.address && (
-                    <li><a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className="pp-glass inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3">
-                      <MapPin className="h-4 w-4 shrink-0" aria-hidden /><span className="max-w-[16rem] truncate">{venue.address}</span>
+                    <li><a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className="pp-glass inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 py-1">
+                      <MapPin className="h-4 w-4 shrink-0" aria-hidden /><span className="break-words">{venue.address}</span>
                     </a></li>
                   )}
                   {phone && (

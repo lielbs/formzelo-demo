@@ -23,7 +23,10 @@ test('the owner deletes a process from the list (phone)', async ({ browser }) =>
 
   await page.goto('/app/workflows');
   const card = page.getByRole('listitem').filter({ hasText: 'הזמנת זר פרחים' });
-  await card.getByRole('button', { name: 'מחיקה' }).click();
+  await card.getByRole('button', { name: /פעולות נוספות/ }).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: shots('m-process-sheet') });
+  await page.getByRole('dialog').getByRole('button', { name: 'מחיקה' }).click();
   const sheet = page.getByRole('alertdialog', { name: /למחוק את/ });
   await expect(sheet).toBeVisible();
   await page.waitForTimeout(450);
@@ -52,7 +55,7 @@ test('a venue cannot be deleted while guests wait, then is deleted (desktop)', a
   await expect(go).toBeDisabled();
   await sheet.getByRole('textbox').fill('ביסטרו הנמל');
   await go.click();
-  await expect(sheet.getByRole('alert')).toContainText('אורחים ברשימת ההמתנה');
+  await expect(sheet.getByRole('alert')).toContainText('ברשימת ההמתנה');
   await page.screenshot({ path: shots('d-venue-blocked') });
   await sheet.getByRole('button', { name: 'ביטול' }).click();
   await expect(sheet).toHaveCount(0);

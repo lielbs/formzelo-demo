@@ -76,7 +76,7 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
             </span>
             <span className="min-w-0 flex-1">
               {next && <span className="hs-nextlabel block">הבאים בתור</span>}
-              <span data-guest-name className="block truncate text-[15px] font-semibold">{r.guestName}</span>
+              <span data-guest-name className="line-clamp-2 break-words text-[15px] font-semibold leading-snug">{r.guestName}</span>
               <span className="hs-muted flex min-w-0 items-center gap-1.5 text-[13px]">
                 {r.guestPhone && <bdi dir="ltr" className="truncate tabular-nums">{displayPhone(r.guestPhone)}</bdi>}
                 {r.guestPhone && <span aria-hidden>·</span>}

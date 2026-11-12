@@ -64,7 +64,7 @@ export function TeamCard({ orgId }: { orgId: string }) {
         <ul className="mt-3 space-y-2">
           {team.members.map((m) => (
             <li key={m.userId} className="flex items-center gap-2 rounded-xl bg-cloud px-3 py-2 text-sm">
-              <span className="ltr min-w-0 flex-1 truncate" title={m.email}>{m.email}{m.self ? ' (את/ה)' : ''}</span>
+              <span className="ltr min-w-0 flex-1 break-all leading-snug" title={m.email}>{m.email}{m.self ? ' (את/ה)' : ''}</span>
               <Badge tone={m.role === 'owner' ? 'dark' : 'neutral'}>{m.role === 'owner' ? 'בעלים' : 'צוות'}</Badge>
               {isOwner && m.role === 'staff' && (
                 <Button
@@ -83,14 +83,14 @@ export function TeamCard({ orgId }: { orgId: string }) {
                   icon={UserMinus}
                   aria-label={`הסרת ${m.email}`}
                   loading={busy === m.userId}
-                  onClick={async () => (await confirmAction({ title: 'להסיר מהצוות?', message: <><span className="ltr inline-block max-w-full truncate align-bottom font-medium">{m.email}</span> לא יוכל/תוכל להיכנס יותר. הגישה נחסמת מיד.</>, confirmLabel: 'הסרה', destructive: true })) && run(m.userId, () => removeMember(orgId, m.userId))}
+                  onClick={async () => (await confirmAction({ title: 'להסיר מהצוות?', message: <><span className="ltr break-all font-medium">{m.email}</span> לא יוכל/תוכל להיכנס יותר. הגישה נחסמת מיד.</>, confirmLabel: 'הסרה', destructive: true })) && run(m.userId, () => removeMember(orgId, m.userId))}
                 />
               )}
             </li>
           ))}
           {team.invitations.map((i) => (
             <li key={i.id} className="flex items-center gap-2 rounded-xl border border-dashed border-cloud-300 px-3 py-2 text-sm">
-              <span className="ltr min-w-0 flex-1 truncate">{i.email}</span>
+              <span className="ltr min-w-0 flex-1 break-all leading-snug">{i.email}</span>
               <span className="text-xs text-ink-muted">ממתין · עד {formatDateTime(i.expiresAt)}</span>
               {i.role === 'staff' && (
                 <Button size="sm" variant="ghost" loading={busy === i.id} onClick={() => run(i.id, () => revokeInvitation(orgId, i.id))}>

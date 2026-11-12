@@ -52,7 +52,7 @@ function WaitlistRow({ e, now, canAct, onDone, labels }: { e: WaitlistEntry; now
     } finally { setBusy(null); }
   }
   return (
-    <li className={cx('rounded-xl border bg-white p-3', e.status === 'offered' ? 'border-sky-300' : 'border-cloud-200')}>
+    <li className={cx('rounded-xl border bg-white p-3', e.status === 'offered' ? 'border-orange-300' : 'border-cloud-200')}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cloud text-sm font-semibold tabular-nums" aria-label={`מקום ${e.rank} בתור`}>{e.rank}</span>
         <span className="min-w-0 flex-1">
@@ -77,7 +77,7 @@ function WaitlistRow({ e, now, canAct, onDone, labels }: { e: WaitlistEntry; now
         )}
       </div>
       {e.status === 'offered' && e.offerExpiresAt && (
-        <p className="mt-2 rounded-lg bg-sky-50 px-3 py-1.5 text-sm text-sky-900">שולחן {held} שמור להם · <Countdown until={e.offerExpiresAt} now={now} /></p>
+        <p className="mt-2 rounded-lg bg-orange-50 px-3 py-1.5 text-sm text-orange-900">שולחן {held} שמור להם · <Countdown until={e.offerExpiresAt} now={now} /></p>
       )}
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
       {canAct && (

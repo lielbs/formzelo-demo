@@ -5,18 +5,18 @@
  */
 .fz-tables {
   --hs-surface: #ffffff;
-  --hs-surface-2: #f4f1ec;
-  --hs-line: #e4dfd7;
+  --hs-surface-2: #f2efea;
+  --hs-line: #eae6df;
   --hs-line-strong: #b9b1a4;
   --hs-ink: #1e2935;
   --hs-muted: #556070;
   --hs-accent: #c2410c;
   --hs-accent-soft: #fff1e8;
   --hs-on-accent: #ffffff;
-  --hs-page: #f3f1ed;
-  --hs-attention: #b45309;
-  --hs-upcoming: #0369a1;
-  --hs-arrived: #6d28d9;
+  --hs-page: #f5f3ef;
+  --hs-attention: #b42318;
+  --hs-upcoming: #56677d;
+  --hs-arrived: #c2410c;
   --hs-seated: #2f7263;
   --hs-done: #94a3b8;
   --hs-scrim: rgb(15 20 27 / 0.45);
@@ -32,9 +32,9 @@ html.fz-dark .fz-tables {
   --hs-accent-soft: #3a2218;
   --hs-on-accent: #1a0f0a;
   --hs-page: #0f141b;
-  --hs-attention: #f5c66b;
-  --hs-upcoming: #7cc4f0;
-  --hs-arrived: #c4b5fd;
+  --hs-attention: #ff8f80;
+  --hs-upcoming: #a9bdd2;
+  --hs-arrived: #f6a57f;
   --hs-seated: #5fbfa6;
   --hs-done: #64748b;
   --hs-scrim: rgb(0 0 0 / 0.6);
@@ -329,3 +329,12 @@ html.fz-dark .fz-tables {
 @media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
   .hs-sheet[data-closing] { animation: hs-fade-out 0.15s ease-in both; }
 }
+
+/* ---- Formangle identity in the shift header ---- */
+.fz-tables .hs-mark { color: #18212d; border-radius: 9px; box-shadow: 0 6px 14px -8px rgb(24 33 45 / 0.6); }
+html.fz-dark .fz-tables .hs-mark { color: #f5f3ef; --hs-mark-ink: #18212d; }
+.fz-tables .hs-round { background: rgb(24 33 45 / 0.05); color: var(--hs-ink); }
+.fz-tables .hs-round:hover { background: rgb(24 33 45 / 0.09); }
+html.fz-dark .fz-tables .hs-round { background: rgb(255 255 255 / 0.08); }
+.fz-tables .hs-datepill { background: var(--hs-surface); color: var(--hs-ink); box-shadow: 0 0 0 1px var(--hs-line); }
+html.fz-dark .fz-topbar { background: rgb(15 20 27 / 0.8); box-shadow: 0 0.5px 0 rgb(255 255 255 / 0.1); }

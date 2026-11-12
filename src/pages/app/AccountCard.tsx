@@ -17,7 +17,7 @@ export function AccountCard() {
   return (
     <Card className="p-5">
       <h2 className="flex items-center gap-2 font-semibold"><UserRound className="h-4 w-4" aria-hidden /> החשבון שלי</h2>
-      {email && <p className="mt-1 truncate text-sm text-ink-muted"><span className="ltr">{email}</span></p>}
+      {email && <p className="mt-1 break-all text-sm text-ink-muted"><span className="ltr">{email}</span></p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" icon={LogOut} onClick={() => void signOut().then(() => navigate('/app'))}>יציאה</Button>
         <Button size="sm" variant="ghost" icon={Trash2} className="text-red-700 hover:bg-red-50 hover:text-red-800"

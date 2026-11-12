@@ -19,6 +19,7 @@ import { blankWorkflow, START_OPTIONS, type StartOption } from '../../engine/bui
 import { COMPLETION_LABELS } from '../../engine/completion';
 import { generateWorkflowFromPrompt, PROMPT_EXAMPLES, type GenerationResult } from '../../engine/generator';
 import { TEMPLATE_LIBRARY, type LibraryTemplate } from '../../engine/library';
+import { starterExtras } from '../../engine/finish';
 import { TemplateGallery } from './TemplateGallery';
 import { formatRelative } from '../../lib/format';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
@@ -78,7 +79,8 @@ export function WorkflowNew() {
 
   const fromGeneration = (r: GenerationResult, prompt: string): Draft => {
     r.config.branding = { ...r.config.branding, primaryColor: org.brand.primaryColor, logoText: org.name };
-    return { config: r.config, theme: r.theme, templateKey: r.templateKey, recommended: r.themeRecommendation.presetId, prompt, generation: r, label: r.templateLabel };
+    const theme = r.theme.extras ? r.theme : { ...r.theme, extras: starterExtras(r.templateKey) };
+    return { config: r.config, theme, templateKey: r.templateKey, recommended: r.themeRecommendation.presetId, prompt, generation: r, label: r.templateLabel };
   };
 
   const generate = ({ prompt }: FormValues) => {
@@ -99,7 +101,7 @@ export function WorkflowNew() {
   const fromLibrary = (t: LibraryTemplate) => {
     const config = t.build();
     config.branding = { ...config.branding, primaryColor: brandColor, logoText: org.name };
-    setDraft({ config, theme: buildTheme(t.preset, { source: 'auto' }), templateKey: t.id, recommended: t.preset, label: t.title });
+    setDraft({ config, theme: { ...buildTheme(t.preset, { source: 'auto' }), extras: starterExtras(t.category) }, templateKey: t.id, recommended: t.preset, label: t.title });
   };
 
   const blank = () => {
@@ -302,7 +304,7 @@ export function WorkflowNew() {
                     <li key={w.id} className="flex items-center gap-3 px-3 py-2.5">
                       <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: PRESETS[w.design.presetId].theme.palette.primary }} aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{w.draft.title}</span>
+                        <span className="line-clamp-2 break-words text-sm font-medium leading-snug">{w.draft.title}</span>
                         <span className="text-xs text-ink-muted">
                           {w.status === 'published' ? 'פורסם' : 'טיוטה'} · {EXPERIENCES[w.design.presetId]} · עודכן {formatRelative(w.updatedAt)}
                         </span>

@@ -118,7 +118,7 @@ function NavItem({ active, icon: Icon, children, onClick, badge }: { active: boo
       )}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">{children}</span>
+      <span className="line-clamp-2 min-w-0 flex-1 break-words leading-snug">{children}</span>
       {badge}
     </button>
   );
@@ -485,7 +485,7 @@ export function WorkflowEditor() {
               className={cx('flex w-full items-center gap-2 px-2.5 py-2 text-start text-sm font-semibold', st.id === expandedStepId || dragId ? 'rounded-t-xl' : 'rounded-xl', sel.kind === 'step' && sel.stepId === st.id ? 'bg-midnight text-white' : 'hover:bg-cloud')}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-cloud-200 text-[11px] text-ink">{si + 1}</span>
-              <span className="min-w-0 flex-1 truncate">{st.title || 'שלב ללא שם'}</span>
+              <span className="line-clamp-2 min-w-0 flex-1 break-words leading-snug">{st.title || 'שלב ללא שם'}</span>
               {st.condition && <Badge tone="blue">מותנה</Badge>}
               {st.id !== expandedStepId && !dragId && <span className="shrink-0 text-[11px] font-normal text-ink-soft">{st.fields.length} רכיבים</span>}
             </button>
@@ -529,8 +529,8 @@ export function WorkflowEditor() {
                     <button type="button" onClick={() => select({ kind: 'field', fieldId: f.id })} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
                       <Icon className={cx('h-3.5 w-3.5 shrink-0', isDisplayField(f) ? 'text-teal-600' : 'text-ink-soft')} aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] text-ink">{f.label}</span>
-                        <span className="block truncate text-[10.5px] text-ink-soft">
+                        <span className="line-clamp-2 break-words text-[13px] leading-snug text-ink">{f.label}</span>
+                        <span className="block break-words text-[11px] leading-snug text-ink-soft">
                           {FIELD_TYPE_LABELS[f.type]}
                           {f.required && <span className="text-orange-700"> · חובה</span>}
                           {fieldHasPrice(f) && <span className="text-teal-600"> · ₪</span>}
@@ -895,7 +895,7 @@ export function WorkflowEditor() {
           <Link to="/app/workflows" className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-orange-700">
             <ArrowRight className="h-3.5 w-3.5" aria-hidden /> תהליכים
           </Link>
-          <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight">{config.title || 'ללא שם'}</h1>
+          <h1 className="mt-1 line-clamp-2 break-words text-2xl font-bold leading-tight tracking-tight">{config.title || 'ללא שם'}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
             <Badge tone={isPublished ? 'teal' : workflow.status === 'archived' ? 'neutral' : 'amber'}>
               {isPublished ? `פורסם · גרסה ${versions.find((v) => v.id === workflow.publishedVersionId)?.version ?? versions[0]?.version ?? 1}` : workflow.status === 'archived' ? 'בארכיון' : 'טיוטה'}

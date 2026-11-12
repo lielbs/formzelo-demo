@@ -115,16 +115,17 @@ export function HostShift() {
   return (
     <div className="fz-page flex min-h-screen flex-col bg-[var(--hs-page)]" dir="rtl">
       <a href="#shift-main" className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">דילוג לרשימת המשמרת</a>
-      <header className="sticky top-0 z-30 border-b border-cloud-200 bg-white/95 backdrop-blur">
+      <header className="fz-topbar sticky top-0 z-30">
         <div className="flex items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
           <Link to={shift.role === 'owner' || shift.role === 'manager' ? `/app/tables/${venueId}` : '/app/tables'} aria-label="יציאה מהמשמרת"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cloud-300 text-ink hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+            className="hs-round flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
             <ArrowRight className="h-5 w-5" aria-hidden />
           </Link>
+          <svg viewBox="0 0 64 64" className="hs-mark h-8 w-8 shrink-0" aria-hidden="true"><rect width="64" height="64" rx="16" fill="currentColor" /><path d="M17 14h31l-6 9H26v7h13l-5.5 8H26v12h-9z" fill="var(--hs-mark-ink, #fff)" /><path d="M50 50H34l16-16z" fill="#E96B3D" /></svg>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold text-ink sm:text-lg">{shift.venue.name}</h1>
+            <h1 className="line-clamp-2 break-words text-[15px] font-bold leading-tight text-ink sm:text-lg">{shift.venue.name}</h1>
             <p className="truncate text-xs text-ink-muted">
-              <span className="sr-only">השעה במקום </span><bdi dir="ltr" className="font-medium tabular-nums">{timeInTz(now, shift.venue.timezone)}</bdi>{isToday ? ' · היום' : ''}
+              <span className="font-medium">משמרת חיה</span> · <span className="sr-only">השעה במקום </span><bdi dir="ltr" className="font-semibold tabular-nums">{timeInTz(now, shift.venue.timezone)}</bdi>{isToday ? ' · היום' : ''}
             </p>
           </div>
           <ConnectionBadge connection={connection} lastSync={lastSync} />
@@ -132,16 +133,16 @@ export function HostShift() {
           <Button size="lg" icon={Plus} onClick={() => setQuickAdd('phone')} disabled={!canAct} className="hidden h-11 md:inline-flex">הוספה</Button>
         </div>
         <div className="flex items-center gap-1.5 px-3 pb-2 sm:px-4" role="group" aria-label="בחירת תאריך">
-          <Button variant="secondary" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shift.serviceDate, -1))} className="h-11 w-11 shrink-0 px-0" />
-          <label className="relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-semibold text-ink hover:bg-cloud sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
+          <Button variant="secondary" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shift.serviceDate, -1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
+          <label className="hs-datepill relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
             <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden />
             <span className="truncate">{formatDate(shift.serviceDate, 'he', false)}</span>
             <span className="sr-only">תאריך המשמרת — בחירת תאריך אחר</span>
             <input id="shift-date" type="date" dir="ltr" value={shift.serviceDate} onChange={(e) => e.target.value && setDate(e.target.value)}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
           </label>
-          <Button variant="secondary" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shift.serviceDate, 1))} className="h-11 w-11 shrink-0 px-0" />
-          {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0">היום</Button>}
+          <Button variant="secondary" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shift.serviceDate, 1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
+          {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0 rounded-full px-4">היום</Button>}
         </div>
         {connection === 'offline' && (
           <p role="alert" className="border-t border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800">
@@ -187,7 +188,7 @@ export function HostShift() {
       </div>
 
       {assigning && (
-        <div role="status" className="mx-3 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:mx-4">
+        <div role="status" className="mx-3 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900 sm:mx-4">
           בחרו שולחן במפה עבור {assigning.guestName} ({assigning.party} סועדים). שולחנות מתאימים מסומנים במסגרת.
           <Button size="sm" variant="secondary" onClick={() => setAssigning(null)} className="ms-auto h-10">ביטול</Button>
         </div>

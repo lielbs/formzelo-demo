@@ -58,8 +58,8 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
 
 const STATUS_STYLE: Record<ReservationStatus | 'late', { cls: string; icon: LucideIcon }> = {
   pending_approval: { cls: 'border-amber-300 bg-amber-50 text-amber-900', icon: Clock },
-  confirmed: { cls: 'border-sky-200 bg-sky-50 text-sky-900', icon: Circle },
-  arrived: { cls: 'border-violet-200 bg-violet-50 text-violet-900', icon: Users },
+  confirmed: { cls: 'fz-st-confirmed', icon: Circle },
+  arrived: { cls: 'fz-st-arrived', icon: Users },
   seated: { cls: 'border-teal-200 bg-teal-50 text-teal-900', icon: CheckCircle2 },
   completed: { cls: 'border-cloud-300 bg-cloud text-ink-muted', icon: Check },
   cancelled: { cls: 'border-cloud-300 bg-white text-ink-muted line-through decoration-1', icon: Ban },

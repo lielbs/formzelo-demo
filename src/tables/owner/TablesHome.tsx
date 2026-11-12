@@ -25,7 +25,7 @@ function VenueCard({ v }: { v: VenueSummary }) {
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-semibold text-ink">{v.name}</h2>
+          <h2 className="break-words text-lg font-semibold leading-snug text-ink">{v.name}</h2>
           <p className="mt-0.5 text-xs text-ink-muted">התפקיד שלך: {ROLE_HE[v.role] ?? v.role}</p>
         </div>
         <Badge tone={status.tone}>{status.text}</Badge>

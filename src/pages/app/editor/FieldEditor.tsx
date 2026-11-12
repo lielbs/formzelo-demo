@@ -222,7 +222,7 @@ export function FieldEditor({
         >
           <ChevronDown className={cx('h-4 w-4 shrink-0 text-ink-soft transition-transform', open && 'rotate-180')} aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium text-ink">{field.label}</span>
+            <span className="line-clamp-2 break-words text-sm font-medium leading-snug text-ink">{field.label}</span>
             <span className="flex flex-wrap items-center gap-1 text-[11px] text-ink-soft">
               {FIELD_TYPE_LABELS[field.type]}
               {field.required && <Badge tone="orange">חובה</Badge>}

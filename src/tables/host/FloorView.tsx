@@ -88,7 +88,7 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
               <li key={t.id}>
                 <button type="button" onClick={() => void pick(t.id)} disabled={!!assigning && !canAct}
                   className={cx('flex min-h-[48px] w-full items-center gap-2 rounded-xl border px-3 text-start text-sm hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-                    candidates.has(t.id) ? 'border-sky-400' : 'border-cloud-200')}>
+                    candidates.has(t.id) ? 'border-orange-400' : 'border-cloud-200')}>
                   <span aria-hidden className="w-4 text-center">{TABLE_STATE_SYMBOL[live?.state ?? 'ready']}</span>
                   <span className="font-semibold tabular-nums">{t.label}</span>
                   <span className="text-ink-muted">{t.maxCovers} מק׳</span>

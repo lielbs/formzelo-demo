@@ -140,7 +140,7 @@ export function VenueSetup() {
           <Link to={venue.published ? `/app/tables/${venueId}` : '/app/tables'} className="text-sm text-ink-muted hover:text-ink">
             ← {venue.published ? 'חזרה לניהול המקום' : 'כל המקומות'}
           </Link>
-          <h1 className="mt-1 truncate text-2xl font-semibold text-ink">{venue.published ? 'עריכת' : 'הקמת'} {draft.basics.name || venue.name}</h1>
+          <h1 className="mt-1 break-words text-[26px] font-bold leading-tight tracking-tight text-ink">{venue.published ? 'עריכת' : 'הקמת'} {draft.basics.name || venue.name}</h1>
         </div>
         <SaveIndicator state={save} at={savedAt} />
       </div>

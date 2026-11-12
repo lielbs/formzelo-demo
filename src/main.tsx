@@ -10,7 +10,7 @@ import { App } from './App';
 import { AuthProvider } from './auth/AuthProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
-import { ConfirmHost } from './components/Confirm';
+import { ActionSheetHost, ConfirmHost } from './components/Confirm';
 import { RepoProvider } from './data/store';
 import { framedByOtherOrigin, isFrameProtectedPath, routePath } from './lib/frameGuard';
 import { BASE_PATH } from './lib/links';
@@ -49,6 +49,7 @@ if (isFrameProtectedPath(routePath(window.location.pathname, BASE_PATH)) && fram
           <ToastProvider>
             <App />
             <ConfirmHost />
+            <ActionSheetHost />
           </ToastProvider>
         </RepoProvider>
       </AuthProvider>

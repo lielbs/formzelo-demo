@@ -56,7 +56,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
         {!compact && (
           <>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{activeOrg.name}</span>
+              <span className="line-clamp-2 break-words text-sm font-semibold leading-tight">{activeOrg.name}</span>
               <span className="block truncate text-xs text-white/50">{[activeOrg.industry, activeOrg.isDemo ? 'דמו' : ''].filter(Boolean).join(' · ') || 'סביבת העבודה שלכם'}</span>
             </span>
             <ChevronDown className="h-4 w-4 text-white/50" aria-hidden />
@@ -83,7 +83,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
                   {o.name.slice(0, 1)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-ink">{o.name}</span>
+                  <span className="line-clamp-2 break-words text-sm font-medium leading-snug text-ink">{o.name}</span>
                   <span className="block text-xs text-ink-muted">{o.industry}</span>
                 </span>
                 {o.id === activeOrg.id && <Check className="h-4 w-4 text-teal" aria-hidden />}
@@ -201,16 +201,16 @@ export function AppLayout() {
         <Sidebar pending={pending} />
       </aside>
 
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-cloud-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+      <header className="fz-topbar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 lg:hidden">
         <Logo endorsement={false} to="/app" />
         <div className="flex min-w-0 items-center gap-2">
-          <span className="min-w-0 max-w-[40vw] truncate text-sm font-medium text-ink-muted">{activeOrg.name}</span>
+          <span className="line-clamp-2 min-w-0 max-w-[46vw] break-words text-end text-[13px] font-semibold leading-tight text-ink-muted">{activeOrg.name}</span>
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
             aria-label="פתיחת תפריט"
             aria-expanded={mobileOpen}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cloud-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink/[0.05] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
           >
             <Menu className="h-5 w-5" />
           </button>

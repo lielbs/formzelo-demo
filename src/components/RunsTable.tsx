@@ -50,7 +50,7 @@ export function RunsTable({ runs, workflows, actions }: { runs: WorkflowRun[]; w
                   {r.reference} {r.isDemo && <DemoBadge className="ms-1" />}
                 </td>
                 <td className="px-4 py-3">{r.customerName || '—'}</td>
-                <td className="max-w-[200px] truncate px-4 py-3 text-ink-muted">{title(r.workflowId)}</td>
+                <td className="max-w-[220px] break-words px-4 py-3 text-ink-muted">{title(r.workflowId)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
                     <StatusBadge status={r.status} />
