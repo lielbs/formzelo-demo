@@ -1,4 +1,5 @@
 import { ClipboardList, Footprints, LayoutGrid, List, PhoneCall, Plus, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { cx } from '../../components/ui';
 import { FLAG_HE, PARTY_MAX, TILE_HE, type ShiftFilters, type TileCount, type TileKey } from '../domain/shiftList';
 import { SOURCE_HE, STATUS_HE } from '../domain/status';
@@ -19,14 +20,37 @@ const BAR: { key: TileKey; label: string }[] = [
  * The shift at a glance: covers expected today, one bar of where those covers are now
  * (seated, arrived, still to come, needing attention), and the same states as quick filters.
  */
+/** A number that eases to its new value (instant for reduced-motion users). */
+function useEased(value: number) {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = from.current;
+    if (start === value || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { from.current = value; setShown(value); return; }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / 500);
+      const v = Math.round(start + (value - start) * (1 - (1 - k) ** 3));
+      from.current = v;
+      setShown(v);
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return shown;
+}
+
 export function ShiftPulse({ counts, tile, onTile }: { counts: Record<TileKey, TileCount>; tile: TileKey; onTile: (t: TileKey) => void }) {
+  const covers = useEased(counts.active.covers);
   const total = BAR.reduce((n, b) => n + counts[b.key].covers, 0);
   const summary = BAR.map((b) => `${b.label} ${counts[b.key].covers}`).join(', ');
   return (
     <section className="hs-pulse" aria-labelledby="hs-pulse-title">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="hs-pulse-title" className="flex items-baseline gap-2">
-          <span className="hs-pulse-number">{counts.active.covers}</span>
+          <span className="hs-pulse-number" aria-hidden>{covers}</span><span className="sr-only">{counts.active.covers}</span>
           <span className="text-sm font-medium">סועדים במשמרת</span>
           <span className="hs-muted text-sm">· {counts.active.count} הזמנות</span>
         </h2>
@@ -109,8 +133,9 @@ export function AddChooser({ onPick, onClose }: { onPick: (m: QuickAddMode) => v
 }
 
 /**
- * Phone dock: a floating glass capsule with the three views and a highlight that slides to the
- * chosen one, plus a round glass add button. Motion is skipped for reduced-motion users.
+ * Phone dock: a floating glass capsule with the three views. Tap a view, or drag a finger along
+ * the capsule — the highlight follows and settles on the nearest view when released. Arrow keys
+ * move between views. A round glass add button sits beside it.
  */
 export function ShiftDock({ view, onView, waiting, onAdd, canAdd }: { view: View; onView: (v: View) => void; waiting: number; onAdd: () => void; canAdd: boolean }) {
   const tabs: { v: View; label: string; icon: typeof List }[] = [
@@ -119,14 +144,61 @@ export function ShiftDock({ view, onView, waiting, onAdd, canAdd }: { view: View
     { v: 'waitlist', label: 'המתנה', icon: ClipboardList },
   ];
   const index = Math.max(0, tabs.findIndex((t) => t.v === view));
+  const box = useRef<HTMLDivElement>(null);
+  const press = useRef<{ id: number; x: number; dragging: boolean } | null>(null);
+  const [drag, setDrag] = useState<{ x: number; hot: number } | null>(null);
+  const [bump, setBump] = useState(0);
+
+  /** Distance of the finger from the capsule's start edge (right in RTL), as a highlight offset. */
+  const measure = (clientX: number) => {
+    const r = box.current!.getBoundingClientRect();
+    const rtl = getComputedStyle(box.current!).direction === 'rtl';
+    const tab = (r.width - 10) / tabs.length;
+    const fromStart = rtl ? r.right - 5 - clientX : clientX - r.left - 5;
+    const offset = Math.min(Math.max(fromStart - tab / 2, 0), tab * (tabs.length - 1));
+    return { x: rtl ? -offset : offset, hot: Math.round(offset / tab) };
+  };
+  const choose = (i: number) => { if (tabs[i] && tabs[i]!.v !== view) { onView(tabs[i]!.v); setBump((b) => b + 1); } };
+
   return (
     <nav aria-label="תצוגות המשמרת" className="hs-dock md:hidden">
-      <div role="radiogroup" aria-label="תצוגה" className="hs-glass hs-dock-tabs">
-        {/* RTL: the first tab is on the right, so moving to the next one goes left. */}
-        <span className="hs-dock-glow" aria-hidden style={{ transform: `translateX(${-100 * index}%)` }} />
-        {tabs.map(({ v, label, icon: Icon }) => (
-          <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => onView(v)} className="hs-tab">
-            <Icon className="hs-tab-icon h-[22px] w-[22px]" aria-hidden />
+      <div ref={box} role="radiogroup" aria-label="תצוגה" className="hs-glass hs-dock-tabs" data-dragging={drag ? '' : undefined}
+        onPointerDown={(e) => { if (e.button === 0) press.current = { id: e.pointerId, x: e.clientX, dragging: false }; }}
+        onPointerMove={(e) => {
+          const p = press.current;
+          if (!p || p.id !== e.pointerId) return;
+          if (!p.dragging && Math.abs(e.clientX - p.x) < 8) return;
+          if (!p.dragging) { p.dragging = true; box.current?.setPointerCapture(e.pointerId); }
+          const m = measure(e.clientX);
+          setDrag((d) => {
+            if (d && d.hot !== m.hot) navigator.vibrate?.(6);
+            return { x: m.x, hot: m.hot };
+          });
+        }}
+        onPointerUp={(e) => {
+          const p = press.current;
+          press.current = null;
+          if (!p || !p.dragging) return;
+          choose(measure(e.clientX).hot);
+          setDrag(null);
+        }}
+        onPointerCancel={() => { press.current = null; setDrag(null); }}
+        onKeyDown={(e) => {
+          const rtl = getComputedStyle(e.currentTarget).direction === 'rtl';
+          const step = e.key === 'ArrowLeft' ? (rtl ? 1 : -1) : e.key === 'ArrowRight' ? (rtl ? -1 : 1) : 0;
+          if (!step) return;
+          e.preventDefault();
+          const next = (index + step + tabs.length) % tabs.length;
+          choose(next);
+          box.current?.querySelectorAll<HTMLButtonElement>('[role=radio]')[next]?.focus();
+        }}>
+        {/* RTL: the first view is on the right, so the next one is further left. */}
+        <span className="hs-dock-glow" aria-hidden
+          style={{ transform: drag ? `translateX(${drag.x}px) scale(1.06, 1.08)` : `translateX(${-100 * index}%)` }} />
+        {tabs.map(({ v, label, icon: Icon }, i) => (
+          <button key={v} type="button" role="radio" aria-checked={view === v} tabIndex={view === v ? 0 : -1}
+            data-hot={drag?.hot === i ? '' : undefined} onClick={() => choose(i)} className="hs-tab">
+            <Icon key={view === v ? `on-${bump}` : 'off'} className="hs-tab-icon h-[22px] w-[22px]" aria-hidden />
             <span>{label}</span>
             {v === 'waitlist' && waiting > 0 && <span className="hs-badge" aria-label={`${waiting} ממתינים`}>{waiting}</span>}
           </button>

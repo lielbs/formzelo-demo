@@ -99,6 +99,23 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(add.getByRole('radio', { name: 'מזדמנים עכשיו' })).toHaveAttribute('aria-checked', 'true');
     await add.getByRole('button', { name: 'ביטול' }).click();
 
+    // Dock drag: press on the list tab, slide to the waitlist tab, release.
+    const dockTab = (name: RegExp | string) => page.getByRole('navigation', { name: 'תצוגות המשמרת' }).getByRole('radio', { name });
+    const from = await dockTab('רשימה').boundingBox();
+    const to = await dockTab(/המתנה/).boundingBox();
+    await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2, { steps: 12 });
+    await page.mouse.up();
+    await expect(dockTab(/המתנה/)).toHaveAttribute('aria-checked', 'true');
+    // Keyboard: arrows move between views (left = next in Hebrew).
+    await dockTab(/המתנה/).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(dockTab('מפה')).toHaveAttribute('aria-checked', 'true');
+    await expect(dockTab('מפה')).toBeFocused();
+    await dockTab('רשימה').click();
+    await expect(dockTab('רשימה')).toHaveAttribute('aria-checked', 'true');
+
     // Tab bar.
     await page.getByRole('radio', { name: 'מפה' }).click();
     await shot(page, `phone-floor-${theme}`);
@@ -112,6 +129,9 @@ for (const theme of ['light', 'dark'] as const) {
     test(`${size.width}x${size.height} list — ${theme}`, async ({ browser }) => {
       const { ctx, page } = await open(browser, size, theme);
       await shot(page, `list-${size.width}x${size.height}-${theme}`);
+      // The phone dock never shows on tablets and desktops (they use the in-page view switch).
+      const dock = page.getByRole('navigation', { name: 'תצוגות המשמרת' });
+      if (size.width >= 768) await expect(dock).toBeHidden(); else await expect(dock).toBeVisible();
       if (size.width >= 1024) {
         await page.getByRole('button', { name: /פתיחת פרטים/ }).first().click();
         await expect(page.getByRole('complementary', { name: 'פרטים' })).toBeVisible();

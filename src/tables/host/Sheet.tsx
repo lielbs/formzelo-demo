@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -13,12 +13,23 @@ export function Sheet({ title, subtitle, onClose, children, footer }: {
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const [closing, setClosing] = useState(false);
+  // Let the sheet slide away before it unmounts (instant for reduced-motion users).
+  const dismiss = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(onClose, reduce ? 0 : 160);
+  }, [closing, onClose]);
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
+  // Set up once per opening: scroll lock, focus trap, focus return.
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); onClose(); return; }
+      if (e.key === 'Escape') { e.stopPropagation(); dismissRef.current(); return; }
       if (e.key !== 'Tab' || !panel.current) return;
       const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
       if (!items.length) return;
@@ -35,19 +46,19 @@ export function Sheet({ title, subtitle, onClose, children, footer }: {
       clearTimeout(t);
       opener?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return createPortal(
     <div className="fz-tables" dir="rtl">
-      <div className="hs-sheet-scrim" onClick={onClose} aria-hidden />
-      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="hs-sheet focus:outline-none">
+      <div className="hs-sheet-scrim" onClick={dismiss} aria-hidden data-closing={closing || undefined} />
+      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="hs-sheet focus:outline-none" data-closing={closing || undefined}>
         <div className="hs-sheet-grip" aria-hidden />
         <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-3">
           <div className="min-w-0">
             <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
             {subtitle && <p className="hs-muted mt-0.5 text-sm">{subtitle}</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="סגירה"
+          <button type="button" onClick={dismiss} aria-label="סגירה"
             className="hs-muted -me-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-[var(--hs-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
             <X className="h-5 w-5" aria-hidden />
           </button>

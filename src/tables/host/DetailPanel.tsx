@@ -33,7 +33,7 @@ export function DetailPanel({ shift, selection, selected, states, now, canAct, o
   }, [selection.kind, selection.id, onClose]);
   return (
     <aside ref={ref} tabIndex={-1} aria-label="פרטים"
-      className={cx('z-40 flex flex-col overflow-hidden bg-white outline-none',
+      className={cx('hs-panel z-40 flex flex-col overflow-hidden bg-white outline-none',
         'fixed inset-x-0 bottom-0 max-h-[70vh] rounded-t-2xl border-t border-cloud-300 shadow-lift',
         'lg:sticky lg:top-[8.5rem] lg:inset-auto lg:max-h-[calc(100vh-10rem)] lg:w-[23rem] lg:shrink-0 lg:self-start lg:rounded-2xl lg:border lg:shadow-card')}>
       <div className="flex items-center justify-between gap-2 border-b border-cloud-200 px-4 py-2">

@@ -105,8 +105,8 @@ export function HostShift() {
   const items = timeline(activeRows, now, isToday ? timeInTz(now, shift.venue.timezone) : null);
   const groups = (['attention', 'upcoming', 'arrived', 'seated', 'done'] as Bucket[]).map((b) => ({ b, rows: reservations.filter((r) => bucketOf(r, now) === b) }));
   const nFilters = filterCount(filters);
-  const row = (r: ShiftReservation, next = false) => (
-    <ReservationRow key={r.id} r={r} now={now} labels={labels} next={next} selected={selection?.kind === 'reservation' && selection.id === r.id}
+  const row = (r: ShiftReservation, next = false, order = 0) => (
+    <ReservationRow key={r.id} r={r} now={now} labels={labels} next={next} order={order} selected={selection?.kind === 'reservation' && selection.id === r.id}
       canAct={canAct} onSelect={() => setSelection({ kind: 'reservation', id: r.id })} onDone={done}
       onAssign={() => { setAssigning(r); setView('floor'); setSelection({ kind: 'reservation', id: r.id }); }} />
   );
@@ -195,6 +195,7 @@ export function HostShift() {
 
       <div className="flex min-h-0 flex-1 gap-4 px-3 pb-28 pt-3 sm:px-4 md:pb-6">
         <main id="shift-main" ref={listRef} className={cx('min-w-0 flex-1', selection && 'pb-[45vh] lg:pb-0')} aria-label="המשמרת">
+          <div key={view} className="hs-view">
           {view === 'list' && (
             reservations.length === 0 ? (
               <div className="flex flex-col items-center rounded-2xl border border-dashed border-cloud-300 bg-white px-6 py-10 text-center">
@@ -229,7 +230,7 @@ export function HostShift() {
                           </li>
                         )}
                         {it.kind === 'now' && <li className="hs-nowmark" aria-label={`עכשיו ${it.time}`}><span>עכשיו <bdi dir="ltr">{it.time}</bdi></span></li>}
-                        {it.kind === 'row' && row(it.r, it.next)}
+                        {it.kind === 'row' && row(it.r, it.next, items.indexOf(it))}
                       </Fragment>
                     ))}
                   </ul>
@@ -252,6 +253,7 @@ export function HostShift() {
               onSelectTable={(id) => setSelection({ kind: 'table', id })} onAssigned={(m) => { setAssigning(null); done(m); }} />
           )}
           {view === 'waitlist' && <WaitlistView shift={shift} now={now} canAct={canAct} onDone={done} onAdd={() => setQuickAdd('waitlist')} labels={labels} />}
+          </div>
         </main>
         {selection && (
           <DetailPanel shift={shift} selection={selection} selected={selected} states={tableStates} now={now} canAct={canAct}

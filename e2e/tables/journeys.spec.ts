@@ -85,8 +85,8 @@ test('two hosts act on the same party: one wins, the other sees the current stat
   await row1.getByRole('button', { name: 'סיום' }).click();
   await expect(row1.getByText('הסתיים')).toBeVisible();
   await h2.setOffline(false);
-  await row2.getByRole('button', { name: 'סיום' }).click();
-  // Either realtime already refreshed host 2 (button gone) or the server refused the stale action.
+  // Either realtime already refreshed host 2 (button gone) or the server refuses the stale action.
+  await row2.getByRole('button', { name: 'סיום' }).click({ timeout: 3_000 }).catch(() => undefined);
   await expect(row2.getByText('הסתיים')).toBeVisible({ timeout: 15_000 });
   await expect(p2.getByText(/עדכן את ההזמנה|לא מתאימה למצב הנוכחי/).first().or(row2.getByText('הסתיים'))).toBeVisible();
   const [ev] = await sql<{ n: string }>(`select count(*) n from public.tables_reservation_events e join public.tables_reservations r on r.id=e.reservation_id where r.venue_id=$1 and r.guest_name='שולחן מתנגש'`, [venue.id]);

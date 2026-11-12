@@ -1,5 +1,5 @@
 import { AlertTriangle, Armchair, Info, MessageSquareText, MoreHorizontal, NotebookPen, Repeat2, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, cx } from '../../components/ui';
 import { decidePending, transition } from '../data/client';
 import type { TablesError } from '../domain/errors';
@@ -26,12 +26,21 @@ function tone(r: ShiftReservation, now: Date) {
  * One booking card: time and length, guest and phone, table and party, what to know, and the
  * single next action one tap away. The card body opens the full details.
  */
-export function ReservationRow({ r, now, labels, selected, canAct, next = false, onSelect, onDone, onAssign }: {
-  r: ShiftReservation; now: Date; labels: Map<string, string>; selected: boolean; canAct: boolean; next?: boolean;
+export function ReservationRow({ r, now, labels, selected, canAct, next = false, order = 0, onSelect, onDone, onAssign }: {
+  r: ShiftReservation; now: Date; labels: Map<string, string>; selected: boolean; canAct: boolean; next?: boolean; order?: number;
   onSelect: () => void; onDone: (message: string) => void; onAssign: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [flash, setFlash] = useState(false);
+  const lastStatus = useRef(r.status);
+  useEffect(() => {
+    if (lastStatus.current === r.status) return;
+    lastStatus.current = r.status;
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 900);
+    return () => clearTimeout(t);
+  }, [r.status]);
   const action = nextAction(r, now);
   const late = isLate(r, now);
   const tables = r.tableIds.map((id) => labels.get(id) ?? '?').join('+');
@@ -56,8 +65,8 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
   }
 
   return (
-    <li className={cx('hs-item', `hs-tone-${tone(r, now)}`)}>
-      <div className="hs-card" data-next={next || undefined} data-selected={selected || undefined} data-dim={isDone(r) || undefined}>
+    <li className={cx('hs-item', `hs-tone-${tone(r, now)}`)} style={{ animationDelay: `${Math.min(order, 8) * 35}ms` }}>
+      <div className="hs-card" data-flash={flash || undefined} data-next={next || undefined} data-selected={selected || undefined} data-dim={isDone(r) || undefined}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
           <button type="button" onClick={onSelect}
             className="flex min-h-[48px] min-w-0 flex-1 basis-[55%] items-center gap-3 rounded-lg text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hs-accent)]">
