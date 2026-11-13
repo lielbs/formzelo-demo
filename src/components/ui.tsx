@@ -287,6 +287,25 @@ export function Modal({
   );
 }
 
+/**
+ * Underline tabs with counts: the one filter-by-state pattern across Formangle (requests,
+ * dashboard, Tables shift). Scrolls sideways on narrow screens instead of wrapping into pills.
+ */
+export function Tabs<T extends string>({ label, value, onChange, items, className }: {
+  label: string; value: T; onChange: (v: T) => void; items: { value: T; label: string; count?: number }[]; className?: string;
+}) {
+  return (
+    <div role="tablist" aria-label={label} className={cx('fz-tabs', className)}>
+      {items.map((it) => (
+        <button key={it.value} type="button" role="tab" aria-selected={value === it.value} onClick={() => onChange(it.value)} className="fz-tab">
+          {it.label}
+          {it.count != null && <span className="fz-tab-n">{it.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Several figures in one surface, separated by hairlines (instead of one card per number). */
 export function StatStrip({ items, label }: { label: string; items: { label: string; value: ReactNode; hint?: ReactNode; icon: LucideIcon; tone?: 'neutral' | 'orange' | 'teal' }[] }) {
   const iconTone = { neutral: 'text-ink-soft', orange: 'text-orange-700', teal: 'text-teal-600' };

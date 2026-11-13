@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { NotificationList, Timeline } from '../../components/Activity';
 import { RunsTable } from '../../components/RunsTable';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHeader, Spinner, StatStrip } from '../../components/ui';
+import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHeader, Spinner, StatStrip, Tabs } from '../../components/ui';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
 import { DONE_STATUSES, ownerActions, PENDING_STATUSES } from '../../engine/transitions';
@@ -288,19 +288,7 @@ export function Dashboard() {
         <Card className="overflow-hidden lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cloud-200 px-4 py-3">
             <h2 className="font-semibold">בקשות אחרונות</h2>
-            <div role="tablist" aria-label="סינון בקשות" className="flex gap-1 rounded-xl bg-cloud p-1">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  role="tab"
-                  aria-selected={filter === f.key}
-                  onClick={() => setFilter(f.key)}
-                  className={cx('rounded-lg px-3 py-1.5 text-xs font-medium transition', filter === f.key ? 'bg-white text-ink shadow-sm' : 'text-ink-muted hover:text-ink')}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
+            <Tabs label="סינון בקשות" value={filter} onChange={setFilter} className="-mb-3 border-b-0" items={FILTERS.map((f) => ({ value: f.key, label: f.label }))} />
           </div>
           {filtered.length ? (
             <RunsTable runs={filtered.slice(0, 8)} workflows={workflows} actions={byRun} />

@@ -376,3 +376,17 @@ html.fz-dark .fz-sheet-danger { color: #ff8b8b; }
   scrollbar-width: none;
 }
 .fz-phone-frame::-webkit-scrollbar { display: none; }
+
+/* ---------- Underline tabs (filter by state) — shared by requests, dashboard and Tables ---------- */
+.fz-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid rgb(24 33 45 / 0.1); scrollbar-width: none; }
+.fz-tabs::-webkit-scrollbar { display: none; }
+.fz-tab {
+  position: relative; display: inline-flex; min-height: 44px; flex: none; align-items: center; gap: 6px;
+  padding-inline: 10px; color: #5b6675; font-size: 14px; font-weight: 500; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent; transition: color 0.15s;
+}
+.fz-tab:hover { color: #1e2935; }
+.fz-tab:focus-visible { outline: 2px solid #bf4f28; outline-offset: -2px; border-radius: 8px; }
+.fz-tab[aria-selected="true"] { color: #1e2935; font-weight: 600; }
+.fz-tab[aria-selected="true"]::after { content: ""; position: absolute; inset-inline: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: #1e2935; }
+.fz-tab-n { font-variant-numeric: tabular-nums; font-weight: 600; }

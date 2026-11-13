@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CreateCaseModal } from '../../components/CreateCaseModal';
 import { RunsTable } from '../../components/RunsTable';
-import { Button, Card, cx, EmptyState, ErrorState, Input, PageHeader, Select, Spinner } from '../../components/ui';
+import { Button, Card, cx, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, Tabs } from '../../components/ui';
 import { RUN_STATUSES, type RunStatus, type Workflow } from '../../domain/schema';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { isPaymentOutstanding } from '../../engine/completion';
@@ -113,38 +113,24 @@ export function Requests() {
         </div>
       </div>
 
-      <div role="tablist" aria-label="סינון לפי סטטוס" className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
-        {(['all', 'decision', 'answered', ...RUN_STATUSES] as const).map((s) => {
-          const n = s === 'all' ? byWorkflow.length : s === 'decision' ? byWorkflow.filter((r) => byRun.get(r.id)?.awaiting).length : s === 'answered' ? byWorkflow.filter((r) => byRun.get(r.id)?.answered).length : count(s);
-          if (s !== 'all' && n === 0 && status !== s) return null;
-          return (
-            <button
-              key={s}
-              role="tab"
-              aria-selected={status === s}
-              onClick={() => setStatus(s)}
-              className={cx(
-                'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
-                status === s ? 'border-midnight bg-midnight text-white' : 'border-cloud-300 bg-white text-ink-muted hover:text-ink',
-              )}
-            >
-              {s === 'all' ? 'הכול' : s === 'decision' ? 'ממתין להחלטת לקוח' : s === 'answered' ? 'הלקוח השיב' : STATUS_LABELS[s]} <span className="tabular-nums opacity-70">{n}</span>
-            </button>
-          );
-        })}
-      </div>
+      {runs.length > 0 && (
+        <Tabs label="סינון לפי סטטוס" value={status as string} onChange={setStatus} className="mb-4"
+          items={(['all', 'decision', 'answered', ...RUN_STATUSES] as const).flatMap((st) => {
+            const n = st === 'all' ? byWorkflow.length : st === 'decision' ? byWorkflow.filter((r) => byRun.get(r.id)?.awaiting).length : st === 'answered' ? byWorkflow.filter((r) => byRun.get(r.id)?.answered).length : count(st);
+            if (st !== 'all' && n === 0 && status !== st) return [];
+            return [{ value: st as string, label: st === 'all' ? 'הכול' : st === 'decision' ? 'ממתין להחלטת לקוח' : st === 'answered' ? 'הלקוח השיב' : STATUS_LABELS[st], count: n }];
+          })} />
+      )}
 
-      <Card className="overflow-hidden">
-        {list.length ? (
+      {list.length ? (
+        <Card className="overflow-hidden">
           <RunsTable runs={list} workflows={workflows} actions={byRun} />
-        ) : (
-          <div className="p-4">
-            <EmptyState icon={Inbox} title={runs.length ? 'אין בקשות שתואמות לסינון' : 'עדיין אין בקשות'}>
-              {runs.length ? 'נסו לשנות את הסינון או החיפוש.' : 'פרסמו תהליך ושלחו את הקישור — בקשות יופיעו כאן מיד.'}
-            </EmptyState>
-          </div>
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <EmptyState icon={Inbox} title={runs.length ? 'אין בקשות שתואמות לסינון' : 'עדיין אין בקשות'}>
+          {runs.length ? 'נסו לשנות את הסינון או החיפוש.' : 'פרסמו תהליך ושלחו את הקישור — בקשות יופיעו כאן מיד.'}
+        </EmptyState>
+      )}
 
       {caseWorkflow && caseTarget?.v && (
         <CreateCaseModal open onClose={() => setCaseWorkflow(null)} orgId={org.id} workflow={caseWorkflow} caseFields={caseTarget.v.config.caseFields} />
