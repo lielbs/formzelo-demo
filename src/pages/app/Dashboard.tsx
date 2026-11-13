@@ -1,10 +1,10 @@
-import { ArrowLeft, CheckCircle2, MessageSquareReply, SendHorizontal, CircleDashed, Clock, ExternalLink, Inbox, Plus, Sparkles, Wallet, Workflow as WorkflowIcon, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MessageSquareReply, SendHorizontal, CircleDashed, Clock, ExternalLink, Inbox, Plus, Wallet, Workflow as WorkflowIcon, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NotificationList, Timeline } from '../../components/Activity';
 import { RunsTable } from '../../components/RunsTable';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
+import { Badge, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, PageHeader, Spinner, StatStrip } from '../../components/ui';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
 import { DONE_STATUSES, ownerActions, PENDING_STATUSES } from '../../engine/transitions';
@@ -106,7 +106,7 @@ export function Dashboard() {
         eyebrow={
           <div className="flex flex-wrap items-center gap-2">
             {org.isDemo && <DemoBadge />}
-            <span className="break-words text-[13px] font-semibold uppercase tracking-wide text-ink-muted">{org.name}{org.industry ? ` · ${org.industry}` : ''}</span>
+            <span className="hidden break-words lg:inline text-[13px] font-semibold uppercase tracking-wide text-ink-muted">{org.name}{org.industry ? ` · ${org.industry}` : ''}</span>
           </div>
         }
         title="לוח בקרה"
@@ -129,9 +129,6 @@ export function Dashboard() {
         <Card className="mb-6 p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-700">
-                <Sparkles className="h-5 w-5" aria-hidden />
-              </span>
               <div>
                 <h2 className="font-semibold">ארבעה צעדים לתהליך הראשון שלכם</h2>
                 <p className="text-sm text-ink-muted">כ-3 דקות. {org.isDemo ? 'בדמו הכול נשמר מקומית בדפדפן.' : 'הכול נשמר אוטומטית בחשבון שלכם.'}</p>
@@ -153,10 +150,10 @@ export function Dashboard() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <ol className="fz-stagger mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-3 grid divide-y divide-ink/[0.07] sm:grid-cols-2 sm:gap-x-6 sm:divide-y-0 lg:grid-cols-4">
             {steps.map((s, i) => (
               <li key={s.label}>
-                <Link to={s.to} className={cx('flex items-center gap-2.5 rounded-xl border p-3 text-sm transition hover:border-ink-soft', s.done ? 'border-teal-50 bg-teal-50/50 text-ink-muted' : 'border-cloud-200')}>
+                <Link to={s.to} className={cx('flex min-h-[48px] items-center gap-2.5 rounded-lg py-2 text-sm transition hover:text-ink', s.done ? 'text-ink-muted' : 'text-ink')}>
                   {s.done ? <CheckCircle2 className="h-4 w-4 shrink-0 text-teal" aria-label="בוצע" /> : <CircleDashed className="h-4 w-4 shrink-0 text-ink-soft" aria-label="טרם בוצע" />}
                   <span className={s.done ? 'line-through' : 'font-medium'}>
                     {i + 1}. {s.label}
@@ -170,9 +167,6 @@ export function Dashboard() {
 
       {latest && (
         <Card className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700">
-            <Inbox className="h-5 w-5" aria-hidden />
-          </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-ink-muted">הבקשה האחרונה שהגיעה · {formatRelative(latest.submittedAt!)}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
@@ -192,33 +186,17 @@ export function Dashboard() {
         </Card>
       )}
 
-      <div className="fz-stagger grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
-        <Stat label="תהליכים פעילים" value={formatNumber(stats.active)} icon={WorkflowIcon} hint={stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined} />
-        <Stat label="בקשות ב-7 ימים" value={formatNumber(stats.incoming)} icon={Inbox} tone="orange" />
-        <Stat label="ממתינות לטיפול" value={formatNumber(stats.pending)} icon={Clock} tone="orange" />
-        <Stat
-          label="אושרו / הושלמו"
-          value={formatNumber(stats.completed)}
-          icon={CheckCircle2}
-          tone="teal"
-          hint={stats.approvalRate !== null ? `שיעור אישור ${stats.approvalRate}% מהבקשות שהוכרעו` : undefined}
-        />
-        <div className="col-span-2 md:col-span-1">
-          {stats.money.paid > 0 || stats.money.outstanding > 0 ? (
-            <Stat
-              label="תשלומים מדומים"
-              value={formatCurrency(stats.money.paid)}
-              icon={Wallet}
-              tone="teal"
-              hint={`${stats.money.outstanding ? `${formatCurrency(stats.money.outstanding)} ממתינים · ` : ''}סימולציה, לא עבר כסף`}
-            />
-          ) : (
-            <Stat label="שיעור אישור" value={stats.approvalRate !== null ? `${stats.approvalRate}%` : '—'} icon={CheckCircle2} tone="teal" hint="תהליכים ללא תשלום לא מציגים הכנסות" />
-          )}
-        </div>
-      </div>
+      <StatStrip label="המספרים של העסק" items={[
+        { label: 'תהליכים פעילים', value: formatNumber(stats.active), icon: WorkflowIcon, hint: stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined },
+        { label: 'בקשות ב-7 ימים', value: formatNumber(stats.incoming), icon: Inbox },
+        { label: 'ממתינות לטיפול', value: formatNumber(stats.pending), icon: Clock, tone: stats.pending ? 'orange' : 'neutral' },
+        { label: 'אושרו / הושלמו', value: formatNumber(stats.completed), icon: CheckCircle2, hint: stats.approvalRate !== null ? `שיעור אישור ${stats.approvalRate}% מהבקשות שהוכרעו` : undefined },
+        stats.money.paid > 0 || stats.money.outstanding > 0
+          ? { label: 'תשלומים מדומים', value: formatCurrency(stats.money.paid), icon: Wallet, hint: `${stats.money.outstanding ? `${formatCurrency(stats.money.outstanding)} ממתינים · ` : ''}סימולציה, לא עבר כסף` }
+          : { label: 'שיעור אישור', value: stats.approvalRate !== null ? `${stats.approvalRate}%` : '—', icon: CheckCircle2, hint: 'תהליכים ללא תשלום לא מציגים הכנסות' },
+      ]} />
 
-      <Card className="mt-6 p-5">
+      {actions.length > 0 && <Card className="mt-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold">החלטות לקוחות</h2>
           <p className="text-xs text-ink-muted">פעולות מובנות שנפתחו מתוך בקשות: אישורים, בחירות ועדכונים.</p>
@@ -270,12 +248,8 @@ export function Dashboard() {
               )}
             </section>
           </div>
-        ) : (
-          <p className="mt-3 rounded-xl bg-cloud p-4 text-sm text-ink-muted">
-            מתוך כל בקשה אפשר לשלוח ללקוח פעולה מובנית — אישור עבודה נוספת, בחירה בין שתי אפשרויות או עדכון — ולראות כאן מה ממתין ומה נענה.
-          </p>
-        )}
-      </Card>
+        ) : null}
+      </Card>}
 
       {stats.outcomes.length > 0 && (
         <Card className="mt-6 p-5">

@@ -1,4 +1,4 @@
-import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, MoreHorizontal, Palette, Plus, Settings, UtensilsCrossed, Workflow, X } from 'lucide-react';
+import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, MoreHorizontal, Palette, Plus, Settings, UtensilsCrossed, Workflow, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAccess, type Access } from '../production/access';
@@ -178,10 +178,9 @@ function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => v
           </NavLink>
         ))}
       </nav>
-      <div className="mt-auto rounded-xl border border-white/10 p-3 text-xs leading-relaxed text-white/50">
-        <p className="font-medium text-white/80">{runtimeConfiguration.mode === 'demo' ? 'דמו מקומי' : 'סביבת עבודה מאובטחת'}</p>
-        {runtimeConfiguration.mode === 'demo' ? 'הנתונים נשמרים בדפדפן הזה בלבד ולא מסתנכרנים בין מכשירים.' : 'הנתונים נשמרים ב-Supabase ונגישים רק לחברי הארגון המורשים.'}
-      </div>
+      {runtimeConfiguration.mode === 'demo' && (
+        <p className="mt-auto px-1 text-xs leading-relaxed text-white/45">דמו מקומי — הנתונים נשמרים בדפדפן הזה בלבד.</p>
+      )}
     </div>
   );
 }
@@ -218,18 +217,8 @@ export function AppLayout() {
 
       <header className="fz-topbar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 lg:hidden">
         <Logo endorsement={false} to="/app" />
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="line-clamp-2 min-w-0 max-w-[46vw] break-words text-end text-[13px] font-semibold leading-tight text-ink-muted">{activeOrg.name}</span>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            aria-label="פתיחת תפריט"
-            aria-expanded={mobileOpen}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink/[0.05] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
+        {/* One way to the full menu on phones and tablets: "עוד" in the tab bar (no second ☰ here). */}
+        <span className="line-clamp-2 min-w-0 max-w-[55vw] break-words text-end text-[13px] font-semibold leading-tight text-ink-muted">{activeOrg.name}</span>
       </header>
 
       {mobileOpen && (

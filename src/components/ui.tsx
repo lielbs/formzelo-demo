@@ -71,7 +71,7 @@ export function ButtonLink({ variant, size, className, icon: Icon, children, ...
 }
 
 export function Card({ className, children, as: As = 'div' }: { className?: string; children: ReactNode; as?: 'div' | 'section' | 'article' }) {
-  return <As className={cx('fz-card rounded-[20px] bg-white shadow-card', className)}>{children}</As>;
+  return <As className={cx('fz-card rounded-2xl bg-white shadow-card', className)}>{children}</As>;
 }
 
 type Tone = 'neutral' | 'orange' | 'teal' | 'blue' | 'red' | 'amber' | 'dark';
@@ -86,7 +86,7 @@ const tones: Record<Tone, string> = {
 };
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
-  return <span className={cx('inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5', tones[tone], className)}>{children}</span>;
+  return <span className={cx('inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium leading-5', tones[tone], className)}>{children}</span>;
 }
 
 export function DemoBadge({ className }: { className?: string }) {
@@ -193,9 +193,9 @@ export function ErrorState({ error, onRetry }: { error: Error | string; onRetry?
 
 export function EmptyState({ icon: Icon, title, children, action }: { icon: LucideIcon; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center rounded-[20px] bg-white/70 px-6 py-12 text-center shadow-[0_0_0_1px_rgba(24,33,45,0.05)]">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[18px] bg-gradient-to-b from-orange-50 to-orange-100 text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-        <Icon className="h-6 w-6" aria-hidden />
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink/[0.12] px-6 py-10 text-center">
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-ink/[0.05] text-ink-muted">
+        <Icon className="h-5 w-5" aria-hidden />
       </div>
       <h3 className="text-[17px] font-semibold text-ink [text-wrap:balance]">{title}</h3>
       {children && <p className="mt-1.5 max-w-sm text-[15px] leading-relaxed text-ink-muted [text-wrap:pretty]">{children}</p>}
@@ -287,19 +287,38 @@ export function Modal({
   );
 }
 
+/** Several figures in one surface, separated by hairlines (instead of one card per number). */
+export function StatStrip({ items, label }: { label: string; items: { label: string; value: ReactNode; hint?: ReactNode; icon: LucideIcon; tone?: 'neutral' | 'orange' | 'teal' }[] }) {
+  const iconTone = { neutral: 'text-ink-soft', orange: 'text-orange-700', teal: 'text-teal-600' };
+  return (
+    <section aria-label={label} className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-ink/[0.08] shadow-card md:grid-cols-3 xl:grid-cols-5">
+      {items.map((it, i) => {
+        const Icon = it.icon;
+        return (
+          <div key={it.label} className={cx('min-w-0 bg-white p-4 sm:p-5', i === items.length - 1 && items.length % 2 === 1 && 'col-span-2 md:col-span-1')}>
+            <p className="flex items-center gap-1.5 text-[13px] leading-snug text-ink-muted sm:text-sm">
+              <Icon className={cx('h-4 w-4 shrink-0', iconTone[it.tone ?? 'neutral'])} aria-hidden />
+              <span className="min-w-0">{it.label}</span>
+            </p>
+            <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-ink">{it.value}</p>
+            {it.hint && <p className="mt-1 hidden text-xs text-ink-soft sm:block">{it.hint}</p>}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export function Stat({ label, value, hint, icon: Icon, tone = 'neutral' }: { label: string; value: ReactNode; hint?: ReactNode; icon: LucideIcon; tone?: 'neutral' | 'orange' | 'teal' }) {
-  const iconTone = { neutral: 'bg-cloud text-ink-muted', orange: 'bg-orange-50 text-orange-700', teal: 'bg-teal-50 text-teal' }[tone];
+  // A figure, its label and a small muted icon: colour is reserved for meaning, not decoration.
+  const iconTone = { neutral: 'text-ink-soft', orange: 'text-orange-700', teal: 'text-teal-600' }[tone];
   return (
     <Card className="p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] leading-snug text-ink-muted sm:text-sm">{label}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums text-ink sm:text-2xl">{value}</p>
-        </div>
-        <span className={cx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10', iconTone)}>
-          <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" aria-hidden />
-        </span>
-      </div>
+      <p className="flex items-center gap-1.5 text-[13px] leading-snug text-ink-muted sm:text-sm">
+        <Icon className={cx('h-4 w-4 shrink-0', iconTone)} aria-hidden />
+        <span className="min-w-0">{label}</span>
+      </p>
+      <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-ink">{value}</p>
       {/* Phones keep the number; the explanation shows from 640 px. */}
       {hint && <p className="mt-3 hidden text-xs text-ink-soft sm:block">{hint}</p>}
     </Card>

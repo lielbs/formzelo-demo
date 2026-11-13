@@ -16,7 +16,8 @@ export default {
         sans: ['Rubik', 'system-ui', '-apple-system', '"Segoe UI"', 'Arial', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 0 0 1px rgba(24,33,45,0.045), 0 1px 2px rgba(24,33,45,0.04), 0 8px 24px -12px rgba(24,33,45,0.12)',
+        // Surfaces sit on the paper background with a hairline, not a floating shadow (calm, precise).
+        card: '0 0 0 1px rgba(24,33,45,0.08), 0 1px 1px rgba(24,33,45,0.03)',
         lift: '0 0 0 1px rgba(24,33,45,0.05), 0 18px 48px -12px rgba(24,33,45,0.22)',
       },
       keyframes: {
