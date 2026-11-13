@@ -1,10 +1,10 @@
 {
-  "phoneFirstRowTop": 286,
+  "phoneFirstRowTop": 290,
   "phoneRowsFullyVisible": 5,
-  "phoneRowHeight": 62,
+  "phoneRowHeight": 58,
   "seatedFigure": "יושבים עכשיו 6 סועדים",
   "phoneMapSmallestTablePx": 46,
   "tapsSeatFromList": 1,
   "rowActionLabel": null,
-  "tabletRowsFullyVisible": 4
+  "tabletRowsFullyVisible": 5
 }

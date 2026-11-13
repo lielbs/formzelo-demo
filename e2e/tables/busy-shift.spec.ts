@@ -63,7 +63,7 @@ test('three hosts work one busy shift while guests book; every screen converges 
     const ctx = await newContext(browser, size, i < 2);
     const page = await ctx.newPage();
     await signIn(page, biz.hosts[i]!, `/app/tables/${venueId}/live?date=${day()}`);
-    await expect(page.getByText(/מחובר/).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.hs-conn').filter({ hasText: 'מחובר' })).toBeVisible({ timeout: 20_000 });
     return { ctx, page };
   }));
   const t0 = Date.now();

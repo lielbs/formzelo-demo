@@ -54,7 +54,7 @@ function WaitlistRow({ e, now, canAct, onDone, labels }: { e: WaitlistEntry; now
       if (te.isConflict) onDone('');
     } finally { setBusy(null); }
   }
-  const seatLabel = e.status === 'offered' ? `הושבה בשולחן ${held}` : suggestion ? `הושבה בשולחן ${suggestion}` : null;
+  const seatLabel = e.status === 'offered' ? `הושבה עכשיו בשולחן ${held}` : suggestion ? `הושבה עכשיו בשולחן ${suggestion}` : null;
   return (
     <li className="hs-wl" data-offered={e.status === 'offered' || undefined}>
       <div className="flex items-start gap-3">
@@ -87,7 +87,7 @@ function WaitlistRow({ e, now, canAct, onDone, labels }: { e: WaitlistEntry; now
                 {seatLabel}
               </Button>
               {e.status === 'waiting' && (
-                <Button variant="secondary" loading={busy === 'offer'} onClick={() => run('offer', () => waitlistOffer(e.id, e.suggestion!.tableIds, e.lockVersion), `שולחן ${suggestion} נשמר ל${e.guestName}`)} className="h-12">
+                <Button variant="secondary" aria-label={`לשמור שולחן ${suggestion}`} loading={busy === 'offer'} onClick={() => run('offer', () => waitlistOffer(e.id, e.suggestion!.tableIds, e.lockVersion), `שולחן ${suggestion} נשמר ל${e.guestName}`)} className="h-12">
                   לשמור שולחן
                 </Button>
               )}

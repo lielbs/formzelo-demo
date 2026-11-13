@@ -82,13 +82,42 @@ Severity: **S1** blocks or misleads during real work · **S2** slows work or cau
 Not changed on purpose: the route structure and URLs (public links and bookmarks keep working),
 the per-person access model, and the guest pages (pending the concurrent page-layout work, §0).
 
+## 3a. Visual direction — exploration and decision
+
+Three complete directions were built on the same components (switchable tokens) and rendered on
+the same seeded business at identical viewports: dashboard 1280/390, live shift 390, shift with
+details 1280, details sheet 390, map 390. Screenshots: `docs/ux/directions/<look>-<screen>.png`.
+
+| | **Paper** (evolution of today) | **Graphite** (chosen) | **Nightfall** |
+|---|---|---|---|
+| Surfaces | warm paper `#F5F3EF`, white cards | cool neutral `#F7F7F8`, white, hairlines | cool light content in deep-navy chrome |
+| Type | Rubik | IBM Plex Sans Hebrew | Heebo |
+| Corners | 10/12/16 | 6/8/10 | 10/14/20 |
+| Chrome | dark midnight sidebar | light sidebar, frosted white bars | dark sidebar **and** dark top bars |
+| Operational legibility (bright room, glance) | good | **best** — highest contrast, quiet chrome | header competes with content |
+| Seriousness / maturity | friendly, still "soft" | **precise, calm** | dramatic, heavier |
+| Identity | warm, recognisable | mark + orange carry it; clean canvas | strong but generic "dark dashboard" |
+| Cost/risk to keep consistent | low | low (tokens only) | high (dark-chrome overrides everywhere) |
+
+**Decision: Graphite.** It answers the brief's main complaint (too playful, too rounded, too many
+colours) directly: an interface typeface built for UI with exact tabular figures for times, diners
+and tables; neutral chrome so the only colours are status and one orange accent; tight geometry;
+and the midnight-and-orange Formangle mark as the identity anchor. Paper was too close to the look
+the founder found lacking; Nightfall's dark bars fight the content during service and need a
+parallel set of overrides.
+
 ## 4. Design system
 
-Tokens live in `tailwind.config.js` (app) and `src/tables/host/host.css` (`--hs-*`, shift, light
-and dark). Rules adopted:
+Tokens live in `src/theme/tokens.css` (colours as RGB triplets, `--fz-font`, `--fz-r-*`, chrome
+`--fz-side-*`/`--fz-bar-*`); `tailwind.config.js` maps `cloud`, `ink`, `midnight`, `orange`,
+`rounded-lg/xl/2xl`, `font-sans` and `shadow-card` onto them, and the shift's `--hs-*` light values
+derive from them (dark values stay explicit). Rules adopted:
 
-- **Surfaces:** white on warm paper (`cloud`), separated by a 1 px hairline (`shadow-card` is now a
-  hairline, not a drop shadow). Radius 16 px for surfaces, 12 px for controls, 14 px for lists.
+- **Surfaces:** white on a cool neutral page (`cloud`), separated by a 1 px hairline (`shadow-card`
+  is a hairline, not a drop shadow). Radius 10 px surfaces, 8 px controls, 6 px small controls.
+- **Controls:** filters and sections = underline tabs (`Tabs`, `.fz-tabs`, `.hs-tabs`); one value
+  out of few = light segmented control (`.fz-seg`, Tables `Segmented`); disabled = neutral fill
+  with soft text (`.fz-btn-off`), never a faded colour block.
   Drop shadows only for things that float (sheets, menus, dock).
 - **Colour = meaning.** Shift states: attention `--hs-attention` (red), upcoming (slate), arrived
   (orange), seated (green), done (grey). Orange is otherwise reserved for the primary action and
@@ -141,16 +170,17 @@ by `e2e/tables/ux-metrics.spec.ts`; "before" values are measured on the before s
 
 | Measure (390×844 phone unless noted) | Before | After |
 |---|---|---|
-| Top of the first booking | ≈ 428 px | 286 px |
+| Top of the first booking | ≈ 428 px | 290 px |
 | Bookings fully visible above the dock | 2 | 5 |
-| Height of one booking | ≈ 130 px | 62 px |
+| Height of one booking | ≈ 130 px | 58 px |
 | Smallest table on the map (375–390 px wide) | ≈ 32 px | 46 px |
 | "How many diners are seated?" | two different numbers on one card | one figure with its unit, 0 taps |
 | Control rows above the map | 3 (service, zone, zoom) | 1 |
 | Rows of controls above the list | 4 | 2 (date row, tabs row) |
 | Seat a booking from the list | 1 tap | 1 tap (unchanged) |
 | Seat from the details | 2 taps (open, seat) | 2 taps; seat is now the single primary button |
-| Tablet 1024×768: bookings fully visible | — | 4 (with details pane beside the list) |
+| Tablet 1024×768: bookings fully visible | — | 5 (with details pane beside the list) |
+| Changing the shift date | full-screen loader, whole screen re-mounts | list dims under a 2 px progress line; header, figures and controls stay (`date-switch.spec.ts`) |
 
 ## 7. Remaining limitations (honest list)
 
@@ -164,4 +194,29 @@ by `e2e/tables/ux-metrics.spec.ts`; "before" values are measured on the before s
 - **Not verified on a physical iPhone/iPad** (Safari safe areas, momentum scroll inside the map).
   Verified in Edge/Chromium with touch emulation at 320–1440 px.
 - **English (LTR)** is verified only on guest pages (the staff app is Hebrew-only by design today).
+- **Dark theme** exists for Formangle Tables (shift, venue screens) and follows the system or the
+  in-app toggle; the business app (dashboard, processes, requests) is light-only in this release —
+  the tokens make a dark set possible, but it needs its own visual QA pass.
 - Map pan uses native scrolling; there is no pinch-zoom gesture (zoom is via ± buttons).
+
+## 8. Integration and deployment (approval package)
+
+**What ships:** front-end only. No database migration, no Edge Function, no new dependency, no
+paid service. Business rules (seating window, capacity, conflicts, RLS, access levels) are
+untouched; the redesign reads the same data and calls the same RPCs.
+
+**Commits** (branch `production-v1`, on top of `43f0e78` = production today): `a31e2ec`,
+`09f8096`, `04bd2f6`, `51fd590`, `1aabb9b`, `470da98` and the final QA commit.
+
+**Before deploying**
+1. Typecheck, lint, unit tests, production build, full e2e suite — results in §9.
+2. Optional: a 10-minute check on a real iPhone at the venue (list, details sheet, map pan).
+
+**Deploy:** `git push origin production-v1:main` → GitHub Pages workflow
+("Deploy site …") and "Validate production foundation" must both pass.
+
+**Verify in production** (phone, tablet, desktop): `/live/app` dashboard, `/live/app/requests`,
+a venue page, and a live shift (list, details sheet, map, waitlist).
+
+**Rollback:** `git revert` the listed commits (they are independent of data) and push, or
+re-run the Pages deploy of `43f0e78`. No data migration to undo.

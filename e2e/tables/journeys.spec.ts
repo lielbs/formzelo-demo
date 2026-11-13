@@ -174,7 +174,7 @@ test('walk-in seated immediately; waitlist QR join → offer → guest notice �
 
   await hp.getByRole('radio', { name: /המתנה/ }).click();
   const row = hp.locator('li', { hasText: 'ממתינה בכניסה' });
-  await row.getByRole('button', { name: /לשמור את שולחן/ }).click();
+  await row.getByRole('button', { name: /לשמור (את )?שולחן/ }).click();
   await expect(row.getByText(/שמור להם/)).toBeVisible();
   await gp.reload();
   await expect(gp.getByText('השולחן שלכם מוכן! גשו לעמדת הקבלה.')).toBeVisible();
