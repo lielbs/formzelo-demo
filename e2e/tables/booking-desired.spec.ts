@@ -67,3 +67,32 @@ await expect(page.getByRole('link', { name: 'הצטרפות לרשימת ההמ�
 expect(errors).toEqual([]);
 await ctx.close();
 });
+
+test('desktop: the day strip scrolls with arrows and the mouse wheel', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'he-IL' });
+  const page = await ctx.newPage();
+  await page.route('**/rest/v1/rpc/**', async (route) => {
+    const url = route.request().url();
+    const body = route.request().postDataJSON() ?? {};
+    if (url.endsWith('tables_public_venue')) return route.fulfill({ json: venue });
+    if (url.endsWith('tables_public_availability')) return route.fulfill({ json: availability(body.p_date, false) });
+    return route.fulfill({ json: null });
+  });
+  await page.goto('/t/mock-bistro');
+  const strip = page.locator('fieldset', { hasText: 'באיזה תאריך?' }).locator('.pp-scroll');
+  await expect(strip).toBeVisible();
+  const pos = () => strip.evaluate((el) => Math.abs(el.scrollLeft));
+  const start = await pos();
+  const next = page.locator('fieldset', { hasText: 'באיזה תאריך?' }).getByRole('button', { name: 'הבאים' });
+  await expect(next).toBeVisible();
+  await next.click();
+  await expect.poll(pos).toBeGreaterThan(start + 100);
+  await expect(page.locator('fieldset', { hasText: 'באיזה תאריך?' }).getByRole('button', { name: 'הקודמים' })).toBeVisible();
+  await page.screenshot({ path: `${OUT}/4-desktop-strip.png` });
+  // Mouse wheel over the strip moves it sideways too.
+  const before = await pos();
+  await strip.hover();
+  await page.mouse.wheel(0, -300); // the arrow already reached the end: wheel back toward today
+  await expect.poll(pos).not.toBe(before);
+  await ctx.close();
+});

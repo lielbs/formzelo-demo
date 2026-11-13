@@ -14,6 +14,7 @@ import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
 import { lookFor, pageOf } from './look';
 import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
+import { ScrollStrip } from './ScrollStrip';
 import { calendarFile, mapsHref, VenueAside, weekdayOf } from './VenueInfo';
 
 type Step = 'choose' | 'details' | 'result';
@@ -250,12 +251,12 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
       {venue.paused && <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">{s.paused}</p>}
       <fieldset>
         <SectionTitle as="legend" icon={<Users className="h-4 w-4" />}>{s.party}</SectionTitle>
-        <div className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 py-1 sm:-mx-7 sm:px-7" role="group">
+        <ScrollStrip className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 py-1 sm:-mx-7 sm:px-7" lang={lang}>
           {parties.map((n) => (
             <button key={n} type="button" aria-pressed={party === n} onClick={() => setParty(n)}
               className={cx('pp-chip h-12 w-12 shrink-0 rounded-full text-[17px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', party === n && 'pp-chip-on')}>{n}</button>
           ))}
-        </div>
+        </ScrollStrip>
         {venue.policy.maxParty > parties[parties.length - 1]! && (
           <div className="mt-2 flex items-center gap-2">
             <label htmlFor="party-more" className="text-sm text-ink-muted">{s.partyMore}:</label>
@@ -269,7 +270,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
       </fieldset>
       <fieldset>
         <SectionTitle as="legend" icon={<CalendarDays className="h-4 w-4" />}>{s.date}</SectionTitle>
-        <div className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-7 sm:px-7" role="group">
+        <ScrollStrip className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-7 sm:px-7" lang={lang}>
           {days.map((d) => (
             <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)}
               className={cx('pp-chip relative flex h-[76px] w-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', date === d && 'pp-chip-on')}>
@@ -279,7 +280,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
               <span className="sr-only">, {formatDate(d, lang)}</span>
             </button>
           ))}
-        </div>
+        </ScrollStrip>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label htmlFor="other-date" className="inline-flex items-center gap-1.5 text-sm text-ink-muted"><CalendarDays className="h-4 w-4" aria-hidden />{s.otherDate}:</label>
           <input id="other-date" type="date" dir="ltr" min={today} max={addDays(today, venue.policy.horizonDays)} value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
