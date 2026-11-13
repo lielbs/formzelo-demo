@@ -1,12 +1,12 @@
 import { BellRing, Clock, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { cx, PageLoader } from '../../components/ui';
 import { newKey, publicVenue, publicWaitlistJoin, publicWaitlistLeave, publicWaitlistStatus, type PublicVenue, type WaitlistStatus } from '../data/client';
 import { messageFor, type TablesError } from '../domain/errors';
 import { answersPayload, missingAnswers } from '../domain/publicPages';
 import { normalizePhone } from '../domain/phone';
-import { dateInTz, formatInstant } from '../domain/time';
+import { dateInTz, formatDate, formatInstant } from '../domain/time';
 import { GuestFields, type GuestValues } from './GuestFields';
 import { tx } from './i18n';
 import { lookFor, pageOf } from './look';
@@ -18,8 +18,13 @@ export function WaitlistJoinPage() {
   const lang = useLang();
   const s = tx(lang);
   const navigate = useNavigate();
+  // From the booking page: the day and time the guest wanted (and their party size).
+  const [params] = useSearchParams();
+  const wantDate = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date')! : null;
+  const wantTime = /^\d{2}:\d{2}$/.test(params.get('time') ?? '') ? params.get('time')! : null;
+  const wantParty = Number(params.get('party')) || 2;
   const [venue, setVenue] = useState<PublicVenue | null | undefined>(undefined);
-  const [form, setForm] = useState({ party: 2, consent: false });
+  const [form, setForm] = useState({ party: wantParty, consent: false });
   const [values, setValues] = useState<GuestValues>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +55,7 @@ export function WaitlistJoinPage() {
       const answers = page ? answersPayload(page, values) : {};
       const r = await publicWaitlistJoin(slug, {
         name: text('name'), phone: text('phone'), party: form.party, consent: true,
+        ...(wantDate ? { date: wantDate } : {}), ...(wantTime ? { time: wantTime } : {}),
         ...(notes ? { notes } : {}), ...(Object.keys(answers).length ? { customAnswers: answers } : {}),
       }, key.current, lang);
       navigate(`/t/w${lang === 'en' ? '?lang=en' : ''}#t=${r.token}`);
@@ -68,7 +74,13 @@ export function WaitlistJoinPage() {
     <PublicShell lang={lang} venue={{ ...venue, today: dateInTz(new Date(venue.serverNow), venue.timezone) }} design={design}>
       <form onSubmit={submit} noValidate className="grid gap-5">
         <h1 className="text-2xl font-semibold sm:text-3xl">{page?.copy.title || s.waitlistTitle}</h1>
-        <p className="whitespace-pre-line text-ink-muted">{page?.copy.description || s.waitlistIntro}</p>
+        {wantDate || wantTime ? (
+          <p className="pp-card flex items-center gap-2 rounded-xl border border-cloud-200 bg-white px-4 py-3 font-semibold">
+            <Clock className="h-4 w-4 shrink-0" aria-hidden />
+            {lang === 'en' ? 'Waitlist for ' : 'רשימת המתנה ל'}{wantDate ? formatDate(wantDate, lang, false) : (lang === 'en' ? 'today' : 'היום')}{wantTime && <>{lang === 'en' ? ' at ' : ' בשעה '}<bdi dir="ltr">{wantTime}</bdi></>}
+          </p>
+        ) : null}
+        <p className="whitespace-pre-line text-ink-muted">{wantDate || wantTime ? (lang === 'en' ? 'If a table frees up at that time, the venue will contact you to confirm a booking.' : 'אם יתפנה שולחן בשעה הזו, המקום ייצור אתכם קשר כדי לקבוע את ההזמנה.') : page?.copy.description || s.waitlistIntro}</p>
         <fieldset>
           <legend className="mb-3 text-base font-semibold">{s.party}</legend>
           <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
@@ -125,6 +137,7 @@ export function WaitlistStatusPage() {
             <h1 className="text-2xl font-semibold">{s.youAreWaiting}</h1>
             <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
               <dt className="flex items-center gap-1 text-ink-muted"><Users className="h-4 w-4" aria-hidden />{s.guests}</dt><dd className="font-semibold tabular-nums">{st.party}</dd>
+              {st.date && <><dt className="text-ink-muted">{lang === 'en' ? 'Day' : 'יום'}</dt><dd className="font-semibold">{formatDate(st.date, lang, false)}{st.desiredTime && <>{' · '}<bdi dir="ltr">{st.desiredTime}</bdi></>}</dd></>}
               {st.position != null && <><dt className="text-ink-muted">{s.position}</dt><dd className="font-semibold tabular-nums">{st.position}</dd></>}
             </dl>
             {st.estimate && <p className="mt-3 flex items-start gap-1.5 text-sm text-ink-muted"><Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{s.estimate(st.estimate.min, st.estimate.max)}</p>}
@@ -132,7 +145,8 @@ export function WaitlistStatusPage() {
           </div>
         ) : (
           <div role="status" className="pp-card rounded-2xl border border-cloud-200 bg-white p-5">
-            <h1 className="text-xl font-semibold">{st.status === 'seated' ? s.seated : st.status === 'cancelled' ? s.left : s.waitlistClosed}</h1>
+            <h1 className="text-xl font-semibold">{st.status === 'booked' ? (lang === 'en' ? 'You have a booking' : 'נקבעה לכם הזמנה') : st.status === 'seated' ? s.seated : st.status === 'cancelled' ? s.left : s.waitlistClosed}</h1>
+            {st.status === 'booked' && st.booking && <p className="mt-2">{formatDate(st.booking.date, lang, false)} · <bdi dir="ltr" className="font-semibold">{st.booking.time}</bdi></p>}
           </div>
         )}
         {(st.status === 'waiting' || st.status === 'offered') && (

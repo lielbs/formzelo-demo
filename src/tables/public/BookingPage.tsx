@@ -321,8 +321,8 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
                 const list = current ? wanted.filter((w) => w.serviceKey === current.key) : wanted;
                 const pick = (sl: OpenSlot) => { setChoice({ serviceKey: sl.serviceKey, time: sl.time, approval: sl.approval }); setStep('details'); };
                 const found = desired ? nearestSlots(open, desired) : null;
-                const canWait = venue.policy.waitlistPublic && date === today;
-                const waitHref = `/t/${venue.slug}/waitlist${lang === 'en' ? '?lang=en' : ''}`;
+                const canWait = venue.policy.waitlistPublic;
+                const waitHref = `/t/${venue.slug}/waitlist?${new URLSearchParams({ date, party: String(party), ...(desired ? { time: desired } : {}), ...(lang === 'en' ? { lang: 'en' } : {}) }).toString()}`;
                 const he = lang === 'he';
                 return (
                   <>
@@ -373,7 +373,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
                           <p className="text-sm text-ink-muted">{he ? 'אין שעה פנויה קרובה ביום הזה.' : 'No free time near it on this day.'}</p>
                         )}
                         <div className="grid gap-2 sm:grid-cols-2">
-                          {canWait && <Link to={waitHref} className={accentButton}>{he ? 'הצטרפות לרשימת ההמתנה' : 'Join the waitlist'}</Link>}
+                          {canWait && <Link to={waitHref} className={accentButton}>{desired ? (he ? `הצטרפות להמתנה ל־${desired}` : `Join the waitlist for ${desired}`) : (he ? 'הצטרפות לרשימת ההמתנה' : 'Join the waitlist')}</Link>}
                           {date < addDays(today, venue.policy.horizonDays) && (
                             <button type="button" onClick={() => { setDate(addDays(date, 1)); setDesired(null); }} className={softButton}>{s.tryNextDay}</button>
                           )}

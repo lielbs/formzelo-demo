@@ -197,6 +197,8 @@ export const publicWaitlistJoin = (slug: string, input: Record<string, unknown>,
 export interface WaitlistStatus {
   status: string; party: number; joinedAt: string; offerExpiresAt: string | null; position: number | null;
   estimate: { min: number; max: number } | null; venue: { name: string; slug: string; timezone: string }; serverNow: string;
+  /** The day of the list and the requested time (future-date waitlist); the booking once made. */
+  date?: string; desiredTime?: string | null; booking?: { date: string; time: string } | null;
 }
 export const publicWaitlistStatus = (token: string, lang: Lang) => rpc<WaitlistStatus | null>('tables_public_waitlist_status', { p_token: token, p_client: clientToken() }, lang);
 export const publicWaitlistLeave = (token: string, lang: Lang) => rpc<{ status: string }>('tables_public_waitlist_leave', { p_token: token, p_client: clientToken() }, lang);

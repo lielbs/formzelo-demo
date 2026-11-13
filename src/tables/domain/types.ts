@@ -171,6 +171,9 @@ export interface WaitlistEntry {
   guestPhone: string | null;
   party: number;
   status: 'waiting' | 'offered';
+  /** The day of the list and the time the guest asked for (future-date waitlist). */
+  date?: string;
+  desiredTime?: string | null;
   source: 'staff' | 'public';
   priority: number;
   priorityReason: string | null;
