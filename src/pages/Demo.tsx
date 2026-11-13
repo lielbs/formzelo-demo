@@ -7,6 +7,7 @@ import { Badge, Button, Card, DemoBadge, ErrorState, Modal, Spinner } from '../c
 import { useRepo, useRepoQuery } from '../data/store';
 import { DEMO_GARAGE_CASE_ID, DEMO_ORG_IDS, DEMO_SLUGS } from '../data/seed';
 import { PENDING_STATUSES } from '../engine/transitions';
+import { TablesShowcase } from './TablesShowcase';
 import { formatNumber } from '../lib/format';
 
 const META: Record<string, { icon: typeof Flower2; scenario: string; publicHref: string; publicLabel: string; secondHref?: string; secondLabel?: string }> = {
@@ -122,6 +123,7 @@ export function Demo() {
           </Button>
         </Card>
       </main>
+      <TablesShowcase className="border-t border-cloud-200 bg-white py-16" />
       <SiteFooter />
 
       <Modal

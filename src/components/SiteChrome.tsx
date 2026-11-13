@@ -8,6 +8,7 @@ import { appHref } from '../lib/links';
 const LINKS = [
   { href: '/#how', label: 'איך זה עובד' },
   { href: '/#examples', label: 'דוגמאות' },
+  { href: '/#tables', label: 'מסעדות' },
   { href: '/themes', label: 'עיצובים' },
   { href: '/pricing', label: 'מחירים' },
   { href: '/#faq', label: 'שאלות' },

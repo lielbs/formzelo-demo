@@ -194,9 +194,6 @@ by `e2e/tables/ux-metrics.spec.ts`; "before" values are measured on the before s
 - **Not verified on a physical iPhone/iPad** (Safari safe areas, momentum scroll inside the map).
   Verified in Edge/Chromium with touch emulation at 320–1440 px.
 - **English (LTR)** is verified only on guest pages (the staff app is Hebrew-only by design today).
-- **Dark theme** exists for Formangle Tables (shift, venue screens) and follows the system or the
-  in-app toggle; the business app (dashboard, processes, requests) is light-only in this release —
-  the tokens make a dark set possible, but it needs its own visual QA pass.
 - Map pan uses native scrolling; there is no pinch-zoom gesture (zoom is via ± buttons).
 
 ## 8. Integration and deployment (approval package)
@@ -238,3 +235,28 @@ IBM Plex Sans Hebrew is loaded, the live-shift bundle contains the new summary a
 code, and the sign-in screen renders with no console errors. Signed-in production screens were not
 exercised from here (that needs the owner's own sign-in) — check on a phone: dashboard, a venue,
 and a live shift (list, details, map, waitlist, changing the date).
+
+## 10. Dark mode for all of Formangle (2026-11-13, follow-up)
+
+- One device choice for every staff screen (dashboard, processes, requests, analytics, brand kit,
+  settings, Tables): **device / light / dark**. Toggle in the sidebar (phones: under "עוד") and in
+  Settings → "מראה" (also for Tables-only staff). Stored per device (`fz_tables_theme`).
+- Dark tokens in `src/theme/tokens.css` (Graphite dark: page 14, surface 24, raised 30, hairlines
+  white 9 %). Fixed Tailwind light utilities (bg-white, tinted status colours) map to dark
+  equivalents in `src/index.css`; dark buttons become light "keys".
+- The old Tables-only dark rules (a separate navy palette) were replaced by the same tokens, so the
+  half-light/half-dark mix seen on the live venue page (light sidebar with an invisible logo, a hovered
+  row turning white under light text) cannot happen.
+- Customer-branded previews (`.fz` flows, the menu phone frame) stay in their own brand colours.
+- Hover audit: every link, button and tab on the main screens hovered in both themes, measuring
+  text/background contrast while hovered; results below.
+
+## 11. Public site and demo in sync
+
+- Landing page: a Formangle Tables section with real screenshots of the current product
+  (`public/showcase/tables`), a "מסעדות" link in the site menu, and FAQ entries for per-person
+  access, dark mode and deletion. The demo page shows the same section; the guided tour's restaurant
+  option points to it.
+- The public site, demo environments and tour already use the Graphite tokens (same components).
+- Not changed: `marketing/` (the launch video kit is local, uncommitted material; its videos and
+  stills predate the redesign and need a re-render).
