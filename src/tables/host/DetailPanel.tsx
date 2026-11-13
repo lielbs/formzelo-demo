@@ -140,6 +140,16 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
           {(r.status === 'confirmed' || r.status === 'arrived') && canSeatNow(r, now) && (r.tableIds.length
             ? <ActionButton label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={busy === 'seat'} onClick={() => t('seat', `הושבו בשולחן ${tables}`)} />
             : <ActionButton label="שיבוץ שולחן" icon={Sparkles} variant="dark" busy={false} onClick={() => onAssign(r)} />)}
+          {/* Seating opens 3 hours before the booking (the server refuses earlier): show it, with when. */}
+          {(r.status === 'confirmed' || r.status === 'arrived') && !canSeatNow(r, now) && (
+            <div className="grid gap-1">
+              <ActionButton label={r.tableIds.length ? `הושבה בשולחן ${tables}` : 'הושבה'} icon={CheckCircle2} variant="dark" busy={false} disabled onClick={() => undefined} />
+              <p className="text-xs text-ink-muted">
+                ההושבה נפתחת ב־<bdi dir="ltr">{timeInTz(new Date(new Date(r.startsAt).getTime() - 3 * 3600_000).toISOString(), shift.venue.timezone)}</bdi>
+                {new Date(r.startsAt).getTime() - now.getTime() > 24 * 3600_000 ? ' ביום ההזמנה' : ''} — 3 שעות לפני ההזמנה.
+              </p>
+            </div>
+          )}
           {r.status === 'seated' && <ActionButton label="סיום הביקור — השולחן מתפנה" icon={CheckCircle2} variant="dark" busy={busy === 'complete'} onClick={() => t('complete', 'סיימו')} />}
           {['pending_approval', 'confirmed', 'arrived', 'seated'].includes(r.status) && r.tableIds.length > 0 && (
             <ActionButton label="העברה לשולחן אחר" icon={Sparkles} busy={false} onClick={() => onAssign(r)} />
