@@ -50,7 +50,7 @@ async function rowStatuses(page: Page) {
     const out: Record<string, string> = {};
     document.querySelectorAll('#shift-main li').forEach((li) => {
       const name = li.querySelector('[data-guest-name]')?.textContent?.trim();
-      const status = li.querySelector('span.rounded-full.border')?.textContent?.trim();
+      const status = li.querySelector('.hs-status')?.textContent?.trim();
       if (name && status) out[name] = status;
     });
     return out;
