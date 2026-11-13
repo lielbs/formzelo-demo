@@ -32,7 +32,7 @@ const pct = (r: Rate) => (percent(r) == null ? NO_DATA : `${percent(r)}%`);
 
 export function AnalyticsPage() {
   const { venueId = '' } = useParams();
-  const venue = useLoad(() => getVenue(venueId), [venueId]);
+  const venue = useLoad(() => getVenue(venueId), [venueId], 'venue');
   const [range, setRange] = useState<'7' | '30' | '90'>('30');
   const tz = venue.data?.timezone ?? 'Asia/Jerusalem';
   const to = dateInTz(new Date(), tz);

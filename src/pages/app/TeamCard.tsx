@@ -7,7 +7,20 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, ErrorState, Input, Spinner } from '../../components/ui';
 import { formatDateTime } from '../../lib/format';
-import { inviteStaff, issueStaffRecovery, listTeam, removeMember, revokeInvitation, type TeamInvitation, type TeamMember } from '../../production/admin';
+import { inviteStaff, issueStaffRecovery, listTeam, removeMember, revokeInvitation, setInvitationAccess, setMemberAccess, type MemberAccess, type TeamInvitation, type TeamMember } from '../../production/admin';
+import { ACCESS_HE } from '../../production/access';
+
+const ACCESS_OPTIONS: MemberAccess[] = ['all', 'formangle', 'tables'];
+
+/** Compact access picker (native select: fast, accessible, iOS wheel on phones). */
+function AccessSelect({ value, onChange, label, disabled }: { value: MemberAccess; onChange: (a: MemberAccess) => void; label: string; disabled?: boolean }) {
+  return (
+    <select aria-label={label} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as MemberAccess)}
+      className="ui-select h-9 shrink-0 rounded-full border border-ink/[0.14] bg-white ps-3 text-xs font-semibold text-ink">
+      {ACCESS_OPTIONS.map((a) => <option key={a} value={a}>{ACCESS_HE[a]}</option>)}
+    </select>
+  );
+}
 import { confirmAction } from '../../components/Confirm';
 
 export function TeamCard({ orgId }: { orgId: string }) {
@@ -15,6 +28,7 @@ export function TeamCard({ orgId }: { orgId: string }) {
   const [team, setTeam] = useState<{ members: TeamMember[]; invitations: TeamInvitation[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
+  const [newAccess, setNewAccess] = useState<MemberAccess>('all');
   const [busy, setBusy] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const isOwner = Boolean(team?.members.find((m) => m.self)?.role === 'owner');
@@ -46,7 +60,7 @@ export function TeamCard({ orgId }: { orgId: string }) {
   const invite = (event: FormEvent) => {
     event.preventDefault();
     void run('invite', async () => {
-      const created = await inviteStaff(orgId, email.trim());
+      const created = await inviteStaff(orgId, email.trim(), newAccess);
       setLink(created.link);
       setEmail('');
     });
@@ -57,15 +71,19 @@ export function TeamCard({ orgId }: { orgId: string }) {
       <h2 className="flex items-center gap-2 font-semibold">
         <Users className="h-4 w-4" aria-hidden /> חברי צוות
       </h2>
-      <p className="mt-0.5 text-xs text-ink-muted">צוות רואה ומטפל בבקשות. רק בעלים עורכים תהליכים, מיתוג וצוות.</p>
+      <p className="mt-0.5 text-xs text-ink-muted">לכל איש צוות בוחרים מה הוא רואה: הכול, רק טפסים ותהליכים, או רק שולחנות. רק בעלים עורכים תהליכים, מיתוג וצוות.</p>
       {error && <ErrorState error={error} onRetry={load} />}
       {!team && !error && <Spinner />}
       {team && (
         <ul className="mt-3 space-y-2">
           {team.members.map((m) => (
-            <li key={m.userId} className="flex items-center gap-2 rounded-xl bg-cloud px-3 py-2 text-sm">
-              <span className="ltr min-w-0 flex-1 break-all leading-snug" title={m.email}>{m.email}{m.self ? ' (את/ה)' : ''}</span>
+            <li key={m.userId} className="flex flex-wrap items-center gap-2 rounded-xl bg-cloud px-3 py-2 text-sm">
+              <span className="ltr min-w-0 flex-1 basis-40 break-all leading-snug" title={m.email}>{m.email}{m.self ? ' (את/ה)' : ''}</span>
               <Badge tone={m.role === 'owner' ? 'dark' : 'neutral'}>{m.role === 'owner' ? 'בעלים' : 'צוות'}</Badge>
+              {m.role === 'staff' && (isOwner
+                ? <AccessSelect label={`גישה של ${m.email}`} value={m.access ?? 'all'} disabled={busy === `a${m.userId}`}
+                    onChange={(a) => void run(`a${m.userId}`, async () => { await setMemberAccess(orgId, m.userId, a); toast('הגישה עודכנה'); })} />
+                : <Badge tone="neutral">{ACCESS_HE[m.access ?? 'all']}</Badge>)}
               {isOwner && m.role === 'staff' && (
                 <Button
                   size="sm"
@@ -89,8 +107,12 @@ export function TeamCard({ orgId }: { orgId: string }) {
             </li>
           ))}
           {team.invitations.map((i) => (
-            <li key={i.id} className="flex items-center gap-2 rounded-xl border border-dashed border-cloud-300 px-3 py-2 text-sm">
-              <span className="ltr min-w-0 flex-1 break-all leading-snug">{i.email}</span>
+            <li key={i.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-cloud-300 px-3 py-2 text-sm">
+              <span className="ltr min-w-0 flex-1 basis-40 break-all leading-snug">{i.email}</span>
+              {i.role === 'staff' && isOwner && (
+                <AccessSelect label={`גישה של ${i.email}`} value={i.access ?? 'all'} disabled={busy === `a${i.id}`}
+                  onChange={(a) => void run(`a${i.id}`, () => setInvitationAccess(orgId, i.id, a))} />
+              )}
               <span className="text-xs text-ink-muted">ממתין · עד {formatDateTime(i.expiresAt)}</span>
               {i.role === 'staff' && (
                 <Button size="sm" variant="ghost" loading={busy === i.id} onClick={() => run(i.id, () => revokeInvitation(orgId, i.id))}>
@@ -102,8 +124,9 @@ export function TeamCard({ orgId }: { orgId: string }) {
         </ul>
       )}
       {isOwner && (
-        <form className="mt-4 flex gap-2" onSubmit={invite}>
-          <Input type="email" dir="ltr" required placeholder="email@business.co.il" aria-label="אימייל של איש/אשת צוות" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <form className="mt-4 flex flex-wrap gap-2" onSubmit={invite}>
+          <Input type="email" dir="ltr" required placeholder="email@business.co.il" aria-label="אימייל של איש/אשת צוות" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 flex-1 basis-52" />
+          <AccessSelect label="מה איש הצוות יראה" value={newAccess} onChange={setNewAccess} />
           <Button type="submit" icon={UserPlus} loading={busy === 'invite'} className="shrink-0">
             הזמנה
           </Button>

@@ -1,6 +1,7 @@
 import { BarChart3, Building2, Check, ChevronDown, Inbox, LayoutDashboard, Menu, MoreHorizontal, Palette, Plus, Settings, UtensilsCrossed, Workflow, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAccess, type Access } from '../production/access';
 import { useRepo, useRepoQuery } from '../data/store';
 import { PENDING_STATUSES } from '../engine/transitions';
 import { Logo } from './Brand';
@@ -8,6 +9,10 @@ import { GlassDock, type DockItem } from './GlassDock';
 import { ButtonLink, cx, ErrorState, PageLoader, Spinner } from './ui';
 import { useToast } from './Toast';
 import { runtimeConfiguration } from '../production/runtime';
+
+/** Which sections each access level sees (the server refuses the rest anyway). */
+const TABLES_ONLY = ['/app/tables', '/app/settings'];
+const allowed = (to: string, access: Access) => (access === 'tables' ? TABLES_ONLY.includes(to) : access === 'formangle' ? to !== '/app/tables' : true);
 
 const NAV = [
   { to: '/app', label: 'לוח בקרה', icon: LayoutDashboard, end: true },
@@ -108,14 +113,17 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
  * new-workflow action beside it and everything else under "עוד" (the full menu). Hidden from
  * 1024 px, where the sidebar takes over.
  */
-function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => void; moreOpen: boolean }) {
+function TabBar({ pending, onMore, moreOpen, access }: { pending: number; onMore: () => void; moreOpen: boolean; access: Access }) {
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname.replace(/\/+$/, '') || '/';
   // Tables (restaurants) gets its own place where the real server runs; everything else is under "עוד".
-  const tables = runtimeConfiguration.mode === 'production';
+  const tables = runtimeConfiguration.mode === 'production' && access !== 'formangle';
   const inMore = ['/app/brand', '/app/analytics', '/app/settings', ...(tables ? [] : ['/app/tables'])].some((p) => path.startsWith(p));
-  const items: DockItem[] = [
+  const items: DockItem[] = access === 'tables' ? [
+    { key: 'tables', label: 'שולחנות', icon: UtensilsCrossed, to: '/app/tables' },
+    { key: 'more', label: 'החשבון', icon: Settings, to: '/app/settings' },
+  ] : [
     { key: 'home', label: 'בית', icon: LayoutDashboard, to: '/app' },
     { key: 'requests', label: 'בקשות', icon: Inbox, to: '/app/requests', badge: pending, badgeLabel: `${pending} ממתינות` },
     { key: 'workflows', label: 'תהליכים', icon: Workflow, to: '/app/workflows' },
@@ -123,7 +131,8 @@ function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => 
     { key: 'more', label: 'עוד', icon: MoreHorizontal, onSelect: onMore, ariaLabel: 'עוד — התפריט המלא', expanded: moreOpen },
   ];
   const at = (key: string) => items.findIndex((it) => it.key === key);
-  const active = moreOpen || inMore ? at('more')
+  const active = access === 'tables' ? (path.startsWith('/app/settings') ? at('more') : at('tables'))
+    : moreOpen || inMore ? at('more')
     : path === '/app' ? at('home')
     : path.startsWith('/app/requests') ? at('requests')
     : path.startsWith('/app/tables') ? at('tables')
@@ -131,11 +140,11 @@ function TabBar({ pending, onMore, moreOpen }: { pending: number; onMore: () => 
   return (
     <GlassDock label="ניווט מהיר" mode="nav" hideFrom="lg" items={items} active={active}
       onChoose={(i) => { const it = items[i]!; if (it.to) navigate(it.to); else it.onSelect?.(); }}
-      action={{ label: 'תהליך חדש', icon: Plus, to: '/app/workflows/new' }} />
+      action={access === 'tables' ? undefined : { label: 'תהליך חדש', icon: Plus, to: '/app/workflows/new' }} />
   );
 }
 
-function Sidebar({ onNavigate, pending }: { onNavigate?: () => void; pending: number }) {
+function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => void; pending: number; access?: Access }) {
   return (
     <div className="flex h-full flex-col gap-6 bg-midnight px-4 py-5">
       <div className="px-1">
@@ -146,7 +155,7 @@ function Sidebar({ onNavigate, pending }: { onNavigate?: () => void; pending: nu
         תהליך חדש
       </ButtonLink>
       <nav aria-label="ניווט ראשי" className="flex flex-col gap-0.5">
-        {NAV.map(({ to, label, icon: Icon, end, badge }) => (
+        {NAV.filter((n) => allowed(n.to, access)).map(({ to, label, icon: Icon, end, badge }) => (
           <NavLink
             key={to}
             to={to}
@@ -183,6 +192,7 @@ export function AppLayout() {
   const location = useLocation();
   const runs = useRepoQuery((r) => (activeOrg ? r.listRuns(activeOrg.id) : Promise.resolve([])), [activeOrg?.id]);
   const pending = runs.data?.filter((r) => PENDING_STATUSES.includes(r.status)).length ?? 0;
+  const access = useAccess(activeOrg?.id);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -192,13 +202,18 @@ export function AppLayout() {
   if (!ready) return <PageLoader label="טוען סביבת עבודה…" />;
   if (!activeOrg) return <div className="p-6"><ErrorState error={runtimeConfiguration.mode === 'production' ? 'לא נמצאה סביבת עבודה פעילה. פנו ל-RockStack להשלמת ההקמה.' : 'לא נמצאה סביבת דמו.'} /></div>;
 
+  // Tables-only staff land on Tables; Formangle-only staff never see Tables screens.
+  const path = location.pathname.replace(/\/+$/, '');
+  if (access === 'tables' && !TABLES_ONLY.some((p) => path.startsWith(p))) return <Navigate to="/app/tables" replace />;
+  if (access === 'formangle' && path.startsWith('/app/tables')) return <Navigate to="/app" replace />;
+
   return (
     <div className="fz-app min-h-screen lg:ps-64">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">
         דילוג לתוכן
       </a>
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 lg:block" aria-label="סרגל צד">
-        <Sidebar pending={pending} />
+        <Sidebar pending={pending} access={access} />
       </aside>
 
       <header className="fz-topbar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 lg:hidden">
@@ -221,7 +236,7 @@ export function AppLayout() {
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="תפריט">
           <button className="absolute inset-0 bg-midnight/50" aria-label="סגירת תפריט" onClick={() => setMobileOpen(false)} />
           <div className="absolute inset-y-0 start-0 w-72 max-w-[85vw] animate-fade-up">
-            <Sidebar pending={pending} onNavigate={() => setMobileOpen(false)} />
+            <Sidebar pending={pending} access={access} onNavigate={() => setMobileOpen(false)} />
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
@@ -242,7 +257,7 @@ export function AppLayout() {
           </div>
         </Suspense>
       </main>
-      <TabBar pending={pending} moreOpen={mobileOpen} onMore={() => setMobileOpen(true)} />
+      <TabBar pending={pending} moreOpen={mobileOpen} onMore={() => setMobileOpen(true)} access={access} />
     </div>
   );
 }

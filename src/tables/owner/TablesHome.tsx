@@ -49,7 +49,7 @@ function VenueCard({ v }: { v: VenueSummary }) {
 export function TablesHome() {
   const org = useActiveOrg();
   const navigate = useNavigate();
-  const { data, error, loading, reload } = useLoad(() => listVenues(org.id), [org.id]);
+  const { data, error, loading, reload } = useLoad(() => listVenues(org.id), [org.id], 'venues');
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [editSlug, setEditSlug] = useState(false);

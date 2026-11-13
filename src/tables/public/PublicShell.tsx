@@ -4,7 +4,7 @@
  * today's booking hours — and the page content sits on a sheet over it. Colours are contrast-
  * repaired (domain/publicPages) for light and dark display; language and direction are applied here.
  */
-import { Clock, Globe, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { BookOpen, Clock, Globe, MapPin, MessageCircle, Navigation, Phone } from 'lucide-react';
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { cx } from '../../components/ui';
@@ -63,7 +63,15 @@ export interface ShellVenue {
   /** Venue-local date of today (for today's booking hours). */
   today?: string;
   brand?: { displayName: string | null; palette: Record<string, string> | null };
+  venueType?: string | null;
+  /** Public slug: enables the menu tile on the venue header. */
+  slug?: string;
 }
+
+const VENUE_TYPE: Record<Lang, Record<string, string>> = {
+  he: { restaurant: 'מסעדה', cafe: 'בית קפה', bar: 'בר', event_hall: 'אולם אירועים' },
+  en: { restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', event_hall: 'Event hall' },
+};
 
 const monogram = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => [...w][0] ?? '').join('').toUpperCase() || '·';
@@ -124,34 +132,39 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
                   </span>
                 )}
                 <div className="min-w-0">
-                  {eyebrow && <p className="pp-eyebrow truncate text-xs font-semibold uppercase tracking-[0.14em]">{eyebrow}</p>}
+                  {(eyebrow || (venue.venueType && VENUE_TYPE[lang][venue.venueType])) && (
+                    <p className="pp-eyebrow flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
+                      {venue.venueType && VENUE_TYPE[lang][venue.venueType] && <span className="pp-type-tag rounded-full px-2.5 py-0.5 normal-case tracking-normal">{VENUE_TYPE[lang][venue.venueType]}</span>}
+                      {eyebrow && <span className="break-words">{eyebrow}</span>}
+                    </p>
+                  )}
                   <p className={cx('pp-display pp-venue-name break-words leading-[1.05]', compact ? 'text-2xl sm:text-3xl' : 'text-[2rem] sm:text-5xl')}>{venue.name}</p>
                 </div>
               </div>
               {!compact && venue.intro && <p className="pp-hero-text max-w-2xl whitespace-pre-line text-base sm:text-lg">{venue.intro}</p>}
-              {!compact && (todayHours !== undefined || venue.address || phone) && (
-                <ul className="flex flex-wrap gap-2 text-sm">
-                  {todayHours !== undefined && (
-                    <li className="pp-glass inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3">
-                      <Clock className="h-4 w-4" aria-hidden />{todayHours ? <span>{s.openToday('')}<Ltr>{todayHours}</Ltr></span> : s.closedToday}
-                    </li>
+              {!compact && todayHours !== undefined && (
+                <p className="pp-glass inline-flex min-h-[36px] w-fit items-center gap-1.5 rounded-full border px-3 text-sm">
+                  <Clock className="h-4 w-4" aria-hidden />{todayHours ? <span>{s.openToday('')}<Ltr>{todayHours}</Ltr></span> : s.closedToday}
+                </p>
+              )}
+              {!compact && (venue.slug || venue.address || phone) && (
+                <ul className="pp-tiles grid grid-cols-4 gap-2 sm:max-w-md" aria-label={lang === 'en' ? 'Quick actions' : 'פעולות מהירות'}>
+                  {venue.slug && (
+                    <li><Link to={`/t/${venue.slug}/menu${lang === 'en' ? '?lang=en' : ''}`} className="pp-tile"><BookOpen className="h-5 w-5" aria-hidden /><span>{lang === 'en' ? 'Menu' : 'תפריט'}</span></Link></li>
                   )}
                   {venue.address && (
-                    <li><a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className="pp-glass inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 py-1">
-                      <MapPin className="h-4 w-4 shrink-0" aria-hidden /><span className="break-words">{venue.address}</span>
-                    </a></li>
+                    <li><a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className="pp-tile" aria-label={`${lang === 'en' ? 'Directions to' : 'ניווט אל'} ${venue.address}`}><Navigation className="h-5 w-5" aria-hidden /><span>{lang === 'en' ? 'Directions' : 'ניווט'}</span></a></li>
                   )}
                   {phone && (
-                    <li><a href={`tel:${phone}`} className="pp-glass inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3">
-                      <Phone className="h-4 w-4" aria-hidden /><Ltr>{displayPhone(phone)}</Ltr>
-                    </a></li>
+                    <li><a href={`tel:${phone}`} className="pp-tile" aria-label={`${lang === 'en' ? 'Call' : 'חיוג אל'} ${displayPhone(phone)}`}><Phone className="h-5 w-5" aria-hidden /><span>{lang === 'en' ? 'Call' : 'חיוג'}</span></a></li>
                   )}
                   {phone && venue.showWhatsapp && (
-                    <li><a href={whatsappHref(phone)} target="_blank" rel="noopener noreferrer" className="pp-glass inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3">
-                      <MessageCircle className="h-4 w-4" aria-hidden />WhatsApp
-                    </a></li>
+                    <li><a href={whatsappHref(phone)} target="_blank" rel="noopener noreferrer" className="pp-tile"><MessageCircle className="h-5 w-5" aria-hidden /><span>WhatsApp</span></a></li>
                   )}
                 </ul>
+              )}
+              {!compact && venue.address && (
+                <p className="pp-hero-text flex items-start gap-1.5 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="break-words">{venue.address}</span></p>
               )}
             </div>
           )}

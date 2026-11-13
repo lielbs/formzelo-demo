@@ -84,8 +84,10 @@ test('owner designs, saves, reloads and publishes the guest pages; a guest answe
   await shot(page, 'studio-editing-1280');
 
   // Unsaved work: leaving asks first (dismiss = stay).
-  page.once('dialog', (d) => void d.dismiss());
   await page.getByRole('button', { name: /← ביסטרו הנמל/ }).click();
+  const ask = page.getByRole('alertdialog', { name: 'לצאת בלי לשמור?' });
+  await ask.getByRole('button', { name: 'המשך עריכה' }).click();
+  await expect(ask).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/app/tables/${venue.id}/design$`));
 
   await page.getByRole('button', { name: 'שמירת טיוטה' }).click();

@@ -7,6 +7,7 @@ import { createProductionRepository } from '../production/productionRepository';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { useAuth } from '../auth/AuthProvider';
 import { PageLoader } from '../components/ui';
+import { onClearLoadCache } from '../lib/loadCache';
 
 interface RepoState {
   repo: FormangleRepository;
@@ -132,12 +133,24 @@ export interface QueryState<T> {
 }
 
 /** Minimal async query hook. Refetches on any repository write and when deps change. */
+/**
+ * Last result of each query (per repository, per call site and arguments). Returning to a screen
+ * shows what it showed last time at once and refreshes underneath, so moving around feels instant.
+ */
+let queryCache = new WeakMap<FormangleRepository, Map<string, unknown>>();
+onClearLoadCache(() => { queryCache = new WeakMap(); });
+const cacheFor = (repo: FormangleRepository) => {
+  let m = queryCache.get(repo);
+  if (!m) { m = new Map(); queryCache.set(repo, m); }
+  return m;
+};
+
 export function useRepoQuery<T>(fn: (repo: FormangleRepository) => Promise<T>, deps: unknown[]): QueryState<T> {
   const { repo, revision } = useRepo();
-  const [state, setState] = useState<{ data: T | undefined; loading: boolean; error: Error | null }>({
-    data: undefined,
-    loading: true,
-    error: null,
+  const cacheKey = fn.toString() + '|' + JSON.stringify(deps);
+  const [state, setState] = useState<{ data: T | undefined; loading: boolean; error: Error | null }>(() => {
+    const cached = cacheFor(repo).get(cacheKey) as T | undefined;
+    return { data: cached, loading: cached === undefined, error: null };
   });
   const [nonce, setNonce] = useState(0);
   const fnRef = useRef(fn);
@@ -148,13 +161,17 @@ export function useRepoQuery<T>(fn: (repo: FormangleRepository) => Promise<T>, d
   useEffect(() => {
     let cancelled = false;
     // Show a loading state only when the query identity changes; writes refetch silently.
-    if (lastKey.current !== depsKey) {
-      lastKey.current = depsKey;
-      setState({ data: undefined, loading: true, error: null });
+    if (lastKey.current !== null && lastKey.current !== depsKey) {
+      const cached = cacheFor(repo).get(cacheKey) as T | undefined;
+      setState({ data: cached, loading: cached === undefined, error: null });
     }
+    lastKey.current = depsKey;
     fnRef
       .current(repo)
-      .then((data) => !cancelled && setState({ data, loading: false, error: null }))
+      .then((data) => {
+        cacheFor(repo).set(cacheKey, data);
+        if (!cancelled) setState({ data, loading: false, error: null });
+      })
       .catch((error: unknown) => {
         // A request cut off by leaving the page or the screen is not a failure.
         if (cancelled || pageUnloading) return;
@@ -164,6 +181,7 @@ export function useRepoQuery<T>(fn: (repo: FormangleRepository) => Promise<T>, d
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo, revision, nonce, depsKey]);
 
   return { ...state, reload: () => setNonce((n) => n + 1) };

@@ -2,6 +2,7 @@ import { BarChart3, BookOpen, CalendarCheck, CalendarX, Copy, Download, External
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { confirmAction } from '../../components/Confirm';
+import { clearLoadCache } from '../../lib/loadCache';
 import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, Card, ErrorState, FieldLabel, Input, Select, Spinner } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
@@ -20,7 +21,7 @@ export function VenueOverview() {
   const { venueId = '' } = useParams();
   const [params] = useSearchParams();
   const toast = useToast();
-  const { data: venue, error, loading, reload } = useLoad(() => getVenue(venueId), [venueId]);
+  const { data: venue, error, loading, reload } = useLoad(() => getVenue(venueId), [venueId], 'venue');
   const [busy, setBusy] = useState<string | null>(null);
 
   if (loading && !venue) return <Spinner label="טוען…" />;
@@ -199,7 +200,7 @@ function Closures({ venueId, timezone }: { venueId: string; timezone: string }) 
 
 function Team({ venueId }: { venueId: string }) {
   const toast = useToast();
-  const { data, error, reload, setData } = useLoad(() => listStaff(venueId), [venueId]);
+  const { data, error, reload, setData } = useLoad(() => listStaff(venueId), [venueId], 'staff');
   if (error) return <div className="mt-6"><ErrorState error={error} onRetry={reload} /></div>;
   return (
     <Card as="section" className="mt-6 p-5">
@@ -268,7 +269,7 @@ function DeleteVenue({ venueId, name }: { venueId: string; name: string }) {
               throw e;
             }
           },
-        }).then((ok) => { if (ok) { toast('המקום נמחק', 'success'); navigate('/app/tables'); } })}>
+        }).then((ok) => { if (ok) { clearLoadCache(); toast('המקום נמחק', 'success'); navigate('/app/tables'); } })}>
         מחיקת המקום
       </Button>
     </section>

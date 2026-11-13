@@ -51,7 +51,7 @@ const stable = (v: unknown) => JSON.stringify(v ?? null);
 
 export function PublicPagesStudio() {
   const { venueId = '' } = useParams();
-  const venue = useLoad(() => getVenue(venueId), [venueId]);
+  const venue = useLoad(() => getVenue(venueId), [venueId], 'venue');
   if (venue.error) return <ErrorState error={venue.error} onRetry={() => void venue.reload()} />;
   if (!venue.data) return <Spinner />;
   if (!venue.data.draft || (venue.data.role !== 'owner' && venue.data.role !== 'manager')) {

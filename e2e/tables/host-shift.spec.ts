@@ -74,7 +74,10 @@ for (const theme of ['light', 'dark'] as const) {
 
     // Tap feedback: a control sinks while pressed and springs back after release.
     const filterBtn = page.getByRole('button', { name: /^סינון וסידור/ });
+    // Centre it on screen: a finger never presses a control hidden under the sticky header.
+    await filterBtn.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const box = (await filterBtn.boundingBox())!;
+    expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest('button[aria-label^="סינון וסידור"], button'), [box.x + box.width / 2, box.y + box.height / 2])).toBe(true);
     const scaleOf = () => filterBtn.evaluate((el) => Number(getComputedStyle(el).scale === 'none' ? 1 : getComputedStyle(el).scale));
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();

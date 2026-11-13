@@ -61,10 +61,10 @@ export function PagePreview() {
 
 function Chips({ count, start, selected }: { count: number; start: number; selected: number }) {
   return (
-    <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+    <div className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 py-1 sm:-mx-7 sm:px-7">
       {Array.from({ length: count }, (_, i) => start + i).map((n) => (
         <span key={n} aria-hidden
-          className={cx('pp-chip flex h-12 items-center justify-center rounded-xl text-base font-semibold tabular-nums', n === selected && 'pp-chip-on')}>{n}</span>
+          className={cx('pp-chip flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[17px] font-semibold tabular-nums', n === selected && 'pp-chip-on')}>{n}</span>
       ))}
     </div>
   );
@@ -74,7 +74,9 @@ function BookingSample({ data, page }: { data: PreviewPayload; page: PublicPages
   const s = tx(data.lang);
   const [values, setValues] = useState<GuestValues>({});
   const min = Math.max(1, data.venue.minParty);
-  const count = Math.max(1, Math.min(10, data.venue.maxParty - min + 1));
+  const count = Math.max(1, Math.min(12, data.venue.maxParty - min + 1));
+  const [service, setService] = useState<'lunch' | 'dinner'>('dinner');
+  const sample = service === 'dinner' ? ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'] : ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30'];
   return (
     <div className="grid gap-7">
       <div>
@@ -88,9 +90,17 @@ function BookingSample({ data, page }: { data: PreviewPayload; page: PublicPages
       </div>
       <div>
         <p className="mb-2 text-base font-semibold">{s.time}</p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {['18:00', '18:30', '19:00', '19:30', '20:00', '20:30'].map((t) => (
-            <span key={t} aria-hidden className="pp-chip flex h-12 items-center justify-center rounded-xl text-base font-semibold tabular-nums"><span dir="ltr">{t}</span></span>
+        <div role="tablist" className="pp-seg mb-3 flex gap-1 rounded-full p-1">
+          {(['lunch', 'dinner'] as const).map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={service === k} onClick={() => setService(k)}
+              className="pp-seg-btn flex min-h-[40px] min-w-0 flex-1 items-center justify-center rounded-full px-2 text-sm font-semibold sm:px-3">
+              {k === 'lunch' ? (data.lang === 'en' ? 'Lunch' : 'צהריים') : (data.lang === 'en' ? 'Dinner' : 'ערב')}
+            </button>
+          ))}
+        </div>
+        <div className="pp-slots grid grid-cols-3 gap-2 min-[380px]:grid-cols-4 sm:grid-cols-5">
+          {sample.map((t) => (
+            <span key={t} aria-hidden className="pp-chip flex h-12 items-center justify-center rounded-full text-[15px] font-semibold tabular-nums"><span dir="ltr">{t}</span></span>
           ))}
         </div>
         <p className="mt-2 text-xs text-ink-muted">{s.previewTimes}</p>

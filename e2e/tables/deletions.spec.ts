@@ -79,7 +79,8 @@ test('a person deletes their own account and can no longer sign in', async ({ br
   const ctx = await newContext(browser, { width: 390, height: 844 }, true);
   const page = await ctx.newPage();
   const problems = watch(page);
-  await signIn(page, biz.owner, '/app/settings');
+  await signIn(page, biz.owner, '/app');
+  await page.goto('/app/settings');
   await page.getByRole('button', { name: 'מחיקת החשבון' }).click();
   const sheet = page.getByRole('alertdialog', { name: 'למחוק את החשבון?' });
   await sheet.getByRole('textbox').fill('מחיקה');

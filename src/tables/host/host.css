@@ -163,7 +163,7 @@ html.fz-dark .fz-tables {
 .hs-card[data-next] { border-color: var(--hs-accent); box-shadow: 0 6px 18px -12px var(--hs-accent); }
 .hs-card[data-selected] { border-color: var(--hs-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hs-accent) 25%, transparent); }
 .hs-card[data-dim] { opacity: 0.72; }
-.hs-time { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--hs-ink); }
+.hs-time { white-space: nowrap; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--hs-ink); }
 .hs-nextlabel { color: var(--hs-accent); font-size: 11.5px; font-weight: 700; letter-spacing: 0.01em; }
 .hs-seat {
   display: inline-flex;

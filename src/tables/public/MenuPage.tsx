@@ -42,10 +42,20 @@ export function MenuPage() {
         </>
       )}
       {data.menus.length === 0 && <p className="mt-6 text-ink-muted">{s.noMenus}</p>}
-      {data.menus.map((m) => (
+      {data.menus.map((m) => <MenuDocView key={m.id} m={m} lang={lang} img={(id) => publicAssetUrl(owner, id)} asPageTitle={single} note={single ? s.menuNote : undefined} />)}
+      <Link to={`/t/${data.venue.slug}${lang === 'en' ? '?lang=en' : ''}`} className={`${accentButton} mt-8`}>{s.book}</Link>
+    </PublicShell>
+  );
+}
+
+/** One menu as guests see it. Also used by the owner's live preview (images resolved by `img`). */
+export function MenuDocView({ m, lang, img, asPageTitle, note }: {
+  m: { id: string; title: string; doc: MenuDoc }; lang: Lang; img: (id?: string) => string; asPageTitle: boolean; note?: string;
+}) {
+  return (
         <section key={m.id} aria-labelledby={`menu-${m.id}`} className="mt-6 first:mt-0">
-          <MenuHeroBlock id={`menu-${m.id}`} title={m.title} hero={m.doc.hero} owner={owner} asPageTitle={single} note={single ? s.menuNote : undefined} />
-          {m.doc.gallery?.length ? <Gallery ids={m.doc.gallery} owner={owner} lang={lang} /> : null}
+          <MenuHeroBlock id={`menu-${m.id}`} title={m.title} hero={m.doc.hero} img={img} asPageTitle={asPageTitle} note={note} />
+          {m.doc.gallery?.length ? <Gallery ids={m.doc.gallery} img={img} lang={lang} /> : null}
           {m.doc.sections.length > 2 && (
             <nav aria-label={lang === 'he' ? 'קטגוריות בתפריט' : 'Menu sections'} className="pp-menu-nav sticky top-0 z-10 -mx-5 mt-5 px-5 py-2 sm:-mx-7 sm:px-7">
               <ul className="pp-scroll flex gap-2 overflow-x-auto">
@@ -58,12 +68,12 @@ export function MenuPage() {
             </nav>
           )}
           {m.doc.sections.map((sec, i) => {
-            const img = publicAssetUrl(owner, sec.imageAssetId);
+            const cover = img(sec.imageAssetId);
             return (
               <div key={i} id={`sec-${m.id}-${i}`} className="mt-8 scroll-mt-16">
-                {img ? (
+                {cover ? (
                   <div className="relative overflow-hidden rounded-2xl bg-cloud-200">
-                    <img src={img} alt="" loading="lazy" decoding="async" width={1200} height={514} className="aspect-[21/9] w-full object-cover" />
+                    <img src={cover} alt="" loading="lazy" decoding="async" width={1200} height={514} className="aspect-[21/9] w-full object-cover" />
                     <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <h3 className="absolute inset-x-0 bottom-0 p-4 text-xl font-semibold text-white">{sec.title}</h3>
                   </div>
@@ -76,7 +86,7 @@ export function MenuPage() {
                 )}
                 <ul className="pp-menu-list mt-2">
                   {sec.items.map((it, j) => {
-                    const dish = publicAssetUrl(owner, it.imageAssetId);
+                    const dish = img(it.imageAssetId);
                     return (
                       <li key={j} className="pp-menu-item flex gap-4 py-4">
                         <div className="min-w-0 flex-1">
@@ -104,9 +114,6 @@ export function MenuPage() {
             );
           })}
         </section>
-      ))}
-      <Link to={`/t/${data.venue.slug}${lang === 'en' ? '?lang=en' : ''}`} className={`${accentButton} mt-8`}>{s.book}</Link>
-    </PublicShell>
   );
 }
 
@@ -116,10 +123,10 @@ export function priceText(price: string): string {
   return /^\d+(?:[.,]\d{1,2})?$/.test(p) ? `₪${p}` : p;
 }
 
-function MenuHeroBlock({ id, title, hero, owner, asPageTitle, note }: { id: string; title: string; hero: MenuDoc['hero']; owner: string; asPageTitle: boolean; note?: string }) {
+function MenuHeroBlock({ id, title, hero, img: imgOf, asPageTitle, note }: { id: string; title: string; hero: MenuDoc['hero']; img: (id?: string) => string; asPageTitle: boolean; note?: string }) {
   const Heading = asPageTitle && hero ? 'h1' : 'h2';
   if (!hero) return <h2 id={id} className={asPageTitle ? 'sr-only' : 'text-xl font-semibold'}>{title}</h2>;
-  const img = publicAssetUrl(owner, hero.imageAssetId);
+  const img = imgOf(hero.imageAssetId);
   const heading = hero.title || title;
   if (img) {
     return (
@@ -152,9 +159,9 @@ function MenuHeroBlock({ id, title, hero, owner, asPageTitle, note }: { id: stri
   );
 }
 
-function Gallery({ ids, owner, lang }: { ids: string[]; owner: string; lang: Lang }) {
+function Gallery({ ids, img, lang }: { ids: string[]; img: (id?: string) => string; lang: Lang }) {
   const s = tx(lang);
-  const urls = ids.map((id) => publicAssetUrl(owner, id)).filter(Boolean);
+  const urls = ids.map((id) => img(id)).filter(Boolean);
   if (!urls.length) return null;
   return (
     <section aria-label={s.galleryTitle} className="mt-5">

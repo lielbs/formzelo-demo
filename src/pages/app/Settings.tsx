@@ -10,6 +10,7 @@ import { PaymentConnectors } from './PaymentConnectors';
 import { runtimeConfiguration } from '../../production/runtime';
 import { TeamCard } from './TeamCard';
 import { AccountCard } from './AccountCard';
+import { useAccess } from '../../production/access';
 
 interface FormValues {
   name: string;
@@ -24,6 +25,7 @@ export function Settings() {
   const toast = useToast();
   const navigate = useNavigate();
   const [confirmReset, setConfirmReset] = useState(false);
+  const access = useAccess(org.id);
   const [resetting, setResetting] = useState(false);
   const info = useRepoQuery(async (r) => ({ report: await r.storageReport(), members: await r.listMemberships(org.id) }), [org.id]);
 
@@ -64,6 +66,14 @@ export function Settings() {
   const err = formState.errors;
   const report = info.data?.report;
   const usedPct = report ? Math.min(100, (report.bytes / report.approxQuotaBytes) * 100) : 0;
+
+  // Tables-only staff manage only their own account here.
+  if (access === 'tables') return (
+    <>
+      <PageHeader title="החשבון שלי" description={`גישה לשולחנות של ${org.name}`} />
+      <div className="max-w-lg"><AccountCard /></div>
+    </>
+  );
 
   return (
     <>

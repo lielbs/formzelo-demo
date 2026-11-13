@@ -9,8 +9,43 @@ import { TablesRoot } from './tables/theme';
 
 // Every screen is its own chunk. The customer form (with its design themes and fonts, the heaviest
 // CSS) loads only on form links, so the app, Tables and booking pages start lighter.
-const named = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) =>
-  lazy(() => loader().then((m) => ({ default: m[name] })));
+// Each screen's loader is remembered so it can be fetched ahead of time (see Preload below).
+const loaders = new Map<string, () => Promise<unknown>>();
+const named = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) => {
+  loaders.set(name, loader);
+  return lazy(() => loader().then((m) => ({ default: m[name] })));
+};
+const STAFF = ['Dashboard', 'WorkflowList', 'WorkflowNew', 'WorkflowEditor', 'Requests', 'RequestDetail', 'Analytics', 'Settings', 'BrandKitPage',
+  'TablesHome', 'VenueOverview', 'VenueSetup', 'MenusPage', 'AnalyticsPage', 'HostShift', 'PublicPagesStudio'];
+const GUEST = ['BookingPage', 'MenuPage', 'ManagePage', 'WaitlistJoinPage'];
+
+/**
+ * After the first screen is up, quietly download the code of the screens people go to next, so a
+ * tap on the tab bar or a link never waits for the network. Skipped on data-saver connections.
+ */
+function Preload() {
+  const { pathname } = useLocation();
+  // The live shift is a focused, busy screen: nothing competes with the host's taps there.
+  const area = pathname.endsWith('/live') ? null : pathname.startsWith('/app') ? 'staff' : pathname.startsWith('/t/') ? 'guest' : null;
+  useEffect(() => {
+    if (!area) return;
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (conn?.saveData) return;
+    const names = area === 'staff' ? STAFF : GUEST;
+    const w = window as Window & typeof globalThis;
+    // One screen at a time, each only when the browser is idle, starting a few seconds after load.
+    let i = 0;
+    let idleId = 0;
+    const next = () => {
+      const name = names[i++];
+      if (!name) return;
+      idleId = typeof w.requestIdleCallback === 'function' ? w.requestIdleCallback(() => { void loaders.get(name)?.().catch(() => undefined); next(); }, { timeout: 4000 }) : w.setTimeout(() => { void loaders.get(name)?.().catch(() => undefined); next(); }, 400);
+    };
+    const start = w.setTimeout(next, 2500);
+    return () => { w.clearTimeout(start); if (typeof w.cancelIdleCallback === 'function') w.cancelIdleCallback(idleId); else w.clearTimeout(idleId); i = names.length; };
+  }, [area]);
+  return null;
+}
 
 const AppLayout = named(() => import('./components/AppLayout'), 'AppLayout');
 const PublicFlow = named(() => import('./pages/PublicFlow'), 'PublicFlow');
@@ -66,6 +101,7 @@ export function App() {
   return (
     <>
       <ScrollToTop />
+      <Preload />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={runtimeConfiguration.mode === 'production' ? <Navigate to="/app" replace /> : <Landing />} />

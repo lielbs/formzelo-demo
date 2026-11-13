@@ -1,5 +1,5 @@
 import { CalendarDays, CalendarPlus, Check, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle, Moon, Navigation, ShieldCheck, Sun, Sunset, Users } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { cx, PageLoader } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
@@ -53,7 +53,7 @@ export function BookingPage() {
   );
   const today = dateInTz(new Date(venue.serverNow), venue.timezone);
   return (
-    <PublicShell lang={lang} venue={{ ...venue, today }} design={design}
+    <PublicShell lang={lang} venue={{ ...venue, today, slug: venue.slug }} design={design}
       aside={<VenueAside lang={lang} today={today} venue={venue} />}>
       <Booking venue={venue} lang={lang} page={pageOf(design, 'booking')} />
     </PublicShell>
@@ -114,15 +114,29 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
   const key = useRef(newKey());
   const heading = useFocusOnChange(step);
 
+  // Availability per (date, party, zone): a tap shows a remembered answer at once, the previous
+  // times stay on screen (dimmed) while a new one loads, and the next day is fetched ahead.
+  const availCache = useRef(new Map<string, { at: number; value: Promise<PublicAvailability | null> }>());
+  const [availLoading, setAvailLoading] = useState(false);
+  const fetchAvail = useCallback((d: string) => {
+    const k = `${d}|${party}|${zone}|${lang}`;
+    const hit = availCache.current.get(k);
+    if (hit && Date.now() - hit.at < 45_000) return hit.value;
+    const value = publicAvailability(venue.slug, d, party, zone || null, lang);
+    availCache.current.set(k, { at: Date.now(), value });
+    value.catch(() => availCache.current.delete(k));
+    return value;
+  }, [venue.slug, party, zone, lang]);
   useEffect(() => {
     let alive = true;
-    setAvail(null);
     setAvailError(null);
-    const timer = setTimeout(() => {
-      publicAvailability(venue.slug, date, party, zone || null, lang).then((a) => alive && setAvail(a)).catch((e) => alive && setAvailError((e as TablesError).message));
-    }, 150);
-    return () => { alive = false; clearTimeout(timer); };
-  }, [venue.slug, date, party, zone, lang]);
+    setAvailLoading(true);
+    fetchAvail(date)
+      .then((a) => { if (alive) { setAvail(a); setAvailLoading(false); } })
+      .catch((e) => { if (alive) { setAvail(null); setAvailLoading(false); setAvailError((e as TablesError).message); } });
+    const ahead = window.setTimeout(() => { if (date < addDays(today, venue.policy.horizonDays)) void fetchAvail(addDays(date, 1)).catch(() => undefined); }, 400);
+    return () => { alive = false; window.clearTimeout(ahead); };
+  }, [date, fetchAvail, today, venue.policy.horizonDays]);
 
   // Any change to the request makes a new idempotency key; a retry of the same request reuses it.
   useEffect(() => { key.current = newKey(); }, [choice, date, party, zone, values]);
@@ -278,7 +292,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
           </select>
         </div>
       )}
-      <section aria-labelledby="times-h" aria-busy={!avail && !availError}>
+      <section aria-labelledby="times-h" aria-busy={availLoading} className={cx('transition-opacity duration-150', availLoading && avail && 'pointer-events-none opacity-60')}>
         <SectionTitle id="times-h" icon={<Clock className="h-4 w-4" />}>{s.time}</SectionTitle>
         {availError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{availError}</p>
           : !avail ? (
@@ -304,9 +318,9 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
                       <div role="tablist" aria-label={s.time} className="pp-seg flex gap-1 rounded-full p-1">
                         {open.map((sv) => (
                           <button key={sv.key} type="button" role="tab" aria-selected={sv.key === current.key} onClick={() => setServiceTab(sv.key)}
-                            className="pp-seg-btn flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]">
-                            {serviceIcon(sv.slots[0]?.time)}<span>{sv.name}</span>
-                            <span className="pp-seg-n text-xs font-medium tabular-nums">{sv.slots.length}</span>
+                            className="pp-seg-btn flex min-h-[40px] min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-2 text-sm font-semibold sm:gap-1.5 sm:px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]">
+                            <span aria-hidden className="hidden min-[360px]:inline-flex">{serviceIcon(sv.slots[0]?.time)}</span><span className="min-w-0 truncate">{sv.name}</span>
+                            <span className="pp-seg-n hidden text-xs font-medium tabular-nums min-[400px]:inline">{sv.slots.length}</span>
                           </button>
                         ))}
                       </div>

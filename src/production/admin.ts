@@ -8,8 +8,9 @@ import { publicBaseUrl } from '../lib/links';
 import { UnexpectedServerError, isNetworkFailure } from './serverErrors';
 import { getProductionSupabaseClient } from './supabaseClient';
 
-export interface TeamMember { userId: string; email: string; role: 'owner' | 'staff'; since: string; self: boolean }
-export interface TeamInvitation { id: string; email: string; role: 'owner' | 'staff'; expiresAt: string }
+export type MemberAccess = 'all' | 'formangle' | 'tables';
+export interface TeamMember { userId: string; email: string; role: 'owner' | 'staff'; access?: MemberAccess; since: string; self: boolean }
+export interface TeamInvitation { id: string; email: string; role: 'owner' | 'staff'; access?: MemberAccess; expiresAt: string }
 export interface OperatorOrganization {
   id: string;
   slug: string;
@@ -53,10 +54,11 @@ export async function listTeam(orgId: string): Promise<{ members: TeamMember[]; 
   return { members: root.members ?? [], invitations: root.invitations ?? [] };
 }
 
-export async function inviteStaff(orgId: string, email: string): Promise<{ link: string; expiresAt: string }> {
+export async function inviteStaff(orgId: string, email: string, access: MemberAccess = 'all'): Promise<{ link: string; expiresAt: string }> {
   const client = await getProductionSupabaseClient();
   const { data, error } = await client.rpc('create_staff_invitation', { p_organization_id: orgId, p_email: email });
   if (error || !data?.[0]) explain(error, 'Unable to create invitation');
+  if (access !== 'all') await setInvitationAccess(orgId, data[0].invitation_id, access);
   return { link: invitationLink(data[0].invitation_token, orgId), expiresAt: data[0].invitation_expires_at };
 }
 
@@ -151,4 +153,17 @@ export async function deleteMyAccount(): Promise<void> {
   }
   if (response?.status === 401) throw new DomainRuleError('פג תוקף ההתחברות. התחברו מחדש ונסו שוב.');
   throw new DomainRuleError('המחיקה לא הושלמה. נסו שוב בעוד דקה.');
+}
+
+/** Owner: what a staff member can open (everything, only Formangle, only Tables). Applies at once. */
+export async function setMemberAccess(orgId: string, userId: string, access: MemberAccess) {
+  const client = await getProductionSupabaseClient();
+  const { error } = await client.rpc('set_member_access' as never, { p_organization_id: orgId, p_user_id: userId, p_access: access } as never);
+  if (error) explain(error, 'Unable to change access');
+}
+
+export async function setInvitationAccess(orgId: string, invitationId: string, access: MemberAccess) {
+  const client = await getProductionSupabaseClient();
+  const { error } = await client.rpc('set_invitation_access' as never, { p_organization_id: orgId, p_invitation_id: invitationId, p_access: access } as never);
+  if (error) explain(error, 'Unable to change access');
 }

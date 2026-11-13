@@ -483,7 +483,8 @@ function GuestStep({ draft, update }: StepProps) {
   const g = draft.guest;
   const set = (p: Partial<VenueDraft['guest']>) => update({ ...draft, guest: { ...g, ...p } });
   return (
-    <Card className="grid gap-4 p-5 sm:max-w-2xl">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+    <Card className="grid gap-4 p-5">
       <div>
         <FieldLabel htmlFor="g-intro">משפט פתיחה (רשות)</FieldLabel>
         <Textarea id="g-intro" maxLength={1000} value={g.intro ?? ''} onChange={(e) => set({ intro: e.target.value })} placeholder="למשל: מטבח ים-תיכוני, מרפסת עם נוף לים. נשמח לראותכם!" />
@@ -497,8 +498,29 @@ function GuestStep({ draft, update }: StepProps) {
         <input type="checkbox" className="h-6 w-6 shrink-0 accent-orange-700" checked={!!g.showWhatsapp} onChange={(e) => set({ showWhatsapp: e.target.checked })} />
         להציג לאורחים כפתור וואטסאפ אל הטלפון של המקום
       </label>
-      <Hint icon={Info}>הצבעים והלוגו מגיעים מ״ערכת המותג״ של העסק. אפשר לשנות אותם בכל זמן מהתפריט.</Hint>
+      <Hint icon={Info}>הצבעים והלוגו מגיעים מ״ערכת המותג״ של העסק. אחרי הפרסום אפשר לעצב את דפי ההזמנה (תמונות, גופנים, שאלות נוספות) ב״עיצוב דפי ההזמנה״, עם תצוגה מקדימה בטלפון, טאבלט ומחשב.</Hint>
     </Card>
+    <aside aria-label="תצוגה מקדימה של ראש עמוד ההזמנה">
+      <p className="mb-2 text-sm font-semibold text-ink-muted">כך האורחים יראו את ראש העמוד</p>
+      <div className="fz-guest overflow-hidden rounded-[24px] bg-[#FAF9F7] shadow-card" dir="rtl">
+        <div className="pp-hero pp-hero-band relative isolate overflow-hidden px-5 pb-12 pt-6">
+          <p className="pp-venue-name break-words text-[26px] leading-tight">{draft.basics.name || 'שם המקום'}</p>
+          {g.intro?.trim() && <p className="pp-hero-text mt-2 whitespace-pre-line text-sm">{g.intro}</p>}
+          {draft.basics.address?.trim() && <p className="mt-3 inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs text-white">{draft.basics.address}</p>}
+        </div>
+        <div className="relative z-10 -mt-8 px-3 pb-4">
+          <div className="pp-sheet rounded-[20px] p-4">
+            <p className="text-lg font-semibold">הזמנת שולחן</p>
+            <div className="mt-3 flex gap-2" aria-hidden>
+              {[1, 2, 3, 4, 5].map((n) => <span key={n} className={cx('pp-chip flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold', n === 2 && 'pp-chip-on')}>{n}</span>)}
+            </div>
+            <p className="mt-4 text-xs font-semibold">תנאי ההזמנה</p>
+            <p className="mt-1 line-clamp-4 whitespace-pre-line text-xs text-ink-muted">{g.terms || 'כאן יופיעו התנאים.'}</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+    </div>
   );
 }
 

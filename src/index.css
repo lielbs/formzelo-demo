@@ -235,17 +235,15 @@ html.fz-dark {
 
 /* ---------- Motion across the app: screen changes and list entry ---------- */
 @media (prefers-reduced-motion: no-preference) {
-  .fz-route { animation: fz-route-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-  @keyframes fz-route-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  /* Short and never from invisible: the new screen is readable from the first frame. */
+  .fz-route { animation: fz-route-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  @keyframes fz-route-in { from { opacity: 0.55; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .fz-stagger > * { animation: fz-item-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-  .fz-stagger > :nth-child(2) { animation-delay: 30ms; }
-  .fz-stagger > :nth-child(3) { animation-delay: 60ms; }
-  .fz-stagger > :nth-child(4) { animation-delay: 90ms; }
-  .fz-stagger > :nth-child(5) { animation-delay: 120ms; }
-  .fz-stagger > :nth-child(6) { animation-delay: 150ms; }
-  .fz-stagger > :nth-child(7) { animation-delay: 180ms; }
-  .fz-stagger > :nth-child(n + 8) { animation-delay: 210ms; }
-  @keyframes fz-item-in { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: none; } }
+  .fz-stagger > :nth-child(2) { animation-delay: 20ms; }
+  .fz-stagger > :nth-child(3) { animation-delay: 40ms; }
+  .fz-stagger > :nth-child(4) { animation-delay: 60ms; }
+  .fz-stagger > :nth-child(n + 5) { animation-delay: 80ms; }
+  @keyframes fz-item-in { from { opacity: 0.3; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
 
 /* ---------- Whole-screen loader (same look as the first paint in index.html) ---------- */
@@ -338,8 +336,9 @@ html.fz-dark .fz-confirm-icon { background: rgb(229 72 77 / 0.16); color: #ff8b8
 
 /* ---------- Formangle surfaces (shared by the app, Tables and the live shift) ---------- */
 @layer base {
-  h1, h2, h3, h4 { overflow-wrap: break-word; text-wrap: balance; }
-  p, li, dd { overflow-wrap: break-word; text-wrap: pretty; }
+  h1, h2, h3, h4 { overflow-wrap: break-word; }
+  h1, h2 { text-wrap: balance; }
+  p, dd { overflow-wrap: break-word; }
 }
 .fz-topbar {
   background: rgb(245 243 239 / 0.82);
@@ -369,3 +368,11 @@ html.fz-dark .fz-sheet-danger { color: #ff8b8b; }
     .fz-sheet[data-leaving] .fz-sheet-panel { animation-name: fz-alert-out; }
   }
 }
+
+/* Phone-shaped frame for live previews in the owner's editors. */
+.fz-phone-frame {
+  height: min(760px, calc(100vh - 7rem)); overflow-y: auto; border-radius: 34px; background: #faf9f7;
+  box-shadow: 0 0 0 8px #18212d, 0 0 0 9px #2c3744, 0 30px 60px -20px rgb(24 33 45 / 0.45);
+  scrollbar-width: none;
+}
+.fz-phone-frame::-webkit-scrollbar { display: none; }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Poin
 import { cx } from '../components/ui';
 import { STATUS_HE, TABLE_STATE_HE } from './domain/status';
 import type { ReservationStatus, TableDef, TableLiveState, TableShape } from './domain/types';
+import { loadCache } from '../lib/loadCache';
 
 /** Left-to-right island for phone numbers, codes, times and mixed strings inside RTL text. */
 export function Ltr({ children, className }: { children: ReactNode; className?: string }) {
@@ -241,14 +242,25 @@ export function SaveIndicator({ state, at }: { state: SaveState; at?: Date | nul
 }
 
 /** Async loader with a stale-safe result; exposes reload. */
-export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
-  const [state, setState] = useState<{ data: T | null; error: Error | null; loading: boolean }>({ data: null, error: null, loading: true });
+
+/**
+ * Loads data for a screen. With a `cacheName`, a screen you return to shows its last data at once
+ * and refreshes underneath (the name keeps different queries apart, also in minified builds).
+ */
+export function useLoad<T>(fn: () => Promise<T>, deps: unknown[], cacheName?: string) {
+  const key = cacheName ? `${cacheName}|${JSON.stringify(deps)}` : '';
+  const [state, setState] = useState<{ data: T | null; error: Error | null; loading: boolean }>(() => {
+    const cached = key ? (loadCache.get(key) as T | undefined) : undefined;
+    return { data: cached ?? null, error: null, loading: cached === undefined };
+  });
   const gen = useRef(0);
   const load = useCallback(async () => {
     const g = ++gen.current;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    const cached = key ? (loadCache.get(key) as T | undefined) : undefined;
+    setState((s) => ({ data: cached ?? s.data, loading: true, error: null }));
     try {
       const data = await fn();
+      if (key) loadCache.set(key, data);
       if (g === gen.current) setState({ data, error: null, loading: false });
     } catch (e) {
       if (g === gen.current) setState((s) => ({ ...s, error: e as Error, loading: false }));
@@ -256,7 +268,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   useEffect(() => { void load(); }, [load]);
-  return { ...state, reload: load, setData: (d: T) => setState((s) => ({ ...s, data: d })) };
+  return { ...state, reload: load, setData: (d: T) => { if (key) loadCache.set(key, d); setState((s) => ({ ...s, data: d })); } };
 }
 
 export function Hint({ children, icon: Icon = Sparkles, tone = 'neutral' }: { children: ReactNode; icon?: LucideIcon; tone?: 'neutral' | 'warn' }) {

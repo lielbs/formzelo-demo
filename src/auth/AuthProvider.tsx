@@ -4,6 +4,7 @@ import type { Database } from '../production/database.generated';
 import { runtimeConfiguration } from '../production/runtime';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { resolveWorkforceAccess, sameAccess, type WorkforceAccess } from './session';
+import { clearLoadCache } from '../lib/loadCache';
 
 type AuthState =
   | { kind: 'demo' }
@@ -26,6 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshGeneration = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Cached screens belong to one person: drop them whenever who is signed in changes.
+  const who = 'userId' in state ? state.userId : state.kind;
+  const lastWho = useRef(who);
+  if (lastWho.current !== who) { lastWho.current = who; clearLoadCache(); }
 
   useEffect(() => {
     if (runtimeConfiguration.mode === 'demo') return;

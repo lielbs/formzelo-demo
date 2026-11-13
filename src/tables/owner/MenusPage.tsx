@@ -1,4 +1,4 @@
-import { BookOpen, ExternalLink, Image as ImageIcon, Images, Plus, Rocket, Save, Trash2 } from 'lucide-react';
+import { BookOpen, Eye, ExternalLink, Image as ImageIcon, Images, Plus, Rocket, Save, Smartphone, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { confirmAction } from '../../components/Confirm';
@@ -8,7 +8,8 @@ import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, Spinner
 import { useRepoQuery } from '../../data/store';
 import { archiveMenu, createMenu, getVenue, listMenus, publishMenu, saveMenu, type MenuDoc, type MenuHero, type MenuItem, type MenuRow } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import { ALLERGENS, DIETARY } from '../public/MenuPage';
+import { ALLERGENS, DIETARY, MenuDocView } from '../public/MenuPage';
+import { publicAssetUrl } from '../public/look';
 import { Hint, useLoad } from '../ui';
 import { GalleryEditor, ImageSlot } from './MenuImages';
 import { bookingUrl } from './VenueOverview';
@@ -29,15 +30,15 @@ const MENU_PROBLEM_HE: Record<string, string> = {
 export function MenusPage() {
   const { venueId = '' } = useParams();
   const toast = useToast();
-  const venue = useLoad(() => getVenue(venueId), [venueId]);
-  const menus = useLoad(() => listMenus(venueId), [venueId]);
+  const venue = useLoad(() => getVenue(venueId), [venueId], 'venue');
+  const menus = useLoad(() => listMenus(venueId), [venueId], 'menus');
   const [selected, setSelected] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   if (venue.error || menus.error) return <ErrorState error={(venue.error ?? menus.error)!} onRetry={() => { void venue.reload(); void menus.reload(); }} />;
   if (!venue.data || !menus.data) return <Spinner />;
   const current = menus.data.find((m) => m.id === selected) ?? menus.data[0] ?? null;
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <Link to={`/app/tables/${venueId}`} className="text-sm text-ink-muted hover:text-ink">← {venue.data.name}</Link>
       <div className="mb-5 mt-1 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -92,6 +93,7 @@ function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; on
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [problems, setProblems] = useState(menu.problems);
+  const [previewOpen, setPreviewOpen] = useState(false);
   useEffect(() => { setDoc(menu.draft); setTitle(menu.title); setLock(menu.lockVersion); setProblems(menu.problems); setDirty(false); }, [menu]);
   useEffect(() => {
     if (!dirty) return;
@@ -127,8 +129,12 @@ function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; on
     } finally { setBusy(null); }
   }
 
+  const img = (id?: string) => (id ? media.data?.urls[id] || publicAssetUrl(orgId, id) : '');
+  const preview = <MenuPreview title={title} doc={doc} id={menu.id} img={img} />;
   return (
-    <div className="grid gap-4 pb-24">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+    <div className="grid min-w-0 gap-4 pb-24">
+      <Button variant="secondary" icon={Eye} className="lg:hidden" onClick={() => setPreviewOpen(true)}>תצוגה מקדימה כמו אורח</Button>
       <Card className="flex flex-wrap items-end gap-3 p-4">
         <div className="min-w-[14rem] flex-1">
           <FieldLabel htmlFor="menu-title">שם התפריט</FieldLabel>
@@ -229,6 +235,20 @@ function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; on
         }} className="h-11 ms-auto text-red-700 hover:bg-red-50 hover:text-red-800">מחיקה</Button>
       </div>
     </div>
+    <aside className="hidden lg:sticky lg:top-6 lg:block" aria-label="תצוגה מקדימה">
+      <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink-muted"><Smartphone className="h-4 w-4" aria-hidden />כך זה ייראה לאורחים</p>
+      <div className="fz-phone-frame">{preview}</div>
+    </aside>
+    {previewOpen && (
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#FAF9F7] lg:hidden" role="dialog" aria-modal="true" aria-label="תצוגה מקדימה של התפריט">
+        <div className="fz-topbar flex items-center justify-between px-4 py-2.5">
+          <span className="font-semibold">תצוגה מקדימה</span>
+          <Button variant="ghost" icon={X} aria-label="סגירה" onClick={() => setPreviewOpen(false)} className="h-11 w-11 rounded-full px-0" />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{preview}</div>
+      </div>
+    )}
+    </div>
   );
 }
 
@@ -236,4 +256,22 @@ function MenuEditor({ menu, orgId, onSaved }: { menu: MenuRow; orgId: string; on
 function withImage<T extends { imageAssetId?: string }>(v: T): T {
   if (!v.imageAssetId) { const { imageAssetId: _drop, ...rest } = v; void _drop; return rest as T; }
   return v;
+}
+
+/** The draft exactly as the guest menu page renders it (same component), updated as you type. */
+function MenuPreview({ title, doc, id, img }: { title: string; doc: MenuDoc; id: string; img: (id?: string) => string }) {
+  return (
+    <div className="fz-guest fz-page min-h-full bg-[#FAF9F7] text-ink" dir="rtl" lang="he">
+      <div className="pp-hero pp-hero-band relative isolate overflow-hidden px-4 pb-14 pt-6">
+        <p className="pp-venue-name text-2xl leading-tight">{title || 'תפריט'}</p>
+        <p className="mt-1 text-xs text-white/75">תצוגה מקדימה · טיוטה</p>
+      </div>
+      <div className="relative z-10 -mt-10 px-3 pb-8">
+        <div className="pp-sheet rounded-[24px] p-5">
+          {doc.sections.length === 0 && !doc.hero ? <p className="text-sm text-ink-muted">הוסיפו קטגוריה ומנות — הן יופיעו כאן.</p>
+            : <MenuDocView m={{ id: `pv-${id}`, title: title || 'תפריט', doc }} lang="he" img={img} asPageTitle={false} />}
+        </div>
+      </div>
+    </div>
+  );
 }
