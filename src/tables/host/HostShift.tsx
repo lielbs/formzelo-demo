@@ -55,6 +55,7 @@ export function HostShift() {
   const [filters, setFilters] = useState<ShiftFilters>(NO_FILTERS);
   const [sort, setSort] = useState<SortKey>('time');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [chooser, setChooser] = useState(false);
   const [showDone, setShowDone] = useState(true);
   const [selection, setSelection] = useState<Selection>(null);
@@ -154,8 +155,9 @@ export function HostShift() {
           </label>
           <Button variant="ghost" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shift.serviceDate, 1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
           {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0 rounded-xl px-3">היום</Button>}
+          <div className="ms-auto" />
           {shift.services.length > 1 && view !== 'waitlist' && (
-            <label className="hs-datepill relative ms-auto flex h-11 shrink-0 items-center rounded-xl focus-within:ring-2 focus-within:ring-orange">
+            <label className="hs-datepill relative flex h-11 shrink-0 items-center rounded-xl focus-within:ring-2 focus-within:ring-orange">
               <span className="sr-only">משמרת</span>
               <select aria-label="משמרת" value={service} onChange={(e) => setService(e.target.value)} className="hs-select h-11 appearance-none rounded-xl bg-transparent ps-3 pe-8 text-[15px] font-semibold focus:outline-none">
                 <option value="all">כל היום</option>
@@ -164,6 +166,13 @@ export function HostShift() {
               <ChevronDown className="pointer-events-none absolute end-2.5 h-4 w-4 text-ink-muted" aria-hidden />
             </label>
           )}
+          <div className="hidden md:block">
+            <Segmented label="תצוגה" size="lg" value={view} onChange={switchView} options={[
+              { value: 'list', label: 'רשימה', icon: List },
+              { value: 'floor', label: 'מפה', icon: LayoutGrid },
+              { value: 'waitlist', label: 'המתנה', icon: ClipboardList, count: shift.waitlist.length },
+            ]} />
+          </div>
         </div>
         {connection === 'offline' && (
           <p role="alert" className="border-t border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800">
@@ -173,35 +182,30 @@ export function HostShift() {
         {closed && <p className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">היום מסומן כסגור להזמנות{closed.note ? ` (${closed.note})` : ''}. הזמנות קיימות מוצגות למטה.</p>}
       </header>
 
-      <div className="grid gap-3 px-3 pt-3 sm:px-4">
-        {view !== 'waitlist' && <ShiftSummaryBar summary={summary} counts={tiles} tile={tile} onTile={pickTile} showTabs={view === 'list'} />}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden md:block">
-            <Segmented label="תצוגה" size="lg" value={view} onChange={switchView} options={[
-              { value: 'list', label: 'רשימה', icon: List },
-              { value: 'floor', label: 'מפה', icon: LayoutGrid },
-              { value: 'waitlist', label: 'המתנה', icon: ClipboardList, count: shift.waitlist.length },
-            ]} />
-          </div>
-          {view === 'list' && (
-            <div className="flex min-w-0 flex-1 items-center gap-2 md:max-w-md">
-              <div className="relative min-w-0 flex-1">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-3 pt-3 sm:px-4">
+        {view !== 'waitlist' && <ShiftSummaryBar summary={summary} counts={tiles} tile={tile} onTile={pickTile} showTabs={view === 'list'}
+          tools={<>
+            <div className="hidden w-60 md:block"><div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
                 <label htmlFor="shift-search" className="sr-only">חיפוש לפי שם, טלפון, שולחן או קוד</label>
                 <input id="shift-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש שם, טלפון, שולחן"
                   className="fz-input h-11 w-full rounded-xl border border-[var(--hs-line)] bg-[var(--hs-surface)] ps-9 pe-3 text-[15px] text-[var(--hs-ink)]" />
-              </div>
-              <button type="button" onClick={() => setFilterOpen(true)} aria-haspopup="dialog"
-                aria-label={nFilters ? `סינון וסידור (${nFilters} פעילים)` : 'סינון וסידור'}
-                className={cx('relative inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium text-[var(--hs-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-                  nFilters || sort !== 'time' ? 'border-[var(--hs-accent)] bg-[var(--hs-accent-soft)]' : 'border-[var(--hs-line)] bg-[var(--hs-surface)]')}>
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                <span className="hidden sm:inline">סינון</span>
-                {nFilters > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hs-accent)] px-1 text-[11px] font-bold text-[var(--hs-on-accent)]" aria-hidden>{nFilters}</span>}
-              </button>
-            </div>
-          )}
-        </div>
+              </div></div>
+            <button type="button" onClick={() => setSearchOpen((o) => !o)} aria-expanded={searchOpen || !!query} aria-controls="shift-search-row"
+              aria-label="חיפוש" data-phone-only className={cx('hs-toolbtn', (searchOpen || query) && 'is-on')}><Search className="h-5 w-5" aria-hidden /></button>
+            <button type="button" onClick={() => setFilterOpen(true)} aria-haspopup="dialog"
+              aria-label={nFilters ? `סינון וסידור (${nFilters} פעילים)` : 'סינון וסידור'}
+              className={cx('hs-toolbtn relative', (nFilters > 0 || sort !== 'time') && 'is-on')}>
+              <SlidersHorizontal className="h-5 w-5" aria-hidden />
+              {nFilters > 0 && <span className="absolute -top-1 -end-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hs-accent)] px-1 text-[11px] font-bold text-[var(--hs-on-accent)]" aria-hidden>{nFilters}</span>}
+            </button>
+          </>}
+          below={(searchOpen || query) ? <div id="shift-search-row" className="flex md:hidden"><div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
+                <label htmlFor="shift-search-m" className="sr-only">חיפוש לפי שם, טלפון, שולחן או קוד</label>
+                <input id="shift-search-m" type="search" value={query} autoFocus={searchOpen} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש שם, טלפון, שולחן"
+                  className="fz-input h-11 w-full rounded-xl border border-[var(--hs-line)] bg-[var(--hs-surface)] ps-9 pe-3 text-[15px] text-[var(--hs-ink)]" />
+              </div></div> : null} />}
         {view === 'list' && <ActiveFilters filters={filters} shift={shift} onChange={setFilters} />}
       </div>
 

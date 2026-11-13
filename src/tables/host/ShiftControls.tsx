@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ClipboardList, Footprints, LayoutGrid, List, PhoneCall, Plus, X } from 'lucide-react';
 import { GlassDock } from '../../components/GlassDock';
 import { cx } from '../../components/ui';
@@ -14,8 +15,12 @@ const TABS: TileKey[] = ['active', 'attention', 'upcoming', 'arrived', 'seated',
  * The shift right now, one unit per figure (diners or tables, said in words), then the bookings
  * by state as tabs. Figures are facts; tabs filter the list below.
  */
-export function ShiftSummaryBar({ summary, counts, tile, onTile, showTabs = true }: {
+export function ShiftSummaryBar({ summary, counts, tile, onTile, showTabs = true, tools, below }: {
   summary: ShiftSummary; counts: Record<TileKey, TileCount>; tile: TileKey; onTile: (t: TileKey) => void; showTabs?: boolean;
+  /** Search and filter, at the end of the tabs row (they act on the same list). */
+  tools?: ReactNode;
+  /** Shown under the tabs row (e.g. the opened search field on phones). */
+  below?: ReactNode;
 }) {
   return (
     <section className="hs-summary" aria-label="המשמרת עכשיו">
@@ -26,6 +31,7 @@ export function ShiftSummaryBar({ summary, counts, tile, onTile, showTabs = true
         {summary.late > 0 && <div data-tone="attention"><dt>מאחרים</dt><dd><b>{summary.late}</b> {summary.late === 1 ? 'הזמנה' : 'הזמנות'}</dd></div>}
       </dl>
       {showTabs && (
+        <div className="hs-tabsrow">
         <div role="group" aria-label="הזמנות לפי מצב" className="hs-tabs hs-scroll">
           {TABS.map((k) => {
             const c = counts[k];
@@ -41,7 +47,10 @@ export function ShiftSummaryBar({ summary, counts, tile, onTile, showTabs = true
             );
           })}
         </div>
+        {tools && <div className="hs-tabtools">{tools}</div>}
+        </div>
       )}
+      {showTabs && below}
     </section>
   );
 }

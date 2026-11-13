@@ -211,7 +211,7 @@ html.fz-dark .fz-topbar { background: rgb(15 20 27 / 0.8); box-shadow: 0 0.5px 0
 .hs-conn svg { color: var(--hs-tone); }
 
 /* ---- Summary: three figures (units in words), then bookings by state ---- */
-.hs-summary { display: grid; gap: 10px; }
+.hs-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 .hs-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border-radius: 14px; border: 1px solid var(--hs-line); background: var(--hs-line); }
 .hs-kpis:has(> :nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .hs-kpis > div { min-width: 0; background: var(--hs-surface); padding: 8px 12px 10px; }
@@ -310,3 +310,13 @@ html.fz-dark .fz-topbar { background: rgb(15 20 27 / 0.8); box-shadow: 0 0.5px 0
 @media (prefers-reduced-motion: no-preference) {
   .hs-row { animation: hs-item-in 0.2s ease-out both; }
 }
+
+/* Tabs row: the state tabs scroll; search and filter stay at its end. */
+.hs-tabsrow { min-width: 0; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--hs-line); }
+.hs-tabsrow .hs-tabs { min-width: 0; flex: 1; border-bottom: 0; margin-inline-end: 0; }
+.hs-tabtools { display: flex; flex: none; align-items: center; gap: 4px; padding-bottom: 4px; }
+.hs-toolbtn { display: inline-flex; height: 44px; width: 44px; align-items: center; justify-content: center; border-radius: 12px; color: var(--hs-ink); }
+.hs-toolbtn:hover { background: var(--hs-surface-2); }
+.hs-toolbtn.is-on { background: var(--hs-accent-soft); color: var(--hs-accent); }
+.hs-toolbtn:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 1px; }
+@media (min-width: 768px) { .hs-toolbtn[data-phone-only] { display: none; } }
