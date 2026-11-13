@@ -123,6 +123,9 @@ export const waitlistOffer = (id: string, tableIds: string[] | null, lockVersion
   rpc<{ status: string; offerExpiresAt: string }>('tables_waitlist_offer', { p_entry_id: id, p_table_ids: tableIds, p_expected_lock_version: lockVersion });
 export const waitlistSeat = (id: string, tableIds: string[] | null, lockVersion: number) =>
   rpc<{ reservationId: string }>('tables_waitlist_seat', { p_entry_id: id, p_table_ids: tableIds, p_expected_lock_version: lockVersion });
+/** A waitlist party was booked into a normal reservation (made first with staffCreate). */
+export const waitlistBook = (id: string, reservationId: string, lockVersion: number) =>
+  rpc<{ status: string; lockVersion: number }>('tables_waitlist_book', { p_entry_id: id, p_reservation_id: reservationId, p_expected_lock_version: lockVersion });
 export const waitlistClose = (id: string, status: 'declined' | 'departed' | 'no_response' | 'cancelled' | 'waiting', lockVersion: number) =>
   rpc<{ status: string }>('tables_waitlist_close', { p_entry_id: id, p_status: status, p_expected_lock_version: lockVersion });
 
