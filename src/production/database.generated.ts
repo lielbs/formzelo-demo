@@ -107,14 +107,14 @@ isOneToOne: false
                   ]
                 },"organization_memberships": {
                   Row: {
-                    "created_at": string,"organization_id": string,"role": string,"status": string,"updated_at": string,"user_id": string
+                    "access": string,"created_at": string,"organization_id": string,"role": string,"status": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"organization_id": string,"role": string,"status"?: string,"updated_at"?: string,"user_id": string
+                    "access"?: string,"created_at"?: string,"organization_id": string,"role": string,"status"?: string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"organization_id"?: string,"role"?: string,"status"?: string,"updated_at"?: string,"user_id"?: string
+                    "access"?: string,"created_at"?: string,"organization_id"?: string,"role"?: string,"status"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -785,14 +785,14 @@ isOneToOne: false
                   ]
                 },"workflows": {
                   Row: {
-                    "created_at": string,"created_by": string,"draft_config": NonNullable<Json>,"draft_design": NonNullable<Json>,"id": string,"intake": NonNullable<Json>,"lock_version": number,"organization_id": string,"public_slug": string,"published_lock_version": number | null,"published_version_id": string | null,"schema_version": number,"source_prompt": string | null,"status": string,"template_key": string,"updated_at": string
+                    "created_at": string,"created_by": string,"deleted_at": string | null,"draft_config": NonNullable<Json>,"draft_design": NonNullable<Json>,"id": string,"intake": NonNullable<Json>,"lock_version": number,"organization_id": string,"public_slug": string,"published_lock_version": number | null,"published_version_id": string | null,"schema_version": number,"source_prompt": string | null,"status": string,"template_key": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string,"draft_config": NonNullable<Json>,"draft_design"?: NonNullable<Json>,"id"?: string,"intake"?: NonNullable<Json>,"lock_version"?: number,"organization_id": string,"public_slug": string,"published_lock_version"?: number | null,"published_version_id"?: string | null,"schema_version": number,"source_prompt"?: string | null,"status"?: string,"template_key"?: string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"draft_config": NonNullable<Json>,"draft_design"?: NonNullable<Json>,"id"?: string,"intake"?: NonNullable<Json>,"lock_version"?: number,"organization_id": string,"public_slug": string,"published_lock_version"?: number | null,"published_version_id"?: string | null,"schema_version": number,"source_prompt"?: string | null,"status"?: string,"template_key"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string,"draft_config"?: NonNullable<Json>,"draft_design"?: NonNullable<Json>,"id"?: string,"intake"?: NonNullable<Json>,"lock_version"?: number,"organization_id"?: string,"public_slug"?: string,"published_lock_version"?: number | null,"published_version_id"?: string | null,"schema_version"?: number,"source_prompt"?: string | null,"status"?: string,"template_key"?: string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"draft_config"?: NonNullable<Json>,"draft_design"?: NonNullable<Json>,"id"?: string,"intake"?: NonNullable<Json>,"lock_version"?: number,"organization_id"?: string,"public_slug"?: string,"published_lock_version"?: number | null,"published_version_id"?: string | null,"schema_version"?: number,"source_prompt"?: string | null,"status"?: string,"template_key"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -894,6 +894,7 @@ isOneToOne: false
 { Args: { "config": Json,"design": Json,"organization_id": string,"schema_version"?: number,"source_prompt"?: string,"template_key"?: string }; Returns: {
               "created_at": string,
 "created_by": string,
+"deleted_at": string | null,
 "draft_config": NonNullable<Json>,
 "draft_design": NonNullable<Json>,
 "id": string,
@@ -915,10 +916,14 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"delete_workflow":
+{ Args: { "p_organization_id": string,"p_workflow_id": string }; Returns: undefined
+                           },
 "duplicate_workflow":
 { Args: { "organization_id": string,"workflow_id": string }; Returns: {
               "created_at": string,
 "created_by": string,
+"deleted_at": string | null,
 "draft_config": NonNullable<Json>,
 "draft_design": NonNullable<Json>,
 "id": string,
@@ -948,6 +953,11 @@ isOneToOne: false
                            },
 "list_team":
 { Args: { "p_organization_id": string }; Returns: Json
+                           },
+"my_access":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "access": string,"organization_id": string,"role": string
+            }[]
                            },
 "operator_issue_password_recovery":
 { Args: { "p_email": string }; Returns: string
@@ -1037,6 +1047,7 @@ isOneToOne: false
 { Args: { "expected_lock_version": number,"organization_id": string,"version_id": string,"workflow_id": string }; Returns: {
               "created_at": string,
 "created_by": string,
+"deleted_at": string | null,
 "draft_config": NonNullable<Json>,
 "draft_design": NonNullable<Json>,
 "id": string,
@@ -1094,6 +1105,7 @@ isOneToOne: false
 { Args: { "config": Json,"design": Json,"expected_lock_version": number,"organization_id": string,"schema_version"?: number,"workflow_id": string }; Returns: {
               "created_at": string,
 "created_by": string,
+"deleted_at": string | null,
 "draft_config": NonNullable<Json>,
 "draft_design": NonNullable<Json>,
 "id": string,
@@ -1164,6 +1176,9 @@ isOneToOne: false
               "account_exists": boolean,"email": string
             }[]
                            },
+"server_prepare_account_deletion":
+{ Args: { "p_user_id": string }; Returns: Json
+                           },
 "server_provision_organization_authorized":
 { Args: { "actor_user_id": string,"name": string,"owner_email": string,"slug": string }; Returns: {
               "invitation_expires_at": string,"invitation_token": string,"organization_id": string
@@ -1172,10 +1187,17 @@ isOneToOne: false
 "server_revoke_owner_invitation":
 { Args: { "actor_user_id": string,"expected_organization_id": string,"reason": string,"target_invitation_id": string }; Returns: boolean
                            },
+"set_invitation_access":
+{ Args: { "p_access": string,"p_invitation_id": string,"p_organization_id": string }; Returns: undefined
+                           },
+"set_member_access":
+{ Args: { "p_access": string,"p_organization_id": string,"p_user_id": string }; Returns: undefined
+                           },
 "set_workflow_archived":
 { Args: { "archived": boolean,"expected_lock_version": number,"organization_id": string,"workflow_id": string }; Returns: {
               "created_at": string,
 "created_by": string,
+"deleted_at": string | null,
 "draft_config": NonNullable<Json>,
 "draft_design": NonNullable<Json>,
 "id": string,
@@ -1217,6 +1239,9 @@ isOneToOne: false
                            },
 "tables_decide_pending":
 { Args: { "p_decision": string,"p_expected_lock_version": number,"p_reason"?: string,"p_reservation_id": string }; Returns: Json
+                           },
+"tables_delete_venue":
+{ Args: { "p_confirm_name": string,"p_venue_id": string }; Returns: Json
                            },
 "tables_export_guest":
 { Args: { "p_guest_id": string,"p_organization_id": string }; Returns: Json
@@ -1377,6 +1402,7 @@ isOneToOne: false
 { Args: { "expected_lock_version": number,"intake": Json,"organization_id": string,"workflow_id": string }; Returns: {
               "created_at": string,
 "created_by": string,
+"deleted_at": string | null,
 "draft_config": NonNullable<Json>,
 "draft_design": NonNullable<Json>,
 "id": string,
