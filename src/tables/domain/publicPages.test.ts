@@ -152,8 +152,8 @@ describe('public pages: branded defaults (no published design)', () => {
   it('picks the preset of the venue type and inherits the Brand Kit', () => {
     expect(presetForVenueType('cafe')).toBe('cafe');
     expect(presetForVenueType('bar')).toBe('cocktail_bar');
-    expect(presetForVenueType('restaurant')).toBe('casual');
-    expect(presetForVenueType(null)).toBe('casual');
+    expect(presetForVenueType('restaurant')).toBe('minimal');
+    expect(presetForVenueType(null)).toBe('minimal');
     const pages = brandedDefaults('cafe');
     expect(pages.theme.preset).toBe('cafe');
     expect(pages.theme.inheritBrand).toBe(true);

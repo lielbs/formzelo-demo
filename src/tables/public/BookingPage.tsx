@@ -1,9 +1,10 @@
 import { CalendarDays, CalendarPlus, Check, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle, Moon, Navigation, ShieldCheck, Sun, Sunset, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { cx, PageLoader } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { newKey, publicAvailability, publicBook, publicVenue, type BookResult, type PublicAvailability, type PublicVenue } from '../data/client';
+import { desiredTimes, nearestSlots, type OpenSlot } from '../domain/desiredTime';
 import { messageFor, type TablesError } from '../domain/errors';
 import { answersPayload, missingAnswers, type PageConfig } from '../domain/publicPages';
 import { normalizePhone } from '../domain/phone';
@@ -13,7 +14,7 @@ import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
 import { lookFor, pageOf } from './look';
 import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
-import { calendarFile, mapsHref, VenueAside } from './VenueInfo';
+import { calendarFile, mapsHref, VenueAside, weekdayOf } from './VenueInfo';
 
 type Step = 'choose' | 'details' | 'result';
 type Choice = { serviceKey: string; time: string; approval: 'instant' | 'request' };
@@ -147,6 +148,9 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
   const dayLabel = (d: string) => (d === today ? s.today : d === addDays(today, 1) ? s.tomorrow : fmt(d, { weekday: 'short' }));
   const parties = Array.from({ length: Math.min(12, venue.policy.maxParty - venue.policy.minParty + 1) }, (_, i) => venue.policy.minParty + i);
   const [serviceTab, setServiceTab] = useState<string | null>(null);
+  /** The time the guest asked for when it was not free (free times book straight away). */
+  const [desired, setDesired] = useState<string | null>(null);
+  useEffect(() => { setDesired(null); }, [date, party, zone]);
   const cancelDeadline = choice ? deadline(date, choice.time, venue.timezone, venue.policy.cancelCutoffMinutes) : null;
 
   async function submit(e: FormEvent) {
@@ -297,44 +301,87 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
         {availError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{availError}</p>
           : !avail ? (
             <div aria-hidden className="grid animate-pulse grid-cols-3 gap-2 sm:grid-cols-5">{Array.from({ length: 10 }, (_, i) => <div key={i} className="h-12 rounded-xl bg-cloud-200" />)}</div>
-          ) : avail.state !== 'open' ? (
+          ) : avail.state !== 'open' && avail.state !== 'full' ? (
             <div role="status" className="pp-card rounded-xl border border-cloud-200 bg-white p-4">
-              <p>{avail.state === 'closed' ? s.closed : avail.state === 'full' ? s.full : avail.state === 'paused' ? s.paused : avail.state === 'party_size' ? s.partySize : s.outOfRange}</p>
-              {(avail.state === 'closed' || avail.state === 'full') && date < addDays(today, venue.policy.horizonDays) && (
+              <p>{avail.state === 'closed' ? s.closed : avail.state === 'paused' ? s.paused : avail.state === 'party_size' ? s.partySize : s.outOfRange}</p>
+              {avail.state === 'closed' && date < addDays(today, venue.policy.horizonDays) && (
                 <button type="button" onClick={() => setDate(addDays(date, 1))} className="mt-2 min-h-[44px] font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.tryNextDay}</button>
               )}
             </div>
           ) : (
             <div className="grid gap-5">
-              <p className="sr-only" role="status">{lang === 'he' ? (slotCount === 1 ? 'שעה אחת פנויה' : `${slotCount} שעות פנויות`) : slotCount === 1 ? '1 time available' : `${slotCount} times available`}</p>
               {(() => {
-                // One service at a time (lunch / dinner / late): a short, scannable set instead of a wall of times.
-                const open = avail.services.filter((sv) => sv.slots.length);
-                const busiest = open.reduce((a, b) => (b.slots.length > a.slots.length ? b : a), open[0]!);
-                const current = open.find((sv) => sv.key === serviceTab) ?? busiest;
+                // The guest asks for the time they want; free times around it follow. Times are
+                // grouped by service (lunch / dinner / late) so the list stays short and scannable.
+                const open: OpenSlot[] = avail.state === 'open' ? avail.services.flatMap((sv) => sv.slots.map((sl) => ({ serviceKey: sv.key, time: sl.time, approval: sl.approval }))) : [];
+                const wanted = desiredTimes(venue.services, weekdayOf(date), open);
+                const svcs = venue.services.filter((sv) => wanted.some((w) => w.serviceKey === sv.key));
+                const current = svcs.find((sv) => sv.key === serviceTab) ?? svcs.find((sv) => wanted.some((w) => w.serviceKey === sv.key && open.some((o) => o.time === w.time))) ?? svcs[0];
+                const list = current ? wanted.filter((w) => w.serviceKey === current.key) : wanted;
+                const pick = (sl: OpenSlot) => { setChoice({ serviceKey: sl.serviceKey, time: sl.time, approval: sl.approval }); setStep('details'); };
+                const found = desired ? nearestSlots(open, desired) : null;
+                const canWait = venue.policy.waitlistPublic && date === today;
+                const waitHref = `/t/${venue.slug}/waitlist${lang === 'en' ? '?lang=en' : ''}`;
+                const he = lang === 'he';
                 return (
                   <>
-                    {open.length > 1 && (
+                    <p className="sr-only" role="status">{lang === 'he' ? (slotCount === 1 ? 'שעה אחת פנויה' : `${slotCount} שעות פנויות`) : slotCount === 1 ? '1 time available' : `${slotCount} times available`}</p>
+                    <p className="-mt-2 text-sm text-ink-muted">{he ? 'בחרו את השעה שאתם רוצים. אם היא תפוסה, נראה את השעות הפנויות הקרובות.' : 'Pick the time you want. If it is taken, we show the nearest free times.'}</p>
+                    {svcs.length > 1 && (
                       <div role="tablist" aria-label={s.time} className="pp-seg flex gap-1 rounded-full p-1">
-                        {open.map((sv) => (
-                          <button key={sv.key} type="button" role="tab" aria-selected={sv.key === current.key} onClick={() => setServiceTab(sv.key)}
+                        {svcs.map((sv) => (
+                          <button key={sv.key} type="button" role="tab" aria-selected={sv.key === current?.key} onClick={() => { setServiceTab(sv.key); setDesired(null); }}
                             className="pp-seg-btn flex min-h-[40px] min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-2 text-sm font-semibold sm:gap-1.5 sm:px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)]">
-                            <span aria-hidden className="hidden min-[360px]:inline-flex">{serviceIcon(sv.slots[0]?.time)}</span><span className="min-w-0 truncate">{sv.name}</span>
-                            <span className="pp-seg-n hidden text-xs font-medium tabular-nums min-[400px]:inline">{sv.slots.length}</span>
+                            <span aria-hidden className="hidden min-[360px]:inline-flex">{serviceIcon(sv.start)}</span><span className="min-w-0 truncate">{sv.name}</span>
                           </button>
                         ))}
                       </div>
                     )}
-                    <div key={current.key} role={open.length > 1 ? 'tabpanel' : undefined} aria-label={current.name} className="pp-slots grid grid-cols-3 gap-2 min-[380px]:grid-cols-4 sm:grid-cols-5">
-                      {current.slots.map((sl) => (
-                        <button key={sl.time} type="button" data-slot onClick={() => { setChoice({ serviceKey: current.key, time: sl.time, approval: sl.approval }); setStep('details'); }}
-                          aria-label={sl.time + (sl.approval === 'request' ? ', ' + s.requestNote : '')}
-                          className="pp-chip flex h-12 flex-col items-center justify-center rounded-full font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2">
-                          <span dir="ltr" className="text-[15px] leading-none">{sl.time}</span>
-                          {sl.approval === 'request' && <span className="mt-0.5 text-[10px] font-normal leading-none text-amber-800">{lang === 'he' ? 'בקשה' : 'Request'}</span>}
-                        </button>
-                      ))}
+                    <div role="group" aria-label={s.time} className="pp-slots grid grid-cols-3 gap-2 min-[380px]:grid-cols-4 sm:grid-cols-5">
+                      {list.map((w) => {
+                        const free = open.find((o) => o.time === w.time);
+                        return (
+                          <button key={w.time} type="button" {...(free ? { 'data-slot': '' } : { 'data-desired': '' })} aria-pressed={desired === w.time}
+                            onClick={() => { if (free) pick(free); else setDesired(w.time); }}
+                            aria-label={w.time + (free?.approval === 'request' ? ', ' + s.requestNote : '')}
+                            className={cx('pp-chip flex h-12 flex-col items-center justify-center rounded-full font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', desired === w.time && 'pp-chip-on')}>
+                            <span dir="ltr" className="text-[15px] leading-none">{w.time}</span>
+                            {free?.approval === 'request' && <span className="mt-0.5 text-[10px] font-normal leading-none text-amber-800">{he ? 'בקשה' : 'Request'}</span>}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {(found || avail.state === 'full') && (
+                      <div role="status" aria-live="polite" className="pp-card grid gap-3 rounded-xl border border-cloud-200 bg-white p-4">
+                        <p className="font-semibold">
+                          {desired ? (he ? <>השעה <bdi dir="ltr">{desired}</bdi> תפוסה.</> : <><bdi dir="ltr">{desired}</bdi> is taken.</>) : s.full}
+                        </p>
+                        {found && found.near.length > 0 ? (
+                          <>
+                            <p className="text-sm text-ink-muted">{he ? 'השעות הפנויות הקרובות:' : 'The nearest free times:'}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {found.near.map((sl) => (
+                                <button key={sl.time} type="button" data-slot data-near onClick={() => pick(sl)}
+                                  className="pp-chip flex h-12 min-w-[5.5rem] items-center justify-center rounded-full px-4 font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2">
+                                  <span dir="ltr">{sl.time}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-ink-muted">{he ? 'אין שעה פנויה קרובה ביום הזה.' : 'No free time near it on this day.'}</p>
+                        )}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {canWait && <Link to={waitHref} className={accentButton}>{he ? 'הצטרפות לרשימת ההמתנה' : 'Join the waitlist'}</Link>}
+                          {date < addDays(today, venue.policy.horizonDays) && (
+                            <button type="button" onClick={() => { setDate(addDays(date, 1)); setDesired(null); }} className={softButton}>{s.tryNextDay}</button>
+                          )}
+                        </div>
+                        {!canWait && venue.phone && (
+                          <p className="text-sm text-ink-muted">{he ? 'רוצים בדיוק את השעה הזו? אפשר להתקשר: ' : 'Need exactly this time? Call: '}<a href={`tel:${venue.phone}`} className="font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline"><Ltr>{venue.phone}</Ltr></a></p>
+                        )}
+                      </div>
+                    )}
                   </>
                 );
               })()}

@@ -172,7 +172,8 @@ export function defaultPublicPages(): PublicPagesConfig {
 
 /** The starting look for a venue type (used until the venue publishes its own design). */
 export function presetForVenueType(venueType: string | null | undefined): PagePreset {
-  return venueType === 'cafe' ? 'cafe' : venueType === 'bar' ? 'cocktail_bar' : venueType === 'event_hall' ? 'fine_dining' : 'casual';
+  // Restaurants without a design of their own start calm (white and graphite); a Brand Kit colour still wins.
+  return venueType === 'cafe' ? 'cafe' : venueType === 'bar' ? 'cocktail_bar' : venueType === 'event_hall' ? 'fine_dining' : 'minimal';
 }
 
 /**
