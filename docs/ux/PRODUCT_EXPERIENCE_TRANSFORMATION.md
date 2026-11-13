@@ -220,3 +220,21 @@ a venue page, and a live shift (list, details sheet, map, waitlist).
 
 **Rollback:** `git revert` the listed commits (they are independent of data) and push, or
 re-run the Pages deploy of `43f0e78`. No data migration to undo.
+
+## 9. Verification (2026-11-13)
+
+**Locally** (Edge/Chromium via Playwright against the local Supabase stack, production build path):
+- Typecheck, lint, production build: pass. Unit tests: 355 passed (72 skipped by design).
+- Full e2e suite (67 tests): 56 passed in the full run; the 3 failures were 2 outdated test
+  selectors (fixed) and 1 Windows worker crash; every failed or not-run spec was re-run and passed
+  (operator/owner journey 8/8, busy shift, Tables journeys 6/6, live shift 12/12).
+- Includes axe accessibility checks (light and dark), horizontal-overflow and target-size checks at
+  320, 375, 390, 768, 1024, 1280 and 1440 px, the measurements in §6, and `date-switch.spec.ts`.
+- No database tests were needed: this release has no database change.
+
+**In production** (`https://formangle.rockstackds.com/live`, commit `3be22e0`): both GitHub
+workflows passed; the served page uses the Graphite tokens (page `rgb(247 247 248)`, radius 10 px),
+IBM Plex Sans Hebrew is loaded, the live-shift bundle contains the new summary and date-switch
+code, and the sign-in screen renders with no console errors. Signed-in production screens were not
+exercised from here (that needs the owner's own sign-in) — check on a phone: dashboard, a venue,
+and a live shift (list, details, map, waitlist, changing the date).
