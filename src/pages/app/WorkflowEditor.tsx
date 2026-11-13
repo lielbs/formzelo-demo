@@ -1041,7 +1041,7 @@ export function WorkflowEditor() {
         )}
       </div>
 
-      <div className={cx('mb-3 flex gap-1 rounded-xl bg-white p-1 shadow-card xl:hidden', previewMode && 'hidden')} role="tablist" aria-label="חלוניות הסטודיו">
+      <div className={cx('fz-seg mb-3 flex w-full xl:hidden', previewMode && 'hidden')} role="tablist" aria-label="חלוניות הסטודיו">
         {(
           [
             ['structure', 'שלבים', Layers],
@@ -1054,7 +1054,7 @@ export function WorkflowEditor() {
             role="tab"
             aria-selected={mobilePane === k}
             onClick={() => setMobilePane(k)}
-            className={cx('flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium', mobilePane === k ? 'bg-midnight text-white' : 'text-ink-muted')}
+            className="fz-seg-btn flex-1"
           >
             <Icon className="h-4 w-4" aria-hidden /> {label}
           </button>

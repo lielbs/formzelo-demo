@@ -8,8 +8,8 @@
  */
 
 :root {
-  --fz-floor-bg: #f8f7f4;
-  --fz-floor-grid: #e5e2dc;
+  --fz-floor-bg: rgb(var(--fz-cloud-100));
+  --fz-floor-grid: rgb(var(--fz-cloud-200));
   --fz-floor-focus: #e96b3d;
   --fz-floor-candidate: #0369a1;
   --fz-t-ready-fill: #ffffff;

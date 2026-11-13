@@ -38,7 +38,7 @@ export function DetailPanel({ shift, selection, selected, states, now, canAct, o
     <div aria-hidden="true" onClick={onClose} className="hs-panel-scrim fixed inset-0 z-40 lg:hidden" />
     <aside ref={ref} tabIndex={-1} aria-label="פרטים"
       className={cx('hs-panel z-50 flex flex-col overflow-hidden bg-[var(--hs-surface)] text-[var(--hs-ink)] outline-none',
-        'fixed inset-x-0 bottom-0 max-h-[88dvh] rounded-t-[20px] shadow-lift',
+        'fixed inset-x-0 bottom-0 max-h-[88dvh] rounded-t-2xl shadow-lift',
         'lg:sticky lg:top-[7.5rem] lg:inset-auto lg:z-auto lg:max-h-[calc(100vh-9rem)] lg:w-[24rem] lg:shrink-0 lg:self-start lg:rounded-2xl lg:border lg:border-[var(--hs-line)] lg:shadow-none')}>
       <div className="relative flex h-6 items-center justify-center lg:h-2">
         <span className="h-1 w-10 rounded-full bg-[var(--hs-line-strong)] lg:hidden" aria-hidden />

@@ -184,7 +184,7 @@ export function BrandKitPage() {
         }
       />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="אזורי ערכת המותג" className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1" onKeyDown={onTabKey}>
+        <div role="tablist" aria-label="אזורי ערכת המותג" className="fz-tabs max-w-full" onKeyDown={onTabKey}>
           {BRAND_TABS.map((t) => (
             <button
               key={t.id}
@@ -196,7 +196,7 @@ export function BrandKitPage() {
               aria-controls={`bk-panel-${t.id}`}
               tabIndex={tab === t.id ? 0 : -1}
               onClick={() => goTab(t.id)}
-              className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', tab === t.id ? 'bg-midnight text-white' : 'text-ink-muted hover:bg-cloud hover:text-ink')}
+              className="fz-tab"
             >
               <t.icon className="h-4 w-4" aria-hidden /> {t.label}
               {t.id === 'links' && linkProblems.length > 0 && (

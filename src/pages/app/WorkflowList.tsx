@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { chooseAction, confirmAction } from '../../components/Confirm';
 import { copyText, useToast } from '../../components/Toast';
-import { Badge, Button, ButtonLink, Card, cx, DemoBadge, EmptyState, ErrorState, Input, PageHeader, Spinner } from '../../components/ui';
+import { Badge, Button, ButtonLink, Card, DemoBadge, EmptyState, ErrorState, Input, PageHeader, Spinner } from '../../components/ui';
 import type { Workflow } from '../../domain/schema';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { intakeState } from '../../engine/intake';
@@ -106,14 +106,14 @@ export function WorkflowList() {
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
           <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש לפי שם או תיאור" className="ps-9" aria-label="חיפוש תהליכים" />
         </div>
-        <div role="tablist" aria-label="סינון לפי סטטוס" className="flex gap-1 rounded-xl bg-white p-1 shadow-card">
+        <div role="tablist" aria-label="סינון לפי סטטוס" className="fz-tabs">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               role="tab"
               aria-selected={filter === f.key}
               onClick={() => setFilter(f.key)}
-              className={cx('rounded-lg px-3 py-1.5 text-sm font-medium transition', filter === f.key ? 'bg-midnight text-white' : 'text-ink-muted hover:text-ink')}
+              className="fz-tab"
             >
               {f.label}
             </button>

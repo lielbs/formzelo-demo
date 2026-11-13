@@ -25,9 +25,9 @@ const variants: Record<Variant, string> = {
   danger: 'bg-white text-red-700 shadow-[0_0_0_1px_rgba(185,28,28,0.25)] hover:bg-red-50',
 };
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px] gap-1.5 rounded-[10px]',
-  md: 'h-10 px-4 text-sm gap-2 rounded-[12px]',
-  lg: 'h-12 px-6 text-[15px] gap-2 rounded-[14px]',
+  sm: 'h-8 px-3 text-[13px] gap-1.5 rounded-lg',
+  md: 'h-10 px-4 text-sm gap-2 rounded-xl',
+  lg: 'h-12 px-6 text-[15px] gap-2 rounded-xl',
 };
 
 export const buttonClass = (variant: Variant = 'primary', size: Size = 'md', extra?: string) =>
@@ -54,7 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref,
 ) {
   return (
-    <button ref={ref} type={type} className={buttonClass(variant, size, className)} disabled={disabled || loading} {...rest}>
+    <button ref={ref} type={type} className={buttonClass(variant, size, cx(disabled && !loading && 'fz-btn-off', className))} disabled={disabled || loading} {...rest}>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : Icon ? <Icon className="h-4 w-4" aria-hidden /> : null}
       {children}
     </button>
@@ -99,7 +99,7 @@ export function DemoBadge({ className }: { className?: string }) {
 
 export const inputClass = (invalid?: boolean) =>
   cx(
-    'fz-input w-full rounded-[12px] border bg-white px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-soft transition',
+    'fz-input w-full rounded-xl border bg-white px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-soft transition',
     invalid ? 'border-red-400' : 'border-ink/[0.14] hover:border-ink/30',
   );
 
@@ -209,7 +209,7 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
     <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {eyebrow && <div className="mb-1.5">{eyebrow}</div>}
-        <h1 className="text-[30px] font-bold leading-[1.1] tracking-[-0.025em] text-ink [overflow-wrap:break-word] [text-wrap:balance] sm:text-[34px]">{title}</h1>
+        <h1 className="text-[30px] font-bold leading-[1.1] tracking-[var(--fz-tracking-title)] text-ink [overflow-wrap:break-word] [text-wrap:balance] sm:text-[34px]">{title}</h1>
         {description && <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-muted [text-wrap:pretty]">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

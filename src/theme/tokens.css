@@ -1,0 +1,55 @@
+/*
+ * Formangle design tokens — direction "Graphite" (chosen 2026-11-13 out of three explored directions,
+ * see docs/ux/PRODUCT_EXPERIENCE_TRANSFORMATION.md §5). Every colour, the type family and the corner
+ * geometry come from here. Values are RGB triplets so Tailwind opacity modifiers keep working
+ * (bg-ink/[0.05]).
+ *
+ * Character: precise neutrals with a faint cool cast, near-black ink, hairline structure, tight
+ * corners, IBM Plex Sans Hebrew. Colour carries meaning only; orange is the brand accent and the
+ * primary action; the midnight-and-orange mark carries the identity.
+ */
+:root {
+  --fz-font: 'IBM Plex Sans Hebrew';
+
+  /* Neutrals: page, raised page, hairlines, strong lines. */
+  --fz-cloud: 247 247 248;
+  --fz-cloud-100: 251 251 252;
+  --fz-cloud-200: 231 231 235;
+  --fz-cloud-300: 212 212 218;
+
+  /* Ink: primary text, secondary text, placeholder/disabled. */
+  --fz-ink: 23 25 31;
+  --fz-ink-muted: 94 98 110;
+  --fz-ink-soft: 142 146 156;
+
+  /* Midnight: dark buttons and the brand mark. */
+  --fz-midnight: 23 25 31;
+  --fz-midnight-700: 41 44 52;
+  --fz-midnight-600: 62 66 77;
+
+  /* Orange: brand accent and primary action (700/800 carry white or small text at WCAG AA). */
+  --fz-orange: 233 107 61;
+  --fz-orange-600: 211 90 46;
+  --fz-orange-700: 191 79 40;
+  --fz-orange-800: 166 67 31;
+  --fz-orange-50: 253 240 235;
+  --fz-orange-100: 250 223 212;
+
+  /* Structure. */
+  --fz-hairline: 23 25 31;
+  --fz-hairline-a: 0.1;
+  --fz-r-lg: 6px;
+  --fz-r-xl: 8px;
+  --fz-r-2xl: 10px;
+  --fz-tracking-title: -0.015em;
+
+  /* Chrome: a light sidebar and frosted white top bars. */
+  --fz-side-bg: 251 251 252;
+  --fz-side-fg: 23 25 31;
+  --fz-side-muted: 94 98 110;
+  --fz-side-muted-a: 1;
+  --fz-side-active: 23 25 31;
+  --fz-side-active-a: 0.06;
+  --fz-bar-bg: 255 255 255;
+  --fz-bar-a: 0.86;
+}

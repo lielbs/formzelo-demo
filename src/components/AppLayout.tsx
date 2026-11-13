@@ -53,7 +53,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`סביבת עבודה: ${activeOrg.name}. החלפה`}
-        className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-2 text-start text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+        className="fz-side-chip flex w-full items-center gap-2.5 rounded-xl p-2 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold" style={{ background: activeOrg.brand.primaryColor }}>
           {activeOrg.name.slice(0, 1)}
@@ -62,9 +62,9 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
           <>
             <span className="min-w-0 flex-1">
               <span className="line-clamp-2 break-words text-sm font-semibold leading-tight">{activeOrg.name}</span>
-              <span className="block truncate text-xs text-white/50">{[activeOrg.industry, activeOrg.isDemo ? 'דמו' : ''].filter(Boolean).join(' · ') || 'סביבת העבודה שלכם'}</span>
+              <span className="fz-side-sub block truncate text-xs">{[activeOrg.industry, activeOrg.isDemo ? 'דמו' : ''].filter(Boolean).join(' · ') || 'סביבת העבודה שלכם'}</span>
             </span>
-            <ChevronDown className="h-4 w-4 text-white/50" aria-hidden />
+            <ChevronDown className="fz-side-sub h-4 w-4" aria-hidden />
           </>
         )}
       </button>
@@ -146,9 +146,9 @@ function TabBar({ pending, onMore, moreOpen, access }: { pending: number; onMore
 
 function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => void; pending: number; access?: Access }) {
   return (
-    <div className="flex h-full flex-col gap-6 bg-midnight px-4 py-5">
+    <div className="fz-sidebar flex h-full flex-col gap-6 px-4 py-5">
       <div className="px-1">
-        <Logo dark stacked to="/" />
+        <Logo stacked to="/" />
       </div>
       <WorkspaceSwitcher />
       <ButtonLink to="/app/workflows/new" icon={Plus} onClick={onNavigate} className="w-full">
@@ -163,8 +163,8 @@ function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => v
             onClick={onNavigate}
             className={({ isActive }) =>
               cx(
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-                isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white',
+                'fz-side-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
+                isActive && 'is-active',
               )
             }
           >
@@ -179,7 +179,7 @@ function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => v
         ))}
       </nav>
       {runtimeConfiguration.mode === 'demo' && (
-        <p className="mt-auto px-1 text-xs leading-relaxed text-white/45">דמו מקומי — הנתונים נשמרים בדפדפן הזה בלבד.</p>
+        <p className="mt-auto px-1 text-xs leading-relaxed text-ink-soft">דמו מקומי — הנתונים נשמרים בדפדפן הזה בלבד.</p>
       )}
     </div>
   );
@@ -230,7 +230,7 @@ export function AppLayout() {
               type="button"
               onClick={() => setMobileOpen(false)}
               aria-label="סגירת תפריט"
-              className="absolute end-3 top-4 flex h-9 w-9 items-center justify-center rounded-lg text-white/70 hover:bg-white/10"
+              className="absolute end-3 top-4 flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted hover:bg-ink/[0.06]"
             >
               <X className="h-5 w-5" />
             </button>

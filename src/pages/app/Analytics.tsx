@@ -3,7 +3,7 @@ import { BarChart3, CheckCircle2, Clock, Inbox, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Badge, Card, cx, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
+import { Badge, Card, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
 import { RUN_STATUSES } from '../../domain/schema';
 import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
@@ -82,9 +82,9 @@ export function Analytics() {
               <input type="checkbox" className="h-4 w-4 accent-[#E96B3D]" checked={includeDemo} onChange={(e) => setIncludeDemo(e.target.checked)} />
               כולל נתוני דמו
             </label>
-            <div role="tablist" aria-label="טווח זמן" className="flex gap-1 rounded-xl bg-white p-1 shadow-card">
+            <div role="tablist" aria-label="טווח זמן" className="fz-seg">
               {RANGES.map((r) => (
-                <button key={r} role="tab" aria-selected={range === r} onClick={() => setRange(r)} className={cx('rounded-lg px-3 py-1.5 text-sm font-medium', range === r ? 'bg-midnight text-white' : 'text-ink-muted hover:text-ink')}>
+                <button key={r} role="tab" aria-selected={range === r} onClick={() => setRange(r)} className="fz-seg-btn">
                   {r} ימים
                 </button>
               ))}

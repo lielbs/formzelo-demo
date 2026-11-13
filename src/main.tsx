@@ -1,7 +1,18 @@
+// Rubik stays loaded: it is the default body font of customers' public flows (brand presets).
 import '@fontsource/rubik/400.css';
 import '@fontsource/rubik/500.css';
 import '@fontsource/rubik/600.css';
 import '@fontsource/rubik/700.css';
+// IBM Plex Sans Hebrew: the Formangle interface font.
+import '@fontsource/ibm-plex-sans-hebrew/hebrew-400.css';
+import '@fontsource/ibm-plex-sans-hebrew/hebrew-500.css';
+import '@fontsource/ibm-plex-sans-hebrew/hebrew-600.css';
+import '@fontsource/ibm-plex-sans-hebrew/hebrew-700.css';
+import '@fontsource/ibm-plex-sans-hebrew/latin-400.css';
+import '@fontsource/ibm-plex-sans-hebrew/latin-500.css';
+import '@fontsource/ibm-plex-sans-hebrew/latin-600.css';
+import '@fontsource/ibm-plex-sans-hebrew/latin-700.css';
+import './theme/tokens.css';
 import './index.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

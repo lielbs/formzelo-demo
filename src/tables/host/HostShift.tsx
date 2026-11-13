@@ -232,7 +232,7 @@ export function HostShift() {
                 {narrowing && <Button variant="secondary" onClick={clearAll} className="mt-4 h-11">ניקוי הסינון</Button>}
               </div>
             ) : sort === 'status' ? (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 {groups.filter((g) => g.rows.length).map((g) => (
                   <section key={g.b} aria-labelledby={`grp-${g.b}`}>
                     <h2 id={`grp-${g.b}`} className="hs-section-h">
@@ -244,7 +244,7 @@ export function HostShift() {
                 ))}
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 {sections.map((sec) => sec.kind === 'now' ? (
                   <div key={sec.key} className="hs-nowmark" role="separator" aria-label={`עכשיו ${sec.time}`}><span>עכשיו <bdi dir="ltr">{sec.time}</bdi></span></div>
                 ) : (
