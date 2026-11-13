@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterCount, matchesFilters, matchesQuery, NO_FILTERS, optionCounts, slotOf, tileCounts, timeline } from './shiftList';
+import { filterCount, matchesFilters, matchesQuery, NO_FILTERS, optionCounts, shiftSummary, slotOf, tileCounts, timeline } from './shiftList';
 import type { ShiftReservation } from './types';
 
 const res = (extra: Partial<ShiftReservation>): ShiftReservation => ({
@@ -90,5 +90,22 @@ describe('shift list', () => {
     expect(c.zones.get('out')).toBe(1);
     expect(c.flags.get('notes')).toBe(1);
     expect(c.statuses.get('confirmed')).toBe(2);
+  });
+});
+
+describe('shift summary', () => {
+  const now = new Date('2027-07-01T17:10:00Z'); // 20:10 local
+  it('states diners seated, diners expected, late parties and free tables in one unit each', () => {
+    const rows = [
+      at('19:00', { status: 'seated', party: 4 }),
+      at('19:55', { status: 'confirmed', party: 2 }), // late
+      at('21:00', { status: 'confirmed', party: 3 }),
+      at('21:15', { status: 'arrived', party: 2 }),
+      at('21:30', { status: 'pending_approval', party: 5 }),
+      at('18:00', { status: 'completed', party: 6 }),
+      at('18:30', { status: 'cancelled', party: 6 }),
+    ];
+    const states = new Map([['a', { state: 'ready' }], ['b', { state: 'occupied' }], ['c', { state: 'reserved_soon' }], ['d', { state: 'unavailable' }], ['e', { state: 'ready' }]]);
+    expect(shiftSummary(rows, states, now)).toEqual({ seatedCovers: 4, expectedCovers: 12, late: 1, freeTables: 2, openTables: 4 });
   });
 });

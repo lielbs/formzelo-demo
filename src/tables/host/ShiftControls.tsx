@@ -1,82 +1,47 @@
 import { ClipboardList, Footprints, LayoutGrid, List, PhoneCall, Plus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { GlassDock } from '../../components/GlassDock';
 import { cx } from '../../components/ui';
-import { FLAG_HE, PARTY_MAX, TILE_HE, type ShiftFilters, type TileCount, type TileKey } from '../domain/shiftList';
+import { FLAG_HE, PARTY_MAX, TILE_HE, type ShiftFilters, type ShiftSummary, type TileCount, type TileKey } from '../domain/shiftList';
 import { SOURCE_HE, STATUS_HE } from '../domain/status';
 import type { Shift } from '../domain/types';
 import type { View } from './HostShift';
 import type { QuickAddMode } from './QuickAdd';
 import { Sheet } from './Sheet';
 
-const CHIPS: TileKey[] = ['active', 'attention', 'upcoming', 'arrived', 'seated', 'done'];
-const BAR: { key: TileKey; label: string }[] = [
-  { key: 'seated', label: 'יושבים' },
-  { key: 'arrived', label: 'הגיעו' },
-  { key: 'upcoming', label: 'צפויים' },
-  { key: 'attention', label: 'לטיפול' },
-];
+const TABS: TileKey[] = ['active', 'attention', 'upcoming', 'arrived', 'seated', 'done'];
 
 /**
- * The shift at a glance: covers expected today, one bar of where those covers are now
- * (seated, arrived, still to come, needing attention), and the same states as quick filters.
+ * The shift right now, one unit per figure (diners or tables, said in words), then the bookings
+ * by state as tabs. Figures are facts; tabs filter the list below.
  */
-/** A number that eases to its new value (instant for reduced-motion users). */
-function useEased(value: number) {
-  const [shown, setShown] = useState(value);
-  const from = useRef(value);
-  useEffect(() => {
-    const start = from.current;
-    if (start === value || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { from.current = value; setShown(value); return; }
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (t: number) => {
-      const k = Math.min(1, (t - t0) / 500);
-      const v = Math.round(start + (value - start) * (1 - (1 - k) ** 3));
-      from.current = v;
-      setShown(v);
-      if (k < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return shown;
-}
-
-export function ShiftPulse({ counts, tile, onTile }: { counts: Record<TileKey, TileCount>; tile: TileKey; onTile: (t: TileKey) => void }) {
-  const covers = useEased(counts.active.covers);
-  const total = BAR.reduce((n, b) => n + counts[b.key].covers, 0);
-  const summary = BAR.map((b) => `${b.label} ${counts[b.key].covers}`).join(', ');
+export function ShiftSummaryBar({ summary, counts, tile, onTile, showTabs = true }: {
+  summary: ShiftSummary; counts: Record<TileKey, TileCount>; tile: TileKey; onTile: (t: TileKey) => void; showTabs?: boolean;
+}) {
   return (
-    <section className="hs-pulse" aria-labelledby="hs-pulse-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="hs-pulse-title" className="flex items-baseline gap-2">
-          <span className="hs-pulse-number" aria-hidden>{covers}</span><span className="sr-only">{counts.active.covers}</span>
-          <span className="text-sm font-medium">סועדים במשמרת</span>
-          <span className="hs-muted text-sm">· {counts.active.count} הזמנות</span>
-        </h2>
-        <p className="hs-muted text-xs">{counts.seated.covers} יושבים עכשיו{counts.attention.count ? ` · ${counts.attention.count} דורשים טיפול` : ''}</p>
-      </div>
-      <div className="hs-pulse-bar" role="img" aria-label={`חלוקת הסועדים: ${summary}`}>
-        {total > 0 ? BAR.filter((b) => counts[b.key].covers > 0).map((b) => (
-          <span key={b.key} className={`hs-tone-${b.key}`} style={{ flexGrow: counts[b.key].covers }} />
-        )) : <span className="hs-tone-done" style={{ flexGrow: 1, opacity: 0.35 }} />}
-      </div>
-      <div role="group" aria-label="סינון מהיר לפי מצב" className="hs-scroll -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-        {CHIPS.map((k) => {
-          const c = counts[k];
-          const on = tile === k;
-          return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => onTile(on && k !== 'active' ? 'active' : k)}
-              aria-label={`${TILE_HE[k]}: ${c.count} הזמנות, ${c.covers} סועדים${on ? ' (מוצג)' : ''}`}
-              className={cx('hs-qchip shrink-0', `hs-tone-${k}`)}>
-              <span className="hs-qchip-dot" aria-hidden />
-              {TILE_HE[k]}
-              <span className="hs-qchip-n">{c.count}</span>
-            </button>
-          );
-        })}
-      </div>
+    <section className="hs-summary" aria-label="המשמרת עכשיו">
+      <dl className="hs-kpis">
+        <div><dt>יושבים עכשיו</dt><dd><b>{summary.seatedCovers}</b> סועדים</dd></div>
+        <div><dt>עוד צפויים</dt><dd><b>{summary.expectedCovers}</b> סועדים</dd></div>
+        <div><dt>שולחנות פנויים</dt><dd><b>{summary.freeTables}</b> מתוך {summary.openTables}</dd></div>
+        {summary.late > 0 && <div data-tone="attention"><dt>מאחרים</dt><dd><b>{summary.late}</b> {summary.late === 1 ? 'הזמנה' : 'הזמנות'}</dd></div>}
+      </dl>
+      {showTabs && (
+        <div role="group" aria-label="הזמנות לפי מצב" className="hs-tabs hs-scroll">
+          {TABS.map((k) => {
+            const c = counts[k];
+            const on = tile === k;
+            return (
+              <button key={k} type="button" aria-pressed={on} onClick={() => onTile(on && k !== 'active' ? 'active' : k)}
+                aria-label={`${TILE_HE[k]}: ${c.count} הזמנות${on ? ' (מוצג)' : ''}`}
+                className={cx('hs-tab', `hs-tone-${k}`)} data-empty={c.count === 0 || undefined}>
+                {k !== 'active' && <span className="hs-status-dot" aria-hidden />}
+                {TILE_HE[k]}
+                <span className="hs-tab-n">{c.count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

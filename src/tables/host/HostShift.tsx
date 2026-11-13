@@ -2,14 +2,14 @@
  * Live shift: tablet-landscape first, usable in portrait and as an emergency phone list.
  * Every inventory action waits for the server; nothing shows as done before it is.
  */
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Users, Wifi, WifiOff } from 'lucide-react';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Wifi, WifiOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button, cx, ErrorState, PageLoader } from '../../components/ui';
 import { useShiftSync, type Connection } from '../data/useShiftSync';
-import { filterCount, inTile, isDone, matchesFilters, matchesQuery, NO_FILTERS, tileCounts, timeline, type ShiftFilters, type SortKey, type TileKey } from '../domain/shiftList';
+import { filterCount, inTile, isDone, matchesFilters, matchesQuery, NO_FILTERS, shiftSummary, tileCounts, timeline, type ShiftFilters, type SortKey, type TileKey, type TimelineItem } from '../domain/shiftList';
 import { bucketOf, BUCKET_HE, deriveTableStates, type Bucket } from '../domain/status';
-import { addDays, currentServiceDate, dateInTz, formatDate, timeInTz } from '../domain/time';
+import { addDays, currentServiceDate, dateInTz, formatDate, formatDateShort, timeInTz } from '../domain/time';
 import type { ShiftReservation } from '../domain/types';
 import { ThemeButton } from '../theme';
 import { Segmented } from '../ui';
@@ -19,7 +19,7 @@ import { FloorView } from './FloorView';
 import './host.css';
 import { QuickAdd, type QuickAddMode } from './QuickAdd';
 import { ReservationRow } from './ReservationRow';
-import { ActiveFilters, AddChooser, ShiftDock, ShiftPulse } from './ShiftControls';
+import { ActiveFilters, AddChooser, ShiftDock, ShiftSummaryBar } from './ShiftControls';
 import { WaitlistView } from './WaitlistView';
 
 export type View = 'list' | 'floor' | 'waitlist';
@@ -27,15 +27,15 @@ export type View = 'list' | 'floor' | 'waitlist';
 function ConnectionBadge({ connection, lastSync }: { connection: Connection; lastSync: Date | null }) {
   const at = lastSync ? lastSync.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '—';
   const map = {
-    live: { cls: 'border-teal-200 bg-teal-50 text-teal-800', text: 'מחובר — מתעדכן בזמן אמת', icon: Wifi },
-    connecting: { cls: 'border-cloud-300 bg-white text-ink-muted', text: 'מתחבר…', icon: RefreshCw },
-    polling: { cls: 'border-amber-200 bg-amber-50 text-amber-900', text: `מתעדכן כל 30 שניות · עודכן ${at}`, icon: RefreshCw },
-    offline: { cls: 'border-red-300 bg-red-50 text-red-800', text: `אין חיבור · עודכן לאחרונה ${at}`, icon: WifiOff },
+    live: { tone: 'seated', text: 'מחובר — מתעדכן בזמן אמת', short: 'מחובר', icon: Wifi },
+    connecting: { tone: 'done', text: 'מתחבר…', short: 'מתחבר', icon: RefreshCw },
+    polling: { tone: 'arrived', text: `מתעדכן כל 30 שניות · עודכן ${at}`, short: 'מתעדכן', icon: RefreshCw },
+    offline: { tone: 'attention', text: `אין חיבור · עודכן לאחרונה ${at}`, short: 'אין חיבור', icon: WifiOff },
   }[connection];
   const Icon = map.icon;
   return (
-    <span role="status" className={cx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium', map.cls)}>
-      <Icon className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">{map.text}</span><span className="sm:hidden">{connection === 'live' ? 'מחובר' : connection === 'offline' ? 'אין חיבור' : 'מתעדכן'}</span>
+    <span role="status" className={cx('hs-conn inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium', `hs-tone-${map.tone}`)}>
+      <Icon className="h-3.5 w-3.5" aria-hidden /> <span className="hidden lg:inline">{map.text}</span><span className="lg:hidden">{map.short}</span>
     </span>
   );
 }
@@ -86,6 +86,7 @@ export function HostShift() {
   const narrowed = useMemo(() => day.filter((r) => matchesFilters(r, filters, tablesById) && matchesQuery(r, query, labelsById)), [day, filters, tablesById, query, labelsById]);
   const reservations = useMemo(() => narrowed.filter((r) => tile === 'active' ? true : inTile(r, tile, now)), [narrowed, tile, now]);
   const tableStates = useMemo(() => (shift ? deriveTableStates(shift, now) : new Map()), [shift, now]);
+  const summary = useMemo(() => shiftSummary(day, tableStates, now), [day, tableStates, now]);
   const pickTile = (t: TileKey) => { setTile(t); if (view !== 'list') setView('list'); };
   const clearAll = () => { setTile('active'); setFilters(NO_FILTERS); setQuery(''); };
   const narrowing = tile !== 'active' || filterCount(filters) > 0 || query.trim() !== '';
@@ -112,37 +113,57 @@ export function HostShift() {
   );
   const switchView = (v: View) => { setView(v); setAssigning(null); };
 
+  // The time-ordered list as hour sections (with the "now" line between them).
+  type Section = { kind: 'now'; key: string; time: string } | { kind: 'slot'; key: string; label: string; count: number; covers: number; rows: Extract<TimelineItem, { kind: 'row' }>[] };
+  const sections: Section[] = [];
+  for (const it of items) {
+    if (it.kind === 'now') sections.push(it);
+    else if (it.kind === 'slot') sections.push({ ...it, rows: [] });
+    else (sections[sections.length - 1] as Extract<Section, { kind: 'slot' }>).rows.push(it);
+  }
+  let order = 0;
+
   return (
     <div className="fz-page flex min-h-screen flex-col bg-[var(--hs-page)]" dir="rtl">
       <a href="#shift-main" className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">דילוג לרשימת המשמרת</a>
       <header className="fz-topbar sticky top-0 z-30">
-        <div className="flex items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
+        <div className="flex items-center gap-2 px-3 pt-2 sm:gap-3 sm:px-4">
           <Link to={shift.role === 'owner' || shift.role === 'manager' ? `/app/tables/${venueId}` : '/app/tables'} aria-label="יציאה מהמשמרת"
             className="hs-round flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
             <ArrowRight className="h-5 w-5" aria-hidden />
           </Link>
-          <svg viewBox="0 0 64 64" className="hs-mark h-8 w-8 shrink-0" aria-hidden="true"><rect width="64" height="64" rx="16" fill="currentColor" /><path d="M17 14h31l-6 9H26v7h13l-5.5 8H26v12h-9z" fill="var(--hs-mark-ink, #fff)" /><path d="M50 50H34l16-16z" fill="#E96B3D" /></svg>
+          <svg viewBox="0 0 64 64" className="hs-mark hidden h-8 w-8 shrink-0 sm:block" aria-hidden="true"><rect width="64" height="64" rx="16" fill="currentColor" /><path d="M17 14h31l-6 9H26v7h13l-5.5 8H26v12h-9z" fill="var(--hs-mark-ink, #fff)" /><path d="M50 50H34l16-16z" fill="#E96B3D" /></svg>
           <div className="min-w-0 flex-1">
-            <h1 className="line-clamp-2 break-words text-[15px] font-bold leading-tight text-ink sm:text-lg">{shift.venue.name}</h1>
-            <p className="truncate text-xs text-ink-muted">
-              <span className="font-medium">משמרת חיה</span> · <span className="sr-only">השעה במקום </span><bdi dir="ltr" className="font-semibold tabular-nums">{timeInTz(now, shift.venue.timezone)}</bdi>{isToday ? ' · היום' : ''}
+            <h1 className="truncate text-[16px] font-semibold leading-tight text-[var(--hs-ink)] sm:text-lg">{shift.venue.name}</h1>
+            <p className="hs-muted flex items-center gap-2 text-xs">
+              <span><span className="sr-only">השעה במקום </span><bdi dir="ltr" className="font-semibold tabular-nums text-[var(--hs-ink)]">{timeInTz(now, shift.venue.timezone)}</bdi></span>
+              <ConnectionBadge connection={connection} lastSync={lastSync} />
             </p>
           </div>
-          <ConnectionBadge connection={connection} lastSync={lastSync} />
           <ThemeButton />
           <Button size="lg" icon={Plus} onClick={() => setQuickAdd('phone')} disabled={!canAct} className="hidden h-11 md:inline-flex">הוספה</Button>
         </div>
-        <div className="flex items-center gap-1.5 px-3 pb-2 sm:px-4" role="group" aria-label="בחירת תאריך">
-          <Button variant="secondary" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shift.serviceDate, -1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
-          <label className="hs-datepill relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
+        <div className="flex items-center gap-1.5 px-3 py-2 sm:px-4" role="group" aria-label="בחירת תאריך ומשמרת">
+          <Button variant="ghost" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shift.serviceDate, -1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
+          <label className="hs-datepill relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
             <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden />
-            <span className="truncate">{formatDate(shift.serviceDate, 'he', false)}</span>
+            <span className="truncate sm:hidden">{formatDateShort(shift.serviceDate)}</span><span className="hidden truncate sm:inline">{formatDate(shift.serviceDate, 'he', false)}</span>
             <span className="sr-only">תאריך המשמרת — בחירת תאריך אחר</span>
             <input id="shift-date" type="date" dir="ltr" value={shift.serviceDate} onChange={(e) => e.target.value && setDate(e.target.value)}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
           </label>
-          <Button variant="secondary" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shift.serviceDate, 1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
-          {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0 rounded-full px-4">היום</Button>}
+          <Button variant="ghost" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shift.serviceDate, 1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
+          {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0 rounded-xl px-3">היום</Button>}
+          {shift.services.length > 1 && view !== 'waitlist' && (
+            <label className="hs-datepill relative ms-auto flex h-11 shrink-0 items-center rounded-xl focus-within:ring-2 focus-within:ring-orange">
+              <span className="sr-only">משמרת</span>
+              <select aria-label="משמרת" value={service} onChange={(e) => setService(e.target.value)} className="hs-select h-11 appearance-none rounded-xl bg-transparent ps-3 pe-8 text-[15px] font-semibold focus:outline-none">
+                <option value="all">כל היום</option>
+                {shift.services.map((sv) => <option key={sv.key} value={sv.key}>{sv.name}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute end-2.5 h-4 w-4 text-ink-muted" aria-hidden />
+            </label>
+          )}
         </div>
         {connection === 'offline' && (
           <p role="alert" className="border-t border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800">
@@ -153,7 +174,7 @@ export function HostShift() {
       </header>
 
       <div className="grid gap-3 px-3 pt-3 sm:px-4">
-        {view === 'list' && <ShiftPulse counts={tiles} tile={tile} onTile={pickTile} />}
+        {view !== 'waitlist' && <ShiftSummaryBar summary={summary} counts={tiles} tile={tile} onTile={pickTile} showTabs={view === 'list'} />}
         <div className="flex flex-wrap items-center gap-2">
           <div className="hidden md:block">
             <Segmented label="תצוגה" size="lg" value={view} onChange={switchView} options={[
@@ -162,21 +183,18 @@ export function HostShift() {
               { value: 'waitlist', label: 'המתנה', icon: ClipboardList, count: shift.waitlist.length },
             ]} />
           </div>
-          {shift.services.length > 1 && view !== 'waitlist' && (
-            <Segmented label="משמרת" value={service} onChange={setService} options={[{ value: 'all', label: 'הכול' }, ...shift.services.map((s) => ({ value: s.key, label: s.name }))]} />
-          )}
           {view === 'list' && (
-            <div className="flex min-w-[14rem] flex-1 items-center gap-2 md:max-w-md">
+            <div className="flex min-w-0 flex-1 items-center gap-2 md:max-w-md">
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
                 <label htmlFor="shift-search" className="sr-only">חיפוש לפי שם, טלפון, שולחן או קוד</label>
                 <input id="shift-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש שם, טלפון, שולחן"
-                  className="fz-input h-11 w-full rounded-xl border border-cloud-300 bg-white ps-9 pe-3 text-[15px]" />
+                  className="fz-input h-11 w-full rounded-xl border border-[var(--hs-line)] bg-[var(--hs-surface)] ps-9 pe-3 text-[15px] text-[var(--hs-ink)]" />
               </div>
               <button type="button" onClick={() => setFilterOpen(true)} aria-haspopup="dialog"
                 aria-label={nFilters ? `סינון וסידור (${nFilters} פעילים)` : 'סינון וסידור'}
-                className={cx('relative inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-                  nFilters || sort !== 'time' ? 'border-orange-300 bg-orange-50 text-orange-800' : 'border-cloud-300 bg-white text-ink hover:bg-cloud')}>
+                className={cx('relative inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium text-[var(--hs-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
+                  nFilters || sort !== 'time' ? 'border-[var(--hs-accent)] bg-[var(--hs-accent-soft)]' : 'border-[var(--hs-line)] bg-[var(--hs-surface)]')}>
                 <SlidersHorizontal className="h-4 w-4" aria-hidden />
                 <span className="hidden sm:inline">סינון</span>
                 {nFilters > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hs-accent)] px-1 text-[11px] font-bold text-[var(--hs-on-accent)]" aria-hidden>{nFilters}</span>}
@@ -188,62 +206,55 @@ export function HostShift() {
       </div>
 
       {assigning && (
-        <div role="status" className="mx-3 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900 sm:mx-4">
+        <div role="status" className="mx-3 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--hs-accent)] bg-[var(--hs-accent-soft)] px-3 py-2 text-sm text-[var(--hs-ink)] sm:mx-4">
           בחרו שולחן במפה עבור {assigning.guestName} ({assigning.party} סועדים). שולחנות מתאימים מסומנים במסגרת.
           <Button size="sm" variant="secondary" onClick={() => setAssigning(null)} className="ms-auto h-10">ביטול</Button>
         </div>
       )}
 
       <div className="flex min-h-0 flex-1 gap-4 px-3 pb-28 pt-3 sm:px-4 md:pb-6">
-        <main id="shift-main" ref={listRef} className={cx('min-w-0 flex-1', selection && 'pb-[45vh] lg:pb-0')} aria-label="המשמרת">
+        <main id="shift-main" ref={listRef} className="min-w-0 flex-1" aria-label="המשמרת">
           <div key={view} className="hs-view">
           {view === 'list' && (
             reservations.length === 0 ? (
-              <div className="flex flex-col items-center rounded-2xl border border-dashed border-cloud-300 bg-white px-6 py-10 text-center">
-                <SearchX className="h-9 w-9 text-ink-soft" aria-hidden />
-                <p className="mt-3 font-semibold text-ink">{narrowing ? 'אין הזמנות שמתאימות לסינון' : 'אין הזמנות ליום הזה עדיין'}</p>
-                <p className="mt-1 max-w-sm text-sm text-ink-muted">
+              <div className="hs-empty">
+                <SearchX className="h-8 w-8" aria-hidden />
+                <p className="mt-2 font-semibold text-[var(--hs-ink)]">{narrowing ? 'אין הזמנות שמתאימות לסינון' : 'אין הזמנות ליום הזה עדיין'}</p>
+                <p className="mt-1 max-w-sm text-sm">
                   {narrowing ? 'נסו לשנות או לנקות את הסינון.' : 'אפשר להוסיף הזמנה טלפונית, אורחים מזדמנים או רשימת המתנה מכפתור ההוספה.'}
                 </p>
                 {narrowing && <Button variant="secondary" onClick={clearAll} className="mt-4 h-11">ניקוי הסינון</Button>}
               </div>
             ) : sort === 'status' ? (
-              <div className="grid gap-5">
+              <div className="grid gap-4">
                 {groups.filter((g) => g.rows.length).map((g) => (
                   <section key={g.b} aria-labelledby={`grp-${g.b}`}>
-                    <h2 id={`grp-${g.b}`} className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-muted">
-                      {g.b === 'attention' && <Clock className="h-4 w-4 text-orange-800" aria-hidden />}
-                      {BUCKET_HE[g.b]} <span className="tabular-nums">({g.rows.length})</span>
+                    <h2 id={`grp-${g.b}`} className="hs-section-h">
+                      {g.b === 'attention' && <Clock className="h-4 w-4 text-[var(--hs-attention)]" aria-hidden />}
+                      <span>{BUCKET_HE[g.b]}</span> <span className="tabular-nums">· {g.rows.length}</span>
                     </h2>
-                    <ul className="hs-rail">{g.rows.map((r) => row(r))}</ul>
+                    <ul className="hs-list">{g.rows.map((r) => row(r, false, order++))}</ul>
                   </section>
                 ))}
               </div>
             ) : (
-              <div className="grid gap-5">
-                {items.length > 0 && (
-                  <ul className="hs-rail" aria-label="ההזמנות לפי שעה">
-                    {items.map((it) => (
-                      <Fragment key={it.key}>
-                        {it.kind === 'slot' && (
-                          <li className="hs-stop" aria-label={`${it.label}: ${it.count} הזמנות, ${it.covers} סועדים`}>
-                            <b dir="ltr">{it.label}</b><span>{it.count === 1 ? 'הזמנה אחת' : `${it.count} הזמנות`} · {it.covers} סועדים</span>
-                          </li>
-                        )}
-                        {it.kind === 'now' && <li className="hs-nowmark" aria-label={`עכשיו ${it.time}`}><span>עכשיו <bdi dir="ltr">{it.time}</bdi></span></li>}
-                        {it.kind === 'row' && row(it.r, it.next, items.indexOf(it))}
-                      </Fragment>
-                    ))}
-                  </ul>
-                )}
+              <div className="grid gap-4">
+                {sections.map((sec) => sec.kind === 'now' ? (
+                  <div key={sec.key} className="hs-nowmark" role="separator" aria-label={`עכשיו ${sec.time}`}><span>עכשיו <bdi dir="ltr">{sec.time}</bdi></span></div>
+                ) : (
+                  <section key={sec.key} aria-label={`${sec.label}: ${sec.count} הזמנות, ${sec.covers} סועדים`}>
+                    <h2 className="hs-section-h"><b dir="ltr">{sec.label}</b><span>{sec.count === 1 ? 'הזמנה אחת' : `${sec.count} הזמנות`} · {sec.covers} סועדים</span></h2>
+                    <ul className="hs-list">{sec.rows.map((it) => row(it.r, it.next, order++))}</ul>
+                  </section>
+                ))}
                 {doneRows.length > 0 && (
                   <section aria-labelledby="grp-done">
                     <button type="button" id="grp-done" aria-expanded={showDone} onClick={() => setShowDone((s) => !s)}
-                      className="flex min-h-[44px] w-full items-center gap-2 rounded-xl px-1 text-sm font-semibold text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+                      className="hs-section-h min-h-[44px] w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
                       <ChevronDown className={cx('h-4 w-4 transition-transform', showDone && 'rotate-180')} aria-hidden />
-                      {BUCKET_HE.done} <span className="tabular-nums">({doneRows.length})</span>
+                      <span>{BUCKET_HE.done}</span> <span className="tabular-nums">· {doneRows.length}</span>
                     </button>
-                    {showDone && <ul className="hs-rail mt-2">{doneRows.map((r) => row(r))}</ul>}
+                    {showDone && <ul className="hs-list mt-1">{doneRows.map((r) => row(r, false, order++))}</ul>}
                   </section>
                 )}
               </div>
@@ -271,7 +282,6 @@ export function HostShift() {
       )}
       {quickAdd && <QuickAdd mode={quickAdd} shift={shift} states={tableStates} onClose={() => setQuickAdd(null)} onDone={(m) => { setQuickAdd(null); done(m); }} />}
       <div aria-live="polite" className="sr-only">{announce}</div>
-      <p className="px-4 pb-28 text-center text-xs text-ink-muted md:pb-3"><Users className="inline h-3.5 w-3.5" aria-hidden /> הפרטים האישיים של האורחים מיועדים לשירות בלבד.</p>
     </div>
   );
 }

@@ -59,6 +59,13 @@ export function formatDate(date: string, lang: 'he' | 'en' = 'he', withYear = tr
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+/** Short date for tight places: "שישי, 13.11" / "Fri 13/11". */
+export function formatDateShort(date: string, lang: 'he' | 'en' = 'he'): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const wd = new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-GB', { timeZone: 'UTC', weekday: 'short' }).format(new Date(Date.UTC(y, m - 1, d)));
+  return lang === 'he' ? `${wd.replace(/^יום /, '')}, ${d}.${m}` : `${wd} ${d}/${m}`;
+}
+
 /** Exact local date and time of an instant, for deadlines ("until Thursday 12 March, 15:00"). */
 export function formatInstant(instant: string, tz: string, lang: 'he' | 'en' = 'he'): string {
   return `${formatDate(dateInTz(new Date(instant), tz), lang, false)}, ${timeInTz(instant, tz)}`;

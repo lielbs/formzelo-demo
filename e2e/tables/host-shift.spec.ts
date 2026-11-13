@@ -66,7 +66,7 @@ for (const theme of ['light', 'dark'] as const) {
     const seated = page.getByRole('button', { name: /^יושבים:/ });
     await seated.click();
     await expect(seated).toHaveAttribute('aria-pressed', 'true');
-    const statuses = await page.locator('#shift-main .hs-card').count();
+    const statuses = await page.locator('#shift-main .hs-row').count();
     expect(statuses).toBe(2);
     await shot(page, `phone-tile-seated-${theme}`);
     await seated.click();
@@ -100,7 +100,7 @@ for (const theme of ['light', 'dark'] as const) {
     await apply.click();
     await expect(sheet).toBeHidden();
     await expect(page.getByRole('button', { name: 'הסרת הסינון 2 סועדים' })).toBeVisible();
-    expect(await page.locator('#shift-main .hs-card').count()).toBe(n);
+    expect(await page.locator('#shift-main .hs-row').count()).toBe(n);
     await shot(page, `phone-filtered-${theme}`);
     await page.getByRole('button', { name: 'ניקוי הכול' }).click();
     await expect(page.getByRole('button', { name: 'ניקוי הכול' })).toBeHidden();
@@ -204,7 +204,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 860 }]) 
       await expect(panel.getByText(`הזמנה מהמפה ${size.width}`)).toBeVisible();
       await page.getByRole('button', { name: 'סגירת הפרטים' }).click();
       await page.locator('[role=radio]:visible', { hasText: 'רשימה' }).click();
-      const card = page.locator('#shift-main .hs-card', { hasText: `הזמנה מהמפה ${size.width}` });
+      const card = page.locator('#shift-main .hs-row', { hasText: `הזמנה מהמפה ${size.width}` });
       await expect(card).toBeVisible();
       await expect(card).toContainText(label);
     }

@@ -1,5 +1,5 @@
 /** Small shared pieces for Formangle Tables screens (owner, host, guest). */
-import { AlertTriangle, Ban, Check, CheckCircle2, Circle, Clock, Loader2, Sparkles, Users, type LucideIcon } from 'lucide-react';
+import { Check, Loader2, Sparkles, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { cx } from '../components/ui';
 import { STATUS_HE, TABLE_STATE_HE } from './domain/status';
@@ -57,27 +57,18 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
   );
 }
 
-const STATUS_STYLE: Record<ReservationStatus | 'late', { cls: string; icon: LucideIcon }> = {
-  pending_approval: { cls: 'border-amber-300 bg-amber-50 text-amber-900', icon: Clock },
-  confirmed: { cls: 'fz-st-confirmed', icon: Circle },
-  arrived: { cls: 'fz-st-arrived', icon: Users },
-  seated: { cls: 'border-teal-200 bg-teal-50 text-teal-900', icon: CheckCircle2 },
-  completed: { cls: 'border-cloud-300 bg-cloud text-ink-muted', icon: Check },
-  cancelled: { cls: 'border-cloud-300 bg-white text-ink-muted line-through decoration-1', icon: Ban },
-  rejected: { cls: 'border-cloud-300 bg-white text-ink-muted', icon: Ban },
-  no_show: { cls: 'border-red-200 bg-red-50 text-red-800', icon: AlertTriangle },
-  expired: { cls: 'border-cloud-300 bg-white text-ink-muted', icon: Clock },
-  late: { cls: 'border-orange-300 bg-orange-50 text-orange-800', icon: AlertTriangle },
+/** Which status tone (colour token) each reservation state uses — one meaning per colour. */
+export const STATUS_TONE: Record<ReservationStatus | 'late', 'attention' | 'upcoming' | 'arrived' | 'seated' | 'done'> = {
+  pending_approval: 'attention', confirmed: 'upcoming', arrived: 'arrived', seated: 'seated', completed: 'done',
+  cancelled: 'done', rejected: 'done', no_show: 'attention', expired: 'done', late: 'attention',
 };
 
-/** Status is always icon + text, never colour alone. */
+/** Status is a small shape plus words, never colour alone, and never a loud pill. */
 export function StatusChip({ status, late, className }: { status: ReservationStatus; late?: boolean; className?: string }) {
   const key = late ? 'late' : status;
-  const s = STATUS_STYLE[key];
-  const Icon = s.icon;
   return (
-    <span className={cx('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium', s.cls, className)}>
-      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+    <span className={cx('hs-status inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium', `hs-tone-${STATUS_TONE[key]}`, className)} data-status={key}>
+      <span className="hs-status-dot" aria-hidden />
       {late ? 'מאחרים' : STATUS_HE[status]}
     </span>
   );
@@ -143,7 +134,7 @@ function Shape({ shape, w, h, fill, stroke, selected }: { shape: TableShape; w: 
  * which is also the keyboard order; an accessible list elsewhere offers the same actions.
  */
 export function FloorCanvas({
-  items, selectedId, onSelect, label, onPointerDownTable, svgRef, zoom = 1, minHeight = 220, maxHeight, editable = false,
+  items, selectedId, onSelect, label, onPointerDownTable, svgRef, zoom = 1, minHeight = 220, maxHeight, editable = false, pannable = false,
 }: {
   items: FloorItem[];
   selectedId?: string | null;
@@ -155,6 +146,8 @@ export function FloorCanvas({
   minHeight?: number;
   maxHeight?: string;
   editable?: boolean;
+  /** Let the page scroll (pan) across the map with a finger: used when the map is wider than the screen. */
+  pannable?: boolean;
 }) {
   const b = floorBounds(items);
   const vw = b.w / zoom;
@@ -170,7 +163,7 @@ export function FloorCanvas({
       aria-label={label}
       viewBox={`${vx} ${vy} ${vw} ${vh}`}
       preserveAspectRatio="xMidYMid meet"
-      className="block h-full w-full touch-none select-none rounded-xl"
+      className={cx("block h-full w-full select-none rounded-xl", pannable ? "touch-pan-x touch-pan-y" : "touch-none")}
       style={{ background: 'var(--fz-floor-bg)', direction: 'ltr', unicodeBidi: 'isolate' }}
     >
       <defs>

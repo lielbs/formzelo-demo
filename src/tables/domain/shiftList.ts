@@ -64,6 +64,30 @@ export function tileCounts(reservations: ShiftReservation[], now: Date): Record<
   return out;
 }
 
+/**
+ * The shift "right now", one unit per number: diners seated, diners still expected (booked or
+ * arrived but not seated), late parties, and tables free to seat. Tables come from the live states.
+ */
+export interface ShiftSummary { seatedCovers: number; expectedCovers: number; late: number; freeTables: number; openTables: number }
+export function shiftSummary(reservations: ShiftReservation[], tableStates: Map<string, { state: string }>, now: Date): ShiftSummary {
+  let seatedCovers = 0;
+  let expectedCovers = 0;
+  let late = 0;
+  for (const r of reservations) {
+    if (r.status === 'seated') seatedCovers += r.party;
+    else if (r.status === 'confirmed' || r.status === 'arrived' || r.status === 'pending_approval') expectedCovers += r.party;
+    if (r.status === 'confirmed' && now.getTime() - new Date(r.startsAt).getTime() > 10 * 60_000) late++;
+  }
+  let freeTables = 0;
+  let openTables = 0;
+  for (const { state } of tableStates.values()) {
+    if (state === 'unavailable') continue;
+    openTables++;
+    if (state === 'ready') freeTables++;
+  }
+  return { seatedCovers, expectedCovers, late, freeTables, openTables };
+}
+
 export function hasFlag(r: ShiftReservation, flag: FlagKey): boolean {
   switch (flag) {
     case 'requests': return Boolean(r.requests?.trim());

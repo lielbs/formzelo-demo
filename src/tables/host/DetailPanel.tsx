@@ -1,5 +1,5 @@
 import { Ban, CalendarClock, CheckCircle2, Footprints, LogIn, MessageCircle, Phone, Sparkles, Undo2, UserX, Wrench, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, cx, Textarea } from '../../components/ui';
 import { addNote, decidePending, reservationDetail, setTableState, transition, type ReservationDetail, type TransitionAction } from '../data/client';
 import type { TablesError } from '../domain/errors';
@@ -34,25 +34,51 @@ export function DetailPanel({ shift, selection, selected, states, now, canAct, o
     return () => document.removeEventListener('keydown', esc);
   }, [selection.kind, selection.id, onClose]);
   return (
+    <>
+    <div aria-hidden="true" onClick={onClose} className="hs-panel-scrim fixed inset-0 z-40 lg:hidden" />
     <aside ref={ref} tabIndex={-1} aria-label="פרטים"
-      className={cx('hs-panel z-40 flex flex-col overflow-hidden bg-white outline-none',
-        'fixed inset-x-0 bottom-0 max-h-[70vh] rounded-t-2xl border-t border-cloud-300 shadow-lift',
-        'lg:sticky lg:top-[8.5rem] lg:inset-auto lg:max-h-[calc(100vh-10rem)] lg:w-[23rem] lg:shrink-0 lg:self-start lg:rounded-2xl lg:border lg:shadow-card')}>
-      <div className="flex items-center justify-between gap-2 border-b border-cloud-200 px-4 py-2">
-        <span className="mx-auto h-1 w-10 rounded-full bg-cloud-300 lg:hidden" aria-hidden />
-        <Button size="sm" variant="ghost" icon={X} onClick={onClose} aria-label="סגירת הפרטים" className="absolute end-2 top-1.5 h-10 w-10 px-0" />
+      className={cx('hs-panel z-50 flex flex-col overflow-hidden bg-[var(--hs-surface)] text-[var(--hs-ink)] outline-none',
+        'fixed inset-x-0 bottom-0 max-h-[88dvh] rounded-t-[20px] shadow-lift',
+        'lg:sticky lg:top-[7.5rem] lg:inset-auto lg:z-auto lg:max-h-[calc(100vh-9rem)] lg:w-[24rem] lg:shrink-0 lg:self-start lg:rounded-2xl lg:border lg:border-[var(--hs-line)] lg:shadow-none')}>
+      <div className="relative flex h-6 items-center justify-center lg:h-2">
+        <span className="h-1 w-10 rounded-full bg-[var(--hs-line-strong)] lg:hidden" aria-hidden />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-1">
+      <Button size="sm" variant="ghost" icon={X} onClick={onClose} aria-label="סגירת הפרטים" className="absolute end-2 top-2 z-10 h-11 w-11 rounded-full px-0" />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-5">
         {selection.kind === 'reservation' && selected && <ReservationDetailView r={selected} shift={shift} now={now} canAct={canAct} onDone={onDone} onAssign={onAssign} />}
         {selection.kind === 'reservation' && !selected && <p className="py-6 text-sm text-ink-muted">ההזמנה לא נמצאת יותר במשמרת הזו.</p>}
         {selection.kind === 'table' && <TableDetail shift={shift} tableId={selection.id} states={states} now={now} canAct={canAct} onDone={onDone} onSelect={onSelect} />}
+        <p className="hs-muted mt-6 text-center text-xs">הפרטים האישיים של האורחים מיועדים לשירות בלבד.</p>
       </div>
     </aside>
+    </>
   );
 }
 
-function ActionButton({ label, icon, onClick, busy, variant = 'secondary', disabled }: { label: string; icon: typeof Ban; onClick: () => void; busy: boolean; variant?: 'primary' | 'secondary' | 'danger' | 'dark'; disabled?: boolean }) {
-  return <Button variant={variant} icon={icon} loading={busy} disabled={disabled} onClick={onClick} className="h-12 w-full justify-start">{label}</Button>;
+function ActionButton({ label, icon, onClick, busy, variant = 'secondary', disabled, primary }: { label: string; icon: typeof Ban; onClick: () => void; busy: boolean; variant?: 'primary' | 'secondary' | 'danger' | 'dark'; disabled?: boolean; primary?: boolean }) {
+  return <Button variant={variant} icon={icon} loading={busy} disabled={disabled} onClick={onClick} className={cx('w-full', primary ? 'h-14 text-[16px]' : 'h-12')}>{label}</Button>;
+}
+
+/** Destructive or corrective actions: quiet text rows, separated from the work actions. */
+function QuietAction({ label, icon: Icon, onClick, busy, danger }: { label: string; icon: typeof Ban; onClick: () => void; busy?: boolean; danger?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={busy}
+      className={cx('flex min-h-[48px] w-full items-center gap-3 px-1 text-start text-[15px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:opacity-50', danger ? 'text-[var(--hs-attention)]' : 'text-[var(--hs-ink)]')}>
+      <Icon className="h-5 w-5 shrink-0" aria-hidden />{label}
+    </button>
+  );
+}
+
+/** Words for where a booking stands in time ("in 2 h 10 min", "12 min late", "seated at 19:40"). */
+function whenText(r: ShiftReservation, now: Date, tz: string): string {
+  const mins = Math.round((new Date(r.startsAt).getTime() - now.getTime()) / 60_000);
+  const span = (m: number) => (m >= 1440 ? `${Math.round(m / 1440)} ימים` : m >= 60 ? `${Math.floor(m / 60)} ש׳${m % 60 ? ` ${m % 60} דק׳` : ''}` : `${m} דק׳`);
+  if (r.status === 'seated' && r.seatedAt) return `הושבו ב־${timeInTz(r.seatedAt, tz)}`;
+  if (r.status === 'arrived' && r.arrivedAt) return `הגיעו ב־${timeInTz(r.arrivedAt, tz)}`;
+  if (r.status !== 'confirmed' && r.status !== 'pending_approval') return '';
+  if (mins > 0) return `בעוד ${span(mins)}`;
+  if (mins > -10) return 'עכשיו';
+  return `מאחרים ${span(-mins)}`;
 }
 
 function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
@@ -94,35 +120,73 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
   const t = (a: TransitionAction, msg: string) => act(a, () => transition(r.id, a, r.lockVersion, reason || undefined), `${r.guestName}: ${msg}`);
   const startsPassed = now.getTime() >= new Date(r.startsAt).getTime();
 
+  const tz = shift.venue.timezone;
+  const open = r.status === 'confirmed' || r.status === 'arrived';
+  const live = open || r.status === 'pending_approval' || r.status === 'seated';
+  const when = whenText(r, now, tz);
+  const opensAt = timeInTz(new Date(new Date(r.startsAt).getTime() - 3 * 3600_000).toISOString(), tz);
+  const far = new Date(r.startsAt).getTime() - now.getTime() > 24 * 3600_000;
+
+  // One primary action for the state the booking is in; the rest is secondary or tucked away.
+  let primary: ReactNode = null;
+  if (r.status === 'pending_approval') {
+    primary = <ActionButton primary label="אישור ההזמנה" icon={CheckCircle2} variant="primary" busy={busy === 'approve'} onClick={() => act('approve', () => decidePending(r.id, 'approve', r.lockVersion), `${r.guestName}: אושרה`)} />;
+  } else if (open && r.tableIds.length === 0) {
+    primary = <ActionButton primary label="שיבוץ שולחן" icon={Sparkles} variant="dark" busy={false} onClick={() => onAssign(r)} />;
+  } else if (open && canSeatNow(r, now)) {
+    primary = <ActionButton primary label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={busy === 'seat'} onClick={() => t('seat', `הושבו בשולחן ${tables}`)} />;
+  } else if (open) {
+    // Seating opens 3 hours before the booking (the server refuses earlier): show it, with when.
+    primary = (
+      <div className="grid gap-1.5">
+        <ActionButton primary label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={false} disabled onClick={() => undefined} />
+        <p className="hs-muted text-xs">ההושבה נפתחת ב־<bdi dir="ltr">{opensAt}</bdi>{far ? ' ביום ההזמנה' : ''} — 3 שעות לפני ההזמנה.</p>
+      </div>
+    );
+  } else if (r.status === 'seated') {
+    primary = <ActionButton primary label="סיום הביקור — השולחן מתפנה" icon={CheckCircle2} variant="dark" busy={busy === 'complete'} onClick={() => t('complete', 'סיימו')} />;
+  }
+  const secondary: ReactNode[] = [];
+  if (r.status === 'confirmed') secondary.push(<ActionButton key="arrive" label="הגיעו (ממתינים לשולחן)" icon={LogIn} busy={busy === 'arrive'} onClick={() => t('arrive', 'הגיעו')} />);
+  if (live && r.tableIds.length > 0) secondary.push(<ActionButton key="move" label="העברה לשולחן אחר" icon={Sparkles} busy={false} onClick={() => onAssign(r)} />);
+
+  const quiet: ReactNode[] = [];
+  if (r.status === 'pending_approval') quiet.push(<QuietAction key="reject" danger label="דחיית הבקשה" icon={Ban} onClick={() => setConfirm('reject')} />);
+  if (r.status === 'confirmed' && startsPassed) quiet.push(<QuietAction key="ns" danger label="לא הגיעו" icon={UserX} onClick={() => setConfirm('no_show')} />);
+  if (['pending_approval', 'confirmed', 'arrived'].includes(r.status)) quiet.push(<QuietAction key="cancel" danger label="ביטול ההזמנה" icon={Ban} onClick={() => setConfirm('cancel')} />);
+  if (['arrived', 'seated', 'no_show', 'completed', 'cancelled'].includes(r.status)) quiet.push(<QuietAction key="undo" label="ביטול הפעולה האחרונה" icon={Undo2} busy={busy === 'undo'} onClick={() => t('undo', 'הפעולה האחרונה בוטלה')} />);
+  if (confirm) quiet.push(
+    <div key="confirm" className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-red-900">
+      <p className="text-sm font-medium">
+        {confirm === 'cancel' ? 'לבטל את ההזמנה? השולחן ישתחרר מיד.' : confirm === 'no_show' ? 'לסמן שלא הגיעו? השולחן ישתחרר, וזה יירשם בהיסטוריה של האורח.' : 'לדחות את הבקשה?'}
+      </p>
+      <label htmlFor="act-reason" className="mt-2 block text-xs font-medium">סיבה (רשות)</label>
+      <input id="act-reason" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} className="fz-input mt-1 h-11 w-full rounded-xl border border-red-200 bg-white px-3 text-sm text-ink" />
+      <div className="mt-2 flex gap-2">
+        <Button variant="danger" loading={!!busy} onClick={() => confirm === 'reject'
+          ? act('reject', () => decidePending(r.id, 'reject', r.lockVersion, reason || undefined), `${r.guestName}: נדחתה`)
+          : t(confirm, confirm === 'cancel' ? 'בוטלה' : 'סומנו שלא הגיעו')} className="h-11">כן, לאשר</Button>
+        <Button variant="ghost" onClick={() => setConfirm(null)} className="h-11">חזרה</Button>
+      </div>
+    </div>,
+  );
+
   return (
     <div className="grid gap-4">
-      <div>
-        <div className="flex flex-wrap items-center gap-2 pe-10">
-          <h2 className="text-xl font-semibold text-ink">{r.guestName}</h2>
+      <div className="pe-12">
+        <h2 className="text-[22px] font-semibold leading-tight">{r.guestName}</h2>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <StatusChip status={r.status} late={late} />
-        </div>
-        <p className="mt-1 text-sm text-ink-muted">
-          <bdi dir="ltr" className="font-semibold text-ink">{r.time}</bdi> · {r.party} סועדים · {tables ? `שולחן ${tables}` : 'בלי שולחן'} · {SOURCE_HE[r.source]} · קוד <Ltr>{r.reference}</Ltr>
+          {when && <span className="hs-muted">· {when}</span>}
         </p>
-        {r.requests && <p className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-900"><span className="font-medium">בקשה: </span>{r.requests}</p>}
-        <CustomAnswers answers={detail?.customAnswers} />
-        {(r.visits > 0 || r.noShows > 0) && (
-          <p className="mt-2 text-sm text-ink-muted">ביקורים קודמים: {r.visits}{r.noShows ? ` · לא הגיעו: ${r.noShows}` : ''}</p>
-        )}
       </div>
-
-      {r.guestPhone && (
-        <div className="flex flex-wrap gap-2">
-          <a href={telHref(r.guestPhone)} className="inline-flex h-11 items-center gap-2 rounded-xl border border-cloud-300 px-3 text-sm font-medium hover:bg-cloud">
-            <Phone className="h-4 w-4" aria-hidden /> <Ltr>{displayPhone(r.guestPhone)}</Ltr>
-          </a>
-          <a href={whatsappHref(r.guestPhone, `שלום ${r.guestName}, כאן ${shift.venue.name}. `)} target="_blank" rel="noopener noreferrer"
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-cloud-300 px-3 text-sm font-medium hover:bg-cloud">
-            <MessageCircle className="h-4 w-4" aria-hidden /> וואטסאפ
-          </a>
-        </div>
-      )}
-      {r.guestPhone && <p className="-mt-2 text-xs text-ink-muted">פותח שיחה או וואטסאפ אצלכם — ההודעה נשלחת רק אם תשלחו אותה.</p>}
+      <dl className="hs-facts">
+        <div><dt>שעה</dt><dd><bdi dir="ltr">{r.time}</bdi></dd></div>
+        <div><dt>סועדים</dt><dd>{r.party}</dd></div>
+        <div><dt>שולחן</dt><dd className={cx(!tables && open && 'hs-warn')}>{tables || '—'}</dd></div>
+        <div><dt>מקור</dt><dd>{SOURCE_HE[r.source]}</dd></div>
+      </dl>
+      {!live && <p className="hs-final">ההזמנה במצב סופי: {STATUS_HE[r.status]}.</p>}
 
       {error && (
         <div role="alert" className={cx('rounded-xl border px-3 py-2 text-sm', error.conflict ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-red-200 bg-red-50 text-red-800')}>
@@ -130,50 +194,32 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
         </div>
       )}
 
-      {canAct && (
+      {canAct && (primary || secondary.length > 0) && (
         <div className="grid gap-2">
-          {r.status === 'pending_approval' && <>
-            <ActionButton label="אישור ההזמנה" icon={CheckCircle2} variant="primary" busy={busy === 'approve'} onClick={() => act('approve', () => decidePending(r.id, 'approve', r.lockVersion), `${r.guestName}: אושרה`)} />
-            <ActionButton label="דחייה" icon={Ban} busy={false} onClick={() => setConfirm('reject')} />
-          </>}
-          {r.status === 'confirmed' && <ActionButton label="הגיעו (ממתינים לשולחן)" icon={LogIn} busy={busy === 'arrive'} onClick={() => t('arrive', 'הגיעו')} />}
-          {(r.status === 'confirmed' || r.status === 'arrived') && canSeatNow(r, now) && (r.tableIds.length
-            ? <ActionButton label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={busy === 'seat'} onClick={() => t('seat', `הושבו בשולחן ${tables}`)} />
-            : <ActionButton label="שיבוץ שולחן" icon={Sparkles} variant="dark" busy={false} onClick={() => onAssign(r)} />)}
-          {/* Seating opens 3 hours before the booking (the server refuses earlier): show it, with when. */}
-          {(r.status === 'confirmed' || r.status === 'arrived') && !canSeatNow(r, now) && (
-            <div className="grid gap-1">
-              <ActionButton label={r.tableIds.length ? `הושבה בשולחן ${tables}` : 'הושבה'} icon={CheckCircle2} variant="dark" busy={false} disabled onClick={() => undefined} />
-              <p className="text-xs text-ink-muted">
-                ההושבה נפתחת ב־<bdi dir="ltr">{timeInTz(new Date(new Date(r.startsAt).getTime() - 3 * 3600_000).toISOString(), shift.venue.timezone)}</bdi>
-                {new Date(r.startsAt).getTime() - now.getTime() > 24 * 3600_000 ? ' ביום ההזמנה' : ''} — 3 שעות לפני ההזמנה.
-              </p>
-            </div>
-          )}
-          {r.status === 'seated' && <ActionButton label="סיום הביקור — השולחן מתפנה" icon={CheckCircle2} variant="dark" busy={busy === 'complete'} onClick={() => t('complete', 'סיימו')} />}
-          {['pending_approval', 'confirmed', 'arrived', 'seated'].includes(r.status) && r.tableIds.length > 0 && (
-            <ActionButton label="העברה לשולחן אחר" icon={Sparkles} busy={false} onClick={() => onAssign(r)} />
-          )}
-          {r.status === 'confirmed' && startsPassed && <ActionButton label="לא הגיעו" icon={UserX} variant="danger" busy={false} onClick={() => setConfirm('no_show')} />}
-          {['pending_approval', 'confirmed', 'arrived'].includes(r.status) && <ActionButton label="ביטול ההזמנה" icon={Ban} variant="danger" busy={false} onClick={() => setConfirm('cancel')} />}
-          {['arrived', 'seated', 'no_show', 'completed', 'cancelled'].includes(r.status) && (
-            <ActionButton label="ביטול הפעולה האחרונה" icon={Undo2} busy={busy === 'undo'} onClick={() => t('undo', 'הפעולה האחרונה בוטלה')} />
+          {primary}
+          {secondary.length > 0 && <div className={cx('grid gap-2', secondary.length > 1 && 'sm:grid-cols-2')}>{secondary}</div>}
+        </div>
+      )}
+
+      {(r.requests || detail?.customAnswers?.length || r.visits > 0 || r.noShows > 0) && (
+        <div className="grid gap-2">
+          {r.requests && <p className="rounded-xl bg-[var(--hs-accent-soft)] px-3 py-2 text-sm"><span className="font-semibold">בקשה: </span>{r.requests}</p>}
+          <CustomAnswers answers={detail?.customAnswers} />
+          {(r.visits > 0 || r.noShows > 0) && (
+            <p className="hs-muted text-sm">ביקורים קודמים: {r.visits}{r.noShows ? ` · לא הגיעו: ${r.noShows}` : ''}</p>
           )}
         </div>
       )}
-      {confirm && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-          <p className="text-sm font-medium text-red-900">
-            {confirm === 'cancel' ? 'לבטל את ההזמנה? השולחן ישתחרר מיד.' : confirm === 'no_show' ? 'לסמן שלא הגיעו? השולחן ישתחרר, וזה יירשם בהיסטוריה של האורח.' : 'לדחות את הבקשה?'}
-          </p>
-          <label htmlFor="act-reason" className="mt-2 block text-xs font-medium text-red-900">סיבה (רשות)</label>
-          <input id="act-reason" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} className="fz-input mt-1 h-11 w-full rounded-xl border border-red-200 bg-white px-3 text-sm" />
-          <div className="mt-2 flex gap-2">
-            <Button variant="danger" loading={!!busy} onClick={() => confirm === 'reject'
-              ? act('reject', () => decidePending(r.id, 'reject', r.lockVersion, reason || undefined), `${r.guestName}: נדחתה`)
-              : t(confirm, confirm === 'cancel' ? 'בוטלה' : 'סומנו שלא הגיעו')} className="h-11">כן, לאשר</Button>
-            <Button variant="ghost" onClick={() => setConfirm(null)} className="h-11">חזרה</Button>
-          </div>
+
+      {r.guestPhone && (
+        <div className="grid grid-cols-2 gap-2">
+          <a href={telHref(r.guestPhone)} className="hs-contact">
+            <Phone className="h-4 w-4" aria-hidden /> <Ltr>{displayPhone(r.guestPhone)}</Ltr>
+          </a>
+          <a href={whatsappHref(r.guestPhone, `שלום ${r.guestName}, כאן ${shift.venue.name}. `)} target="_blank" rel="noopener noreferrer" className="hs-contact">
+            <MessageCircle className="h-4 w-4" aria-hidden /> וואטסאפ
+          </a>
+          <p className="hs-muted col-span-2 text-xs">פותח שיחה או וואטסאפ אצלכם — ההודעה נשלחת רק אם תשלחו אותה. קוד ההזמנה: <Ltr>{r.reference}</Ltr></p>
         </div>
       )}
 
@@ -216,6 +262,11 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
             {detail.history.map((h, i) => <li key={i}>{h.date} · <bdi dir="ltr">{h.time}</bdi> · {h.party} · {STATUS_HE[h.status as keyof typeof STATUS_HE] ?? h.status}</li>)}
           </ul>
         </details>
+      )}
+      {canAct && quiet.length > 0 && (
+        <section aria-label="פעולות נוספות" className="border-t border-[var(--hs-line)] pt-2">
+          {quiet}
+        </section>
       )}
     </div>
   );

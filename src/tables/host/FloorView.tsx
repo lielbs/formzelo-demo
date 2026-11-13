@@ -1,11 +1,11 @@
-import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronDown, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, cx } from '../../components/ui';
 import { moveReservation } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { TABLE_STATE_HE } from '../domain/status';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
-import { FloorCanvas, Segmented, StateLegend, TABLE_STATE_SYMBOL } from '../ui';
+import { FloorCanvas, floorBounds, StateLegend, TABLE_STATE_SYMBOL } from '../ui';
 import type { Selection } from './DetailPanel';
 
 type States = Map<string, { state: TableLiveState; current?: ShiftReservation; next?: ShiftReservation }>;
@@ -32,6 +32,15 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [boxW, setBoxW] = useState(0);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setBoxW(Math.floor(e!.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const candidates = useMemo(() => (assigning ? candidateTables(shift, assigning) : new Set<string>()), [shift, assigning]);
   const visible = shift.tables.filter((t) => zone === 'all' || t.zoneId === zone);
   const items = visible.map((t) => {
@@ -59,26 +68,43 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
     }
   }
 
+  // Fit the room to the screen, but never let the smallest table drop under a finger's width (46 px):
+  // when it would, the map grows and the host pans it. Zoom enlarges the map itself (and pans too).
+  const bounds = floorBounds(visible);
+  const minSide = visible.length ? Math.min(...visible.map((t) => Math.min(t.w, t.h))) : 60;
+  const baseW = boxW ? Math.max(boxW, Math.ceil(bounds.w * (46 / minSide))) : 0;
+  const mapW = baseW * zoom;
+  const zones = shift.zones;
+
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {shift.zones.length > 1 && (
-          <Segmented label="אזור" value={zone} onChange={setZone} options={[{ value: 'all', label: 'כל האזורים' }, ...shift.zones.map((z) => ({ value: z.id, label: z.name }))]} />
+    <div className="grid gap-2">
+      <div className="flex items-center gap-2">
+        {zones.length > 1 && (
+          <label className="hs-datepill relative flex h-11 items-center rounded-xl focus-within:ring-2 focus-within:ring-orange">
+            <span className="sr-only">אזור</span>
+            <select aria-label="אזור" value={zone} onChange={(e) => setZone(e.target.value)} className="h-11 appearance-none rounded-xl bg-transparent ps-3 pe-8 text-[15px] font-semibold focus:outline-none">
+              <option value="all">כל האזורים</option>
+              {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+            <ChevronDown className="pointer-events-none absolute end-2.5 h-4 w-4 text-ink-muted" aria-hidden />
+          </label>
         )}
-        <div className="flex gap-1">
-          <Button size="sm" variant="secondary" icon={ZoomIn} aria-label="הגדלה" onClick={() => setZoom((z) => Math.min(2.5, z + 0.25))} className="h-11 w-11 px-0" />
-          <Button size="sm" variant="secondary" icon={ZoomOut} aria-label="הקטנה" onClick={() => setZoom((z) => Math.max(0.6, z - 0.25))} className="h-11 w-11 px-0" />
-          <Button size="sm" variant="secondary" icon={Maximize2} aria-label="התאמה למסך" onClick={() => setZoom(1)} className="h-11 w-11 px-0" />
+        <div className="ms-auto flex gap-1" role="group" aria-label="גודל המפה">
+          <Button size="sm" variant="secondary" icon={ZoomOut} aria-label="הקטנה" disabled={zoom <= 1} onClick={() => setZoom((z) => Math.max(1, z - 0.5))} className="h-11 w-11 rounded-full px-0" />
+          <Button size="sm" variant="secondary" icon={ZoomIn} aria-label="הגדלה" disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.5))} className="h-11 w-11 rounded-full px-0" />
+          {zoom !== 1 && <Button size="sm" variant="secondary" icon={Maximize2} aria-label="התאמה למסך" onClick={() => setZoom(1)} className="h-11 w-11 rounded-full px-0" />}
         </div>
       </div>
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-      <div className="rounded-2xl border border-cloud-200 bg-white p-2">
-        <div>
-          <FloorCanvas items={items} zoom={zoom} selectedId={selection?.kind === 'table' ? selection.id : null} onSelect={(id) => void pick(id)}
-            label={assigning ? `בחירת שולחן עבור ${assigning.guestName}` : 'מפת המקום. בחירה בשולחן פותחת את הפרטים שלו'} maxHeight="62vh" />
+      <div ref={boxRef} className="hs-floor-box">
+        <div className="hs-floor-scroll" dir="ltr" style={{ maxHeight: 'max(320px, calc(100dvh - 290px))' }}>
+          <div style={{ width: mapW ? `${mapW}px` : '100%' }}>
+            <FloorCanvas items={items} zoom={1} pannable selectedId={selection?.kind === 'table' ? selection.id : null} onSelect={(id) => void pick(id)}
+              label={assigning ? `בחירת שולחן עבור ${assigning.guestName}` : 'מפת המקום. בחירה בשולחן פותחת את הפרטים שלו'} maxHeight="none" minHeight={0} />
+          </div>
         </div>
-        <div className="px-2 pb-1 pt-2"><StateLegend /></div>
       </div>
+      <div className="hs-scroll overflow-x-auto px-1"><StateLegend /></div>
       <details className="rounded-2xl border border-cloud-200 bg-white p-3" open={false}>
         <summary className="cursor-pointer text-sm font-semibold">השולחנות כרשימה</summary>
         <ul className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
