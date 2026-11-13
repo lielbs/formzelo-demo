@@ -77,12 +77,12 @@ export function Card({ className, children, as: As = 'div' }: { className?: stri
 type Tone = 'neutral' | 'orange' | 'teal' | 'blue' | 'red' | 'amber' | 'dark';
 const tones: Record<Tone, string> = {
   neutral: 'bg-ink/[0.06] text-ink-muted',
-  orange: 'bg-orange-50 text-orange-700',
+  orange: 'bg-orange-50 text-orange-800',
   teal: 'bg-teal-50 text-teal-600',
   blue: 'bg-sky-50 text-sky-700',
   red: 'bg-red-50 text-red-700',
   amber: 'bg-amber-50 text-amber-700',
-  dark: 'bg-midnight text-white',
+  dark: 'fz-badge-dark bg-midnight text-white',
 };
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {

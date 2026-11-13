@@ -9,6 +9,7 @@ import { GlassDock, type DockItem } from './GlassDock';
 import { ButtonLink, cx, ErrorState, PageLoader, Spinner } from './ui';
 import { useToast } from './Toast';
 import { runtimeConfiguration } from '../production/runtime';
+import { ThemeButton, useStaffTheme } from '../tables/theme';
 
 /** Which sections each access level sees (the server refuses the rest anyway). */
 const TABLES_ONLY = ['/app/tables', '/app/settings'];
@@ -178,14 +179,16 @@ function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => v
           </NavLink>
         ))}
       </nav>
-      {runtimeConfiguration.mode === 'demo' && (
-        <p className="mt-auto px-1 text-xs leading-relaxed text-ink-soft">דמו מקומי — הנתונים נשמרים בדפדפן הזה בלבד.</p>
-      )}
+      <div className="mt-auto grid gap-3">
+        {runtimeConfiguration.mode === 'demo' && <p className="px-1 text-xs leading-relaxed text-ink-soft">דמו מקומי — הנתונים נשמרים בדפדפן הזה בלבד.</p>}
+        <ThemeButton className="fz-side-theme w-full justify-start" />
+      </div>
     </div>
   );
 }
 
 export function AppLayout() {
+  useStaffTheme();
   const { ready, bootError, activeOrg } = useRepo();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();

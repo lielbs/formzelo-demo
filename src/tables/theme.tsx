@@ -1,7 +1,7 @@
 /**
- * Light / dark display for Formangle Tables screens. The choice is per device (light, dark, or
- * follow the device), defaults to following the device, and applies only while a Tables screen
- * is mounted — leaving Tables restores the normal Formangle look.
+ * Light / dark display for Formangle's staff screens (the business app and Tables). The choice is
+ * per device (light, dark, or follow the device), defaults to following the device, and applies
+ * only while a staff screen is mounted — public pages keep their own look.
  */
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -44,12 +44,17 @@ export function useThemePref(): { pref: ThemePref; dark: boolean; setPref: (p: T
 }
 
 /** Applies the theme to the document while the calling screen is mounted (one per screen). */
-export function useTablesTheme() {
+/** How many staff screens currently want dark (nested screens, e.g. Tables inside the app shell). */
+let darkUsers = 0;
+
+export function useStaffTheme() {
   const t = useThemePref();
   useEffect(() => {
     const html = document.documentElement;
-    html.classList.toggle('fz-dark', t.dark);
-    return () => { html.classList.remove('fz-dark'); };
+    if (!t.dark) return;
+    darkUsers++;
+    html.classList.add('fz-dark');
+    return () => { darkUsers--; if (darkUsers <= 0) { darkUsers = 0; html.classList.remove('fz-dark'); } };
   }, [t.dark]);
   return t;
 }
@@ -83,4 +88,27 @@ export function ThemeButton({ lang = 'he', className }: { lang?: 'he' | 'en'; cl
 export function TablesRoot({ children }: { children: ReactNode; owner?: boolean }) {
   useTablesTheme();
   return <div className="fz-tables">{children}</div>;
+}
+
+export const useTablesTheme = useStaffTheme;
+
+/** Full choice for a settings page: device / light / dark as one segmented control. */
+export function ThemeChoice({ className }: { className?: string }) {
+  const { pref, setPref } = useThemePref();
+  return (
+    <div className={cx('grid gap-2', className)}>
+      <p className="text-sm font-semibold text-ink">מראה</p>
+      <div role="radiogroup" aria-label="מראה" className="fz-seg w-full">
+        {(['system', 'light', 'dark'] as const).map((p) => {
+          const Icon = ICONS[p];
+          return (
+            <button key={p} type="button" role="radio" aria-checked={pref === p} onClick={() => setPref(p)} className="fz-seg-btn flex-1">
+              <Icon className="h-4 w-4" aria-hidden />{LABELS.he[p]}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-ink-muted">חל על כל המסכים של הצוות במכשיר הזה. דפים שהלקוחות רואים נשארים במיתוג של העסק.</p>
+    </div>
+  );
 }

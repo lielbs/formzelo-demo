@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, FieldLabel, Input, Modal, PageHeader, Spinner } from '../../components/ui';
+import { ThemeChoice } from '../../tables/theme';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { formatDate, formatNumber } from '../../lib/format';
 import { PaymentConnectors } from './PaymentConnectors';
@@ -71,7 +72,7 @@ export function Settings() {
   if (access === 'tables') return (
     <>
       <PageHeader title="החשבון שלי" description={`גישה לשולחנות של ${org.name}`} />
-      <div className="max-w-lg"><AccountCard /></div>
+      <div className="grid max-w-lg gap-6"><Card className="p-5"><ThemeChoice /></Card><AccountCard /></div>
     </>
   );
 
@@ -200,6 +201,7 @@ export function Settings() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {runtimeConfiguration.mode === 'demo' && <PaymentConnectors />}
+        <Card className="p-5"><ThemeChoice /></Card>
         {runtimeConfiguration.mode === 'production' && <AccountCard />}
       </div>
 

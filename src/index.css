@@ -400,10 +400,10 @@ html.fz-dark .fz-sheet-danger { color: #ff8b8b; }
 .fz-side-link[aria-current="page"] { color: rgb(var(--fz-side-fg)); background: rgb(var(--fz-side-active) / var(--fz-side-active-a)); }
 .fz-side-chip { color: rgb(var(--fz-side-fg)); background: rgb(var(--fz-side-active) / calc(var(--fz-side-active-a) * 0.5)); box-shadow: inset 0 0 0 1px rgb(var(--fz-side-active) / var(--fz-side-active-a)); }
 .fz-side-chip:hover { background: rgb(var(--fz-side-active) / var(--fz-side-active-a)); }
-.fz-side-sub { color: rgb(var(--fz-side-muted) / calc(var(--fz-side-muted-a) * 0.8)); }
+.fz-side-sub { color: rgb(var(--fz-side-muted) / var(--fz-side-muted-a)); }
 
 /* Disabled buttons read as unavailable, not as a faded slab of colour. */
-.fz-btn-off { background: rgb(var(--fz-ink) / 0.06) !important; color: rgb(var(--fz-ink-soft)) !important; box-shadow: inset 0 0 0 1px rgb(var(--fz-ink) / 0.06) !important; opacity: 1 !important; }
+.fz-btn-off { background: rgb(var(--fz-ink) / 0.06) !important; color: rgb(var(--fz-ink-muted)) !important; box-shadow: inset 0 0 0 1px rgb(var(--fz-ink) / 0.06) !important; opacity: 1 !important; }
 
 /* ---------- Segmented control (choose one value: range, pane) — light track, raised selection ---------- */
 .fz-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--fz-r-xl); background: rgb(var(--fz-ink) / 0.055); }
@@ -415,3 +415,44 @@ html.fz-dark .fz-sheet-danger { color: #ff8b8b; }
 .fz-seg-btn:hover { color: rgb(var(--fz-ink)); }
 .fz-seg-btn:focus-visible { outline: 2px solid rgb(var(--fz-orange-700)); outline-offset: 1px; }
 .fz-seg-btn:is([aria-selected="true"], [aria-checked="true"]) { background: #fff; color: rgb(var(--fz-ink)); font-weight: 600; box-shadow: 0 0 0 1px rgb(var(--fz-hairline) / 0.08), 0 1px 2px rgb(var(--fz-hairline) / 0.08); }
+
+/* ======================================================================================
+ * Dark mode for the staff product: Tailwind's fixed light utilities mapped to dark equivalents.
+ * Customer-branded previews (.fz, .fz-light, .fz-phone-frame) are left untouched.
+ * ====================================================================================== */
+html.fz-dark body { background: rgb(var(--fz-cloud)); }
+html.fz-dark :is(.bg-white, .hover\:bg-white:hover, .focus\:bg-white:focus):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(var(--fz-surface)); }
+html.fz-dark :is(.bg-white\/60, .bg-white\/70, .bg-white\/80, .bg-white\/90):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(var(--fz-surface) / 0.85); }
+html.fz-dark .text-midnight:not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: rgb(var(--fz-ink)); }
+html.fz-dark :is(.bg-midnight\/40, .bg-midnight\/50):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(0 0 0 / 0.6); }
+html.fz-dark :is(.text-orange-700, .text-orange-800):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: #f4a07c; }
+html.fz-dark :is(.text-teal, .text-teal-600, .text-teal-700, .text-teal-900):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: #63d1b6; }
+html.fz-dark :is(.bg-teal-50):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(47 160 133 / 0.16); }
+html.fz-dark :is(.border-teal-200, .border-teal-50):not(:is(.fz, .fz-light, .fz-phone-frame) *) { border-color: rgb(47 160 133 / 0.4); }
+html.fz-dark :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900, .hover\:text-red-700:hover, .hover\:text-red-800:hover):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: #ff8f87; }
+html.fz-dark :is(.bg-red-50, .hover\:bg-red-50:hover, .bg-red-100):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(239 68 68 / 0.13); }
+html.fz-dark :is(.border-red-200, .border-red-400):not(:is(.fz, .fz-light, .fz-phone-frame) *) { border-color: rgb(239 68 68 / 0.42); }
+html.fz-dark :is(.text-amber-700, .text-amber-800, .text-amber-900):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: #f5c46b; }
+html.fz-dark :is(.bg-amber-50, .hover\:bg-amber-100:hover):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(245 158 11 / 0.13); }
+html.fz-dark :is(.border-amber-200, .border-amber-300):not(:is(.fz, .fz-light, .fz-phone-frame) *) { border-color: rgb(245 158 11 / 0.4); }
+html.fz-dark :is(.text-sky-700, .text-sky-800, .text-sky-900):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: #7cc4f2; }
+html.fz-dark :is(.bg-sky-50):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(14 165 233 / 0.14); }
+html.fz-dark :is(.border-sky-200):not(:is(.fz, .fz-light, .fz-phone-frame) *) { border-color: rgb(14 165 233 / 0.4); }
+html.fz-dark .fz-seg-btn:is([aria-selected="true"], [aria-checked="true"]) { background: rgb(var(--fz-cloud-100)); }
+html.fz-dark ::selection { background: rgb(233 107 61 / 0.35); }
+html.fz-dark .fz-btn-off { background: rgb(255 255 255 / 0.06) !important; }
+.fz-sidebar .fz-side-theme { border-color: rgb(var(--fz-side-active) / 0.12); background: transparent; color: rgb(var(--fz-side-muted) / var(--fz-side-muted-a)); }
+.fz-sidebar .fz-side-theme span { display: inline !important; }
+/* Dark buttons and selected chips become light chips on dark (high contrast, like a key). */
+html.fz-dark .bg-midnight:not(:is(.fz, .fz-light, .fz-phone-frame) *), html.fz-dark .bg-midnight:not(:is(.fz, .fz-light, .fz-phone-frame) *) .text-white { background-color: #e8e9ed; color: #16181d; }
+html.fz-dark .bg-midnight:not(:is(.fz, .fz-light, .fz-phone-frame) *) .text-white { background-color: transparent; }
+html.fz-dark .hover\:bg-midnight-700:hover:not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: #d2d4da; }
+html.fz-dark .border-midnight:not(:is(.fz, .fz-light, .fz-phone-frame) *) { border-color: #e8e9ed; }
+html.fz-dark :is(.text-ink-soft, .placeholder\:text-ink-soft::placeholder):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: rgb(var(--fz-ink-soft)); }
+html.fz-dark .hover\:text-ink:hover:not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: rgb(var(--fz-ink)); }
+html.fz-dark :is(.bg-cloud-200.text-ink-muted):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: rgb(var(--fz-ink)); }
+html.fz-dark :is(.bg-violet-50):not(:is(.fz, .fz-light, .fz-phone-frame) *) { background-color: rgb(139 92 246 / 0.16); }
+html.fz-dark :is(.text-violet-900):not(:is(.fz, .fz-light, .fz-phone-frame) *) { color: #c4b5fd; }
+html.fz-dark :is(.border-orange-300):not(:is(.fz, .fz-light, .fz-phone-frame) *) { border-color: rgb(233 107 61 / 0.45); }
+/* Dark badges (e.g. "completed") stay quiet in dark mode instead of becoming bright keys. */
+html.fz-dark .fz-badge-dark.bg-midnight { background-color: rgb(255 255 255 / 0.1); color: rgb(var(--fz-ink)); }

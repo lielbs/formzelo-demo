@@ -8,7 +8,8 @@
  * corners, IBM Plex Sans Hebrew. Colour carries meaning only; orange is the brand accent and the
  * primary action; the midnight-and-orange mark carries the identity.
  */
-:root {
+/* Light tokens. Customer-branded previews (.fz flows, .fz-light, the menu phone frame) always keep them. */
+:root, .fz, .fz-light, .fz-phone-frame {
   --fz-font: 'IBM Plex Sans Hebrew';
 
   /* Neutrals: page, raised page, hairlines, strong lines. */
@@ -19,8 +20,8 @@
 
   /* Ink: primary text, secondary text, placeholder/disabled. */
   --fz-ink: 23 25 31;
-  --fz-ink-muted: 94 98 110;
-  --fz-ink-soft: 142 146 156;
+  --fz-ink-muted: 84 88 99;
+  --fz-ink-soft: 104 109 120;
 
   /* Midnight: dark buttons and the brand mark. */
   --fz-midnight: 23 25 31;
@@ -46,10 +47,43 @@
   /* Chrome: a light sidebar and frosted white top bars. */
   --fz-side-bg: 251 251 252;
   --fz-side-fg: 23 25 31;
-  --fz-side-muted: 94 98 110;
+  --fz-side-muted: 84 88 99;
   --fz-side-muted-a: 1;
   --fz-side-active: 23 25 31;
   --fz-side-active-a: 0.06;
   --fz-bar-bg: 255 255 255;
   --fz-bar-a: 0.86;
 }
+
+/*
+ * Dark — the whole staff product (dashboard, processes, requests, settings, Tables) when the device
+ * choice is dark (html.fz-dark, set while a staff screen is mounted; see src/tables/theme.tsx).
+ * Elevation goes up in lightness: page 14 → surface 24 → raised 30. Text stays >= 4.5:1.
+ */
+html.fz-dark {
+  color-scheme: dark;
+  --fz-cloud: 14 15 18;
+  --fz-cloud-100: 30 32 38;
+  --fz-cloud-200: 48 51 59;
+  --fz-cloud-300: 70 74 84;
+  --fz-ink: 236 237 241;
+  --fz-ink-muted: 165 170 181;
+  --fz-ink-soft: 134 139 151;
+  --fz-midnight: 62 66 77;
+  --fz-midnight-700: 78 83 95;
+  --fz-midnight-600: 96 101 115;
+  --fz-orange-50: 54 31 22;
+  --fz-orange-100: 76 41 28;
+  --fz-hairline: 255 255 255;
+  --fz-hairline-a: 0.09;
+  --fz-surface: 24 26 31;
+  --fz-side-bg: 19 20 24;
+  --fz-side-fg: 236 237 241;
+  --fz-side-muted: 165 170 181;
+  --fz-side-muted-a: 1;
+  --fz-side-active: 255 255 255;
+  --fz-side-active-a: 0.07;
+  --fz-bar-bg: 14 15 18;
+  --fz-bar-a: 0.86;
+}
+html.fz-dark :is(.fz, .fz-light, .fz-phone-frame) { color-scheme: light; }

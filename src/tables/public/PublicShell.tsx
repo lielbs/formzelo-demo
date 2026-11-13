@@ -40,7 +40,7 @@ export function useDocumentLanguage(lang: Lang, title?: string) {
 
 /** Venue accent repaired for contrast on both the light and the dark page background. */
 export function brandStyle(palette: Record<string, string> | null | undefined): CSSProperties {
-  const raw = palette?.primary && /^#[0-9a-f]{6}$/i.test(palette.primary) ? palette.primary : '#BF4F28';
+  const raw = palette?.primary && /^#[0-9a-f]{6}$/i.test(palette.primary) ? palette.primary : '#17191F'; // no brand colour yet: calm graphite, not Formangle's orange
   const light = ensureContrast(raw, '#FFFFFF', 4.5);
   const dark = ensureContrast(raw, '#0F141B', 4.5);
   return {

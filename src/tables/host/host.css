@@ -22,16 +22,16 @@
   --hs-scrim: rgb(15 20 27 / 0.45);
 }
 html.fz-dark .fz-tables {
-  --hs-surface: #171e27;
-  --hs-surface-2: #222c38;
-  --hs-line: #2c3744;
-  --hs-line-strong: #586779;
-  --hs-ink: #e8edf2;
-  --hs-muted: #a9b4c2;
+  --hs-surface: rgb(24 26 31);
+  --hs-surface-2: rgb(32 34 40);
+  --hs-line: rgb(48 51 59);
+  --hs-line-strong: rgb(92 97 110);
+  --hs-ink: rgb(236 237 241);
+  --hs-muted: rgb(165 170 181);
   --hs-accent: #f08a62;
   --hs-accent-soft: #3a2218;
   --hs-on-accent: #1a0f0a;
-  --hs-page: #0f141b;
+  --hs-page: rgb(14 15 18);
   --hs-attention: #ff8f80;
   --hs-upcoming: #a9bdd2;
   --hs-arrived: #f6a57f;
@@ -194,7 +194,7 @@ html.fz-dark .fz-tables .hs-mark { color: #f4f4f6; --hs-mark-ink: #18212d; }
 .fz-tables .hs-round:hover { background: rgb(24 33 45 / 0.09); }
 html.fz-dark .fz-tables .hs-round { background: rgb(255 255 255 / 0.08); }
 .fz-tables .hs-datepill { background: var(--hs-surface); color: var(--hs-ink); box-shadow: 0 0 0 1px var(--hs-line); }
-html.fz-dark .fz-topbar { background: rgb(15 20 27 / 0.8); box-shadow: 0 0.5px 0 rgb(255 255 255 / 0.1); }
+html.fz-dark .fz-topbar { box-shadow: 0 0.5px 0 rgb(255 255 255 / 0.1); }
 
 /* =====================================================================================
  * Shift, 2026-11 redesign: figures with units, state tabs, row lists, details sheet.
