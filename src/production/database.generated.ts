@@ -687,14 +687,14 @@ isOneToOne: false
                   ]
                 },"tables_waitlist_entries": {
                   Row: {
-                    "client_token": string | null,"closed_at": string | null,"created_at": string,"created_by": string | null,"custom_answers": Json | null,"guest_id": string | null,"guest_name": string,"guest_phone": string | null,"id": string,"idempotency_key": string,"joined_at": string,"lock_version": number,"notes": string | null,"offer_expires_at": string | null,"organization_id": string,"party_size": number,"priority": number,"priority_reason": string | null,"quoted_max": number | null,"quoted_min": number | null,"reservation_id": string | null,"service_date": string,"source": string,"status": string,"updated_at": string,"venue_id": string,"zone_preference": string | null
+                    "client_token": string | null,"closed_at": string | null,"created_at": string,"created_by": string | null,"custom_answers": Json | null,"desired_time": string | null,"guest_id": string | null,"guest_name": string,"guest_phone": string | null,"id": string,"idempotency_key": string,"joined_at": string,"lock_version": number,"notes": string | null,"offer_expires_at": string | null,"organization_id": string,"party_size": number,"priority": number,"priority_reason": string | null,"quoted_max": number | null,"quoted_min": number | null,"reservation_id": string | null,"service_date": string,"source": string,"status": string,"updated_at": string,"venue_id": string,"zone_preference": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "client_token"?: string | null,"closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"custom_answers"?: Json | null,"guest_id"?: string | null,"guest_name": string,"guest_phone"?: string | null,"id"?: string,"idempotency_key": string,"joined_at"?: string,"lock_version"?: number,"notes"?: string | null,"offer_expires_at"?: string | null,"organization_id": string,"party_size": number,"priority"?: number,"priority_reason"?: string | null,"quoted_max"?: number | null,"quoted_min"?: number | null,"reservation_id"?: string | null,"service_date": string,"source": string,"status"?: string,"updated_at"?: string,"venue_id": string,"zone_preference"?: string | null
+                    "client_token"?: string | null,"closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"custom_answers"?: Json | null,"desired_time"?: string | null,"guest_id"?: string | null,"guest_name": string,"guest_phone"?: string | null,"id"?: string,"idempotency_key": string,"joined_at"?: string,"lock_version"?: number,"notes"?: string | null,"offer_expires_at"?: string | null,"organization_id": string,"party_size": number,"priority"?: number,"priority_reason"?: string | null,"quoted_max"?: number | null,"quoted_min"?: number | null,"reservation_id"?: string | null,"service_date": string,"source": string,"status"?: string,"updated_at"?: string,"venue_id": string,"zone_preference"?: string | null
                   }
                   Update: {
-                    "client_token"?: string | null,"closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"custom_answers"?: Json | null,"guest_id"?: string | null,"guest_name"?: string,"guest_phone"?: string | null,"id"?: string,"idempotency_key"?: string,"joined_at"?: string,"lock_version"?: number,"notes"?: string | null,"offer_expires_at"?: string | null,"organization_id"?: string,"party_size"?: number,"priority"?: number,"priority_reason"?: string | null,"quoted_max"?: number | null,"quoted_min"?: number | null,"reservation_id"?: string | null,"service_date"?: string,"source"?: string,"status"?: string,"updated_at"?: string,"venue_id"?: string,"zone_preference"?: string | null
+                    "client_token"?: string | null,"closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"custom_answers"?: Json | null,"desired_time"?: string | null,"guest_id"?: string | null,"guest_name"?: string,"guest_phone"?: string | null,"id"?: string,"idempotency_key"?: string,"joined_at"?: string,"lock_version"?: number,"notes"?: string | null,"offer_expires_at"?: string | null,"organization_id"?: string,"party_size"?: number,"priority"?: number,"priority_reason"?: string | null,"quoted_max"?: number | null,"quoted_min"?: number | null,"reservation_id"?: string | null,"service_date"?: string,"source"?: string,"status"?: string,"updated_at"?: string,"venue_id"?: string,"zone_preference"?: string | null
                   }
                   Relationships: [
                     {
@@ -1347,6 +1347,9 @@ isOneToOne: false
                            },
 "tables_waitlist_add":
 { Args: { "p_idempotency_key": string,"p_input": Json,"p_venue_id": string }; Returns: Json
+                           },
+"tables_waitlist_book":
+{ Args: { "p_entry_id": string,"p_expected_lock_version": number,"p_reservation_id": string }; Returns: Json
                            },
 "tables_waitlist_close":
 { Args: { "p_entry_id": string,"p_expected_lock_version": number,"p_status": string }; Returns: Json
