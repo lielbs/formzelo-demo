@@ -5,15 +5,15 @@
  */
 .fz-tables {
   --hs-surface: #ffffff;
-  --hs-surface-2: #f2efea;
-  --hs-line: #eae6df;
-  --hs-line-strong: #b9b1a4;
-  --hs-ink: #1e2935;
-  --hs-muted: #556070;
+  --hs-surface-2: color-mix(in srgb, rgb(var(--fz-cloud-200)) 55%, #ffffff);
+  --hs-line: rgb(var(--fz-cloud-200));
+  --hs-line-strong: color-mix(in srgb, rgb(var(--fz-ink-soft)) 70%, #ffffff);
+  --hs-ink: rgb(var(--fz-ink));
+  --hs-muted: rgb(var(--fz-ink-muted));
   --hs-accent: #c2410c;
   --hs-accent-soft: #fff1e8;
   --hs-on-accent: #ffffff;
-  --hs-page: #f5f3ef;
+  --hs-page: rgb(var(--fz-cloud));
   --hs-attention: #b42318;
   --hs-upcoming: #56677d;
   --hs-arrived: #c2410c;
@@ -320,3 +320,10 @@ html.fz-dark .fz-topbar { background: rgb(15 20 27 / 0.8); box-shadow: 0 0.5px 0
 .hs-toolbtn.is-on { background: var(--hs-accent-soft); color: var(--hs-accent); }
 .hs-toolbtn:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 1px; }
 @media (min-width: 768px) { .hs-toolbtn[data-phone-only] { display: none; } }
+
+/* Changing the date: the previous day stays (dimmed, not clickable) until the new one arrives. */
+.hs-stale { opacity: 0.45; pointer-events: none; }
+.hs-progress { position: relative; height: 2px; overflow: hidden; background: transparent; }
+.hs-progress::after { content: ""; position: absolute; inset-block: 0; width: 35%; background: var(--hs-accent); animation: hs-progress 0.9s ease-in-out infinite; }
+@keyframes hs-progress { from { inset-inline-start: -35%; } to { inset-inline-start: 100%; } }
+@media (prefers-reduced-motion: reduce) { .hs-progress::after { animation: none; inset-inline-start: 0; width: 100%; opacity: 0.5; } }

@@ -47,7 +47,7 @@ export function HostShift() {
   const [tz, setTz] = useState('Asia/Jerusalem');
   const date = params.get('date') ?? '';
   const effectiveDate = date || dateInTz(now, tz);
-  const { shift, error, connection, lastSync, refetch } = useShiftSync(venueId, effectiveDate);
+  const { shift, error, connection, lastSync, refetch, stale } = useShiftSync(venueId, effectiveDate);
   const [view, setView] = useState<View>(() => (params.get('view') as View) || 'list');
   const [service, setService] = useState<string>('all');
   const [query, setQuery] = useState('');
@@ -96,12 +96,13 @@ export function HostShift() {
   if (!shift) return <PageLoader label="טוען את המשמרת…" />;
   if (!shift.published) return <div className="p-6"><ErrorState error="המקום עוד לא פורסם. סיימו את ההקמה כדי לפתוח משמרת." /></div>;
 
-  const canAct = shift.role !== 'viewer' && connection !== 'offline';
+  const canAct = !stale && shift.role !== 'viewer' && connection !== 'offline';
   const labels = labelsById;
   const selected = selection?.kind === 'reservation' ? shift.reservations.find((r) => r.id === selection.id) ?? null : null;
   const today = dateInTz(now, shift.venue.timezone);
   const closed = shift.closed.find((x) => x.kind === 'closed' && !x.serviceKey);
-  const isToday = shift.serviceDate === today;
+  const shownDate = date || shift.serviceDate;
+  const isToday = shownDate === today;
   const activeRows = tile === 'done' ? reservations : reservations.filter((r) => !isDone(r));
   const doneRows = tile === 'active' ? reservations.filter(isDone) : [];
   const items = timeline(activeRows, now, isToday ? timeInTz(now, shift.venue.timezone) : null);
@@ -145,15 +146,15 @@ export function HostShift() {
           <Button size="lg" icon={Plus} onClick={() => setQuickAdd('phone')} disabled={!canAct} className="hidden h-11 md:inline-flex">הוספה</Button>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-2 sm:px-4" role="group" aria-label="בחירת תאריך ומשמרת">
-          <Button variant="ghost" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shift.serviceDate, -1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
+          <Button variant="ghost" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shownDate, -1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
           <label className="hs-datepill relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
             <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden />
-            <span className="truncate sm:hidden">{formatDateShort(shift.serviceDate)}</span><span className="hidden truncate sm:inline">{formatDate(shift.serviceDate, 'he', false)}</span>
+            <span className="truncate sm:hidden">{formatDateShort(shownDate)}</span><span className="hidden truncate sm:inline">{formatDate(shownDate, 'he', false)}</span>
             <span className="sr-only">תאריך המשמרת — בחירת תאריך אחר</span>
-            <input id="shift-date" type="date" dir="ltr" value={shift.serviceDate} onChange={(e) => e.target.value && setDate(e.target.value)}
+            <input id="shift-date" type="date" dir="ltr" value={shownDate} onChange={(e) => e.target.value && setDate(e.target.value)}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
           </label>
-          <Button variant="ghost" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shift.serviceDate, 1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
+          <Button variant="ghost" size="sm" icon={ChevronLeft} aria-label="יום הבא" onClick={() => setDate(addDays(shownDate, 1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
           {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0 rounded-xl px-3">היום</Button>}
           <div className="ms-auto" />
           {shift.services.length > 1 && view !== 'waitlist' && (
@@ -179,7 +180,8 @@ export function HostShift() {
             אין חיבור לאינטרנט. מה שמוצג נכון לשעה <bdi dir="ltr">{lastSync ? timeInTz(lastSync, shift.venue.timezone) : '—'}</bdi>. פעולות מושבתות עד שהחיבור יחזור — שום דבר לא נשלח בינתיים.
           </p>
         )}
-        {closed && <p className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">היום מסומן כסגור להזמנות{closed.note ? ` (${closed.note})` : ''}. הזמנות קיימות מוצגות למטה.</p>}
+        {stale && <div className="hs-progress" role="progressbar" aria-label="טוען את היום שנבחר" />}
+        {closed && !stale && <p className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">היום מסומן כסגור להזמנות{closed.note ? ` (${closed.note})` : ''}. הזמנות קיימות מוצגות למטה.</p>}
       </header>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-3 pt-3 sm:px-4">
@@ -217,7 +219,7 @@ export function HostShift() {
       )}
 
       <div className="flex min-h-0 flex-1 gap-4 px-3 pb-28 pt-3 sm:px-4 md:pb-6">
-        <main id="shift-main" ref={listRef} className="min-w-0 flex-1" aria-label="המשמרת">
+        <main id="shift-main" ref={listRef} className={cx('min-w-0 flex-1 transition-opacity duration-150', stale && 'hs-stale')} aria-busy={stale || undefined} aria-label="המשמרת">
           <div key={view} className="hs-view">
           {view === 'list' && (
             reservations.length === 0 ? (

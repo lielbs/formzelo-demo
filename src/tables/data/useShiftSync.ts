@@ -15,6 +15,7 @@ export type Connection = 'connecting' | 'live' | 'polling' | 'offline';
 
 export function useShiftSync(venueId: string, date: string) {
   const [shift, setShift] = useState<(Shift & { waitlist: WaitlistEntry[] }) | null>(null);
+  const [shiftKey, setShiftKey] = useState<string | null>(null);
   const [error, setError] = useState<TablesError | null>(null);
   const [connection, setConnection] = useState<Connection>('connecting');
   const [lastSync, setLastSync] = useState<Date | null>(null);
@@ -36,6 +37,7 @@ export function useShiftSync(venueId: string, date: string) {
         return;
       }
       setShift({ ...s, waitlist: w });
+      setShiftKey(requestedFor);
       setError(null);
       setLastSync(new Date());
       dispatch({ type: 'fetched', revision: s.revision });
@@ -45,11 +47,13 @@ export function useShiftSync(venueId: string, date: string) {
     }
   }, [venueId, date]);
 
-  // New venue/date: start over.
+  // New date: keep the previous day on screen (marked stale) until the new one arrives, so only
+  // the list changes instead of the whole screen blinking. A different venue starts over.
   useEffect(() => {
-    setShift(null);
+    setShift((s) => (s && s.venue.id === venueId ? s : null));
+    setError(null);
     dispatch({ type: 'reset' });
-  }, [key]);
+  }, [key, venueId]);
 
   useEffect(() => {
     if (sync.needsFetch && !sync.fetching) void refetch();
@@ -103,5 +107,7 @@ export function useShiftSync(venueId: string, date: string) {
     };
   }, []);
 
-  return { shift, error, connection, lastSync, refetch, revision: sync.shown };
+  /** True while the shown shift is still the previous date's (actions must wait). */
+  const stale = shift !== null && shiftKey !== key;
+  return { shift, error, connection, lastSync, refetch, revision: sync.shown, stale };
 }
