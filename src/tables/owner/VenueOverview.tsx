@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, CalendarCheck, CalendarX, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, Trash2, UserCog } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarCheck, CalendarX, ChevronLeft, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, Trash2, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { confirmAction } from '../../components/Confirm';
@@ -82,6 +82,30 @@ export function VenueOverview() {
         </Card>
       )}
 
+      {published && canManage && (
+        <nav aria-label="ניהול המקום" className="mb-6">
+          <ul className="grid gap-px overflow-hidden rounded-2xl bg-ink/[0.08] shadow-card sm:grid-cols-2">
+            {[
+              { to: 'setup', icon: Settings2, title: 'שעות, שולחנות וכללים', hint: 'מתי פתוח, המפה ומי מאשר' },
+              { to: 'menus', icon: BookOpen, title: 'תפריטים', hint: 'מנות, מחירים ותמונות' },
+              { to: 'design', icon: Palette, title: 'עיצוב דפי ההזמנה', hint: 'איך האורחים רואים את המקום' },
+              { to: 'analytics', icon: BarChart3, title: 'נתונים', hint: 'הזמנות, סועדים ושעות עומס' },
+            ].map(({ to, icon: Icon, title, hint }) => (
+              <li key={to} className="bg-white">
+                <Link to={`/app/tables/${venue.id}/${to}`} className="flex min-h-[64px] items-center gap-3 px-4 py-3 hover:bg-cloud-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange">
+                  <Icon className="h-5 w-5 shrink-0 text-ink-muted" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold text-ink">{title}</span>
+                    <span className="block text-sm text-ink-muted">{hint}</span>
+                  </span>
+                  <ChevronLeft className="h-4 w-4 shrink-0 text-ink-soft" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
       {published && (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
           <Card as="section" className="p-5">
@@ -111,12 +135,8 @@ export function VenueOverview() {
                 </div>
               </div>
             )}
-            {canManage && (
+            {venue.role === 'owner' && (
               <div className="mt-5 flex flex-wrap gap-2 border-t border-cloud-200 pt-4">
-                <Link to={`/app/tables/${venue.id}/setup`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><Settings2 className="h-4 w-4" aria-hidden /> שעות, שולחנות וכללים</Link>
-                <Link to={`/app/tables/${venue.id}/menus`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><BookOpen className="h-4 w-4" aria-hidden /> תפריטים</Link>
-                <Link to={`/app/tables/${venue.id}/design`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><Palette className="h-4 w-4" aria-hidden /> עיצוב דפי ההזמנה</Link>
-                <Link to={`/app/tables/${venue.id}/analytics`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud"><BarChart3 className="h-4 w-4" aria-hidden /> נתונים</Link>
                 {venue.role === 'owner' && (
                   <Button size="sm" variant={venue.status === 'paused' ? 'primary' : 'secondary'} icon={venue.status === 'paused' ? Play : Pause} loading={busy === 'pause'} onClick={togglePause} className="h-10">
                     {venue.status === 'paused' ? 'פתיחת ההזמנות מחדש' : 'השהיית הזמנות חדשות'}
