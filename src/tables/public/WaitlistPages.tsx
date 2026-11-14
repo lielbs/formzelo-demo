@@ -1,6 +1,6 @@
 import { BellRing, Clock, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { cx, PageLoader } from '../../components/ui';
 import { newKey, publicVenue, publicWaitlistJoin, publicWaitlistLeave, publicWaitlistStatus, type PublicVenue, type WaitlistStatus } from '../data/client';
 import { messageFor, type TablesError } from '../domain/errors';
@@ -67,8 +67,16 @@ export function WaitlistJoinPage() {
   }
 
   if (venue === undefined) return <PageLoader label={s.loading} />;
-  if (!venue || !venue.policy.waitlistPublic) return (
-    <PublicShell lang={lang} venue={venue ?? null}><h1 className="text-xl font-semibold">{s.notFound}</h1><p className="mt-2 text-ink-muted">{s.notFoundBody}</p></PublicShell>
+  if (!venue) return (
+    <PublicShell lang={lang} venue={null}><h1 className="text-xl font-semibold">{s.notFound}</h1><p className="mt-2 text-ink-muted">{s.notFoundBody}</p></PublicShell>
+  );
+  // The venue exists but takes no online waitlist: say so and offer the booking page instead of "not found".
+  if (!venue.policy.waitlistPublic) return (
+    <PublicShell lang={lang} venue={{ ...venue, today: dateInTz(new Date(venue.serverNow), venue.timezone) }} design={design}>
+      <h1 className="text-xl font-semibold">{s.waitlistOff}</h1>
+      <p className="mt-2 text-ink-muted">{s.waitlistOffBody}</p>
+      <Link to={`/t/${venue.slug}${lang === 'en' ? '?lang=en' : ''}`} className={`${accentButton} mt-6`}>{s.book}</Link>
+    </PublicShell>
   );
   return (
     <PublicShell lang={lang} venue={{ ...venue, today: dateInTz(new Date(venue.serverNow), venue.timezone) }} design={design}>

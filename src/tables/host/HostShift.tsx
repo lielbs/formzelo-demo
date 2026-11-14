@@ -111,9 +111,18 @@ export function HostShift() {
   const row = (r: ShiftReservation, next = false, order = 0) => (
     <ReservationRow key={r.id} r={r} now={now} labels={labels} next={next} order={order} selected={selection?.kind === 'reservation' && selection.id === r.id}
       canAct={canAct} onSelect={() => setSelection({ kind: 'reservation', id: r.id })} onDone={done}
-      onAssign={() => { setAssigning(r); setView('floor'); setSelection({ kind: 'reservation', id: r.id }); }} />
+      onAssign={() => startAssign(r)} />
   );
   const switchView = (v: View) => { setView(v); setAssigning(null); };
+  // Choosing a table happens on the map. Below the lg breakpoint the details are a bottom sheet that
+  // would cover the map, so it closes; on a wide screen the details stay open beside the map.
+  const startAssign = (r: ShiftReservation) => {
+    setAssigning(r);
+    setView('floor');
+    setSelection(window.matchMedia('(min-width: 1024px)').matches ? { kind: 'reservation', id: r.id } : null);
+  };
+  // The reservation as it is now (a realtime update may have changed it since the move began).
+  const assigningNow = assigning ? shift.reservations.find((x) => x.id === assigning.id) ?? assigning : null;
 
   // The time-ordered list as hour sections (with the "now" line between them).
   type Section = { kind: 'now'; key: string; time: string } | { kind: 'slot'; key: string; label: string; count: number; covers: number; rows: Extract<TimelineItem, { kind: 'row' }>[] };
@@ -267,7 +276,7 @@ export function HostShift() {
             )
           )}
           {view === 'floor' && (
-            <FloorView shift={shift} states={tableStates} now={now} selection={selection} assigning={assigning} canAct={canAct}
+            <FloorView shift={shift} states={tableStates} now={now} selection={selection} assigning={assigningNow} canAct={canAct}
               onSelectTable={(id) => setSelection({ kind: 'table', id })} onAssigned={(m) => { setAssigning(null); done(m); }} />
           )}
           {view === 'waitlist' && <WaitlistView shift={shift} now={now} canAct={canAct} onDone={done} onAdd={() => setQuickAdd('waitlist')} labels={labels} />}
@@ -276,7 +285,7 @@ export function HostShift() {
         {selection && (
           <DetailPanel shift={shift} selection={selection} selected={selected} states={tableStates} now={now} canAct={canAct}
             onClose={() => setSelection(null)} onDone={done} onSelect={setSelection}
-            onAssign={(r) => { setAssigning(r); setView('floor'); }} />
+            onAssign={startAssign} />
         )}
       </div>
 
