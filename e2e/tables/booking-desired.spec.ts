@@ -6,6 +6,9 @@ import { expect, test } from '@playwright/test';
 import fs from 'node:fs';
 
 const OUT = 'test-evidence/booking-desired';
+// The page hides times that have already passed today, so the run is pinned to 09:00 in Israel.
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
+const NOW = new Date(`${today}T09:00:00+02:00`);
 const venue = {
   slug: 'mock-bistro', name: 'ביסטרו הנמל', timezone: 'Asia/Jerusalem', paused: false, address: 'הרצל 10, תל אביב', phone: '+97235551234', venueType: 'restaurant',
   intro: 'מטבח ים-תיכוני עונתי.', terms: 'אפשר לבטל עד שעתיים לפני.', showWhatsapp: true,
@@ -14,7 +17,7 @@ const venue = {
     { key: 'lunch', name: 'צהריים', weekdays: [0, 1, 2, 3, 4, 5, 6], start: '12:00', lastSeating: '15:00' },
     { key: 'dinner', name: 'ערב', weekdays: [0, 1, 2, 3, 4, 5, 6], start: '18:00', lastSeating: '22:00' },
   ],
-  brand: { displayName: null, palette: { primary: '#7C3AED' } }, serverNow: new Date().toISOString(),
+  brand: { displayName: null, palette: { primary: '#7C3AED' } }, serverNow: NOW.toISOString(),
 };
 const availability = (date, full) => ({
   date, state: full ? 'full' : 'open',
@@ -28,6 +31,7 @@ test('desired time → nearest free times → waitlist', async ({ browser }) => 
 fs.mkdirSync(OUT, { recursive: true });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL', hasTouch: true });
 const page = await ctx.newPage();
+await page.clock.setFixedTime(NOW);
 let full = false;
 await page.route('**/rest/v1/rpc/**', async (route) => {
   const url = route.request().url();
@@ -72,6 +76,7 @@ await ctx.close();
 test('desktop: the day strip scrolls with arrows and the mouse wheel', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'he-IL' });
   const page = await ctx.newPage();
+  await page.clock.setFixedTime(NOW);
   await page.route('**/rest/v1/rpc/**', async (route) => {
     const url = route.request().url();
     const body = route.request().postDataJSON() ?? {};

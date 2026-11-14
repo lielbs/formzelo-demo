@@ -8,7 +8,7 @@ import { desiredTimes, nearestSlots, type OpenSlot } from '../domain/desiredTime
 import { messageFor, type TablesError } from '../domain/errors';
 import { answersPayload, missingAnswers, type PageConfig } from '../domain/publicPages';
 import { normalizePhone } from '../domain/phone';
-import { addDays, dateInTz, formatDate, formatInstant } from '../domain/time';
+import { addDays, dateInTz, formatDate, formatInstant, timeInTz } from '../domain/time';
 import { Ltr } from '../ui';
 import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
@@ -98,6 +98,8 @@ const serviceIcon = (time: string | undefined) => {
 function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: PageConfig | null }) {
   const s = tx(lang);
   const today = dateInTz(new Date(venue.serverNow), venue.timezone);
+  // The server's clock minus this device's, so "now" is right even on a phone with a wrong clock.
+  const [clockSkew] = useState(() => new Date(venue.serverNow).getTime() - Date.now());
   const [step, setStep] = useState<Step>('choose');
   const [party, setParty] = useState(Math.min(Math.max(2, venue.policy.minParty), venue.policy.maxParty));
   const [date, setDate] = useState(today);
@@ -315,7 +317,9 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
                 // The guest asks for the time they want; free times around it follow. Times are
                 // grouped by service (lunch / dinner / late) so the list stays short and scannable.
                 const open: OpenSlot[] = avail.state === 'open' ? avail.services.flatMap((sv) => sv.slots.map((sl) => ({ serviceKey: sv.key, time: sl.time, approval: sl.approval }))) : [];
-                const wanted = desiredTimes(venue.services, weekdayOf(date), open);
+                // Today: only times still ahead (now + the booking lead, on the venue's clock).
+                const notBefore = date === today ? timeInTz(new Date(Date.now() + clockSkew + venue.policy.leadMinutes * 60_000), venue.timezone) : undefined;
+                const wanted = desiredTimes(venue.services, weekdayOf(date), open, 30, notBefore);
                 const svcs = venue.services.filter((sv) => wanted.some((w) => w.serviceKey === sv.key));
                 const current = svcs.find((sv) => sv.key === serviceTab) ?? svcs.find((sv) => wanted.some((w) => w.serviceKey === sv.key && open.some((o) => o.time === w.time))) ?? svcs[0];
                 const list = current ? wanted.filter((w) => w.serviceKey === current.key) : wanted;

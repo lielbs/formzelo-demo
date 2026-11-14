@@ -31,4 +31,10 @@ describe('desired time', () => {
   it('returns nothing near when the day is full around the time', () => {
     expect(nearestSlots([slot('12:00', 'lunch')], '21:00').near).toEqual([]);
   });
+  it('leaves out times that have passed today but keeps free slots from the server', () => {
+    const svc = [{ key: 'dinner', name: 'ערב', weekdays: [], start: '18:00', lastSeating: '22:00' }];
+    const times = desiredTimes(svc, 5, [{ serviceKey: 'dinner', time: '18:15', approval: 'instant' }], 30, '18:08').map((t) => t.time);
+    expect(times).toEqual(['18:15', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00']);
+    expect(desiredTimes(svc, 5, [], 30, '23:00')).toEqual([]);
+  });
 });

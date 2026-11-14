@@ -20,14 +20,19 @@ function dayMinutes(time: string, serviceStart: string): number {
  * Every time a guest may ask for on this weekday: each service from its start to its last seating,
  * every `step` minutes, plus any free slot the server returned (so a 15-minute venue keeps its slots).
  */
-export function desiredTimes(services: ServiceHours[], weekday: number, open: OpenSlot[], step = 30): { serviceKey: string; time: string }[] {
+/**
+ * `notBefore` (HH:MM, today only): times the guest can no longer ask for — the current time plus
+ * the booking lead — are left out. Free slots the server returned are always kept.
+ */
+export function desiredTimes(services: ServiceHours[], weekday: number, open: OpenSlot[], step = 30, notBefore?: string): { serviceKey: string; time: string }[] {
   const out = new Map<string, { serviceKey: string; time: string; order: number }>();
   for (const sv of services) {
     if (sv.weekdays.length && !sv.weekdays.includes(weekday)) continue;
     const start = toMin(sv.start);
     let last = toMin(sv.lastSeating);
     if (last < start) last += 24 * 60;
-    for (let m = start; m <= last; m += step) out.set(toTime(m), { serviceKey: sv.key, time: toTime(m), order: m });
+    const earliest = notBefore ? toMin(notBefore) : -1; // calendar minutes: times after midnight (m >= 1440) are always ahead
+    for (let m = start; m <= last; m += step) if (m >= earliest) out.set(toTime(m), { serviceKey: sv.key, time: toTime(m), order: m });
   }
   for (const s of open) {
     if (out.has(s.time)) continue;
