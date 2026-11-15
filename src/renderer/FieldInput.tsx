@@ -113,6 +113,50 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt: i
       );
 
     case 'time': {
+      const appt = config?.booking?.enabled && config.booking.schedule && config.booking.timeKey === field.key ? config.booking : undefined;
+      if (appt) {
+        const date = values[appt.dateKey];
+        const service = appt.schedule!.serviceKey;
+        const needService = service && !values[service];
+        const free = availability ? Object.values(availability).filter((s) => s.state !== 'full') : [];
+        const message = !date
+          ? 'בחרו קודם תאריך, ונראה את השעות הפנויות.'
+          : needService
+            ? 'בחרו קודם שירות, כדי שנראה שעות שמתאימות לו.'
+            : !availability
+              ? 'טוען שעות פנויות…'
+              : !free.length
+                ? 'אין שעות פנויות ביום הזה. נסו יום אחר.'
+                : null;
+        return (
+          <fieldset className="fz-field" aria-describedby={describedBy(field, error)} aria-invalid={Boolean(error) || undefined}>
+            <legend className="fz-label fz-legend">
+              {field.label}
+              {field.required && (
+                <span className="fz-req" aria-hidden>
+                  *
+                </span>
+              )}
+            </legend>
+            {message ? (
+              <p className="fz-help" role="status">{message}</p>
+            ) : (
+              <div className="fz-options fz-slots" data-appearance="chips" data-invalid={Boolean(error) || undefined} id={id} tabIndex={-1}>
+                {free.map((s) => (
+                  <label key={s.time} className="fz-option" data-kind="chip" data-slot={s.state}>
+                    <input type="radio" name={field.key} value={s.time} checked={value === s.time} onBlur={onBlur} onChange={() => onChange(s.time)} />
+                    <span className="fz-opt-label fz-num" dir="ltr">
+                      {s.time}
+                    </span>
+                    {s.state === 'limited' && <span className="fz-slot-hint">מקום אחרון</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+            <Help field={field} error={error} />
+          </fieldset>
+        );
+      }
       const opts = field.options ?? [];
       if (!opts.length) {
         return wrap(

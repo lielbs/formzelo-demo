@@ -416,7 +416,7 @@ export function Tour() {
                   mode="live"
                   embedded
                   caseAnswers={caseRun?.caseAnswers}
-                  getAvailability={config.booking?.enabled ? (date) => repo.getBookingAvailability(biz.slug, date) : undefined}
+                  getAvailability={config.booking?.enabled ? (date, v) => repo.getBookingAvailability(biz.slug, date, v) : undefined}
                   getOptionUsage={hasOptionCapacity(config) ? () => repo.getOptionUsage(biz.slug) : undefined}
                   onSubmit={async (values, consent, { payNow }) => {
                     const run = await repo.submitRun(biz.slug, { values, consent, payNow, runId: caseRun?.id });

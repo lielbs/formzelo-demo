@@ -12,7 +12,10 @@ import { recommendTheme, type ThemeRecommendation } from '../theme/resolver';
 import { newId } from '../lib/id';
 import { analyzePrompt, composeWorkflow, describeIntent, shouldCompose, type PromptIntent } from './compose';
 import { normalizeHebrew, tokenMatches } from './hebrew';
-import { readRules, type PromptRules } from './rules';
+import { readAppointment, readRules, type PromptRules } from './rules';
+import { withSchedule } from './booking';
+import { weekHours } from './schedule';
+import type { ThemeExtras } from '../domain/theme';
 import { buildGeneric, field, TEMPLATES, type TemplateKey } from './templates';
 
 export { normalizeHebrew };
@@ -21,7 +24,11 @@ const KEYWORDS: Record<Exclude<TemplateKey, 'generic'>, string[]> = {
   flower_order: ['פרח', 'זר', 'זרים', 'פלורי', 'משלוח פרחים', 'חנות פרחים', 'ורד', 'סידורי'],
   garage_repairs: ['מוסך', 'רכב', 'בלמים', 'רפידות', 'מכונאי', 'צמיגים', 'טיפול שנתי', 'מגבים', 'פילטר'],
   restaurant_event: ['מסעדה', 'אירוע פרטי', 'אירועים פרטיים', 'אירוע', 'אורחים', 'תפריט', 'קייטרינג', 'שף', 'ארוחה', 'בר מצווה', 'בת מצווה', 'יום הולדת'],
-  table_booking: ['הזמנת שולחן', 'הזמנות שולחן', 'שולחנות', 'שולחן', 'קביעת תור', 'תור', 'תורים', 'מספרה', 'מניקור', 'קוסמטיקאית', 'פגישה', 'יומן', 'שעות פנויות', 'הזמנת מקום'],
+  table_booking: [
+    'הזמנת שולחן', 'הזמנות שולחן', 'שולחנות', 'שולחן', 'קביעת תור', 'תור', 'תורים', 'מספרה', 'מניקור', 'קוסמטיקאית', 'פגישה', 'יומן', 'שעות פנויות', 'הזמנת מקום',
+    'ספר', 'ברבר', 'מכון יופי', 'קוסמטיקה', 'ציפורניים', 'ספא', 'עיסוי', 'אימון', 'אימונים', 'מאמן', 'מאמנת', 'פילאטיס', 'יוגה',
+    'קליניקה', 'פיזיותרפיה', 'מטפל', 'מטפלת', 'טיפולים', 'רופא', 'שיננית', 'וטרינר', 'שיעור פרטי', 'מורה פרטי', 'ריסים', 'גבות',
+  ],
   // Registration prompts are composed from blocks (engine/compose), so this template is chosen explicitly, not by keywords.
   contest_registration: [],
   document_collection: ['מסמכים', 'מסמך', 'טופס 106', 'רואה חשבון', 'הנהלת חשבונות', 'קליטת לקוח', 'אישורים', 'צילום', 'להעלות', 'העלאת'],
@@ -120,8 +127,6 @@ function applyModifiers(config: WorkflowConfig, text: string, adjustments: strin
   return next;
 }
 
-const DAY_SLOTS = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
-
 /** Booking template re-worded for appointments (salon, clinic, studio…) instead of a restaurant table. */
 /** Sample services per kind of appointment business; always flagged as placeholders. */
 const SERVICES: [RegExp, string[]][] = [
@@ -157,7 +162,7 @@ export function appointmentServices(text: string, prompt = ''): string[] {
 }
 
 /** One person per appointment unless the owner speaks of groups, couples or companions. */
-const GROUPS = /(משתתפ|אנשים|קבוצ|זוג|מלוו|ילדים|סועדים|אורחים|כמה אנשים)/;
+const GROUPS = /(משתתפ|אנשים|קבוצ|זוגות|מלוו|ילדים|סועדים|אורחים|כמה אנשים)/;
 
 function toAppointments(base: WorkflowConfig, title: string, text = '', prompt = ''): WorkflowConfig {
   const c = structuredClone(base);
@@ -180,17 +185,48 @@ function toAppointments(base: WorkflowConfig, title: string, text = '', prompt =
         return { ...f, items: [{ id: newId('hl'), title: 'בקשה — לא תור סופי', text: 'העסק מאשר כל בקשה', icon: 'calendar' as const }, { id: newId('hl'), title: 'ללא תשלום מראש', text: 'לא נדרשים פרטי אשראי', icon: 'shield' as const }] };
       }
       if (f.key === 'booking_date') return { ...f, helpText: 'פעילות בימים א׳–ה׳' };
-      if (f.key === 'booking_time') return { ...f, options: DAY_SLOTS.map((t) => ({ id: newId('opt'), label: t, value: t })) };
       if (f.key === 'party_size') return { ...f, label: 'מספר משתתפים', max: 4 };
       return f;
     });
+  // Hours per day, a length per service and how many at once, from the owner's words (or a sensible start).
+  const a = readAppointment(prompt);
+  const service = first.fields.find((f) => f.key === 'service')!;
+  if (a.services?.length) service.options = a.services.map((s, i) => ({ id: newId('opt'), label: s.name, value: `service_${i + 1}` }));
+  const fallback = /(אימון|מאמנ|פילאטיס|יוגה|עיסוי|טיפול פנים|פיזיותרפ|קליניק|ייעוץ)/.test(text) ? 60 : /(קליניק|רופא|מטפל)/.test(text) ? 45 : 30;
+  const durations = Object.fromEntries((service.options ?? []).map((o, i) => [o.value, a.services?.[i]?.minutes ?? fallback]));
+  const lengths = Object.values(durations);
+  const days = a.days ?? weekHours(readRules(prompt).weekdays ?? [0, 1, 2, 3, 4], '09:00', '18:00');
+  first.fields = first.fields.map((f) => (f.key === 'booking_time' ? { ...f, label: 'שעה פנויה', options: undefined, helpText: 'מוצגות רק שעות שעדיין פנויות' } : f));
+  c.booking = withSchedule({ ...c.booking!, capacityPerSlot: a.staff ?? 1 }, {
+    days,
+    step: lengths.every((m) => m % 30 === 0) ? 30 : 15,
+    duration: lengths[0] ?? fallback,
+    serviceKey: 'service',
+    durations,
+  });
+  const date = first.fields.find((f) => f.key === 'booking_date');
+  if (date) date.helpText = `פעילות בימים ${weekdayRange(c.booking.openWeekdays)}`;
   const second = c.steps[1]!;
   second.fields = second.fields.filter((f) => f.key !== 'occasion').map((f) => (f.key === 'requests' ? { ...f, label: 'הערות לעסק', placeholder: 'מה תרצו שנדע מראש?' } : f));
   c.consent = { required: true, text: 'ידוע לי שזו בקשה לתור ושהיא סופית רק לאחר אישור העסק.' };
   c.successMessage = 'הבקשה לתור נשלחה. זו עדיין בקשה — נעדכן ברגע שהעסק יאשר.';
-  c.booking = { ...c.booking!, guestsKey: groups ? c.booking!.guestsKey : undefined, openWeekdays: [0, 1, 2, 3, 4], slots: DAY_SLOTS, capacityPerSlot: 1, capacityUnit: 'bookings' };
+  c.booking = { ...c.booking!, guestsKey: groups ? c.booking!.guestsKey : undefined, capacityUnit: 'bookings' };
   c.confirmation = { title: 'הבקשה לתור התקבלה', nextSteps: ['העסק בודק את הזמינות', 'תקבלו עדכון על אישור או מועד חלופי', 'התור סופי רק אחרי אישור'] };
   return c;
+}
+
+/** The ribbon and promises of an appointment form: what is true of it, in the business's own field. */
+function appointmentExtras(text: string): ThemeExtras {
+  const badge = /(אימון|מאמנ|פילאטיס|יוגה|כושר)/.test(text) ? 'אימון אישי'
+    : /(קליניק|רופא|פיזיותרפ|מטפל|טיפול)/.test(text) ? 'טיפול מקצועי'
+    : /(מספר|ספר |ברבר|תספורת)/.test(text) ? 'במספרה שלנו'
+    : 'שירות אישי';
+  return {
+    ribbon: 'בוחרים שירות, יום ושעה מתוך מה שבאמת פנוי',
+    badge,
+    promises: [{ icon: 'calendar', text: 'רק שעות פנויות' }, { icon: 'clock', text: 'משך לפי השירות' }, { icon: 'shield', text: 'בלי תשלום מראש' }],
+    pattern: 'dots',
+  };
 }
 
 const DAY_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'שבת'];
@@ -201,7 +237,8 @@ export const weekdayRange = (days: number[]) =>
 /** Puts the rules the owner wrote onto the booking (versioned) and the intake (live). */
 function applyRules(config: WorkflowConfig, r: PromptRules): Intake | undefined {
   const b = config.booking?.enabled ? config.booking : undefined;
-  if (b) {
+  // Appointment hours already carry the days and times (engine/schedule).
+  if (b && !b.schedule) {
     if (r.weekdays) {
       b.openWeekdays = r.weekdays;
       const date = config.steps.flatMap((s) => s.fields).find((f) => f.key === b.dateKey);
@@ -212,6 +249,8 @@ function applyRules(config: WorkflowConfig, r: PromptRules): Intake | undefined 
       const time = config.steps.flatMap((s) => s.fields).find((f) => f.key === b.timeKey);
       if (time) time.options = r.slots.map((t) => ({ id: newId('opt'), label: t, value: t }));
     }
+  }
+  if (b) {
     if (r.noticeHours) b.minNoticeHours = r.noticeHours;
     if (r.daysAhead) b.maxDaysAhead = r.daysAhead;
     if (r.perDay) b.maxPerDay = r.perDay;
@@ -248,8 +287,9 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
     if (key === 'table_booking' && !/מסעד|שולחן|ארוח|קפה|בר /.test(text)) {
       config = toAppointments(config, titleFromPrompt(prompt), text, prompt);
       adjustments.push(GROUPS.test(text) ? 'הותאם לקביעת תור: בחירת שירות ושעות יום' : 'הותאם לקביעת תור אישי: בחירת שירות ושעות יום, לקוח אחד לכל תור');
-      if (namedServices(prompt).length < 2) notes.push('רשימת השירותים היא לדוגמה. עדכנו אותה בסטודיו לפני הפרסום.');
-      else adjustments.push(`השירותים שכתבתם: ${namedServices(prompt).join(', ')}`);
+      const written = readAppointment(prompt).services?.map((x) => x.name) ?? (namedServices(prompt).length >= 2 ? namedServices(prompt) : []);
+      if (!written.length) notes.push('רשימת השירותים היא לדוגמה. עדכנו אותה לפני הפרסום.');
+      else adjustments.push(`השירותים שכתבתם: ${written.join(', ')}`);
     }
     if (key === 'generic') adjustments.push('לא זוהה תחום מוכר — נוצר טופס בסיסי לעריכה');
     config = applyModifiers(config, text, adjustments);
@@ -271,11 +311,17 @@ export function generateWorkflowFromPrompt(prompt: string, forcedTemplate?: Temp
   for (const u of intent.unsupported) notes.push(`${u.requirement}: ${u.reason}`);
   const rules = readRules(prompt);
   const intake = applyRules(config, rules);
+  if (config.booking?.schedule) {
+    // Say what was understood about hours, lengths and staff instead of the generic slot line.
+    const a = readAppointment(prompt);
+    rules.understood = [...a.understood, ...rules.understood.filter((u) => !/^שעות:/.test(u) && !(a.days && /^ימי פעילות:/.test(u)))];
+  }
   config.draftNotes = notes.length ? notes.slice(0, 12) : undefined;
 
   // Appointment flows (salon, clinic…) take their look from the prompt, not from the restaurant template.
   const appointment = key === 'table_booking' && !/מסעד|שולחן|ארוח|קפה|בר /.test(text);
   const { theme, recommendation } = recommendTheme({ templateKey: appointment ? undefined : key, prompt, title: config.title });
+  if (appointment) theme.extras = appointmentExtras(text);
   const capabilityScore = describeIntent(intent).length;
   const confidence = forcedTemplate ? 'high' : compose ? (capabilityScore >= 3 ? 'high' : 'medium') : detected.score >= 3 ? 'high' : detected.score >= 1 ? 'medium' : 'low';
   return {

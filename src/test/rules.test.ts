@@ -35,8 +35,11 @@ describe('describe-in-words generation', () => {
     const g = generateWorkflowFromPrompt('קוסמטיקאית, טיפול פנים ואיפור, בימים א-ה בין 10 ל-19, עד 8 תורים ביום, לפחות 12 שעות מראש');
     const b = g.config.booking!;
     expect(b).toMatchObject({ openWeekdays: [0, 1, 2, 3, 4], maxPerDay: 8, minNoticeHours: 12 });
-    expect(b.slots[0]).toBe('10:00');
-    expect(g.config.steps.flatMap((s) => s.fields).find((f) => f.key === b.timeKey)!.options!.map((o) => o.value)).toEqual(b.slots);
+    // Appointments take their times from opening hours, per day, instead of a fixed list.
+    expect(b.schedule!.days[0]).toEqual([{ from: '10:00', to: '19:00' }]);
+    expect(b.schedule!.days[5]).toEqual([]);
+    expect(b.slots).toEqual([]);
+    expect(g.config.steps.flatMap((s) => s.fields).find((f) => f.key === b.timeKey)!.options).toBeUndefined();
     expect(g.understood.length).toBeGreaterThanOrEqual(3);
   });
 

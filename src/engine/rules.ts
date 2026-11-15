@@ -119,3 +119,107 @@ export function readRules(prompt: string, now = new Date()): PromptRules {
   if (r.onePerContact) r.understood.push('בקשה פתוחה אחת לכל לקוח');
   return r;
 }
+
+/* ---------- Appointments: hours per day, services with their length, staff ---------- */
+
+export interface AppointmentRules {
+  /** Hours per weekday (index 0 = Sunday); only when the owner wrote hours. */
+  days?: { from: string; to: string }[][];
+  /** Services in the owner's words, with their length in minutes. */
+  services?: { name: string; minutes: number }[];
+  /** How many appointments can run at once (barbers, therapists, rooms…). */
+  staff?: number;
+  understood: string[];
+}
+
+const DAY_NAME = '(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)';
+const DAY_ALL = 'אבגדהוש';
+const HOURS_AT = String.raw`\s*,?\s*(?:בין|משעה|מ-|מ|בשעות|שעות)?\s*(\d{1,2})(?::(\d{2}))?\s*(?:-|–|עד|ל-|ל)\s*(\d{1,2})(?::(\d{2}))?`;
+// "א-ה 9 עד 19", "בימים א׳–ה׳ 9:00-18:00", "ובשישי 8 עד 14", "ראשון עד חמישי בין 10 ל-20", "ו׳ 8-13".
+const SEGMENT = new RegExp(
+  String.raw`(?:^|[\s,.;])ו?ב?(?:יום|ימים|ימי)?\s*(?:([אבגדהוש])['׳]?\s*(?:-|–|עד)\s*([אבגדהוש])['׳]?(?![א-ת])|${DAY_NAME}(?:\s*(?:-|–|עד)\s*${DAY_NAME})?|([אבגדהוש])['׳])${HOURS_AT}`,
+  'g',
+);
+const MINUTES = /(\d{2,3})\s*(?:דקות|דק['׳]?)|שעה וחצי|חצי שעה|רבע שעה|שעתיים|שעה/;
+const STAFF = /(\d{1,2}|שני|שתי|שלוש|שלושה|ארבע|ארבעה|חמש|חמישה|שש|שישה)\s+(ספרים|ספריות|ספרות|מטפלים|מטפלות|מאמנים|מאמנות|עמדות|כיסאות|חדרי טיפול|חדרים|קוסמטיקאיות|מניקוריסטיות|עובדים|עובדות|אנשי צוות|רופאים|רופאות|מדריכים|מדריכות|מגרשים|מכשירים|מורים|מורות)/;
+
+const asMinutes = (m: RegExpMatchArray) =>
+  m[1] ? Number(m[1]) : m[0] === 'שעה וחצי' ? 90 : m[0] === 'חצי שעה' ? 30 : m[0] === 'רבע שעה' ? 15 : m[0] === 'שעתיים' ? 120 : 60;
+
+function clockOf(h: string, m?: string): number | null {
+  const v = Number(h) * 60 + Number(m ?? 0);
+  return Number(h) <= 24 && v <= 24 * 60 ? v : null;
+}
+
+/** Hours per weekday from "א-ה 9 עד 19 ובשישי 8 עד 14"; a bare "9 עד 19" applies to the open days. */
+function weekHoursFrom(t: string): AppointmentRules['days'] {
+  const days: { from: string; to: string }[][] = Array.from({ length: 7 }, () => []);
+  let found = false;
+  for (const m of t.matchAll(SEGMENT)) {
+    const [, l1, l2, w1, w2, single, h1, m1, h2, m2] = m;
+    let list: number[] = [];
+    if (l1 && l2) list = range(DAY_ALL.indexOf(l1), DAY_ALL.indexOf(l2));
+    else if (w1) list = w2 ? range(DAY_WORDS.indexOf(w1), DAY_WORDS.indexOf(w2)) : [DAY_WORDS.indexOf(w1)];
+    else if (single) list = [DAY_ALL.indexOf(single)];
+    const from = clockOf(h1!, m1);
+    const to = clockOf(h2!, m2);
+    if (!list.length || from === null || to === null || to <= from) continue;
+    const ranges = [{ from, to }];
+    // A split day: "9:00-13:00 ו-16:00-20:00".
+    const more = t.slice((m.index ?? 0) + m[0].length).match(/^\s*(?:ו-?|וגם|,)\s*(?:בין\s*|מ-?)?(\d{1,2})(?::(\d{2}))?\s*(?:-|–|עד|ל-|ל)\s*(\d{1,2})(?::(\d{2}))?/);
+    if (more) {
+      const f2 = clockOf(more[1]!, more[2]);
+      const t2 = clockOf(more[3]!, more[4]);
+      if (f2 !== null && t2 !== null && f2 >= to && t2 > f2) ranges.push({ from: f2, to: t2 });
+    }
+    for (const d of list) for (const r of ranges) if (d >= 0 && d <= 6 && days[d]!.length < 3) days[d]!.push({ from: hhmm(r.from), to: hhmm(r.to) });
+    found = true;
+  }
+  if (found) return days;
+  const m = t.match(/(?:בין|משעה|מ-|בשעות|שעות|פתוח|פתוחים)\s*(\d{1,2})(?::(\d{2}))?\s*(?:-|–|עד|ל-|ל)\s*(\d{1,2})(?::(\d{2}))?/) ?? t.match(/(?:^|\s)(\d{1,2})(?::(\d{2}))?\s*(?:-|–|עד)\s*(\d{1,2})(?::(\d{2}))?(?=\s|$|[,.])/);
+  if (!m) return undefined;
+  const from = clockOf(m[1]!, m[2]);
+  const to = clockOf(m[3]!, m[4]);
+  if (from === null || to === null || to <= from || from < 5 * 60) return undefined;
+  const open = weekdays(t) ?? [0, 1, 2, 3, 4];
+  return days.map((_, d) => (open.includes(d) ? [{ from: hhmm(from), to: hhmm(to) }] : []));
+}
+
+/** "תספורת 30 דקות, תספורת וזקן 45 דקות, טיפול פנים שעה" → services with their length. */
+function servicesFrom(t: string): AppointmentRules['services'] {
+  const out: { name: string; minutes: number }[] = [];
+  for (const part of t.split(/[,.;\n]|\s-\s/)) {
+    const seg = part.trim();
+    const m = seg.match(new RegExp(String.raw`^(.{2,40}?)\s+(?:של\s+|ל-?\s*|-\s*|–\s*)?(${MINUTES.source})\s*$`));
+    if (!m) continue;
+    const name = m[1]!.replace(/^(ו|יש|מציעים|מציעה|אצלנו|גם)\s+/, '').replace(/^ו(?=[א-ת]{3})/, '').trim();
+    const minutes = asMinutes(m[2]!.match(MINUTES)!);
+    if (!/[א-ת]/.test(name) || /\d/.test(name) || name.split(/\s+/).length > 4 || minutes < 5 || minutes > 720) continue;
+    if (!out.some((s) => s.name === name)) out.push({ name, minutes });
+  }
+  return out.length ? out.slice(0, 12) : undefined;
+}
+
+export function readAppointment(prompt: string): AppointmentRules {
+  const t = prompt.replace(/[֑-ׇ]/g, '').replace(/[״"]/g, '"').replace(/\s+/g, ' ').trim();
+  const r: AppointmentRules = { understood: [] };
+  r.days = weekHoursFrom(t);
+  if (r.days) {
+    const groups = new Map<string, number[]>();
+    r.days.forEach((ranges, d) => {
+      if (!ranges.length) return;
+      const k = ranges.map((x) => `${x.from}–${x.to}`).join(', ');
+      groups.set(k, [...(groups.get(k) ?? []), d]);
+    });
+    r.understood.push(`שעות: ${[...groups].map(([k, ds]) => `${ds.map((d) => LETTER_LABEL[d]).join(' ')} ${k}`).join(' · ')}`);
+  }
+  r.services = servicesFrom(t);
+  if (r.services) r.understood.push(`שירותים: ${r.services.map((s) => `${s.name} (${s.minutes} דק׳)`).join(', ')}`);
+  const staff = t.match(STAFF);
+  const n = staff ? num(staff[1]!) : NaN;
+  if (n >= 1 && n <= 50) {
+    r.staff = n;
+    r.understood.push(`${n} תורים במקביל (${staff![2]})`);
+  }
+  return r;
+}

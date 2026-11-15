@@ -543,7 +543,14 @@ export function ReservationCard({ config, values }: { config: WorkflowConfig; va
       <p className="fz-badge" data-tone="recommended">
         {bookingState('submitted').label}
       </p>
-      <p className="fz-help">ימי פעילות: {b.openWeekdays.map((d) => WEEKDAY_LABELS[d]).join(', ')}. הזמינות מחושבת מקומית ואינה שמירה של מקום.</p>
+      <p className="fz-help">
+        ימי פעילות: {b.openWeekdays.map((d) => WEEKDAY_LABELS[d]).join(', ')}.{' '}
+        {runtimeConfiguration.mode === 'demo'
+          ? 'הזמינות בדמו מחושבת מקומית ואינה שמירה של מקום.'
+          : b.schedule
+            ? 'השעה נשמרת לכם ברגע השליחה, ואף אחד אחר לא יוכל לקבוע אותה. התור סופי אחרי אישור העסק.'
+            : 'המקום נבדק ברגע השליחה. ההזמנה סופית אחרי אישור העסק.'}
+      </p>
     </section>
   );
 }

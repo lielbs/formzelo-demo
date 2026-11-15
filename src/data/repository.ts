@@ -74,7 +74,7 @@ export interface FormangleRepository {
   /** `payNow`: the customer pressed the clearly-labelled SIMULATED payment button. No money moves. */
   submitRun(slug: string, input: { values: Values; consent: boolean; runId?: string; payNow?: boolean }): Promise<WorkflowRun>;
   /** Local, best-effort slot usage for a booking workflow — not a cross-device guarantee. */
-  getBookingAvailability(slug: string, date: string): Promise<SlotAvailability[]>;
+  getBookingAvailability(slug: string, date: string, values?: Record<string, unknown>): Promise<SlotAvailability[]>;
   /** Local, best-effort places taken per limited option (e.g. a track with 30 places). */
   getOptionUsage(slug: string): Promise<OptionUsage>;
   /** Is the public link taking new requests now (local counts)? */

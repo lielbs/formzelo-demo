@@ -36,7 +36,7 @@ import {
 } from '../domain/schema';
 import { ASSET_LIMITS, AssetSchema, BrandKitSchema, WorkflowThemeSchema, type Asset, type BrandKit, type WorkflowTheme } from '../domain/theme';
 import { actionStatus, actionSummary, buildAction, cancel as cancelAct, isDuplicate, respond as respondAct, type ActionInput } from '../engine/actions';
-import { CUSTOMER_CANCELLABLE, slotAvailability, validateBooking } from '../engine/booking';
+import { CUSTOMER_CANCELLABLE, scheduledAvailability, slotAvailability, validateBooking } from '../engine/booking';
 import { normalizeLink } from '../engine/presence';
 import { optionUsage, validateOptionCapacity } from '../engine/capacity';
 import { hasOpenRequestFrom, intakeState } from '../engine/intake';
@@ -705,11 +705,12 @@ export class LocalStorageRepository implements FormangleRepository {
     return this.markPaymentPaid(orgId, runId);
   }
 
-  async getBookingAvailability(slug: string, date: string) {
+  async getBookingAvailability(slug: string, date: string, values: Record<string, unknown> = {}) {
     const pub = await this.resolvePublic(slug);
     const booking = pub?.version.config.booking;
     if (!pub || !booking?.enabled) return [];
     const runs = this.readOrg(pub.organization.id).runs.filter((r) => r.workflowId === pub.workflow.id);
+    if (booking.schedule) return scheduledAvailability(booking, date, runs, values as Values);
     return slotAvailability(booking, date, runs);
   }
 

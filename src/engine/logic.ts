@@ -92,7 +92,9 @@ export function logicIssues(config: WorkflowConfig): LogicIssue[] {
         else if (m.type !== 'number') issues.push({ level: 'error', message: `המחיר של ${name} מוכפל ב״${m.label}״, שאינו שדה מספר.`, fieldId: f.id });
       }
       if (f.min !== undefined && f.max !== undefined && f.min > f.max) issues.push({ level: 'error', message: `ב${name} הערך המינימלי גדול מהמקסימלי.`, fieldId: f.id });
-      if ((f.type === 'radio' || f.type === 'select' || f.type === 'multiselect' || f.type === 'time') && !f.options?.length)
+      // The time of an appointment form takes its choices from the opening hours (booking.schedule).
+      const scheduled = f.type === 'time' && config.booking?.enabled && config.booking.schedule && config.booking.timeKey === f.key;
+      if ((f.type === 'radio' || f.type === 'select' || f.type === 'multiselect' || f.type === 'time') && !f.options?.length && !scheduled)
         issues.push({ level: 'error', message: `ל${name} אין אפשרויות לבחירה.`, fieldId: f.id });
       if (f.options?.some((o) => o.price !== undefined && o.price < 0)) issues.push({ level: 'error', message: `ב${name} יש מחיר שלילי.`, fieldId: f.id });
       if (f.type === 'checkbox' && f.required && f.price) issues.push({ level: 'warning', message: `${name} הוא תוספת בתשלום וגם שדה חובה — הלקוח יחויב בה תמיד.`, fieldId: f.id });

@@ -12,6 +12,7 @@ import type { WorkflowTheme } from '../domain/theme';
 import { ValidationFailedError } from '../data/repository';
 import { visibleFields, visibleSteps, type Values } from '../engine/conditions';
 import { validateBooking, type SlotAvailability } from '../engine/booking';
+import { dayTimes } from '../engine/schedule';
 import { validateOptionCapacity, type OptionUsage } from '../engine/capacity';
 import { paymentPlan } from '../engine/completion';
 import { computePrice } from '../engine/pricing';
@@ -37,7 +38,7 @@ export interface RendererProps {
   /** `payNow`: the customer chose the simulated payment (no money moves). */
   onSubmit?: (values: Values, consent: boolean, opts: { payNow: boolean }) => Promise<void>;
   /** Local slot usage for booking workflows (demo only, see engine/booking.ts). */
-  getAvailability?: (date: string) => Promise<SlotAvailability[]>;
+  getAvailability?: (date: string, values?: Values) => Promise<SlotAvailability[]>;
   /** Live runs only: local places taken per limited option. */
   getOptionUsage?: () => Promise<OptionUsage>;
   /** Studio: jump the preview to the step that contains this step id. */
@@ -70,6 +71,8 @@ export function WorkflowRenderer({
   const theme = useMemo(() => themeProp ?? recommendTheme({ title: config.title, description: config.description }).theme, [themeProp, config.title, config.description]);
   const { control, watch, getValues, setError, clearErrors, formState } = useForm<Values>({ defaultValues: initialValues ?? {} });
   const values = watch();
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
   const [stepIndex, setStepIndex] = useState(0);
   /** Focus experience: which question of the current step is on screen. */
   const [screen, setScreen] = useState(0);
@@ -102,6 +105,11 @@ export function WorkflowRenderer({
   // Production never takes (or pretends to take) a payment in the form.
   const plan = ONLINE_PAYMENTS_SIMULATED ? paymentPlan(config, price) : { ...paymentPlan(config, price), dueNow: 0, choice: false };
   const bookingDate = config.booking?.enabled ? values[config.booking.dateKey] : undefined;
+  // Appointment hours depend on the chosen service (its length) and party size, so those refetch too.
+  const schedule = config.booking?.enabled ? config.booking.schedule : undefined;
+  const scheduleChoice = schedule
+    ? JSON.stringify([schedule.serviceKey ? values[schedule.serviceKey] : null, config.booking?.guestsKey ? values[config.booking.guestsKey] : null, getAvailability ? null : [schedule, config.booking?.capacityPerSlot, config.booking?.minNoticeHours]])
+    : '';
 
   // Booking: refresh local slot usage when the date changes. The callback is read
   // through a ref so an inline function from the parent doesn't refetch every render.
@@ -109,19 +117,28 @@ export function WorkflowRenderer({
   availabilityRef.current = getAvailability;
   const hasAvailability = Boolean(getAvailability);
   useEffect(() => {
-    const fetchSlots = availabilityRef.current;
+    // Previews (studio, creation screen) have no store: show the day's hours with nothing taken.
+    const preview = !availabilityRef.current && schedule && config.booking ? config.booking : undefined;
+    const fetchSlots = availabilityRef.current ?? (preview ? async (date: string, v?: Values) => dayTimes(preview, date, v ?? {}, []) : undefined);
     if (!fetchSlots || typeof bookingDate !== 'string' || !bookingDate) {
       setAvailability(undefined);
       return;
     }
     let cancelled = false;
-    fetchSlots(bookingDate)
-      .then((slots) => !cancelled && setAvailability(Object.fromEntries(slots.map((s) => [s.time, s]))))
-      .catch(() => !cancelled && setAvailability(undefined));
+    const load = () =>
+      fetchSlots(bookingDate, scheduleChoice ? valuesRef.current : undefined)
+        .then((slots) => !cancelled && setAvailability(Object.fromEntries(slots.map((s) => [s.time, s]))))
+        .catch(() => !cancelled && setAvailability(undefined));
+    void load();
+    // Appointments: keep the list fresh while the customer decides, so a time someone else just took disappears.
+    const timer = scheduleChoice ? window.setInterval(() => void load(), 30_000) : undefined;
     return () => {
       cancelled = true;
+      if (timer) window.clearInterval(timer);
     };
-  }, [hasAvailability, bookingDate]);
+    // scheduleChoice already carries the parts of config.booking that change the answer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasAvailability, bookingDate, scheduleChoice]);
 
   // Limited options (e.g. 30 places per track): load local usage once per mount.
   const usageRef = useRef(getOptionUsage);
@@ -217,8 +234,9 @@ export function WorkflowRenderer({
       const keys = new Set(fields.map((f) => f.key));
       const booking = validateBooking(config, all, []);
       const time = b.timeKey ? all[b.timeKey] : undefined;
-      if (b.timeKey && typeof time === 'string' && availability?.[time]?.state === 'full' && !booking[b.timeKey]) {
-        booking[b.timeKey] = 'המועד מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו שעה אחרת.';
+      if (b.timeKey && typeof time === 'string' && time && !booking[b.timeKey]) {
+        if (availability?.[time]?.state === 'full') booking[b.timeKey] = b.schedule ? 'המועד הזה כבר נתפס. בחרו שעה אחרת.' : 'המועד מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו שעה אחרת.';
+        else if (b.schedule && availability && !availability[time]) booking[b.timeKey] = 'השעה הזו לא פנויה ביום שנבחר. בחרו שעה מהרשימה.';
       }
       for (const [k, msg] of Object.entries(booking)) if (keys.has(k) && !errs[k]) errs[k] = msg;
     }

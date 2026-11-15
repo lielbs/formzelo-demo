@@ -531,8 +531,11 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
         counts: { total: Number(counts.total) || 0, today: Number(counts.today) || 0, week: Number(counts.week) || 0 },
       };
     },
-    async getBookingAvailability(slug: string, date: string): Promise<SlotAvailability[]> {
-      const { data, error } = await client.rpc('public_booking_availability', { p_slug: slug, p_date: date });
+    async getBookingAvailability(slug: string, date: string, values?: Record<string, unknown>): Promise<SlotAvailability[]> {
+      // Appointment hours (schedule) are answered per service length; plain slots by the older call.
+      const { data, error } = values
+        ? await client.rpc('public_booking_times', { p_slug: slug, p_date: date, p_values: values as Json })
+        : await client.rpc('public_booking_availability', { p_slug: slug, p_date: date });
       if (error) fail(error, 'Unable to load availability');
       return Array.isArray(data) ? (data as unknown as SlotAvailability[]) : [];
     },

@@ -11,6 +11,7 @@
 import type { Booking, RunStatus, WorkflowConfig, WorkflowRun } from '../domain/schema';
 import type { Values } from './conditions';
 import type { FieldErrors } from './validation';
+import { busyFromRuns, dayTimes, openDays, timeProblem } from './schedule';
 
 export const WEEKDAY_LABELS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'] as const;
 
@@ -54,7 +55,17 @@ export function slotAvailability(booking: Booking, date: string, runs: WorkflowR
   });
 }
 
-/** Booking-specific validation on top of field validation. */
+/** Times of a day for an appointment booking (schedule), from local runs. */
+export function scheduledAvailability(booking: Booking, date: string, runs: WorkflowRun[], values: Values, now = new Date()): SlotAvailability[] {
+  return dayTimes(booking, date, values, busyFromRuns(booking, runs, date), now);
+}
+
+/** Sets appointment hours on a booking and keeps the rules the server reads in step with them. */
+export function withSchedule(b: Booking, schedule: NonNullable<Booking['schedule']>): Booking {
+  const days = openDays(schedule);
+  return { ...b, unit: 'time', schedule, slots: [], openWeekdays: days.length ? days : b.openWeekdays };
+}
+
 /** Local calendar day, YYYY-MM-DD. */
 const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -97,6 +108,15 @@ export function validateBooking(config: WorkflowConfig, values: Values, runs: Wo
   const wd = weekdayOf(date);
   if (wd === null || !b.openWeekdays.includes(wd)) {
     errors[b.dateKey] = `אין קבלת הזמנות ביום ${wd === null ? 'זה' : WEEKDAY_LABELS[wd]}. ימי פעילות: ${b.openWeekdays.map((d) => WEEKDAY_LABELS[d]).join(', ')}`;
+    return errors;
+  }
+  if (b.schedule) {
+    const time = b.timeKey ? values[b.timeKey] : undefined;
+    if (b.timeKey && typeof time === 'string' && time) {
+      const problem = timeProblem(b, date, time, values, busyFromRuns(b, runs, date, excludeRunId));
+      if (problem === 'outside') errors[b.timeKey] = 'השעה הזו לא פנויה ביום שנבחר. בחרו שעה מהרשימה.';
+      if (problem === 'full') errors[b.timeKey] = 'המועד הזה כבר נתפס. בחרו שעה אחרת.';
+    }
     return errors;
   }
   if (b.timeKey) {

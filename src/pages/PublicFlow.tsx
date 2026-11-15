@@ -212,7 +212,7 @@ export function PublicFlow() {
         mode="live"
         initialValues={found ? answersToValues(found.run.answers) : undefined}
         caseAnswers={found?.run.caseAnswers}
-        getAvailability={config.booking?.enabled ? (date) => repo.getBookingAvailability(slug, date) : undefined}
+        getAvailability={config.booking?.enabled ? (date, v) => repo.getBookingAvailability(slug, date, v) : undefined}
         getOptionUsage={hasOptionCapacity(config) ? () => repo.getOptionUsage(slug) : undefined}
         onSubmit={async (values, consent, { payNow }) => {
           const run = await repo.submitRun(slug, { values, consent, runId: found?.run.id, payNow });

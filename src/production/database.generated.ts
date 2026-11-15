@@ -974,6 +974,9 @@ isOneToOne: false
 "public_booking_availability":
 { Args: { "p_date": string,"p_slug": string }; Returns: Json
                            },
+"public_booking_times":
+{ Args: { "p_date": string,"p_slug": string,"p_values": Json }; Returns: Json
+                           },
 "public_cancel_request":
 { Args: { "p_token": string }; Returns: Json
                            },

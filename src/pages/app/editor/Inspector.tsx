@@ -31,6 +31,7 @@ import { PAYMENT_PROVIDERS } from '../../../integrations/payments';
 import { newId } from '../../../lib/id';
 import { ART_KEYS } from '../../../theme/art';
 import { ConditionEditor, FIELD_TYPE_LABELS, move, uniqueKey } from './FieldEditor';
+import { AppointmentSetup, setBookingUnit } from './AppointmentSetup';
 
 const APPEARANCE_LABELS: Record<FieldAppearance, string> = {
   auto: 'אוטומטי',
@@ -754,6 +755,7 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
   const times = fields.filter((f) => f.type === 'time');
   const numbers = fields.filter((f) => f.type === 'number');
   const b: Booking | undefined = config.booking;
+  const scheduled = Boolean(b?.schedule || b?.unit === 'day' || b?.unit === 'week');
   const setB = (patch: Partial<Booking>) => update((d) => void (d.booking = { ...(d.booking as Booking), ...patch }));
   /** Offered times live in two places that must agree: the booking rules and the time field's options. */
   const setSlots = (slots: string[]) =>
@@ -834,6 +836,17 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
               </Select>
             </div>
           </div>
+          {scheduled ? (
+            <AppointmentSetup config={config} update={update} compact />
+          ) : (
+            <>
+              <div className="rounded-xl bg-cloud p-3 text-xs leading-relaxed">
+                <p className="font-medium text-ink">תורים לפי שעות פתיחה?</p>
+                <p className="mt-0.5 text-ink-muted">שעות שונות לכל יום, משך לכל שירות וכמה לקוחות במקביל. תור שנתפס נעלם מהטופס.</p>
+                <Button size="sm" variant="secondary" className="mt-2" onClick={() => update((d) => setBookingUnit(d, 'time'))}>
+                  מעבר לשעות פתיחה
+                </Button>
+              </div>
           <fieldset>
             <legend className="mb-1.5 text-sm font-medium">ימי פעילות</legend>
             <div className="flex flex-wrap gap-1.5">
@@ -876,9 +889,12 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
               </Select>
             </div>
           </div>
+            </>
+          )}
           <div className="space-y-3 border-t border-cloud-200 pt-3">
-            <p className="text-sm font-medium">מתי אפשר להזמין</p>
+            <p className="text-sm font-medium">{scheduled ? 'ימים סגורים ומכסה יומית' : 'מתי אפשר להזמין'}</p>
             <div className="grid gap-3 sm:grid-cols-3">
+              {!scheduled && (<>
               <div>
                 <FieldLabel htmlFor="bk-notice">התראה מראש</FieldLabel>
                 <Select id="bk-notice" value={b.minNoticeHours ?? ''} onChange={(e) => setB({ minNoticeHours: Number(e.target.value) || undefined })}>
@@ -901,7 +917,8 @@ export function BookingInspector({ config, update }: { config: WorkflowConfig; u
                   ))}
                 </Select>
               </div>
-              <div>
+              </>)}
+              <div hidden={scheduled && b.unit !== 'time'}>
                 <FieldLabel htmlFor="bk-day">מקסימום ליום</FieldLabel>
                 <Input
                   id="bk-day"

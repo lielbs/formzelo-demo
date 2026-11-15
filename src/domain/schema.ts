@@ -212,8 +212,36 @@ export const CompletionSchema = z.object({
 export type Completion = z.infer<typeof CompletionSchema>;
 export type CompletionMode = Completion['mode'];
 
+const ClockSchema = z.string().regex(/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/);
+
+/**
+ * Appointments: opening hours per weekday, how long each appointment takes (per service) and how
+ * many can run at once. Start times are generated from the hours, and a time is free only while
+ * fewer than `capacityPerSlot` appointments overlap it. The server enforces the same rule
+ * (private.guard_scheduled_booking), so two customers can never take the same place.
+ */
+export const ScheduleSchema = z.object({
+  /** Hours per weekday, index 0 = Sunday … 6 = Saturday. An empty day is closed. */
+  days: z.array(z.array(z.object({ from: ClockSchema, to: ClockSchema })).max(3)).length(7),
+  /** Minutes between possible start times. */
+  step: z.number().int().min(5).max(240),
+  /** Length of an appointment, minutes (when the service has no length of its own). */
+  duration: z.number().int().min(5).max(720),
+  /** Field whose option decides the length (the service choice). */
+  serviceKey: z.string().optional(),
+  /** Option value → minutes. */
+  durations: z.record(z.string(), z.number().int().min(5).max(720)).optional(),
+  /** Minutes kept free after each appointment. */
+  buffer: z.number().int().min(0).max(120).optional(),
+});
+export type Schedule = z.infer<typeof ScheduleSchema>;
+
 /** Booking request rules. Availability is evaluated locally and is NOT a guarantee. */
 export const BookingSchema = z.object({
+  /** What one booking takes: a time on a day (default), a whole day, or a whole week. */
+  unit: z.enum(['time', 'day', 'week']).optional(),
+  /** Appointment hours and lengths; when set, `slots` is unused and times come from here. */
+  schedule: ScheduleSchema.optional(),
   enabled: z.boolean(),
   dateKey: z.string().min(1),
   timeKey: z.string().optional(),

@@ -21,6 +21,7 @@ import { generateWorkflowFromPrompt, PROMPT_EXAMPLES, type GenerationResult } fr
 import { TEMPLATE_LIBRARY, type LibraryTemplate } from '../../engine/library';
 import { starterExtras } from '../../engine/finish';
 import { TemplateGallery } from './TemplateGallery';
+import { AppointmentSetup } from './editor/AppointmentSetup';
 import { formatRelative } from '../../lib/format';
 import { WorkflowRenderer } from '../../renderer/WorkflowRenderer';
 import { buildTheme, PRESETS } from '../../theme/presets';
@@ -378,6 +379,18 @@ export function WorkflowNew() {
                       ))}
                     </ul>
                     <p className="mt-1.5 text-xs text-amber-800/80">ההערות נשמרות בטיוטה ומוצגות בסטודיו — לא ללקוחות.</p>
+                  </div>
+                )}
+                {draft.config.booking?.enabled && (
+                  <div className="mt-4 rounded-xl border border-cloud-300 p-4">
+                    <h3 className="font-semibold">כמה שאלות על התורים</h3>
+                    <p className="mb-4 mt-0.5 text-xs text-ink-muted">מילאנו לפי מה שכתבתם. בדקו ותקנו, והטופס בצד מתעדכן מיד.</p>
+                    <AppointmentSetup config={draft.config} update={(fn) => setDraft((d) => {
+                      if (!d) return d;
+                      const config = structuredClone(d.config);
+                      fn(config);
+                      return { ...d, config };
+                    })} />
                   </div>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-3">
