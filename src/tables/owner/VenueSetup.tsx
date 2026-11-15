@@ -77,7 +77,7 @@ export function VenueSetup() {
       } catch (e) {
         const te = e as TablesError;
         pending.current = pending.current ?? next;
-        setSave(te.sqlState === '40001' ? 'conflict' : 'error');
+        setSave(te.isConflict ? 'conflict' : 'error');
       } finally {
         inflight.current = null;
       }

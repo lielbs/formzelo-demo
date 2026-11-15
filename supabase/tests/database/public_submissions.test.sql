@@ -79,7 +79,7 @@ select lives_ok(
 );
 select throws_ok(
   $$select * from public.transition_submission_status('33000000-0000-4000-8000-000000000001',(select id from public.submissions limit 1),0,'approved')$$,
-  '40001','Submission changed or unavailable','stale status update is rejected'
+  'PT409','Submission changed or unavailable','stale status update is rejected'
 );
 select throws_ok(
   $$select * from public.transition_submission_status('33000000-0000-4000-8000-000000000001',(select id from public.submissions limit 1),1,'completed')$$,

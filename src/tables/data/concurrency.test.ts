@@ -183,7 +183,7 @@ describe.skipIf(!url)('Tables inventory under real concurrency', () => {
     await Promise.all([h1.end(), h2.end()]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
-    expect((rejected.reason as { code?: string }).code).toBe('40001');
+    expect((rejected.reason as { code?: string }).code).toBe('PT409');
     expect((await activeAllocations(admin, ctx.venue)).filter((a) => a.reservation_id === res.id)).toHaveLength(1);
   });
 

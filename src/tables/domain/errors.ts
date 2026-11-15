@@ -1,11 +1,18 @@
 /** Maps server `tables:<code>` errors and SQLSTATEs to calm, human messages. */
 
+/**
+ * A stale write (someone else changed the row first). The server raises PT409 (HTTP 409); 40001 is the
+ * older code, still accepted from a cached client. Never raise 40001 for this on the server: PostgREST
+ * retries 40001 forever, which loops on a conflict that cannot resolve.
+ */
+export const isConflictState = (code?: string) => code === 'PT409' || code === '40001';
+
 export class TablesError extends Error {
   constructor(readonly code: string, message: string, readonly sqlState?: string, readonly detail?: unknown) {
     super(message);
     this.name = 'TablesError';
   }
-  get isConflict() { return this.sqlState === '40001'; }
+  get isConflict() { return isConflictState(this.sqlState); }
   get isDenied() { return this.sqlState === '42501'; }
   get isNetwork() { return this.code === 'network'; }
 }
@@ -95,7 +102,7 @@ export function toTablesError(err: unknown, lang: 'he' | 'en' = 'he'): TablesErr
     return new TablesError('network', messageFor('network', lang));
   }
   const m = /tables:([a-z_]+)/.exec(msg);
-  let code = m?.[1] ?? (e.code === '42501' ? 'denied' : e.code === '40001' ? 'stale' : e.code === '54000' ? 'rate_limited' : 'unknown');
+  let code = m?.[1] ?? (e.code === '42501' ? 'denied' : isConflictState(e.code) ? 'stale' : e.code === '54000' ? 'rate_limited' : 'unknown');
   if (code === 'denied' && /Tables access denied|permission denied/i.test(msg)) code = 'denied';
   let detail: unknown;
   try { detail = e.details ? JSON.parse(e.details) : undefined; } catch { detail = undefined; }

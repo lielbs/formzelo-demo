@@ -65,7 +65,7 @@ select throws_ok($$select public.save_quote_draft('35000000-0000-4000-8000-00000
 insert into ids select 'q1', id from public.save_quote_draft('35000000-0000-4000-8000-000000000001',(select id from ids where name='a'),null,
  '{"title":"זר כלה","items":[{"id":"main","label":"זר","unitPrice":300,"quantity":1,"optional":false,"included":true,"adjustable":false},{"id":"vase","label":"אגרטל","unitPrice":45.5,"quantity":1,"optional":true,"included":false,"adjustable":true,"maxQuantity":3}],"adjustments":[{"label":"הנחת חג","kind":"discount","mode":"percent","value":10}],"vat":{"mode":"excluded","rate":18}}',null);
 select is((select total_minor from public.quotes where id=(select id from ids where name='q1')),31860::bigint,'draft total: 300 - 10% + 18% VAT');
-select throws_ok($$select public.send_quote('35000000-0000-4000-8000-000000000001',(select id from ids where name='q1'),5)$$,'40001',null,'a stale send is refused');
+select throws_ok($$select public.send_quote('35000000-0000-4000-8000-000000000001',(select id from ids where name='q1'),5)$$,'PT409',null,'a stale send is refused');
 select lives_ok($$select public.send_quote('35000000-0000-4000-8000-000000000001',(select id from ids where name='q1'),0)$$,'staff sends the quote');
 reset role;
 

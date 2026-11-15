@@ -81,7 +81,7 @@ select is(public.tables_public_modify((select v::jsonb->>'token' from ctx where 
   jsonb_build_object('serviceKey','dinner','date',(select v from ctx where k='day'),'time','20:00','party',2), 0, 'f9000000-0000-4000-8000-000000000001')->>'result', 'modified', 'guest moves to 20:00');
 select throws_ok($$select public.tables_public_modify((select v::jsonb->>'token' from ctx where k='g1'),
   jsonb_build_object('serviceKey','dinner','date',(select v from ctx where k='day'),'time','21:00','party',2), 0, 'f9000000-0000-4000-8000-000000000001')$$,
-  '40001', 'tables:stale', 'modify with a stale version is a conflict');
+  'PT409', 'tables:stale', 'modify with a stale version is a conflict');
 reset role;
 select is((select local_time from public.tables_reservations where reference=(select v::jsonb->>'reference' from ctx where k='g1')), '20:00', 'time changed');
 select is((select count(*) from public.tables_allocations a join public.tables_reservations r on r.id=a.reservation_id where r.reference=(select v::jsonb->>'reference' from ctx where k='g1') and a.state='confirmed'), 1::bigint, 'one active allocation after modify');
@@ -171,7 +171,7 @@ select is(pg_temp.status_of((select v::uuid from ctx where k='w1')), 'seated', '
 select throws_ok($$select public.tables_staff_create_reservation((select v::uuid from ctx where k='venue'),
   jsonb_build_object('source','walk_in','serviceKey','dinner','date',(select v from ctx where k='today'),'party',2,'name','שני','seatNow',true,'tableIds',jsonb_build_array('d2000000-0000-4000-8000-000000000001')),
   gen_random_uuid())$$, 'P0001', 'tables:table_conflict', 'a second walk-in cannot be seated on an occupied table');
-select throws_ok($$select public.tables_transition((select v::uuid from ctx where k='w1'),'complete',99)$$, '40001', 'tables:stale', 'stale host action is a conflict');
+select throws_ok($$select public.tables_transition((select v::uuid from ctx where k='w1'),'complete',99)$$, 'PT409', 'tables:stale', 'stale host action is a conflict');
 select is(public.tables_transition((select v::uuid from ctx where k='w1'),'complete',pg_temp.lv((select v::uuid from ctx where k='w1')))->>'status', 'completed', 'host completes the visit');
 select is(public.tables_transition((select v::uuid from ctx where k='w1'),'undo',pg_temp.lv((select v::uuid from ctx where k='w1')))->>'status', 'seated', 'undo re-seats on the same table');
 select is(public.tables_transition((select v::uuid from ctx where k='w1'),'complete',pg_temp.lv((select v::uuid from ctx where k='w1')))->>'status', 'completed', 'complete again');
@@ -231,7 +231,7 @@ select is((select state from public.tables_allocations where waitlist_entry_id=(
 update public.tables_waitlist_entries set offer_expires_at = clock_timestamp() - interval '1 second' where id=(select v::uuid from ctx where k='wl1');
 update public.tables_allocations set expires_at = clock_timestamp() - interval '1 second' where waitlist_entry_id=(select v::uuid from ctx where k='wl1');
 set local role authenticated;
-select throws_ok($$select public.tables_waitlist_seat((select v::uuid from ctx where k='wl1'), null, 1)$$, '40001', 'tables:stale', 'late acceptance after timeout cannot seat');
+select throws_ok($$select public.tables_waitlist_seat((select v::uuid from ctx where k='wl1'), null, 1)$$, 'PT409', 'tables:stale', 'late acceptance after timeout cannot seat');
 select lives_ok($$select public.tables_shift((select v::uuid from ctx where k='venue'),(select v::date from ctx where k='today'))$$, 'the next shift refresh applies the expiry under the day lock');
 reset role;
 select is((select status from public.tables_waitlist_entries where id=(select v::uuid from ctx where k='wl1')), 'waiting', 'timed-out offer returns the party to waiting');

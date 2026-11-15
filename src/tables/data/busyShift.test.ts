@@ -166,7 +166,7 @@ describe.skipIf(!url)('busy shift simulation', () => {
         const tasks: Promise<void>[] = [];
         const act = (label: string, sql: string, params: unknown[]) => { chain = chain.then(async () => {
           const r = await call(c, label, { user: ids.hosts[h]! }, sql, params);
-          count(r.ok ? `${label}_ok` : `${label}_${r.code === '40001' ? 'conflict' : r.msg.replace(/^tables:/, '')}`);
+          count(r.ok ? `${label}_ok` : `${label}_${r.code === 'PT409' ? 'conflict' : r.msg.replace(/^tables:/, '')}`);
         }); tasks.push(chain); };
         // Hosts each pick from the same lists, so the same reservation is often hit twice.
         for (const r of pick(rs.filter((x) => x.status === 'confirmed' && new Date(x.startsAt).getTime() < now), 2)) {

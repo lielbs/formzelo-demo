@@ -174,6 +174,11 @@ describe('phone and errors', () => {
     expect(e.code).toBe('no_table');
     expect(e.message).toBe(messageFor('no_table'));
     expect(toTablesError({ code: '40001', message: 'tables:stale', details: '{"status":"seated","lockVersion":3}' }).detail).toEqual({ status: 'seated', lockVersion: 3 });
+    // The server now raises PT409 (HTTP 409) for a stale write; PostgREST would retry 40001 forever.
+    const fresh = toTablesError({ code: 'PT409', message: 'tables:stale', details: '{"status":"completed","lockVersion":2}' });
+    expect(fresh.code).toBe('stale');
+    expect(fresh.isConflict).toBe(true);
+    expect(toTablesError({ code: 'PT409', message: 'Draft changed by another team member' }).code).toBe('stale');
     expect(toTablesError({ message: 'Failed to fetch' }).isNetwork).toBe(true);
     expect(toTablesError({ code: 'XX000', message: 'relation "x" does not exist' }).message).not.toContain('relation');
   });

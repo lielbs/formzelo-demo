@@ -67,7 +67,7 @@ select throws_ok($$select public.tables_assign_staff((select v::uuid from ctx wh
 
 -- Draft: stale save is a conflict.
 select is((public.tables_save_draft((select v::uuid from ctx where k='venue'), pg_temp.draft(), 0)->>'lockVersion')::bigint, 1::bigint, 'owner saves the draft');
-select throws_ok($$select public.tables_save_draft((select v::uuid from ctx where k='venue'), pg_temp.draft(), 0)$$, '40001', null, 'stale draft save is a conflict');
+select throws_ok($$select public.tables_save_draft((select v::uuid from ctx where k='venue'), pg_temp.draft(), 0)$$, 'PT409', null, 'stale draft save is a conflict');
 select is(jsonb_array_length(public.tables_get_venue((select v::uuid from ctx where k='venue'))->'problems'), 0, 'draft has no blocking problems');
 
 -- Host: reads, cannot configure, sees no draft.
@@ -88,7 +88,7 @@ select is((select count(*) from public.tables_physical_tables), 0::bigint, 'othe
 
 -- Manager publishes.
 set local request.jwt.claim.sub = 'a1000000-0000-4000-8000-000000000003';
-select throws_ok($$select public.tables_publish_venue((select v::uuid from ctx where k='venue'), 0)$$, '40001', null, 'publish with stale version is a conflict');
+select throws_ok($$select public.tables_publish_venue((select v::uuid from ctx where k='venue'), 0)$$, 'PT409', null, 'publish with stale version is a conflict');
 select is((public.tables_publish_venue((select v::uuid from ctx where k='venue'), 1)->>'versionNumber')::int, 1, 'manager publishes version 1');
 select is((select count(*) from public.tables_physical_tables where venue_id=(select v::uuid from ctx where k='venue') and active), 4::bigint, 'four physical tables are active');
 select is((select count(*) from public.tables_combination_members), 2::bigint, 'combination has two members');

@@ -62,7 +62,7 @@ select throws_ok(
   format($$select * from public.save_workflow_draft('32000000-0000-4000-8000-000000000001',%L,0,
     '{"title":"כתיבה ישנה","description":"","mode":"public","caseFields":[],"steps":[{"id":"step_1","title":"פרטים","fields":[]}],"pricing":{"enabled":false,"currency":"ILS","fees":[],"depositPercent":0,"totalLabel":"סה״כ"},"branding":{"primaryColor":"#EA580C","logoText":"עסק"},"consent":{"required":true,"text":"מאשר"},"successMessage":"התקבל"}'::jsonb,
     pg_temp.valid_design(),8)$$,(select value from workflow_test_state where key='workflow_id')),
-  '40001','Workflow changed or is unavailable','stale draft updates are rejected'
+  'PT409','Workflow changed or is unavailable','stale draft updates are rejected'
 );
 select lives_ok(
   format($$select * from public.publish_workflow('32000000-0000-4000-8000-000000000001',%L,1,pg_temp.valid_design(),'formangle-test')$$,(select value from workflow_test_state where key='workflow_id')),

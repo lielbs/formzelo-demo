@@ -62,8 +62,11 @@ function toJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
 
+/** Someone else changed the row first: PT409 from the server (40001 from before 2026-11-15). */
+const isConflict = (error: PostgrestError | null) => error?.code === 'PT409' || error?.code === '40001';
+
 function fail(error: PostgrestError | null, fallback: string): never {
-  if (error?.code === '40001') throw new DomainRuleError('התהליך השתנה במכשיר או חלון אחר. רעננו לפני שמירה נוספת.');
+  if (isConflict(error)) throw new DomainRuleError('התהליך השתנה במכשיר או חלון אחר. רעננו לפני שמירה נוספת.');
   if (error?.code === '42501') throw new DomainRuleError('אין הרשאה לבצע את הפעולה בסביבת העבודה הזו.');
   if (error?.code === '22023') throw new DomainRuleError('השרת דחה מסמך תהליך שאינו תקין.');
   throw new UnexpectedServerError(fallback, isNetworkFailure(error));
@@ -704,7 +707,7 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
         p_organization_id: orgId, p_submission_id: runId, p_quote_id: input.quoteId ?? null as unknown as string,
         p_content: toJson(parsed.data), p_expected_lock_version: input.quoteId ? quoteLocks.get(input.quoteId) ?? 0 : null as unknown as number,
       });
-      if (error || !data?.[0]) { if (error?.code === '40001') fail(error, ''); if (error) throwPortalError(error); fail(error, 'Unable to save quote'); }
+      if (error || !data?.[0]) { if (isConflict(error)) fail(error, ''); if (error) throwPortalError(error); fail(error, 'Unable to save quote'); }
       quoteLocks.set(data[0].id, data[0].lock_version);
       emit();
       return mapQuote(data[0]);
@@ -712,7 +715,7 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
     async sendQuote(orgId: string, quoteId: string): Promise<QuoteRecord> {
       assertOrg(orgId);
       const { data, error } = await client.rpc('send_quote', { p_organization_id: orgId, p_quote_id: quoteId, p_expected_lock_version: quoteLocks.get(quoteId) ?? 0 });
-      if (error || !data?.[0]) { if (error?.code === '40001') fail(error, ''); if (error) throwPortalError(error); fail(error, 'Unable to send quote'); }
+      if (error || !data?.[0]) { if (isConflict(error)) fail(error, ''); if (error) throwPortalError(error); fail(error, 'Unable to send quote'); }
       quoteLocks.set(quoteId, data[0].lock_version);
       emit();
       return mapQuote(data[0]);
