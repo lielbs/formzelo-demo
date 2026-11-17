@@ -88,7 +88,7 @@ function WaitlistRow({ e, shift, now, canAct, onDone, labels }: { e: WaitlistEnt
       {canAct && (
         <div className="mt-3 grid gap-2">
           {later && e.desiredTime && e.status === 'waiting' && (
-            <Button variant="dark" loading={busy === 'book'} className="h-12"
+            <Button variant="primary" loading={busy === 'book'} className="h-12"
               onClick={() => run('book', async () => {
                 const r = await staffCreate(shift.venue.id, { source: 'phone', serviceKey: serviceFor(e.desiredTime!), date: shift.serviceDate, time: e.desiredTime, party: e.party, name: e.guestName, phone: e.guestPhone ?? '' }, bookKey.current);
                 await waitlistBook(e.id, r.reservationId, e.lockVersion);
@@ -98,7 +98,7 @@ function WaitlistRow({ e, shift, now, canAct, onDone, labels }: { e: WaitlistEnt
           )}
           {!later && seatLabel && (
             <div className={cx('grid gap-2', e.status === 'waiting' && 'grid-cols-[1fr_auto]')}>
-              <Button variant="dark" loading={busy === 'seat'} onClick={() => run('seat', () => waitlistSeat(e.id, e.status === 'offered' ? null : e.suggestion!.tableIds, e.lockVersion), `${e.guestName} הושבו`)} className="h-12">
+              <Button variant="primary" loading={busy === 'seat'} onClick={() => run('seat', () => waitlistSeat(e.id, e.status === 'offered' ? null : e.suggestion!.tableIds, e.lockVersion), `${e.guestName} הושבו`)} className="h-12">
                 {seatLabel}
               </Button>
               {e.status === 'waiting' && (

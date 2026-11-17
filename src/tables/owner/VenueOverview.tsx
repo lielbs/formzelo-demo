@@ -1,15 +1,16 @@
-import { BarChart3, BookOpen, CalendarCheck, CalendarX, ChevronLeft, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, Trash2, UserCog } from 'lucide-react';
-import { useState } from 'react';
+import { BarChart3, BookOpen, CalendarCheck, CalendarX, ChevronDown, ChevronLeft, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, ShieldCheck, Trash2, UserCog, type LucideIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { confirmAction } from '../../components/Confirm';
 import { clearLoadCache } from '../../lib/loadCache';
 import { copyText, useToast } from '../../components/Toast';
-import { Badge, Button, Card, ErrorState, FieldLabel, Input, Select, Spinner } from '../../components/ui';
+import { Badge, Button, ButtonLink, Card, ErrorState, FieldLabel, Input, Select, Spinner, cx } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { qrSvg, whatsappShareUrl } from '../../lib/share';
-import { assignStaff, deleteVenue, getVenue, listStaff, setException, setVenueStatus } from '../data/client';
+import { assignStaff, deleteVenue, getShift, getVenue, listStaff, setException, setVenueStatus } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import { addDays, dateInTz, formatDate } from '../domain/time';
+import type { VenueDetail } from '../domain/types';
+import { addDays, dateInTz, formatDate, timeInTz } from '../domain/time';
 import { Hint, Ltr, useLoad } from '../ui';
 import { GuestPrivacy } from './GuestPrivacy';
 
@@ -17,73 +18,60 @@ const ROLE_OPTIONS: [string, string][] = [['', 'ללא גישה למקום'], ['
 
 export const bookingUrl = (slug: string) => `${publicBaseUrl()}/t/${slug}`;
 
+/**
+ * The venue's home. It opens on today (bookings, covers, who is next, what needs a decision) with
+ * the shift one tap away; sharing and the venue's sections follow; rarely used settings sit closed
+ * at the bottom so the page reads as a place to work, not a settings form.
+ */
 export function VenueOverview() {
   const { venueId = '' } = useParams();
   const [params] = useSearchParams();
-  const toast = useToast();
   const { data: venue, error, loading, reload } = useLoad(() => getVenue(venueId), [venueId], 'venue');
-  const [busy, setBusy] = useState<string | null>(null);
 
   if (loading && !venue) return <Spinner label="טוען…" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
   if (!venue) return null;
   const canManage = venue.role === 'owner' || venue.role === 'manager';
-  const url = bookingUrl(venue.slug);
-  const waitlistUrl = `${url}/waitlist`;
   const published = venue.published;
-  const waitlistPublic = !!published?.snapshot.policy.waitlist?.publicEnabled;
-
-  async function togglePause() {
-    if (!venue) return;
-    setBusy('pause');
-    try {
-      await setVenueStatus(venue.id, venue.status === 'paused' ? 'published' : 'paused');
-      await reload();
-      toast(venue.status === 'paused' ? 'ההזמנות נפתחו מחדש' : 'הזמנות חדשות הושהו. הזמנות קיימות לא השתנו.', 'success');
-    } catch (e) {
-      toast((e as Error).message, 'error');
-    } finally {
-      setBusy(null);
-    }
-  }
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link to="/app/tables" className="text-sm text-ink-muted hover:text-ink">← כל המקומות</Link>
-          <h1 className="mt-1 break-words text-[28px] font-bold leading-tight tracking-tight text-ink">{venue.name}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
-            <Badge tone={venue.status === 'published' ? 'teal' : venue.status === 'paused' ? 'amber' : 'neutral'}>
-              {venue.status === 'published' ? 'מקבל הזמנות' : venue.status === 'paused' ? 'הזמנות חדשות מושהות' : 'עוד לא פורסם'}
-            </Badge>
-            {published && <span>גרסה {published.versionNumber}</span>}
-            {venue.hasUnpublishedChanges && published && <Badge tone="amber">יש שינויים שלא פורסמו</Badge>}
-          </div>
+      <div className="mb-5 min-w-0">
+        <Link to="/app/tables" className="text-sm text-ink-muted hover:text-ink">← כל המקומות</Link>
+        <h1 className="mt-1 break-words text-[28px] font-bold leading-tight tracking-tight text-ink">{venue.name}</h1>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+          <Badge tone={venue.status === 'published' ? 'teal' : venue.status === 'paused' ? 'amber' : 'neutral'}>
+            {venue.status === 'published' ? 'מקבל הזמנות' : venue.status === 'paused' ? 'הזמנות חדשות מושהות' : 'עוד לא פורסם'}
+          </Badge>
+          {venue.hasUnpublishedChanges && published && (
+            <Link to={`/app/tables/${venue.id}/setup`} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+              <Badge tone="amber">יש שינויים שלא פורסמו</Badge>
+            </Link>
+          )}
         </div>
-        {published && (
-          <Link to={`/app/tables/${venue.id}/live`} className="inline-flex h-12 items-center gap-2 rounded-xl bg-midnight px-5 text-base font-medium text-white hover:bg-midnight-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2">
-            <CalendarCheck className="h-5 w-5" aria-hidden /> פתיחת המשמרת
-          </Link>
-        )}
       </div>
 
       {params.get('published') && (
-        <div role="status" className="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-5 text-teal-900">
+        <div role="status" className="mb-5 rounded-2xl border border-teal-200 bg-teal-50 p-5 text-teal-900">
           <p className="text-lg font-semibold">המקום פורסם! אורחים יכולים להזמין עכשיו.</p>
-          <p className="mt-1 text-sm">שתפו את הקישור למטה באתר, באינסטגרם או בוואטסאפ, או הדפיסו את הקוד לשולחן הכניסה.</p>
+          <p className="mt-1 text-sm">שתפו את הקישור באתר, באינסטגרם או בוואטסאפ, או הדפיסו את הקוד לשולחן הכניסה.</p>
         </div>
       )}
 
-      {!published && (
-        <Card className="mb-6 p-5">
-          <p className="font-medium">ההקמה עוד לא הסתיימה.</p>
-          <Link to={`/app/tables/${venue.id}/setup`} className="mt-2 inline-block text-sm font-medium text-orange-800 hover:underline">להמשך ההקמה ←</Link>
+      {!published ? (
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <p className="text-lg font-semibold">ההקמה עוד לא הסתיימה</p>
+            <p className="mt-0.5 text-sm text-ink-muted">כשמסיימים ומפרסמים, אורחים יכולים להזמין מהקישור של המקום.</p>
+          </div>
+          <ButtonLink to={`/app/tables/${venue.id}/setup`} icon={Settings2}>המשך ההקמה</ButtonLink>
         </Card>
+      ) : (
+        <Today venueId={venue.id} timezone={venue.timezone} />
       )}
 
       {published && canManage && (
-        <nav aria-label="ניהול המקום" className="mb-6">
+        <nav aria-label="ניהול המקום" className="mt-6">
           <ul className="grid gap-px overflow-hidden rounded-2xl bg-ink/[0.08] shadow-card sm:grid-cols-2">
             {[
               { to: 'setup', icon: Settings2, title: 'שעות, שולחנות וכללים', hint: 'מתי פתוח, המפה ומי מאשר' },
@@ -106,58 +94,181 @@ export function VenueOverview() {
         </nav>
       )}
 
-      {published && (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
-          <Card as="section" className="p-5">
-            <h2 className="font-semibold">הקישור להזמנות</h2>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Input readOnly dir="ltr" value={url} aria-label="קישור ההזמנות" onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1" />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" icon={Copy} onClick={async () => toast((await copyText(url)) ? 'הקישור הועתק' : 'לא ניתן להעתיק', 'success')}>העתקה</Button>
-              <a className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium text-ink hover:bg-cloud" href={whatsappShareUrl(`להזמנת שולחן ב${venue.name}: ${url}`)} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="h-4 w-4" aria-hidden /> שיתוף בוואטסאפ
-              </a>
-              <a className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium text-ink hover:bg-cloud" href={url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" aria-hidden /> צפייה כמו אורח
-              </a>
-            </div>
-            {waitlistPublic && (
-              <div className="mt-5 border-t border-cloud-200 pt-4">
-                <h3 className="text-sm font-semibold">רשימת המתנה בכניסה</h3>
-                <p className="mt-0.5 text-sm text-ink-muted">הדפיסו את הקוד ושימו אותו בדלת: אורחים מצטרפים לרשימה מהטלפון.</p>
-                <Input readOnly dir="ltr" value={waitlistUrl} aria-label="קישור רשימת ההמתנה" onFocus={(e) => e.currentTarget.select()} className="mt-2" />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" icon={Copy} onClick={async () => toast((await copyText(waitlistUrl)) ? 'הקישור הועתק' : 'לא ניתן להעתיק', 'success')}>העתקה</Button>
-                  <a download={`qr-waitlist-${venue.slug}.svg`} href={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(waitlistUrl, { size: 1024 }))}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium text-ink hover:bg-cloud">
-                    <Download className="h-4 w-4" aria-hidden /> קוד QR להדפסה
-                  </a>
-                </div>
-              </div>
+      {published && <Share venue={venue} onChanged={reload} />}
+
+      {(canManage || venue.role === 'owner') && (
+        <section aria-labelledby="venue-more" className="mt-6">
+          <h2 id="venue-more" className="mb-2 px-1 text-sm font-semibold text-ink-muted">עוד הגדרות</h2>
+          <div className="overflow-hidden rounded-2xl bg-white shadow-card">
+            {published && canManage && (
+              <More icon={CalendarX} title="ימים מיוחדים" hint="סגירה ליום או אישור ידני לכל הזמנה">
+                <Closures venueId={venue.id} timezone={venue.timezone} />
+              </More>
             )}
             {venue.role === 'owner' && (
-              <div className="mt-5 flex flex-wrap gap-2 border-t border-cloud-200 pt-4">
-                {venue.role === 'owner' && (
-                  <Button size="sm" variant={venue.status === 'paused' ? 'primary' : 'secondary'} icon={venue.status === 'paused' ? Play : Pause} loading={busy === 'pause'} onClick={togglePause} className="h-10">
-                    {venue.status === 'paused' ? 'פתיחת ההזמנות מחדש' : 'השהיית הזמנות חדשות'}
-                  </Button>
-                )}
-              </div>
+              <More icon={UserCog} title="מי עובד במקום הזה" hint="מה כל איש צוות יכול לעשות כאן">
+                <Team venueId={venue.id} />
+              </More>
             )}
-          </Card>
-          <Card className="flex flex-col items-center gap-2 p-4">
-            <img src={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(url, { size: 220 }))}`} width={180} height={180} alt={`קוד QR לעמוד ההזמנות של ${venue.name}`} />
-            <a download={`qr-${venue.slug}.svg`} href={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(url, { size: 1024 }))}`} className="inline-flex h-10 items-center gap-1.5 text-sm font-medium text-orange-800 hover:underline">
-              <Download className="h-4 w-4" aria-hidden /> הורדת הקוד להדפסה
-            </a>
-          </Card>
+            {venue.role === 'owner' && (
+              <More icon={ShieldCheck} title="בקשות פרטיות של אורחים" hint="הורדה או מחיקה של פרטי אורח">
+                <GuestPrivacy organizationId={venue.organizationId} bare />
+              </More>
+            )}
+            {venue.role === 'owner' && (
+              <More icon={Trash2} title="מחיקת המקום" hint="הסרה של המקום והקישורים שלו" danger>
+                <DeleteVenue venueId={venue.id} name={venue.name} />
+              </More>
+            )}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** A closed row that opens in place: rarely used settings stay out of the way until needed. */
+function More({ icon: Icon, title, hint, danger = false, children }: { icon: LucideIcon; title: string; hint: string; danger?: boolean; children: ReactNode }) {
+  return (
+    <details className="group border-t border-cloud-200 first:border-t-0">
+      <summary className="flex min-h-[64px] cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-cloud-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange [&::-webkit-details-marker]:hidden">
+        <Icon className={cx('h-5 w-5 shrink-0', danger ? 'text-red-700' : 'text-ink-muted')} aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className={cx('block text-[15px] font-semibold', danger ? 'text-red-800' : 'text-ink')}>{title}</span>
+          <span className="block text-sm text-ink-muted">{hint}</span>
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-ink-soft transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="px-4 pb-5 sm:px-5">{children}</div>
+    </details>
+  );
+}
+
+const ACTIVE = new Set(['pending_approval', 'confirmed', 'arrived', 'seated']);
+
+/** Today at a glance, from the same shift data the host screen uses (one bounded read). */
+function Today({ venueId, timezone }: { venueId: string; timezone: string }) {
+  const today = dateInTz(new Date(), timezone);
+  const { data, error, loading } = useLoad(() => getShift(venueId, today), [venueId, today], 'venue-today');
+  const shiftHref = `/app/tables/${venueId}/live`;
+  const now = timeInTz(new Date(), timezone);
+  const active = (data?.reservations ?? []).filter((r) => ACTIVE.has(r.status));
+  const covers = active.reduce((n, r) => n + r.party, 0);
+  const pending = active.filter((r) => r.status === 'pending_approval').length;
+  const seatedNow = active.filter((r) => r.status === 'seated').reduce((n, r) => n + r.party, 0);
+  const waiting = (data?.waitlist ?? []).filter((w) => w.status === 'waiting' || w.status === 'offered').length;
+  const next = active.filter((r) => (r.status === 'confirmed' || r.status === 'pending_approval') && r.time >= now).sort((a, b) => a.time.localeCompare(b.time))[0];
+  const closedToday = (data?.closed ?? []).some((c) => c.kind === 'closed' && !c.serviceKey);
+
+  return (
+    <section aria-labelledby="venue-today" className="overflow-hidden rounded-2xl bg-white shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cloud-200 px-5 py-4">
+        <div className="min-w-0">
+          <h2 id="venue-today" className="text-lg font-semibold text-ink">היום</h2>
+          <p className="text-sm text-ink-muted">{formatDate(today, 'he', false)}{closedToday ? ' · סגור להזמנות' : ''}</p>
+        </div>
+        <ButtonLink to={shiftHref} icon={CalendarCheck} className="h-12 px-5 text-base">פתיחת המשמרת</ButtonLink>
+      </div>
+      {loading && !data ? (
+        <div className="px-5 py-6"><div className="h-14 animate-pulse rounded-xl bg-cloud-100" aria-hidden /><span className="sr-only">טוען את ההזמנות של היום…</span></div>
+      ) : error ? (
+        <p className="px-5 py-5 text-sm text-ink-muted">לא הצלחנו לטעון את ההזמנות של היום. הן מופיעות במשמרת.</p>
+      ) : active.length === 0 && waiting === 0 ? (
+        <p className="px-5 py-5 text-[15px] text-ink-muted">עוד אין הזמנות להיום. כשאורחים יזמינו מהקישור, הם יופיעו כאן ובמשמרת.</p>
+      ) : (
+        <div className="grid gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-[auto_auto_minmax(0,1fr)] sm:items-end">
+          <Figure value={active.length} unit={active.length === 1 ? 'הזמנה' : 'הזמנות'} />
+          <Figure value={covers} unit="סועדים" note={seatedNow ? `${seatedNow} יושבים עכשיו` : undefined} />
+          <div className="grid gap-1.5 text-[15px] sm:justify-self-end sm:text-end">
+            {next && (
+              <p className="text-ink">
+                <span className="text-ink-muted">הבאים: </span>
+                <b className="tabular-nums">{next.time}</b> · {next.guestName} · {next.party} סועדים
+              </p>
+            )}
+            {pending > 0 && (
+              <Link to={shiftHref} className="font-semibold text-red-800 hover:underline">
+                {pending === 1 ? 'הזמנה אחת מחכה לאישור שלכם' : `${pending} הזמנות מחכות לאישור שלכם`}
+              </Link>
+            )}
+            {waiting > 0 && <p className="text-ink-muted">{waiting === 1 ? 'אורח אחד ברשימת ההמתנה' : `${waiting} אורחים ברשימת ההמתנה`}</p>}
+          </div>
         </div>
       )}
+    </section>
+  );
+}
 
-      {published && canManage && <Closures venueId={venue.id} timezone={venue.timezone} />}
-      {venue.role === 'owner' && <Team venueId={venue.id} />}
-      {venue.role === 'owner' && <GuestPrivacy organizationId={venue.organizationId} />}
-      {venue.role === 'owner' && <DeleteVenue venueId={venue.id} name={venue.name} />}
+function Figure({ value, unit, note }: { value: number; unit: string; note?: string }) {
+  return (
+    <div>
+      <p className="text-ink"><b className="text-[40px] font-bold leading-none tracking-tight tabular-nums">{value}</b> <span className="text-base font-medium text-ink-muted">{unit}</span></p>
+      {note && <p className="mt-1 text-sm text-ink-muted">{note}</p>}
+    </div>
+  );
+}
+
+function Share({ venue, onChanged }: { venue: VenueDetail; onChanged: () => unknown }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const url = bookingUrl(venue.slug);
+  const waitlistUrl = `${url}/waitlist`;
+  const waitlistPublic = !!venue.published?.snapshot.policy.waitlist?.publicEnabled;
+
+  async function togglePause() {
+    setBusy(true);
+    try {
+      await setVenueStatus(venue.id, venue.status === 'paused' ? 'published' : 'paused');
+      await onChanged();
+      toast(venue.status === 'paused' ? 'ההזמנות נפתחו מחדש' : 'הזמנות חדשות הושהו. הזמנות קיימות לא השתנו.', 'success');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+      <Card as="section" className="p-5">
+        <h2 className="font-semibold">הקישור להזמנות</h2>
+        <Input readOnly dir="ltr" value={url} aria-label="קישור ההזמנות" onFocus={(e) => e.currentTarget.select()} className="mt-3 min-w-0" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" icon={Copy} onClick={async () => toast((await copyText(url)) ? 'הקישור הועתק' : 'לא ניתן להעתיק', 'success')} className="h-10">העתקה</Button>
+          <a className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium text-ink hover:bg-cloud" href={whatsappShareUrl(`להזמנת שולחן ב${venue.name}: ${url}`)} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="h-4 w-4" aria-hidden /> שיתוף בוואטסאפ
+          </a>
+          <a className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium text-ink hover:bg-cloud" href={url} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-4 w-4" aria-hidden /> צפייה כמו אורח
+          </a>
+        </div>
+        {waitlistPublic && (
+          <div className="mt-5 border-t border-cloud-200 pt-4">
+            <h3 className="text-sm font-semibold">רשימת המתנה בכניסה</h3>
+            <p className="mt-0.5 text-sm text-ink-muted">הדפיסו את הקוד ושימו אותו בדלת: אורחים מצטרפים לרשימה מהטלפון.</p>
+            <Input readOnly dir="ltr" value={waitlistUrl} aria-label="קישור רשימת ההמתנה" onFocus={(e) => e.currentTarget.select()} className="mt-2" />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" icon={Copy} onClick={async () => toast((await copyText(waitlistUrl)) ? 'הקישור הועתק' : 'לא ניתן להעתיק', 'success')} className="h-10">העתקה</Button>
+              <a download={`qr-waitlist-${venue.slug}.svg`} href={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(waitlistUrl, { size: 1024 }))}`} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-cloud-300 bg-white px-3 text-sm font-medium text-ink hover:bg-cloud">
+                <Download className="h-4 w-4" aria-hidden /> קוד QR להדפסה
+              </a>
+            </div>
+          </div>
+        )}
+        {venue.role === 'owner' && (
+          <div className="mt-5 border-t border-cloud-200 pt-4">
+            <Button size="sm" variant={venue.status === 'paused' ? 'primary' : 'secondary'} icon={venue.status === 'paused' ? Play : Pause} loading={busy} onClick={togglePause} className="h-10">
+              {venue.status === 'paused' ? 'פתיחת ההזמנות מחדש' : 'השהיית הזמנות חדשות'}
+            </Button>
+          </div>
+        )}
+      </Card>
+      <Card className="flex flex-col items-center gap-2 p-4">
+        <img src={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(url, { size: 220 }))}`} width={180} height={180} alt={`קוד QR לעמוד ההזמנות של ${venue.name}`} />
+        <a download={`qr-${venue.slug}.svg`} href={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(url, { size: 1024 }))}`} className="inline-flex h-10 items-center gap-1.5 text-sm font-medium text-orange-800 hover:underline">
+          <Download className="h-4 w-4" aria-hidden /> הורדת הקוד להדפסה
+        </a>
+      </Card>
     </div>
   );
 }
@@ -183,9 +294,8 @@ function Closures({ venueId, timezone }: { venueId: string; timezone: string }) 
     }
   }
   return (
-    <Card as="section" className="mt-6 p-5">
-      <h2 className="flex items-center gap-2 font-semibold"><CalendarX className="h-5 w-5" aria-hidden /> ימים מיוחדים</h2>
-      <p className="mt-1 text-sm text-ink-muted">סגירה ליום (חג, אירוע פרטי) או "כל הזמנה באותו יום דורשת אישור". זה חל מיד, בלי לפרסם מחדש, ולא מבטל הזמנות שכבר קיימות.</p>
+    <div>
+      <p className="text-sm text-ink-muted">סגירה ליום (חג, אירוע פרטי) או "כל הזמנה באותו יום דורשת אישור". זה חל מיד, בלי לפרסם מחדש, ולא מבטל הזמנות שכבר קיימות.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-[10rem_14rem_1fr_auto] sm:items-end">
         <div>
           <FieldLabel htmlFor="ex-date">תאריך</FieldLabel>
@@ -214,18 +324,17 @@ function Closures({ venueId, timezone }: { venueId: string; timezone: string }) 
           ))}
         </ul>
       )}
-    </Card>
+    </div>
   );
 }
 
 function Team({ venueId }: { venueId: string }) {
   const toast = useToast();
   const { data, error, reload, setData } = useLoad(() => listStaff(venueId), [venueId], 'staff');
-  if (error) return <div className="mt-6"><ErrorState error={error} onRetry={reload} /></div>;
+  if (error) return <ErrorState error={error} onRetry={reload} />;
   return (
-    <Card as="section" className="mt-6 p-5">
-      <h2 className="flex items-center gap-2 font-semibold"><UserCog className="h-5 w-5" aria-hidden /> מי עובד במקום הזה</h2>
-      <p className="mt-1 text-sm text-ink-muted">אנשי צוות מוזמנים מ״הגדרות ← צוות״. כאן בוחרים מה כל אחד יכול לעשות במקום הזה. הסרת גישה חלה מיד.</p>
+    <div>
+      <p className="text-sm text-ink-muted">אנשי צוות מוזמנים מ״הגדרות ← צוות״. כאן בוחרים מה כל אחד יכול לעשות במקום הזה. הסרת גישה חלה מיד.</p>
       {!data ? <Spinner /> : (
         <ul className="mt-3 divide-y divide-cloud-200">
           {data.map((m) => (
@@ -251,7 +360,7 @@ function Team({ venueId }: { venueId: string }) {
         </ul>
       )}
       {data && data.length === 1 && <div className="mt-3"><Hint>עוד אין אנשי צוות בעסק. הזמינו אותם מ״הגדרות ← צוות״, ואז תוכלו לתת להם גישה כאן.</Hint></div>}
-    </Card>
+    </div>
   );
 }
 
@@ -260,11 +369,10 @@ function DeleteVenue({ venueId, name }: { venueId: string; name: string }) {
   const toast = useToast();
   const navigate = useNavigate();
   return (
-    <section className="mt-6 rounded-2xl border border-red-200/80 bg-red-50/40 p-5">
-      <h2 className="flex items-center gap-2 font-semibold text-red-900"><Trash2 className="h-5 w-5" aria-hidden /> מחיקת המקום</h2>
-      <p className="mt-1 text-sm text-ink-muted [text-wrap:pretty]">
+    <div>
+      <p className="text-sm text-ink-muted [text-wrap:pretty]">
         המקום, המפה, התפריטים ודפי ההזמנה יוסרו, והקישורים יפסיקו לעבוד. אפשר למחוק רק כשאין הזמנות עתידיות ואין אורחים ברשימת ההמתנה.
-        רוצים רק לעצור הזמנות? אפשר להשהות למעלה.
+        רוצים רק לעצור הזמנות? אפשר להשהות ליד הקישור להזמנות.
       </p>
       <Button variant="danger" icon={Trash2} className="mt-4"
         onClick={() => void confirmAction({
@@ -292,6 +400,6 @@ function DeleteVenue({ venueId, name }: { venueId: string; name: string }) {
         }).then((ok) => { if (ok) { clearLoadCache(); toast('המקום נמחק', 'success'); navigate('/app/tables'); } })}>
         מחיקת המקום
       </Button>
-    </section>
+    </div>
   );
 }

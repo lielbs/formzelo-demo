@@ -132,19 +132,19 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
   if (r.status === 'pending_approval') {
     primary = <ActionButton primary label="אישור ההזמנה" icon={CheckCircle2} variant="primary" busy={busy === 'approve'} onClick={() => act('approve', () => decidePending(r.id, 'approve', r.lockVersion), `${r.guestName}: אושרה`)} />;
   } else if (open && r.tableIds.length === 0) {
-    primary = <ActionButton primary label="שיבוץ שולחן" icon={Sparkles} variant="dark" busy={false} onClick={() => onAssign(r)} />;
+    primary = <ActionButton primary label="שיבוץ שולחן" icon={Sparkles} variant="primary" busy={false} onClick={() => onAssign(r)} />;
   } else if (open && canSeatNow(r, now)) {
-    primary = <ActionButton primary label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={busy === 'seat'} onClick={() => t('seat', `הושבו בשולחן ${tables}`)} />;
+    primary = <ActionButton primary label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="primary" busy={busy === 'seat'} onClick={() => t('seat', `הושבו בשולחן ${tables}`)} />;
   } else if (open) {
     // Seating opens 3 hours before the booking (the server refuses earlier): show it, with when.
     primary = (
       <div className="grid gap-1.5">
-        <ActionButton primary label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="dark" busy={false} disabled onClick={() => undefined} />
+        <ActionButton primary label={`הושבה בשולחן ${tables}`} icon={CheckCircle2} variant="primary" busy={false} disabled onClick={() => undefined} />
         <p className="hs-muted text-xs">ההושבה נפתחת ב־<bdi dir="ltr">{opensAt}</bdi>{far ? ' ביום ההזמנה' : ''} — 3 שעות לפני ההזמנה.</p>
       </div>
     );
   } else if (r.status === 'seated') {
-    primary = <ActionButton primary label="סיום הביקור — השולחן מתפנה" icon={CheckCircle2} variant="dark" busy={busy === 'complete'} onClick={() => t('complete', 'סיימו')} />;
+    primary = <ActionButton primary label="סיום הביקור — השולחן מתפנה" icon={CheckCircle2} variant="primary" busy={busy === 'complete'} onClick={() => t('complete', 'סיימו')} />;
   }
   const secondary: ReactNode[] = [];
   if (r.status === 'confirmed') secondary.push(<ActionButton key="arrive" label="הגיעו (ממתינים לשולחן)" icon={LogIn} busy={busy === 'arrive'} onClick={() => t('arrive', 'הגיעו')} />);

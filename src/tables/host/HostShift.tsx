@@ -154,9 +154,10 @@ export function HostShift() {
           <ThemeButton />
           <Button size="lg" icon={Plus} onClick={() => setQuickAdd('phone')} disabled={!canAct} className="hidden h-11 md:inline-flex">הוספה</Button>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-2 sm:px-4" role="group" aria-label="בחירת תאריך ומשמרת">
+        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 sm:flex-nowrap sm:px-4" role="group" aria-label="בחירת תאריך ומשמרת">
           <Button variant="ghost" size="sm" icon={ChevronRight} aria-label="יום קודם" onClick={() => setDate(addDays(shownDate, -1))} className="h-11 w-11 shrink-0 rounded-full px-0" />
-          <label className="hs-datepill relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
+          {/* The date never truncates: on a phone the shift picker gives way to it. */}
+          <label className="hs-datepill relative flex h-11 min-w-[8.25rem] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold sm:max-w-xs sm:flex-none sm:px-4 focus-within:ring-2 focus-within:ring-orange">
             <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden />
             <span className="truncate sm:hidden">{formatDateShort(shownDate)}</span><span className="hidden truncate sm:inline">{formatDate(shownDate, 'he', false)}</span>
             <span className="sr-only">תאריך המשמרת — בחירת תאריך אחר</span>
@@ -167,9 +168,9 @@ export function HostShift() {
           {!isToday && <Button variant="secondary" size="sm" onClick={() => setDate(today)} className="h-11 shrink-0 rounded-xl px-3">היום</Button>}
           <div className="ms-auto" />
           {shift.services.length > 1 && view !== 'waitlist' && (
-            <label className="hs-datepill relative flex h-11 shrink-0 items-center rounded-xl focus-within:ring-2 focus-within:ring-orange">
+            <label className="hs-datepill relative flex h-11 min-w-[6.5rem] shrink items-center rounded-xl focus-within:ring-2 focus-within:ring-orange">
               <span className="sr-only">משמרת</span>
-              <select aria-label="משמרת" value={service} onChange={(e) => setService(e.target.value)} className="hs-select h-11 appearance-none rounded-xl bg-transparent ps-3 pe-8 text-[15px] font-semibold focus:outline-none">
+              <select aria-label="משמרת" value={service} onChange={(e) => setService(e.target.value)} className="hs-select h-11 w-full min-w-0 max-w-[8rem] appearance-none truncate rounded-xl sm:max-w-none bg-transparent ps-3 pe-8 text-[15px] font-semibold focus:outline-none">
                 <option value="all">כל היום</option>
                 {shift.services.map((sv) => <option key={sv.key} value={sv.key}>{sv.name}</option>)}
               </select>

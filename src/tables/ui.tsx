@@ -185,6 +185,10 @@ export function FloorCanvas({
         const c = TABLE_FILL[st];
         const selected = t.id === selectedId;
         const fontSize = Math.max(12, Math.min(22, Math.min(t.w, t.h) / 3.2));
+        // The caption must stay inside the shape: a round table's usable width is its chord near
+        // the middle, a rectangle's is its width minus padding. Digits are ~0.58em wide.
+        const innerW = t.shape === 'round' || t.shape === 'bar' ? Math.min(t.w, t.h) * 0.74 : t.w - 14;
+        const captionSize = t.caption ? Math.max(9, Math.min(fontSize * 0.62, innerW / (t.caption.length * 0.58))) : 0;
         return (
           <g
             key={t.id}
@@ -201,7 +205,7 @@ export function FloorCanvas({
               {t.label}
             </text>
             {t.caption && (
-              <text aria-hidden x={t.w / 2} y={t.h / 2 + fontSize * 0.75} textAnchor="middle" dominantBaseline="middle" fontSize={Math.max(11, fontSize * 0.6)} style={{ fill: c.text, fontVariantNumeric: 'tabular-nums', unicodeBidi: 'isolate' }}>
+              <text aria-hidden x={t.w / 2} y={t.h / 2 + fontSize * 0.75} textAnchor="middle" dominantBaseline="middle" fontSize={captionSize} fontWeight={500} style={{ fill: c.text, fontVariantNumeric: 'tabular-nums', unicodeBidi: 'isolate' }}>
                 {t.caption}
               </text>
             )}

@@ -25,6 +25,9 @@ for (const size of [{ width: 1280, height: 860, tag: 'd' }, { width: 390, height
     await page.screenshot({ path: shots(`${size.tag}-01-home`), fullPage: true });
 
     const name = size.tag === 'd' ? 'ביסטרו הנמל' : 'קפה הגן';
+    // Once a venue exists, adding another waits behind one button.
+    const addAnother = page.getByRole('button', { name: 'הוספת מקום נוסף' });
+    if (await addAnother.isVisible()) await addAnother.click();
     await page.getByLabel('שם המקום').fill(name);
     await page.getByRole('button', { name: 'יצירת המקום והתחלת ההקמה' }).click();
     await expect(page.getByRole('heading', { name: 'פרטי המקום' })).toBeVisible();

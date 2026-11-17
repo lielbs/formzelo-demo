@@ -99,6 +99,8 @@ export function Dashboard() {
     { done: events.some((e) => e.actor === 'owner' && e.type === 'status_changed' && !runs.find((r) => r.id === e.runId)?.isDemo), label: 'אשרו בקשה ראשונה', to: '/app/requests' },
   ];
   const showOnboarding = !dismissed && steps.some((s) => !s.done);
+  // A business with no requests yet sees one next step, not a wall of zeros.
+  const fresh = runs.length === 0;
 
   return (
     <>
@@ -180,13 +182,16 @@ export function Dashboard() {
               {latestNext.length > 0 && <> · אפשר: {latestNext.slice(0, 3).map((a) => a.label).join(' / ')}</>}
             </p>
           </div>
-          <ButtonLink to={`/app/requests/${latest.id}`} variant="dark" className="shrink-0">
+          <ButtonLink to={`/app/requests/${latest.id}`} variant="secondary" className="shrink-0">
             פתיחת הבקשה <ArrowLeft className="h-4 w-4" aria-hidden />
           </ButtonLink>
         </Card>
       )}
 
-      <StatStrip label="המספרים של העסק" items={[
+      {/* The four-step guide already says what to do; the card covers a guide that was closed. */}
+      {fresh && !showOnboarding && <FirstRequest hasFlow={Boolean(mainFlow)} />}
+
+      {!fresh && <StatStrip label="המספרים של העסק" items={[
         { label: 'תהליכים פעילים', value: formatNumber(stats.active), icon: WorkflowIcon, hint: stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined },
         { label: 'בקשות ב-7 ימים', value: formatNumber(stats.incoming), icon: Inbox },
         { label: 'ממתינות לטיפול', value: formatNumber(stats.pending), icon: Clock, tone: stats.pending ? 'orange' : 'neutral' },
@@ -194,7 +199,7 @@ export function Dashboard() {
         stats.money.paid > 0 || stats.money.outstanding > 0
           ? { label: 'תשלומים מדומים', value: formatCurrency(stats.money.paid), icon: Wallet, hint: `${stats.money.outstanding ? `${formatCurrency(stats.money.outstanding)} ממתינים · ` : ''}סימולציה, לא עבר כסף` }
           : { label: 'שיעור אישור', value: stats.approvalRate !== null ? `${stats.approvalRate}%` : '—', icon: CheckCircle2, hint: 'תהליכים ללא תשלום לא מציגים הכנסות' },
-      ]} />
+      ]} />}
 
       {actions.length > 0 && <Card className="mt-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -251,7 +256,7 @@ export function Dashboard() {
         ) : null}
       </Card>}
 
-      {stats.outcomes.length > 0 && (
+      {!fresh && stats.outcomes.length > 0 && (
         <Card className="mt-6 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">לפי מטרת התהליך</h2>
@@ -284,7 +289,7 @@ export function Dashboard() {
         </Card>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      {!fresh && <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card className="overflow-hidden lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cloud-200 px-4 py-3">
             <h2 className="font-semibold">בקשות אחרונות</h2>
@@ -323,8 +328,30 @@ export function Dashboard() {
             <NotificationList items={notifications.slice(0, 3)} />
           </Card>
         </div>
-      </div>
+      </div>}
       {stats.demoShare > 0 && <p className="mt-6 text-xs text-ink-soft">חלק מהנתונים בעמוד זה הם נתוני דמו בדיוניים ({Math.round(stats.demoShare * 100)}% מהבקשות), מסומנים בתג "דמו".</p>}
     </>
+  );
+}
+
+/** The empty dashboard: what happens next, in one card, instead of zeros and empty lists. */
+function FirstRequest({ hasFlow }: { hasFlow: boolean }) {
+  return (
+    <Card className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-800" aria-hidden><Inbox className="h-5 w-5" /></span>
+        <div>
+          <h2 className="text-lg font-semibold text-ink">עוד לא הגיעו בקשות</h2>
+          <p className="mt-0.5 max-w-prose text-sm text-ink-muted">
+            {hasFlow
+              ? 'התהליך מפורסם. שלחו את הקישור ללקוחות, וכל בקשה שתגיע תופיע כאן עם מה שצריך לעשות בה.'
+              : 'כל בקשה שלקוח שולח מופיעה כאן. מתחילים בתהליך ראשון: מתארים אותו במילים, ו־Formangle בונה את הטופס.'}
+          </p>
+        </div>
+      </div>
+      <ButtonLink to={hasFlow ? '/app/workflows' : '/app/workflows/new'} variant="secondary" icon={hasFlow ? SendHorizontal : Plus} className="shrink-0">
+        {hasFlow ? 'שיתוף הקישור' : 'תהליך ראשון'}
+      </ButtonLink>
+    </Card>
   );
 }

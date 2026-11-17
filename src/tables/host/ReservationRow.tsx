@@ -89,7 +89,7 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
       </button>
       <span className="hs-row-action">
         {action && canAct && (
-          <Button size="md" variant={action === 'approve' ? 'primary' : action === 'assign' ? 'secondary' : 'dark'} loading={busy} onClick={run}
+          <Button size="md" variant={action === 'approve' ? 'primary' : 'secondary'} loading={busy} onClick={run}
             aria-label={`${ACTION_HE[action]} — ${r.guestName}`} className="h-11 min-w-[5.5rem] px-3.5">
             {ACTION_HE[action]}
           </Button>

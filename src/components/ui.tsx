@@ -294,8 +294,21 @@ export function Modal({
 export function Tabs<T extends string>({ label, value, onChange, items, className }: {
   label: string; value: T; onChange: (v: T) => void; items: { value: T; label: string; count?: number }[]; className?: string;
 }) {
+  // When tabs run past the edge (phones), the far end fades so it reads as "scroll for more".
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setMore(el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft) > 2);
+    check();
+    el.addEventListener('scroll', check, { passive: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    ro?.observe(el);
+    return () => { el.removeEventListener('scroll', check); ro?.disconnect(); };
+  }, [items.length]);
   return (
-    <div role="tablist" aria-label={label} className={cx('fz-tabs', className)}>
+    <div ref={ref} role="tablist" aria-label={label} data-more-end={more || undefined} className={cx('fz-tabs', className)}>
       {items.map((it) => (
         <button key={it.value} type="button" role="tab" aria-selected={value === it.value} onClick={() => onChange(it.value)} className="fz-tab">
           {it.label}

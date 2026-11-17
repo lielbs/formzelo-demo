@@ -49,7 +49,9 @@ test('a venue cannot be deleted while guests wait, then is deleted (desktop)', a
   const page = await ctx.newPage();
   const problems = watch(page);
   await signIn(page, biz.owner, `/app/tables/${venue.id}`);
-  await page.getByRole('button', { name: 'מחיקת המקום' }).click();
+  // Rarely used settings sit closed at the bottom of the venue page.
+  await page.locator('summary', { hasText: 'מחיקת המקום' }).click();
+  await page.locator('details[open]').getByRole('button', { name: 'מחיקת המקום' }).click();
   const sheet = page.getByRole('alertdialog', { name: /למחוק את ביסטרו הנמל/ });
   const go = sheet.getByRole('button', { name: 'מחיקת המקום' });
   await expect(go).toBeDisabled();
@@ -61,7 +63,7 @@ test('a venue cannot be deleted while guests wait, then is deleted (desktop)', a
   await expect(sheet).toHaveCount(0);
 
   await sql(`update public.tables_waitlist_entries set status = 'cancelled' where venue_id = $1`, [venue.id]);
-  await page.getByRole('button', { name: 'מחיקת המקום' }).click();
+  await page.locator('details[open]').getByRole('button', { name: 'מחיקת המקום' }).click();
   await sheet.getByRole('textbox').fill('ביסטרו הנמל');
   await sheet.getByRole('button', { name: 'מחיקת המקום' }).click();
   await expect(page).toHaveURL(/\/app\/tables$/);

@@ -380,6 +380,8 @@ html.fz-dark .fz-sheet-danger { color: #ff8b8b; }
 /* ---------- Underline tabs (filter by state) — shared by requests, dashboard and Tables ---------- */
 .fz-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid rgb(var(--fz-hairline) / 0.1); scrollbar-width: none; }
 .fz-tabs::-webkit-scrollbar { display: none; }
+.fz-tabs[data-more-end] { -webkit-mask-image: linear-gradient(to left, transparent, #000 32px); mask-image: linear-gradient(to left, transparent, #000 32px); }
+[dir="rtl"] .fz-tabs[data-more-end] { -webkit-mask-image: linear-gradient(to right, transparent, #000 32px); mask-image: linear-gradient(to right, transparent, #000 32px); }
 .fz-tab {
   position: relative; display: inline-flex; min-height: 44px; flex: none; align-items: center; gap: 6px;
   padding-inline: 10px; color: rgb(var(--fz-ink-muted)); font-size: 14px; font-weight: 500; white-space: nowrap;

@@ -8,7 +8,8 @@ import type { TablesError } from '../domain/errors';
 
 type Found = { id: string; name: string; reservations: number } | null;
 
-export function GuestPrivacy({ organizationId }: { organizationId: string }) {
+/** `bare`: no card or heading, for use inside a disclosure that already names it. */
+export function GuestPrivacy({ organizationId, bare = false }: { organizationId: string; bare?: boolean }) {
   const toast = useToast();
   const [phone, setPhone] = useState('');
   const [found, setFound] = useState<Found | undefined>(undefined);
@@ -51,9 +52,8 @@ export function GuestPrivacy({ organizationId }: { organizationId: string }) {
     } finally { setBusy(null); }
   }
 
-  return (
-    <Card as="section" className="mt-6 p-5">
-      <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-5 w-5" aria-hidden /> בקשות פרטיות של אורחים</h2>
+  const body = (
+    <>
       <p className="mt-1 text-sm text-ink-muted">אורח ביקש לראות את המידע שנשמר עליו או למחוק אותו? חפשו לפי מספר הטלפון שלו. הפעולות נרשמות ביומן.</p>
       <form onSubmit={find} className="mt-3 flex flex-wrap items-end gap-2">
         <div className="min-w-[12rem] flex-1 sm:max-w-xs">
@@ -81,6 +81,13 @@ export function GuestPrivacy({ organizationId }: { organizationId: string }) {
           )}
         </div>
       )}
+    </>
+  );
+  if (bare) return <div>{body}</div>;
+  return (
+    <Card as="section" className="mt-6 p-5">
+      <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-5 w-5" aria-hidden /> בקשות פרטיות של אורחים</h2>
+      {body}
     </Card>
   );
 }

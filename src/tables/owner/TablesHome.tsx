@@ -1,7 +1,7 @@
 import { ArrowLeft, CalendarCheck, LayoutGrid, Lock, Plus, Store, UtensilsCrossed } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Badge, Button, Card, EmptyState, ErrorState, FieldLabel, Input, PageHeader, Spinner } from '../../components/ui';
+import { Badge, Button, buttonClass, Card, EmptyState, ErrorState, FieldLabel, Input, PageHeader, Spinner } from '../../components/ui';
 import { useActiveOrg } from '../../data/store';
 import { BASE_PATH } from '../../lib/links';
 import { createVenue, listVenues } from '../data/client';
@@ -32,7 +32,7 @@ function VenueCard({ v }: { v: VenueSummary }) {
       </div>
       <div className="mt-auto flex flex-wrap gap-2">
         {v.published && (
-          <Link to={`/app/tables/${v.id}/live`} className="inline-flex h-11 items-center gap-2 rounded-xl bg-midnight px-4 text-sm font-medium text-white hover:bg-midnight-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2">
+          <Link to={`/app/tables/${v.id}/live`} className={buttonClass('primary', 'md', 'h-11 px-4')}>
             <CalendarCheck className="h-4 w-4" aria-hidden /> משמרת חיה
           </Link>
         )}
@@ -55,6 +55,8 @@ export function TablesHome() {
   const [editSlug, setEditSlug] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // With venues already set up, adding another is a rare task: it waits behind one button.
+  const [adding, setAdding] = useState(false);
   const effectiveSlug = slug || (name.trim() ? suggestSlug(name) : '');
 
   async function onCreate(e: FormEvent) {
@@ -101,7 +103,10 @@ export function TablesHome() {
           {data.venues.map((v) => <VenueCard key={v.id} v={v} />)}
         </div>
       )}
-      {data.canCreate && (
+      {data.canCreate && data.venues.length > 0 && !adding && (
+        <Button variant="secondary" icon={Plus} onClick={() => setAdding(true)} className="h-11">הוספת מקום נוסף</Button>
+      )}
+      {data.canCreate && (data.venues.length === 0 || adding) && (
         <Card as="section" className="p-5 sm:p-6">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-800"><Store className="h-5 w-5" aria-hidden /></span>
@@ -113,7 +118,7 @@ export function TablesHome() {
           <form onSubmit={onCreate} className="mt-5 grid gap-4 sm:max-w-lg" noValidate>
             <div>
               <FieldLabel htmlFor="venue-name" required>שם המקום</FieldLabel>
-              <Input id="venue-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="למשל: ביסטרו הנמל" autoComplete="organization" />
+              <Input id="venue-name" autoFocus={adding} value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="למשל: ביסטרו הנמל" autoComplete="organization" />
             </div>
             <div>
               <p className="text-sm text-ink-muted">

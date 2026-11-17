@@ -13,7 +13,8 @@
   --fz-floor-focus: #e96b3d;
   --fz-floor-candidate: #0369a1;
   --fz-t-ready-fill: #ffffff;
-  --fz-t-ready-stroke: #3a8a78;
+  /* A free table is quiet (neutral outline); colour is kept for tables that need attention. */
+  --fz-t-ready-stroke: #7b8696;
   --fz-t-ready-text: #1e2935;
   --fz-t-soon-fill: #eff6ff;
   --fz-t-soon-stroke: #0369a1;
@@ -44,7 +45,7 @@ html.fz-dark {
   --fz-floor-focus: #f59e72;
   --fz-floor-candidate: #7cc4f0;
   --fz-t-ready-fill: #1a2330;
-  --fz-t-ready-stroke: #5fbfa6;
+  --fz-t-ready-stroke: #7d8899;
   --fz-t-ready-text: #e8edf2;
   --fz-t-soon-fill: #10283a;
   --fz-t-soon-stroke: #7cc4f0;

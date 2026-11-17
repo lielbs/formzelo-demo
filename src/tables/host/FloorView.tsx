@@ -89,6 +89,8 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
             <ChevronDown className="pointer-events-none absolute end-2.5 h-4 w-4 text-ink-muted" aria-hidden />
           </label>
         )}
+        {/* On wider screens the legend sits beside the controls, where the eye already is. */}
+        <div className="hidden min-w-0 md:block"><StateLegend /></div>
         <div className="ms-auto flex gap-1" role="group" aria-label="גודל המפה">
           <Button size="sm" variant="secondary" icon={ZoomOut} aria-label="הקטנה" disabled={zoom <= 1} onClick={() => setZoom((z) => Math.max(1, z - 0.5))} className="h-11 w-11 rounded-full px-0" />
           <Button size="sm" variant="secondary" icon={ZoomIn} aria-label="הגדלה" disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.5))} className="h-11 w-11 rounded-full px-0" />
@@ -104,7 +106,7 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
           </div>
         </div>
       </div>
-      <div className="hs-scroll overflow-x-auto px-1"><StateLegend /></div>
+      <div className="hs-scroll overflow-x-auto px-1 md:hidden"><StateLegend /></div>
       <details className="rounded-2xl border border-cloud-200 bg-white p-3" open={false}>
         <summary className="cursor-pointer text-sm font-semibold">השולחנות כרשימה</summary>
         <ul className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
