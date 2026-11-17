@@ -183,14 +183,28 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
         <Switch label="עיצוב מותאם אישית" checked={!!pages} onChange={(on) => setPages(on ? (publishedPages ?? normalizePublicPages(brandedDefaults(baseDraft.basics.venueType))) : null)} />
       </section>
 
-      {pages && theme && page && (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      {/* The page as guests see it is always in view; with customising off, the styles are the way in. */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
           <div className="grid min-w-0 content-start gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Segmented label="איזה דף עורכים" value={kind} onChange={setKind}
                 options={[{ value: 'booking', label: 'הזמנת שולחן' }, { value: 'waitlist', label: 'רשימת המתנה' }]} />
               <Button size="sm" variant="secondary" icon={Eye} className="h-11 lg:hidden" onClick={() => setShowPreview(true)}>תצוגה מקדימה</Button>
             </div>
+            {!pages && (
+              <section aria-labelledby="pp-start" className="rounded-2xl border border-cloud-200 bg-white p-4 shadow-card">
+                <h2 id="pp-start" className="font-semibold">בחרו סגנון לדפי ההזמנה</h2>
+                <p className="mt-0.5 text-sm text-ink-muted">היום האורחים רואים את הדף בעיצוב של מערכת המותג שלכם, כמו בתצוגה המקדימה. בחירה בסגנון פותחת את כל אפשרויות העיצוב. אצל האורחים שום דבר לא משתנה עד שמפרסמים.</p>
+                <div className="mt-3">
+                  <PresetPicker value={null} onPick={(id) => {
+                    const base = structuredClone(publishedPages ?? normalizePublicPages(brandedDefaults(baseDraft.basics.venueType)));
+                    Object.assign(base.theme, presetTheme(id, base.theme));
+                    setPages(base);
+                  }} />
+                </div>
+              </section>
+            )}
+            {pages && theme && page && (<>
 
             <Panel icon={Palette} title="סגנון" open>
               <label className="flex min-h-[44px] items-center justify-between gap-3 rounded-xl bg-cloud px-3 py-2 text-sm">
@@ -201,27 +215,7 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
                 <Switch label={`עיצוב נפרד לדף ${kind === 'booking' ? 'ההזמנה' : 'רשימת ההמתנה'}`} checked={ownTheme}
                   onChange={(on) => update((p) => { p[kind].ownTheme = on; if (on && !p[kind].theme) p[kind].theme = structuredClone(p.theme); if (!on) delete p[kind].theme; })} />
               </label>
-              <div role="radiogroup" aria-label="סגנון מוכן" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {PAGE_PRESETS.map((id) => {
-                  const pr = PRESETS[id];
-                  const on = theme.preset === id;
-                  return (
-                    <button key={id} type="button" role="radio" aria-checked={on}
-                      onClick={() => setTheme((t) => Object.assign(t, presetTheme(id, t)))}
-                      className={cx('group overflow-hidden rounded-xl border text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
-                        on ? 'border-midnight ring-2 ring-midnight/20' : 'border-cloud-300 hover:border-ink-soft')}>
-                      <span aria-hidden className="flex h-14 items-end gap-1 p-2" style={{ background: pr.theme.palette.background }}>
-                        <span className="h-6 flex-1 rounded" style={{ background: pr.theme.palette.surface, border: `1px solid ${pr.theme.palette.text}22` }} />
-                        <span className="h-6 w-8 rounded-full" style={{ background: pr.theme.palette.accent }} />
-                      </span>
-                      <span className="block px-2.5 py-2">
-                        <span className="flex items-center gap-1 text-sm font-semibold">{on && <Check className="h-4 w-4" aria-hidden />}{pr.label}</span>
-                        <span className="block text-xs text-ink-muted">{pr.description}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <PresetPicker value={theme.preset} onPick={(id) => setTheme((t) => Object.assign(t, presetTheme(id, t)))} />
             </Panel>
 
             <Panel icon={ImageIcon} title="מותג ותמונות" open>
@@ -318,6 +312,7 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
                 <ul className="list-inside list-disc">{[...new Set(problems.map((p) => PAGES_PROBLEM_HE[p.code] ?? p.code))].map((m) => <li key={m}>{m}</li>)}</ul>
               </div>
             )}
+            </>)}
           </div>
 
           <PreviewPanel open={showPreview} onClose={() => setShowPreview(false)} device={device} setDevice={setDevice} lang={previewLang} setLang={setPreviewLang}
@@ -331,7 +326,6 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
               },
             }} />
         </div>
-      )}
 
       <div className="sticky bottom-[calc(var(--fz-tabbar,0px)+0.75rem)] z-20 mt-5 rounded-2xl border border-cloud-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lift backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
@@ -346,6 +340,32 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The five ready styles as small swatches; picking one applies it (and turns customising on). */
+function PresetPicker({ value, onPick }: { value: string | null; onPick: (id: (typeof PAGE_PRESETS)[number]) => void }) {
+  return (
+    <div role="radiogroup" aria-label="סגנון מוכן" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {PAGE_PRESETS.map((id) => {
+        const pr = PRESETS[id];
+        const on = value === id;
+        return (
+          <button key={id} type="button" role="radio" aria-checked={on} onClick={() => onPick(id)}
+            className={cx('group overflow-hidden rounded-xl border text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange',
+              on ? 'border-midnight ring-2 ring-midnight/20' : 'border-cloud-300 hover:border-ink-soft')}>
+            <span aria-hidden className="flex h-14 items-end gap-1 p-2" style={{ background: pr.theme.palette.background }}>
+              <span className="h-6 flex-1 rounded" style={{ background: pr.theme.palette.surface, border: `1px solid ${pr.theme.palette.text}22` }} />
+              <span className="h-6 w-8 rounded-full" style={{ background: pr.theme.palette.accent }} />
+            </span>
+            <span className="block px-2.5 py-2">
+              <span className="flex items-center gap-1 text-sm font-semibold">{on && <Check className="h-4 w-4" aria-hidden />}{pr.label}</span>
+              <span className="block text-xs text-ink-muted">{pr.description}</span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -1741,6 +1741,44 @@ select.fz-control {
 .fz-bar .fz-total-amount {
   font-size: calc(1.3rem * var(--fz-display-scale));
 }
+/* Without a button the label and amount share one row, as before; with one, they stack beside it. */
+.fz-total:not([data-with-action]) > .fz-total-text {
+  display: contents;
+}
+.fz-total[data-with-action] {
+  align-items: center;
+}
+.fz-total[data-with-action] > .fz-total-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.fz-bar-go {
+  flex: none;
+  min-width: 148px;
+}
+@container fz (max-width: 359px) {
+  .fz-bar-go {
+    min-width: 0;
+  }
+}
+/* The bar's button replaces the inline one while the bar is showing (narrow layouts). */
+.fz-layout[data-bar-go='true'] .fz-nav .fz-btn-primary {
+  display: none;
+}
+.fz-layout[data-bar-go='true'] .fz-nav {
+  justify-content: flex-start;
+}
+@container fz (min-width: 960px) {
+  .fz-layout[data-bar-go='true'] .fz-nav .fz-btn-primary {
+    display: inline-flex;
+  }
+  .fz-layout[data-bar-go='true'] .fz-nav {
+    justify-content: space-between;
+  }
+}
 .fz-bar-lines {
   max-height: 40vh;
   overflow: auto;

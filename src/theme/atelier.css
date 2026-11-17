@@ -307,6 +307,61 @@
   font-size: 15px;
   font-weight: 700;
 }
+/* Phones: a tile without a photo becomes a row — a mark that fills when chosen, the name and its
+   line, and the price at the far end — so four choices fit on one screen instead of four. */
+@container fz (max-width: 599px) {
+  .fz[data-illustrated] .fz-options[data-appearance='tiles']:not(:has(.fz-tile-art)) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) {
+    min-height: 64px;
+    padding: 12px 16px;
+    padding-inline-start: 50px;
+    justify-content: center;
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 2px;
+    height: auto;
+    padding-inline: 0;
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-label {
+    grid-column: 1;
+    font-size: 17px;
+    padding-inline-end: 0;
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-desc {
+    grid-column: 1;
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-tile-foot {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin-top: 0;
+    padding-top: 0;
+    text-align: end;
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-tile-check {
+    top: 50%;
+    inset-inline-start: 16px;
+    inset-inline-end: auto;
+    width: 22px;
+    height: 22px;
+    opacity: 1;
+    transform: translateY(-50%);
+    background: transparent;
+    color: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--fz-line-strong, var(--fz-line));
+  }
+  .fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)):has(input:checked) .fz-tile-check {
+    background: var(--fz-primary);
+    color: var(--fz-on-primary);
+    box-shadow: none;
+  }
+}
 
 /* ---------- summary ---------- */
 
@@ -424,22 +479,7 @@
  * colour and geometry. Decorative marks are pseudo-elements (aria-hidden by nature).
  * ====================================================================== */
 
-/* Shared: a catalogue index on typographic tiles (01, 02…). */
-.fz[data-illustrated] .fz-options[data-appearance='tiles'] {
-  counter-reset: fz-opt;
-}
-.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) {
-  counter-increment: fz-opt;
-}
-.fz[data-illustrated] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body::before {
-  content: counter(fz-opt, decimal-leading-zero);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  font-variant-numeric: tabular-nums;
-  color: var(--fz-primary-ink);
-  opacity: 0.85;
-}
+/* Typographic tiles carry no index numbers: options are choices, not a sequence. */
 
 /* ---------- magazine (editorial): a cover ---------- */
 
@@ -557,10 +597,6 @@
   font-size: clamp(2.2rem, 1.3rem + 4cqi, 4.2rem);
   letter-spacing: -0.03em;
 }
-.fz[data-illustrated] .fz-layout[data-flow='console'] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body::before {
-  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
-  letter-spacing: 0.04em;
-}
 
 /* ---------- poster (playful): one huge outlined initial ---------- */
 
@@ -583,13 +619,6 @@
   line-height: 0.98;
   letter-spacing: -0.03em;
   max-width: 14ch;
-}
-.fz[data-illustrated] .fz-layout[data-flow='playful'] .fz-option[data-kind='tile']:not(:has(.fz-tile-art)) .fz-opt-body::before {
-  font-size: 26px;
-  letter-spacing: -0.02em;
-  font-family: var(--fz-font-display);
-  color: var(--fz-primary);
-  opacity: 1;
 }
 
 /* ---------- minimal (card): Swiss ---------- */

@@ -1,6 +1,7 @@
 /**
  * One quiet card at the top of the studio: first steps, notes from the generator and
- * built-in advice (engine/advisor). Collapsed it is a single line, so the form stays in view.
+ * built-in advice (engine/advisor). It starts as a single line with the next step on it, so the
+ * form itself is what the owner sees first; the full list opens on request.
  */
 import { ChevronDown, Lightbulb, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
@@ -45,9 +46,7 @@ export function StudioCoach({
   const dismissKey = `formzelo:ui:coach-dismissed:${workflowId}`;
   const [open, setOpen] = useState(() => {
     const saved = read(openKey);
-    if (saved) return saved === 'open';
-    // Phones start collapsed: the form itself comes first on a small screen.
-    return typeof window === 'undefined' || window.matchMedia?.('(min-width: 768px)').matches !== false;
+    return saved === 'open';
   });
   const [dismissed, setDismissed] = useState<string[]>(() => {
     try {
@@ -72,11 +71,13 @@ export function StudioCoach({
     setDismissed(next);
     write(dismissKey, JSON.stringify(next));
   };
+  const nextStep = steps?.find(([, d, a]) => !d && a);
   const summary = [steps && `${done}/${steps.length} צעדים`, tips.length > 0 && `${tips.length} המלצות`, noteCount > 0 && `${noteCount} לבדיקה`].filter(Boolean).join(' · ');
 
   return (
     <section aria-label="העוזר של הסטודיו" className="mb-4 rounded-xl border border-cloud-200 bg-white">
-      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2.5 rounded-xl p-3 text-start hover:bg-cloud/50">
+      <div className="flex items-center gap-2 pe-2">
+      <button type="button" onClick={toggle} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-3 text-start hover:bg-cloud/50">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-700" aria-hidden>
           <Sparkles className="h-4 w-4" />
         </span>
@@ -91,6 +92,12 @@ export function StudioCoach({
         )}
         <ChevronDown className={cx('h-4 w-4 shrink-0 text-ink-soft transition', open && 'rotate-180')} aria-hidden />
       </button>
+      {!open && nextStep && (
+        <Button size="sm" variant="secondary" onClick={nextStep[2]} className="shrink-0">
+          <span className="hidden sm:inline">הצעד הבא: </span>{nextStep[0]}
+        </Button>
+      )}
+      </div>
 
       {open && (
         <div className="space-y-3 border-t border-cloud-200 p-3">

@@ -339,7 +339,7 @@ export function PriceCard({ config, price, values, title }: { config: WorkflowCo
   );
 }
 
-export function PriceBar({ config, price, values, hasAside, staticBar }: { config: WorkflowConfig; price: PriceResult; values: Values; hasAside: boolean; staticBar?: boolean }) {
+export function PriceBar({ config, price, values, hasAside, staticBar, action }: { config: WorkflowConfig; price: PriceResult; values: Values; hasAside: boolean; staticBar?: boolean; action?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const decisions = decisionFields(config);
@@ -366,21 +366,24 @@ export function PriceBar({ config, price, values, hasAside, staticBar }: { confi
             {depositNote(config, price)}
           </div>
         )}
-        <div className="fz-total">
-          <button type="button" className="fz-link -ms-1.5" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}>
-            <ChevronDown className="h-4 w-4 transition-transform" style={{ transform: open ? 'rotate(180deg)' : undefined }} aria-hidden />
-            {config.pricing.totalLabel}
-            {decisions.length > 0 && <span className="fz-muted font-normal"> · {approved}/{decisions.length} אושרו</span>}
-          </button>
-          {nothingChosen && decisions.length === 0 ? (
-            <span className="fz-muted text-sm" aria-live="polite">
-              המחיר יופיע אחרי הבחירה
-            </span>
-          ) : (
-            <span className="fz-total-amount" aria-live="polite">
-              {formatCurrency(price.total)}
-            </span>
-          )}
+        <div className="fz-total" data-with-action={action ? true : undefined}>
+          <div className="fz-total-text">
+            <button type="button" className="fz-link -ms-1.5" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}>
+              <ChevronDown className="h-4 w-4 transition-transform" style={{ transform: open ? 'rotate(180deg)' : undefined }} aria-hidden />
+              {config.pricing.totalLabel}
+              {decisions.length > 0 && <span className="fz-muted font-normal"> · {approved}/{decisions.length} אושרו</span>}
+            </button>
+            {nothingChosen && decisions.length === 0 ? (
+              <span className="fz-muted text-sm" aria-live="polite">
+                המחיר יופיע אחרי הבחירה
+              </span>
+            ) : (
+              <span className="fz-total-amount" aria-live="polite">
+                {formatCurrency(price.total)}
+              </span>
+            )}
+          </div>
+          {action}
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@
  * (design tokens). No per-business pages exist.
  */
 import { AlertCircle, AlertTriangle, ArrowLeft, ArrowRight, CreditCard, Send, ShieldCheck } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { isDisplayField, type RunAnswer, type WorkflowConfig } from '../domain/schema';
 import type { WorkflowTheme } from '../domain/theme';
@@ -87,6 +87,7 @@ export function WorkflowRenderer({
   const [availability, setAvailability] = useState<Record<string, SlotAvailability> | undefined>();
   const [usage, setUsage] = useState<OptionUsage | undefined>();
   const topRef = useRef<HTMLDivElement>(null);
+  const formId = useId();
 
   const steps = visibleSteps(config, values);
   const summaryIndex = steps.length;
@@ -314,6 +315,8 @@ export function WorkflowRenderer({
   const booking = Boolean(config.booking?.enabled);
   const hasAside = (pricing || booking) && !editorial;
   const stickyBar = pricing && theme.mobile.stickySummary;
+  // On narrow screens the sticky total also carries the main button, so a long step never hides the way on.
+  const barGo = stickyBar && !focus;
   const logoUrl = theme.logo.assetId ? assets[theme.logo.assetId] : undefined;
   const coverUrl = theme.hero.coverAssetId ? assets[theme.hero.coverAssetId] : undefined;
   const caseInHero = theme.hero.layout === 'banner';
@@ -345,6 +348,7 @@ export function WorkflowRenderer({
         data-stage={(composition !== 'editorial_split' && flow !== 'editorial' && ['banner', 'immersive', 'centered', 'compact'].includes(theme.hero.layout)) || undefined}
         data-aside={hasAside || undefined}
         data-inline-summary={(pricing && !theme.mobile.stickySummary) || undefined}
+        data-bar-go={barGo || undefined}
       >
         <div className="fz-hero-area">
           <Hero
@@ -368,6 +372,7 @@ export function WorkflowRenderer({
         </div>
 
         <form
+          id={formId}
           noValidate
           className="fz-main"
           aria-label={config.title}
@@ -578,7 +583,15 @@ export function WorkflowRenderer({
           </aside>
         )}
       </div>
-      {stickyBar && <PriceBar config={config} price={price} values={values} hasAside={pricing} staticBar={Boolean(embedded && !scrollFrame)} />}
+      {stickyBar && (
+        <PriceBar config={config} price={price} values={values} hasAside={pricing} staticBar={Boolean(embedded && !scrollFrame)}
+          action={barGo ? (
+            <button type="submit" form={formId} className="fz-btn fz-btn-primary fz-bar-go" disabled={isSummary && submitting} aria-busy={(isSummary && submitting) || undefined}>
+              {isSummary ? (submitting ? 'שולח…' : submitLabel) : lastBeforeSummary ? 'לסיכום' : 'המשך'}
+              {!isSummary && <ArrowLeft className="h-4 w-4" aria-hidden />}
+            </button>
+          ) : undefined} />
+      )}
     </ThemeScope>
   );
 }

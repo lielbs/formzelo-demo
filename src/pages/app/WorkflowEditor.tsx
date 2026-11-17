@@ -809,19 +809,20 @@ export function WorkflowEditor() {
 
   const canvas = (
     <div data-fz-canvas>
-      <div className="mb-2 flex items-center justify-between gap-2">
+      {/* Wraps instead of squeezing: labels stay on one line in a narrow canvas column. */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <DeviceToggle device={device} onChange={setDevice} tablet />
         <div className="flex items-center gap-1.5">
           {!previewMode && <button
             type="button"
             aria-pressed={pickMode}
             onClick={() => setPickMode((m) => !m)}
-            className={cx('inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium', pickMode ? 'bg-midnight text-white' : 'bg-cloud-200 text-ink-muted')}
+            className={cx('inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-xs font-medium', pickMode ? 'bg-midnight text-white' : 'bg-cloud-200 text-ink-muted')}
             title="במצב בחירה, לחיצה על רכיב בתצוגה פותחת את המאפיינים שלו"
           >
             <MousePointerClick className="h-3.5 w-3.5" aria-hidden /> {pickMode ? 'מצב בחירה' : 'מצב מילוי'}
           </button>}
-          <button type="button" aria-label="איפוס תצוגה" title="איפוס תצוגה" className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange-700" onClick={() => setPreviewKey((k) => k + 1)}>
+          <button type="button" aria-label="איפוס תצוגה" title="איפוס תצוגה" className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-xs font-medium text-ink-muted hover:text-orange-700" onClick={() => setPreviewKey((k) => k + 1)}>
             <RotateCcw className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">איפוס תצוגה</span>
           </button>
         </div>
@@ -919,21 +920,25 @@ export function WorkflowEditor() {
               <Redo2 className="h-4 w-4" />
             </Button>
           </div>
-          <Button
-            variant="ghost"
-            icon={RotateCcw}
-            aria-label="ביטול שינויים"
-            disabled={!dirty}
-            onClick={async () => {
-              if (!(await confirmAction({ title: 'לבטל את השינויים?', message: 'כל מה שלא נשמר (תוכן ועיצוב) יחזור למצב השמור האחרון.', confirmLabel: 'ביטול השינויים', cancelLabel: 'המשך עריכה', destructive: true }))) return;
-              setSnap(structuredClone(savedSnap));
-            }}
-          >
-            <span className="hidden sm:inline">ביטול שינויים</span>
-          </Button>
-          <Button variant="secondary" icon={Save} onClick={save} loading={busy === 'save'} disabled={!dirty}>
-            שמירת טיוטה
-          </Button>
+          {/* Save and discard appear only when there is something to save: no grey, dead buttons. */}
+          {dirty && (
+            <>
+              <Button
+                variant="ghost"
+                icon={RotateCcw}
+                aria-label="ביטול שינויים"
+                onClick={async () => {
+                  if (!(await confirmAction({ title: 'לבטל את השינויים?', message: 'כל מה שלא נשמר (תוכן ועיצוב) יחזור למצב השמור האחרון.', confirmLabel: 'ביטול השינויים', cancelLabel: 'המשך עריכה', destructive: true }))) return;
+                  setSnap(structuredClone(savedSnap));
+                }}
+              >
+                <span className="hidden sm:inline">ביטול שינויים</span>
+              </Button>
+              <Button variant="secondary" icon={Save} onClick={save} loading={busy === 'save'}>
+                שמירת טיוטה
+              </Button>
+            </>
+          )}
           <Button
             icon={Rocket}
             onClick={() => {
