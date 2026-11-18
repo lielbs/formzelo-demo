@@ -1,4 +1,4 @@
-import { ChevronDown, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronDown, Expand, Maximize2, Shrink, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, cx } from '../../components/ui';
 import { moveReservation } from '../data/client';
@@ -7,6 +7,9 @@ import { TABLE_STATE_HE } from '../domain/status';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
 import { FloorCanvas, floorBounds, StateLegend, TABLE_STATE_SYMBOL } from '../ui';
 import type { Selection } from './DetailPanel';
+
+const FIT_KEY = 'formzelo:ui:floor-fit';
+const MAP_HEIGHT = 'max(320px, calc(100dvh - 290px))';
 
 type States = Map<string, { state: TableLiveState; current?: ShiftReservation; next?: ShiftReservation }>;
 
@@ -30,6 +33,9 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
 }) {
   const [zone, setZone] = useState<string>('all');
   const [zoom, setZoom] = useState(1);
+  // "Whole map": the room scaled to fit the screen, no panning or scrolling (remembered per device).
+  const [fit, setFit] = useState(() => { try { return localStorage.getItem(FIT_KEY) === '1'; } catch { return false; } });
+  const toggleFit = () => setFit((f) => { try { localStorage.setItem(FIT_KEY, f ? '0' : '1'); } catch { /* per-device convenience */ } return !f; });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -92,17 +98,24 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
         {/* On wider screens the legend sits beside the controls, where the eye already is. */}
         <div className="hidden min-w-0 md:block"><StateLegend /></div>
         <div className="ms-auto flex gap-1" role="group" aria-label="גודל המפה">
-          <Button size="sm" variant="secondary" icon={ZoomOut} aria-label="הקטנה" disabled={zoom <= 1} onClick={() => setZoom((z) => Math.max(1, z - 0.5))} className="h-11 w-11 rounded-full px-0" />
-          <Button size="sm" variant="secondary" icon={ZoomIn} aria-label="הגדלה" disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.5))} className="h-11 w-11 rounded-full px-0" />
-          {zoom !== 1 && <Button size="sm" variant="secondary" icon={Maximize2} aria-label="התאמה למסך" onClick={() => setZoom(1)} className="h-11 w-11 rounded-full px-0" />}
+          <Button size="sm" variant="secondary" icon={fit ? Expand : Shrink} aria-pressed={fit} onClick={toggleFit}
+            title={fit ? 'חזרה למפה בגודל מלא, עם גלילה' : 'כל המפה במסך אחד, בלי גלילה'} className={cx('h-11 rounded-full px-3.5', fit && 'ring-2 ring-orange/40')}>
+            כל המפה
+          </Button>
+          {!fit && <>
+            <Button size="sm" variant="secondary" icon={ZoomOut} aria-label="הקטנה" disabled={zoom <= 1} onClick={() => setZoom((z) => Math.max(1, z - 0.5))} className="h-11 w-11 rounded-full px-0" />
+            <Button size="sm" variant="secondary" icon={ZoomIn} aria-label="הגדלה" disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.5))} className="h-11 w-11 rounded-full px-0" />
+            {zoom !== 1 && <Button size="sm" variant="secondary" icon={Maximize2} aria-label="התאמה למסך" onClick={() => setZoom(1)} className="h-11 w-11 rounded-full px-0" />}
+          </>}
         </div>
       </div>
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
       <div ref={boxRef} className="hs-floor-box">
-        <div className="hs-floor-scroll" dir="ltr" style={{ maxHeight: 'max(320px, calc(100dvh - 290px))' }}>
-          <div style={{ width: mapW ? `${mapW}px` : '100%' }}>
-            <FloorCanvas items={items} zoom={1} pannable selectedId={selection?.kind === 'table' ? selection.id : null} onSelect={(id) => void pick(id)}
-              label={assigning ? `בחירת שולחן עבור ${assigning.guestName}` : 'מפת המקום. בחירה בשולחן פותחת את הפרטים שלו'} maxHeight="none" minHeight={0} />
+        {/* Fit: the SVG scales the whole room into the box's width and the screen's height (meet). */}
+        <div className="hs-floor-scroll" dir="ltr" style={fit ? { overflow: 'hidden' } : { maxHeight: MAP_HEIGHT }}>
+          <div style={{ width: !fit && mapW ? `${mapW}px` : '100%' }}>
+            <FloorCanvas items={items} zoom={1} pannable={!fit} selectedId={selection?.kind === 'table' ? selection.id : null} onSelect={(id) => void pick(id)}
+              label={assigning ? `בחירת שולחן עבור ${assigning.guestName}` : 'מפת המקום. בחירה בשולחן פותחת את הפרטים שלו'} maxHeight={fit ? MAP_HEIGHT : 'none'} minHeight={0} />
           </div>
         </div>
       </div>
