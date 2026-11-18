@@ -8,6 +8,7 @@ import type { Workflow } from '../../domain/schema';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { intakeState } from '../../engine/intake';
 import { TEMPLATES, type TemplateKey } from '../../engine/templates';
+import { templateById } from '../../engine/library';
 import { formatNumber, formatRelative } from '../../lib/format';
 import { appHref, publicFlowUrl } from '../../lib/links';
 
@@ -148,7 +149,7 @@ export function WorkflowList() {
                         {w.hasUnpublishedChanges && w.status === 'published' && <Badge tone="amber">שינויים שלא פורסמו</Badge>}
                         {w.status === 'published' && !intakeState(w.intake, q.data!.runs.filter((r) => r.workflowId === w.id)).open && <Badge tone="amber">סגור לבקשות חדשות</Badge>}
                         {w.isDemo && <DemoBadge />}
-                        <span className="text-xs text-ink-soft">{TEMPLATES[w.templateKey as TemplateKey]?.label ?? w.templateKey}</span>
+                        <span className="text-xs text-ink-soft">{TEMPLATES[w.templateKey as TemplateKey]?.label ?? templateById(w.templateKey)?.title ?? (w.templateKey === 'production' || w.templateKey === 'blank' ? '' : w.templateKey)}</span>
                       </div>
                       <Link to={`/app/workflows/${w.id}`} className="mt-2 block text-lg font-semibold leading-snug text-ink hover:text-orange-700">
                         {w.draft.title}

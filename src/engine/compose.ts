@@ -10,6 +10,7 @@
 import type { CompletionMode, WorkflowConfig, WorkflowField, WorkflowStep } from '../domain/schema';
 import { normalizeHebrew, tokenStems } from './hebrew';
 import { field, highlight, option, step } from './templates';
+import { peopleRange, withDigits } from './understand';
 
 export type Purpose = 'registration' | 'survey' | 'order' | 'booking' | 'quote' | 'documents' | 'approval' | 'lead';
 export type PaymentPreference = 'none' | 'optional' | 'required' | 'deposit' | 'after_approval' | 'quote';
@@ -64,6 +65,8 @@ const CHOICE_NOUNS: [RegExp, string][] = [
   [/^(סדנא|סדנאות)/, 'סדנה'],
   [/^קורס/, 'קורס'],
   [/^(כרטיס)/, 'כרטיס'],
+  [/^(מחזור)/, 'מחזור'],
+  [/^(שבוע|שבועות)$/, 'שבוע'],
   [/^(קבוצ|קבוצות)/, 'קבוצה'],
   [/^(שכב|גיל)/, 'קבוצת גיל'],
 ];
@@ -154,7 +157,7 @@ function detectCapacity(text: string): number | true | null {
 }
 
 function detectPayment(text: string): PaymentPreference | null {
-  if (/(ללא תשלום|בלי תשלום|חינם|ללא עלות)/.test(text)) return 'none';
+  if (/(ללא תשלום|בלי תשלום|חינם|חינמי|ללא עלות|בלי עלות)/.test(text)) return 'none';
   if (/(תשלום אופציונלי|תשלום רשות|אפשרות לשלם|תשלום לא חובה|לשלם אם|אופציה לשלם)/.test(text)) return 'optional';
   if (/מקדמ/.test(text)) return 'deposit';
   if (/(הצעת מחיר|הערכת עלות)/.test(text)) return 'quote';
@@ -179,7 +182,7 @@ export function analyzePrompt(prompt: string): PromptIntent {
     subject,
     audience: { minors, businesses: /(חברות|עסקים|ארגונים|עסקי)/.test(text) },
     choices: detectChoices(tokens),
-    capacity: detectCapacity(text),
+    capacity: detectCapacity(normalizeHebrew(withDigits(prompt))) ?? ((r) => r.perPlace ?? r.max ?? null)(peopleRange(prompt)),
     parentalConsent,
     approval,
     payment: detectPayment(text),
@@ -278,6 +281,7 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
   const priced = !isSurvey && intent.payment !== null && intent.payment !== 'none' && intent.choices.length > 0;
   const capacity = typeof intent.capacity === 'number' ? intent.capacity : intent.capacity === true ? 30 : null;
   const subject = intent.subject ?? (isSurvey ? 'משוב' : 'הרשמה');
+  const carried: WorkflowField[] = [];
   const steps: WorkflowStep[] = [];
 
   if (isSurvey) {
@@ -306,8 +310,11 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
     intent.choices.forEach((g, i) => intro.push(choiceField(g, i, priced, capacity)));
     if (intent.choices.length) notes.push(`שמות ה${pluralOf(intent.choices[0]!.noun)} ותיאוריהם הם לדוגמה. עדכנו אותם בסטודיו.`);
     if (intent.choices.length) adjustments.push(`נוצר שדה בחירה עם ${intent.choices.map((c) => `${c.count} ${pluralOf(c.noun)}`).join(' ו-')}`);
-    if (intent.booking.date) intro.push(field('preferred_date', 'תאריך מועדף', 'date', { min: 0, role: 'date' }));
-    steps.push(step(intent.choices.length ? 'בחירת מסלול' : `פרטי ה${subject}`, intro, { description: priced ? 'המחיר מתעדכן לפי הבחירה.' : undefined }));
+    // "2 מועדים" are the choice itself; a separate preferred date would ask twice.
+    if (intent.booking.date && !intent.choices.some((g) => g.noun === 'מועד')) intro.push(field('preferred_date', 'תאריך מועדף', 'date', { min: 0, role: 'date' }));
+    // A first step with nothing to answer is an empty page: its notes move above the participant details.
+    if (intro.some((f) => f.type !== 'highlights')) steps.push(step(intent.choices.length ? `בחירת ${intent.choices[0]!.noun}` : `פרטי ה${subject}`, intro, { description: priced ? 'המחיר מתעדכן לפי הבחירה.' : undefined }));
+    else carried.push(...intro);
   }
 
   const participant: WorkflowField[] = [
@@ -321,7 +328,7 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
   if (intent.wantsAddress) participant.push(field('address', 'כתובת', 'text'));
   if (intent.wantsFiles) participant.push(field('attachments', 'קבצים מצורפים', 'file', { helpText: 'שם הקובץ או קישור לתיקייה משותפת' }));
   if (!isSurvey) participant.push(field('notes', 'הערות', 'textarea', { placeholder: 'משהו שחשוב שנדע?' }));
-  steps.push(step(isSurvey ? 'פרטים (לא חובה)' : 'פרטי המשתתף/ת', participant));
+  steps.push(step(isSurvey ? 'פרטים (לא חובה)' : 'פרטי המשתתף/ת', [...carried, ...participant]));
 
   if (!isSurvey && (intent.audience.minors || intent.parentalConsent)) {
     steps.push(
