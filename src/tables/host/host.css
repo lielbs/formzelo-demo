@@ -290,6 +290,19 @@ html.fz-dark .fz-topbar { box-shadow: 0 0.5px 0 rgb(255 255 255 / 0.1); }
 /* ---- Map ---- */
 .hs-floor-box { overflow: hidden; border-radius: var(--fz-r-2xl); border: 1px solid var(--hs-line); background: var(--fz-floor-bg, var(--hs-surface)); }
 .hs-floor-scroll { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* Full screen: the map alone above the shift (under the details sheet, z 40/50). */
+.hs-map-full {
+  background: var(--hs-page);
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+}
+.hs-map-scale {
+  position: absolute; inset-block-end: 8px; inset-inline-start: 8px; pointer-events: none;
+  border-radius: 999px; background: color-mix(in srgb, var(--hs-surface) 88%, transparent); box-shadow: 0 0 0 1px var(--hs-line);
+  padding: 2px 8px; color: var(--hs-muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+/* The hint names the gestures of the device in hand. */
+.hs-hint-mouse { display: none; }
+@media (hover: hover) and (pointer: fine) { .hs-hint-touch { display: none; } .hs-hint-mouse { display: inline; } }
 
 /* ---- Waitlist ---- */
 .hs-wl { padding: 12px 14px; }

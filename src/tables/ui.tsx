@@ -134,7 +134,7 @@ function Shape({ shape, w, h, fill, stroke, selected }: { shape: TableShape; w: 
  * which is also the keyboard order; an accessible list elsewhere offers the same actions.
  */
 export function FloorCanvas({
-  items, selectedId, onSelect, label, onPointerDownTable, svgRef, zoom = 1, minHeight = 220, maxHeight, editable = false, pannable = false,
+  items, selectedId, onSelect, label, onPointerDownTable, svgRef, zoom = 1, minHeight = 220, maxHeight, editable = false, pannable = false, view,
 }: {
   items: FloorItem[];
   selectedId?: string | null;
@@ -148,14 +148,19 @@ export function FloorCanvas({
   editable?: boolean;
   /** Let the page scroll (pan) across the map with a finger: used when the map is wider than the screen. */
   pannable?: boolean;
+  /**
+   * The part of the room to show (the host map's zoom and pan). The SVG then fills its parent and
+   * leaves touch handling to it, so the parent decides between page scroll and map gestures.
+   */
+  view?: { x: number; y: number; w: number; h: number };
 }) {
   const b = floorBounds(items);
-  const vw = b.w / zoom;
-  const vh = b.h / zoom;
-  const vx = b.x + (b.w - vw) / 2;
-  const vy = b.y + (b.h - vh) / 2;
+  const vw = view?.w ?? b.w / zoom;
+  const vh = view?.h ?? b.h / zoom;
+  const vx = view?.x ?? b.x + (b.w - vw) / 2;
+  const vy = view?.y ?? b.y + (b.h - vh) / 2;
   return (
-    <div className="fz-floor w-full" style={{ aspectRatio: `${vw} / ${vh}`, maxHeight: maxHeight ?? '70vh', minHeight }}>
+    <div className={cx('fz-floor w-full', view && 'h-full')} style={view ? undefined : { aspectRatio: `${vw} / ${vh}`, maxHeight: maxHeight ?? '70vh', minHeight }}>
     <svg
       ref={svgRef}
       {...{ dir: 'ltr' }}
@@ -163,7 +168,7 @@ export function FloorCanvas({
       aria-label={label}
       viewBox={`${vx} ${vy} ${vw} ${vh}`}
       preserveAspectRatio="xMidYMid meet"
-      className={cx("block h-full w-full select-none rounded-xl", pannable ? "touch-pan-x touch-pan-y" : "touch-none")}
+      className={cx("block h-full w-full select-none rounded-xl", view ? '' : pannable ? "touch-pan-x touch-pan-y" : "touch-none")}
       style={{ background: 'var(--fz-floor-bg)', direction: 'ltr', unicodeBidi: 'isolate' }}
     >
       <defs>
