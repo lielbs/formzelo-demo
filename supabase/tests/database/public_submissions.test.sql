@@ -36,6 +36,20 @@ where id='43000000-0000-4000-8000-000000000001';
 set local role anon;
 select ok((public.resolve_public_workflow('public-order')->'version'->>'id')='53000000-0000-4000-8000-000000000001','published slug resolves the immutable version');
 select is(public.resolve_public_workflow('private-draft'),null,'draft slug remains private');
+
+-- Edits saved after publishing stay private until the owner publishes again.
+reset role;
+update public.workflows
+set draft_config=jsonb_set(draft_config,'{title}','"שינוי שלא פורסם"'),
+    draft_design=jsonb_set(draft_design,'{presetId}','"unpublished_preset"'),
+    source_prompt='private prompt text'
+where id='43000000-0000-4000-8000-000000000001';
+set local role anon;
+select is(public.resolve_public_workflow('public-order')->'workflow'->'draft'->>'title','הזמנה','public form shows the published title, not the saved draft');
+select is(public.resolve_public_workflow('public-order')->'version'->'config'->>'title','הזמנה','public version is the published one');
+select ok(position('unpublished_preset' in public.resolve_public_workflow('public-order')::text)=0,'unpublished design is not returned publicly');
+select ok(position('שינוי שלא פורסם' in public.resolve_public_workflow('public-order')::text)=0
+  and position('private prompt text' in public.resolve_public_workflow('public-order')::text)=0,'no draft text or source prompt reaches the public');
 select throws_ok($$select * from public.submissions$$,'42501',null,'anonymous caller cannot read private submissions directly');
 select throws_ok(
   $$select public.submit_public_workflow('public-order','{"full_name":"ישראל","email":"bad","service":"premium","addon":true,"quantity":2}',true,'73000000-0000-4000-8000-000000000001','83000000-0000-4000-8000-000000000001')$$,
