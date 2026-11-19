@@ -14,3 +14,4 @@ test-evidence/
 
 # Local scratch files (backups, logs, scripts). Backups can hold customer data: never commit.
 .tmp-*
+.wrangler/
