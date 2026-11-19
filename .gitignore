@@ -11,3 +11,6 @@ test-evidence/
 .env
 .env.*
 !.env.example
+
+# Local scratch files (backups, logs, scripts). Backups can hold customer data: never commit.
+.tmp-*
