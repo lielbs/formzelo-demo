@@ -107,7 +107,10 @@ the site, so no key is created, copied or stored.
 * GitHub Pages deploy switched to `workflow_dispatch` only. It stays available as the rollback
   target. `public/CNAME` stays (harmless on Cloudflare).
 
-### Phase 5 (optional, separate approval): previews with the business's own name and photo
+### Phase 5: previews with the business's own name and photo (done 2026-11-19, approved)
+
+Shipped as `functions/live/t/[[path]].ts` and `functions/live/f/[slug].ts`, backed by `edge/serve.ts` and `edge/preview.ts` (with tests in `src/test/edgePreview.test.ts`). The Fail open/closed setting is **Fail open** (the default), so static pages are still served if the allowance runs out.
+
 
 * A Pages Function on `/live/t/*` and `/live/f/*` reads the public venue or form (the existing
   public RPCs `tables_public_venue` and `resolve_public_workflow`, publishable key only) and
