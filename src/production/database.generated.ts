@@ -501,6 +501,26 @@ isOneToOne: false
       referencedColumns: ["organization_id","venue_id","id"]
     }
                   ]
+                },"tables_reminders": {
+                  Row: {
+                    "channel": string,"organization_id": string,"reservation_id": string,"sent_at": string,"sent_by": string | null,"venue_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "channel": string,"organization_id": string,"reservation_id": string,"sent_at"?: string,"sent_by"?: string | null,"venue_id": string
+                  }
+                  Update: {
+                    "channel"?: string,"organization_id"?: string,"reservation_id"?: string,"sent_at"?: string,"sent_by"?: string | null,"venue_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_reminders_reservation_id_fkey"
+      columns: ["reservation_id"]
+isOneToOne: true
+      referencedRelation: "tables_reservations"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tables_reservation_events": {
                   Row: {
                     "actor_type": string,"actor_user_id": string | null,"created_at": string,"event_type": string,"from_status": string | null,"id": string,"metadata": NonNullable<Json>,"organization_id": string,"reason": string | null,"reservation_id": string,"seq": number,"to_status": string | null,"venue_id": string
@@ -1261,6 +1281,9 @@ isOneToOne: false
 "tables_list_venues":
 { Args: { "p_organization_id": string }; Returns: Json
                            },
+"tables_mark_reminded":
+{ Args: { "p_reservation_id": string,"p_sent"?: boolean }; Returns: Json
+                           },
 "tables_menu_archive":
 { Args: { "p_menu_id": string }; Returns: undefined
                            },
@@ -1300,6 +1323,12 @@ isOneToOne: false
 "tables_public_modify_options":
 { Args: { "p_client": string,"p_date": string,"p_party": number,"p_token": string }; Returns: Json
                            },
+"tables_public_push_subscribe":
+{ Args: { "p_client": string,"p_endpoint": string,"p_token": string }; Returns: Json
+                           },
+"tables_public_push_unsubscribe":
+{ Args: { "p_client": string,"p_endpoint": string,"p_token": string }; Returns: Json
+                           },
 "tables_public_venue":
 { Args: { "p_slug": string }; Returns: Json
                            },
@@ -1314,6 +1343,21 @@ isOneToOne: false
                            },
 "tables_publish_venue":
 { Args: { "p_expected_lock_version": number,"p_venue_id": string }; Returns: Json
+                           },
+"tables_push_claim":
+{ Args: { "p_limit"?: number }; Returns: Json
+                           },
+"tables_push_key_init":
+{ Args: { "p_private_jwk": Json,"p_public_key": string }; Returns: Json
+                           },
+"tables_push_public_key":
+{ Args: { "p_client"?: string }; Returns: string
+                           },
+"tables_push_result":
+{ Args: { "p_id": string,"p_outcome": string }; Returns: undefined
+                           },
+"tables_reminder_list":
+{ Args: { "p_service_date": string,"p_venue_id": string }; Returns: Json
                            },
 "tables_reservation_detail":
 { Args: { "p_reservation_id": string }; Returns: Json

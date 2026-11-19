@@ -116,7 +116,15 @@ export interface ReservationDetail {
   /** Answers to the page's additional questions (team only; null when none). */
   customAnswers?: CustomAnswer[] | null;
 }
-export const reservationDetail = (id: string) => rpc<ReservationDetail>('tables_reservation_detail', { p_reservation_id: id });
+export interface ReminderRow {
+  id: string; reference: string; time: string; startsAt: string; party: number; status: string;
+  guestName: string; guestPhone: string | null; remindedAt: string | null; remindedVia: 'whatsapp' | 'push' | null;
+}
+export interface ReminderDay { venue: { id: string; name: string; slug: string; timezone: string }; serviceDate: string; reservations: ReminderRow[] }
+export const reminderList = (venueId: string, date: string) => rpc<ReminderDay>('tables_reminder_list', { p_venue_id: venueId, p_service_date: date });
+export const markReminded = (reservationId: string, sent = true) =>
+  rpc<{ remindedAt: string | null }>('tables_mark_reminded', { p_reservation_id: reservationId, p_sent: sent });
+export const reservationDetail =(id: string) => rpc<ReservationDetail>('tables_reservation_detail', { p_reservation_id: id });
 export const waitlistAdd = (venueId: string, input: Record<string, unknown>, key: string) =>
   rpc<{ id: string }>('tables_waitlist_add', { p_venue_id: venueId, p_input: input, p_idempotency_key: key });
 export const waitlistOffer = (id: string, tableIds: string[] | null, lockVersion: number) =>

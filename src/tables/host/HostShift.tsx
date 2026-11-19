@@ -2,7 +2,7 @@
  * Live shift: tablet-landscape first, usable in portrait and as an emergency phone list.
  * Every inventory action waits for the server; nothing shows as done before it is.
  */
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Wifi, WifiOff } from 'lucide-react';
+import { ArrowRight, BellRing, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Wifi, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button, cx, ErrorState, PageLoader } from '../../components/ui';
@@ -18,6 +18,7 @@ import { FilterSheet } from './FilterSheet';
 import { FloorView } from './FloorView';
 import './host.css';
 import { QuickAdd, type QuickAddMode } from './QuickAdd';
+import { RemindersSheet } from './RemindersSheet';
 import { ReservationRow } from './ReservationRow';
 import { ActiveFilters, AddChooser, ShiftDock, ShiftSummaryBar } from './ShiftControls';
 import { WaitlistView } from './WaitlistView';
@@ -61,6 +62,7 @@ export function HostShift() {
   const [selection, setSelection] = useState<Selection>(null);
   const [assigning, setAssigning] = useState<ShiftReservation | null>(null);
   const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null);
+  const [reminders, setReminders] = useState(false);
   const [announce, setAnnounce] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -151,6 +153,12 @@ export function HostShift() {
               <ConnectionBadge connection={connection} lastSync={lastSync} />
             </p>
           </div>
+          {shift.role !== 'viewer' && (
+            <button type="button" onClick={() => setReminders(true)} aria-haspopup="dialog" aria-label="תזכורות לאורחים"
+              className="hs-round flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+              <BellRing className="h-5 w-5" aria-hidden /><span className="hidden lg:inline">תזכורות</span>
+            </button>
+          )}
           <ThemeButton />
           <Button size="lg" icon={Plus} onClick={() => setQuickAdd('phone')} disabled={!canAct} className="hidden h-11 md:inline-flex">הוספה</Button>
         </div>
@@ -296,6 +304,7 @@ export function HostShift() {
         <FilterSheet shift={shift} rows={day} filters={filters} sort={sort} onClose={() => setFilterOpen(false)}
           onApply={(f, s) => { setFilters(f); setSort(s); setFilterOpen(false); if (view !== 'list') setView('list'); }} />
       )}
+      {reminders && <RemindersSheet venueId={venueId} today={today} canAct={canAct} onClose={() => setReminders(false)} />}
       {quickAdd && <QuickAdd mode={quickAdd} shift={shift} states={tableStates} onClose={() => setQuickAdd(null)} onDone={(m) => { setQuickAdd(null); done(m); }} />}
       <div aria-live="polite" className="sr-only">{announce}</div>
     </div>

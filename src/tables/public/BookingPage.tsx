@@ -1,8 +1,7 @@
-import { CalendarDays, CalendarPlus, Check, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle, Moon, Navigation, ShieldCheck, Sun, Sunset, Users } from 'lucide-react';
+import { CalendarDays, Check, CheckCircle2, Clock, Copy, ExternalLink, Hourglass, MessageCircle, Moon, Navigation, ShieldCheck, Sun, Sunset, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { cx, PageLoader } from '../../components/ui';
-import { publicBaseUrl } from '../../lib/links';
 import { newKey, publicAvailability, publicBook, publicVenue, type BookResult, type PublicAvailability, type PublicVenue } from '../data/client';
 import { desiredTimes, nearestSlots, type OpenSlot } from '../domain/desiredTime';
 import { messageFor, type TablesError } from '../domain/errors';
@@ -14,13 +13,14 @@ import { GuestFields, type GuestValues } from './GuestFields';
 import { tx, type Lang } from './i18n';
 import { lookFor, pageOf } from './look';
 import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
+import { PushReminder } from './PushReminder';
 import { ScrollStrip } from './ScrollStrip';
-import { calendarFile, mapsHref, VenueAside, weekdayOf } from './VenueInfo';
+import { CalendarButtons, manageUrl, mapsHref, VenueAside, weekdayOf } from './VenueInfo';
 
 type Step = 'choose' | 'details' | 'result';
 type Choice = { serviceKey: string; time: string; approval: 'instant' | 'request' };
 
-export const manageUrl = (token: string, lang: Lang) => `${publicBaseUrl()}/t/r${lang === 'en' ? '?lang=en' : ''}#t=${token}`;
+export { manageUrl };
 
 function useFocusOnChange(dep: unknown) {
   const ref = useRef<HTMLHeadingElement>(null);
@@ -409,18 +409,6 @@ export function deadline(date: string, time: string, tz: string, cutoffMinutes: 
   return new Date(start.getTime() - cutoffMinutes * 60_000).toISOString();
 }
 
-function downloadCalendar(venue: PublicVenue, startsAt: string, lang: Lang, reference?: string) {
-  const s = tx(lang);
-  const ics = calendarFile({ title: s.calendarTitle(venue.name), startsAt, minutes: 120, location: venue.address, details: reference ? `${s.reference}: ${reference}` : undefined });
-  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${venue.slug}-${startsAt.slice(0, 10)}.ics`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function Result({ result, lang, venue, party, date, heading, note, onPick, onRestart }: {
   result: BookResult; lang: Lang; venue: PublicVenue; party: number; date: string; heading: React.RefObject<HTMLHeadingElement>; note?: string;
@@ -474,11 +462,13 @@ function Result({ result, lang, venue, party, date, heading, note, onPick, onRes
             {venue.address && <p className="text-sm text-ink-muted">{venue.address}</p>}
           </div>
           {note && <p className="whitespace-pre-line rounded-xl bg-[var(--pp-accent-soft,#f3ede6)] p-3 text-sm">{note}</p>}
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className={cx('grid gap-2', result.reservation?.startsAt && venue.address ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
             {result.reservation?.startsAt && (
-              <button type="button" className={softButton} onClick={() => downloadCalendar(venue, result.reservation!.startsAt, lang, result.reference)}>
-                <CalendarPlus className="h-4 w-4" aria-hidden />{s.addToCalendar}
-              </button>
+              <CalendarButtons lang={lang} className={softButton} filename={`${venue.slug}-${result.reservation.startsAt.slice(0, 10)}.ics`} event={{
+                title: s.calendarTitle(venue.name), startsAt: result.reservation.startsAt, minutes: 120, location: venue.address,
+                details: result.reference ? `${s.reference}: ${result.reference}` : undefined,
+                privateUrl: url || undefined, privateLabel: s.calendarManage, uid: result.reference,
+              }} />
             )}
             {venue.address && (
               <a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className={softButton}>
@@ -486,6 +476,10 @@ function Result({ result, lang, venue, party, date, heading, note, onPick, onRes
               </a>
             )}
           </div>
+          {result.reservation?.startsAt && <p className="-mt-2 text-xs text-ink-muted">{s.calendarReminders}</p>}
+          {result.token && result.reservation?.startsAt && (
+            <PushReminder lang={lang} className={softButton} booking={{ token: result.token, venue: venue.name, time, party, reference: result.reference ?? '', startsAt: result.reservation.startsAt, url }} />
+          )}
         </div>
       </article>
       {url && (

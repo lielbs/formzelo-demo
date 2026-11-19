@@ -429,3 +429,8 @@ verify_jwt = false
 # Authorises with the caller's own session token inside the function (see _shared/accountDeletion.ts).
 [functions.account-deletion]
 verify_jwt = false
+
+# Called every 10 minutes by pg_cron (supabase/ops/tables-push-cron.sql). Idempotent: it only pushes
+# what the database hands it as due, once; extra calls send nothing.
+[functions.tables-push-reminders]
+verify_jwt = false

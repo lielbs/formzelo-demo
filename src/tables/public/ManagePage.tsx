@@ -7,7 +7,9 @@ import { addDays, dateInTz, formatDate, formatInstant } from '../domain/time';
 import { Ltr } from '../ui';
 import { STATUS_GUEST, tx, type Lang } from './i18n';
 import { lookFor } from './look';
-import { accentButton, PublicShell, useDocumentLanguage, useLang } from './PublicShell';
+import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
+import { PushReminder } from './PushReminder';
+import { CalendarButtons, manageUrl } from './VenueInfo';
 
 /** Reads the capability token from the URL fragment, then removes it from the address bar. */
 export function useFragmentToken(kind: 'manage' | 'waitlist' = 'manage'): string | null {
@@ -79,7 +81,9 @@ function Manage({ res, token, lang, onChange }: { res: GuestReservation; token: 
   useEffect(() => { heading.current?.focus(); }, [mode]);
   const icon = res.status === 'confirmed' ? CheckCircle2 : res.status === 'pending_approval' ? Hourglass : res.status === 'cancelled' || res.status === 'rejected' || res.status === 'expired' ? XCircle : CalendarClock;
   const Icon = icon;
-  const tone = res.status === 'confirmed' ? 'border-teal-200 bg-teal-50' : res.status === 'pending_approval' ? 'border-amber-300 bg-amber-50' : 'border-cloud-200 bg-white';
+  // The card follows the venue's own look (light or dark); the status shows in the edge and the icon.
+  const tone = res.status === 'confirmed' ? 'border-s-4 border-s-teal-600' : res.status === 'pending_approval' ? 'border-s-4 border-s-amber-500' : '';
+  const iconTone = res.status === 'confirmed' ? 'text-teal-600' : res.status === 'pending_approval' ? 'text-amber-600' : '';
 
   async function cancel() {
     setBusy(true);
@@ -89,9 +93,9 @@ function Manage({ res, token, lang, onChange }: { res: GuestReservation; token: 
 
   return (
     <div className="grid gap-5">
-      <div className={cx('rounded-2xl border p-5', tone)}>
+      <div className={cx('pp-card rounded-2xl border border-cloud-200 bg-white p-5', tone)}>
         <h1 ref={heading} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold outline-none">
-          <Icon className="h-6 w-6" aria-hidden /> {STATUS_GUEST[lang][res.status] ?? res.status}
+          <Icon className={cx("h-6 w-6", iconTone)} aria-hidden /> {STATUS_GUEST[lang][res.status] ?? res.status}
         </h1>
         <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
           <dt className="text-ink-muted">{s.when}</dt><dd className="font-medium">{formatDate(res.date, lang)} · <bdi dir="ltr">{res.time}</bdi></dd>
@@ -99,7 +103,7 @@ function Manage({ res, token, lang, onChange }: { res: GuestReservation; token: 
           <dt className="text-ink-muted">{s.reference}</dt><dd><Ltr className="font-semibold tracking-wider">{res.reference}</Ltr></dd>
         </dl>
         {res.status === 'pending_approval' && res.pendingExpiresAt && (
-          <p className="mt-2 text-sm text-amber-900">{s.pendingUntil} {formatInstant(res.pendingExpiresAt, res.venue.timezone, lang)}</p>
+          <p className="mt-2 text-sm font-medium">{s.pendingUntil} {formatInstant(res.pendingExpiresAt, res.venue.timezone, lang)}</p>
         )}
       </div>
       {message && <p role="status" className="rounded-xl bg-teal-50 p-3 text-teal-900">{message}</p>}
@@ -116,6 +120,19 @@ function Manage({ res, token, lang, onChange }: { res: GuestReservation; token: 
             <p className="mt-1 whitespace-pre-line text-ink-muted">{res.terms}</p>
           </details>
         </section>
+      )}
+
+      {mode === 'view' && res.open && (res.status === 'confirmed' || res.status === 'pending_approval') && (
+        <div className="grid gap-1.5">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <CalendarButtons lang={lang} className={softButton} filename={`${res.venue.slug}-${res.date}.ics`} event={{
+              title: s.calendarTitle(res.venue.name), startsAt: res.startsAt, minutes: 120, location: res.venue.address,
+              details: `${s.reference}: ${res.reference}`, privateUrl: manageUrl(token, lang), privateLabel: s.calendarManage, uid: res.reference,
+            }} />
+          </div>
+          <p className="text-xs text-ink-muted">{s.calendarReminders}</p>
+          <PushReminder lang={lang} className={softButton} booking={{ token, venue: res.venue.name, time: res.time, party: res.party, reference: res.reference, startsAt: res.startsAt, url: manageUrl(token, lang) }} />
+        </div>
       )}
 
       {mode === 'view' && (res.canModify || res.canCancel) && (

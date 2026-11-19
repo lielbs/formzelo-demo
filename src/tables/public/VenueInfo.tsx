@@ -1,7 +1,8 @@
 /** Venue facts shown around the guest pages: booking hours, location, contact. Real data only. */
-import { Clock, Users } from 'lucide-react';
+import { CalendarDays, CalendarPlus, Clock, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cx } from '../../components/ui';
+import { publicBaseUrl } from '../../lib/links';
 import { Ltr } from '../ui';
 import { tx, type Lang } from './i18n';
 
@@ -92,16 +93,98 @@ export function VenueAside({ lang, venue, today }: {
 }
 
 /** An .ics calendar entry for a booking (generated in the browser; nothing is sent). */
-export function calendarFile({ title, startsAt, minutes, location, details }: { title: string; startsAt: string; minutes: number; location?: string | null; details?: string }): string {
-  const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const esc = (v: string) => v.replace(/[\\,;]/g, (c) => `\\${c}`).replace(/\n/g, '\\n');
+/** The guest's private manage link (the token stays in the fragment: never sent to a server). */
+export const manageUrl = (token: string, lang: Lang) => `${publicBaseUrl()}/t/r${lang === 'en' ? '?lang=en' : ''}#t=${token}`;
+
+export interface CalendarEvent {
+  title: string;
+  startsAt: string;
+  minutes: number;
+  location?: string | null;
+  /** Shown in every calendar (the booking code). */
+  details?: string;
+  /** The guest's private manage link: written only into the downloaded file, never sent to a calendar service. */
+  privateUrl?: string;
+  /** Words before the private link in the file ("To change or cancel:"). */
+  privateLabel?: string;
+  /** Stable id (the booking code), so adding the booking again after a change updates the same event. */
+  uid?: string;
+  /** Reminders, in minutes before the start. */
+  alarms?: number[];
+}
+
+/** The reminders the downloaded calendar file sets: a day before and three hours before. */
+export const REMINDER_ALARMS = [24 * 60, 3 * 60];
+
+const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+const trigger = (m: number) => (m % 1440 === 0 ? `-P${m / 1440}D` : m % 60 === 0 ? `-PT${m / 60}H` : `-PT${m}M`);
+
+/** RFC 5545 line folding: at most 75 bytes per line, continued with a leading space (never inside a character). */
+function fold(line: string): string[] {
+  const enc = new TextEncoder();
+  const out: string[] = [];
+  let cur = '';
+  let bytes = 0;
+  for (const ch of line) {
+    const n = enc.encode(ch).length;
+    const limit = out.length ? 74 : 75;
+    if (bytes + n > limit) { out.push(cur); cur = ''; bytes = 0; }
+    cur += ch;
+    bytes += n;
+  }
+  out.push(cur);
+  return out.map((l, i) => (i ? ` ${l}` : l));
+}
+
+export function calendarFile({ title, startsAt, minutes, location, details, privateUrl, privateLabel, uid, alarms = [] }: CalendarEvent): string {
+  const esc = (v: string) => v.replace(/[\\,;]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
   const start = new Date(startsAt);
   const end = new Date(start.getTime() + minutes * 60_000);
+  const description = [details, privateUrl && [privateLabel, privateUrl].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+  const id = uid && /^[A-Za-z0-9-]{1,40}$/.test(uid) ? `${uid}@formangle.rockstackds.com` : `${stamp(start)}-${Math.random().toString(36).slice(2)}@formangle`;
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Formangle//Tables//EN', 'BEGIN:VEVENT',
-    `UID:${stamp(start)}-${Math.random().toString(36).slice(2)}@formangle`, `DTSTAMP:${stamp(new Date())}`,
+    `UID:${id}`, `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`, `SUMMARY:${esc(title)}`,
-    ...(location ? [`LOCATION:${esc(location)}`] : []), ...(details ? [`DESCRIPTION:${esc(details)}`] : []),
+    ...(location ? [`LOCATION:${esc(location)}`] : []), ...(description ? [`DESCRIPTION:${esc(description)}`] : []),
+    ...(privateUrl ? [`URL:${privateUrl}`] : []),
+    ...alarms.filter((m) => Number.isInteger(m) && m > 0).flatMap((m) => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(title)}`, `TRIGGER:${trigger(m)}`, 'END:VALARM']),
     'END:VEVENT', 'END:VCALENDAR',
-  ].join('\r\n');
+  ].flatMap(fold).join('\r\n');
+}
+
+/** "Add to Google Calendar" link. Only the public details go in it: the private manage link stays out of the URL. */
+export function googleCalendarHref({ title, startsAt, minutes, location, details }: CalendarEvent): string {
+  const start = new Date(startsAt);
+  const end = new Date(start.getTime() + minutes * 60_000);
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: title, dates: `${stamp(start)}/${stamp(end)}` });
+  if (details) q.set('details', details);
+  if (location) q.set('location', location);
+  return `https://calendar.google.com/calendar/render?${q.toString()}`;
+}
+
+function downloadCalendarFile(event: CalendarEvent, filename: string) {
+  const url = URL.createObjectURL(new Blob([calendarFile(event)], { type: 'text/calendar;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** The guest's two calendar actions: a file with reminders (iPhone, Outlook, most Android calendars) and Google Calendar. */
+export function CalendarButtons({ event, filename, lang, className }: { event: CalendarEvent; filename: string; lang: Lang; className: string }) {
+  const s = tx(lang);
+  return (
+    <>
+      <button type="button" className={className} onClick={() => downloadCalendarFile({ ...event, alarms: event.alarms ?? REMINDER_ALARMS }, filename)}>
+        <CalendarPlus className="h-4 w-4" aria-hidden />{s.addToCalendar}
+      </button>
+      <a href={googleCalendarHref(event)} target="_blank" rel="noopener noreferrer" className={className}>
+        <CalendarDays className="h-4 w-4" aria-hidden />{s.googleCalendar}
+      </a>
+    </>
+  );
 }
