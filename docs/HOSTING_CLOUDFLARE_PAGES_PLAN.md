@@ -1,7 +1,7 @@
 # Hosting move: GitHub Pages → Cloudflare Pages (plan, not started)
 
-Status: **plan only — waiting for founder approval.** Nothing in Cloudflare, DNS or the deploy
-workflow has been changed. Written 2026-11-19 after the UI/UX review (finding #1).
+Status: **phase 1 done; phase 0 waits for the founder's Cloudflare sign-in.** DNS is unchanged.
+Written 2026-11-19 after the UI/UX review (finding #1).
 
 ## Why
 
@@ -43,61 +43,42 @@ Cloudflare Pages fixes all three, at zero cost.
 
 ## Phases
 
-### Phase 0: founder setup in Cloudflare and GitHub (about 10 minutes; I cannot create accounts or keys)
+### Phase 0: Cloudflare connects to the repository (no API keys anywhere)
 
-1. Cloudflare dashboard → Workers & Pages → Create → Pages → **Direct Upload** → project name
-   `formangle`. Skip the upload.
-2. My Profile → API Tokens → Create Token → Custom: permission **Account · Cloudflare Pages · Edit**,
-   for this account only. No zone or DNS permissions.
-3. GitHub → `lielbs/formzelo-demo` → Settings → Secrets and variables → Actions:
-   * secret `CLOUDFLARE_API_TOKEN` = the token
-   * secret `CLOUDFLARE_ACCOUNT_ID` = Account ID (dashboard sidebar)
+Chosen on 2026-11-19 instead of a token in GitHub secrets: Cloudflare's own Git integration builds
+the site, so no key is created, copied or stored.
 
-### Phase 1: code (me, one commit, nothing user-visible yet)
+1. The founder signs in to the Cloudflare dashboard (I never enter passwords).
+2. Workers & Pages → Create → Pages → **Connect to Git** → GitHub → repository
+   `lielbs/formzelo-demo`. GitHub asks the founder to authorise the Cloudflare Pages app for this
+   one repository (an OAuth grant; the founder approves it).
+3. Build settings: production branch `main`; build command `npm run build:cloudflare`; output
+   directory `dist`; no environment variables (all public values live in the script). Node 22
+   comes from `.node-version`. Preview deployments: **none** (pushes to `production-v1` would
+   otherwise use up free builds).
 
-* The deploy workflow keeps building exactly as today and keeps deploying to GitHub Pages, which
-  stays the live site and the fallback. A new step copies `dist` to `dist-cf`, removes `404.html`
-  (so Pages uses SPA mode for the demo at the root), adds the two files below, and runs
-  `wrangler pages deploy dist-cf --project-name=formangle --branch=main` through
-  `cloudflare/wrangler-action`, pinned to a commit SHA. The step is skipped when the secrets
-  are missing.
-* `dist-cf/_redirects` (production-app client routes that have no file; assets are never matched):
+### Phase 1: code (done, commit 09e716d)
 
-  ```
-  /live/t/*     /live/index.html  200
-  /live/f/*     /live/index.html  200
-  /live/app/*   /live/index.html  200
-  ```
-
-  `/live/track`, `/live/invite`, `/live/reset`, `/live/operator`, `/live/app` and the demo routes
-  already have their own static `.html` copies (`STATIC_ROUTES` in `vite.config.ts`). Pages serves
-  them without the extension. Unknown demo paths fall back to the root `index.html` (SPA mode).
-* `dist-cf/_headers`:
+* `scripts/build-cloudflare.mjs` (`npm run build:cloudflare`) builds both apps like the GitHub
+  Pages workflow, without `404.html` (Pages SPA mode at the root), and writes:
+* `dist/_redirects`: rewrites to `/live/` with status 200. **Not** `/live/index.html`, because
+  Pages turns that path into `/live/` and the rewrite then falls through to the root app (seen in
+  `wrangler pages dev`).
 
   ```
-  /*
-    X-Content-Type-Options: nosniff
-    Referrer-Policy: strict-origin-when-cross-origin
-    Strict-Transport-Security: max-age=86400
-  /live/app/*
-    Content-Security-Policy: frame-ancestors 'self'
-  /live/operator*
-    Content-Security-Policy: frame-ancestors 'self'
-  /live/invite*
-    Content-Security-Policy: frame-ancestors 'self'
-  /live/reset*
-    Content-Security-Policy: frame-ancestors 'self'
-  /live/track*
-    Content-Security-Policy: frame-ancestors 'self'
-  /live/assets/*
-    Cache-Control: public, max-age=31536000, immutable
+  /live/t/*     /live/  200
+  /live/f/*     /live/  200
+  /live/app/*   /live/  200
   ```
 
-  Customer forms and booking pages stay embeddable, because owners embed them. The `<meta>` CSP
-  stays as it is; the header policy adds only what a meta tag cannot carry. HSTS starts at one day
-  and is raised to one year after a stable week.
-* Test: a script that checks the status code, the `content-type` and that the assets load for each
-  route on `https://formangle.pages.dev`.
+* `dist/_headers`: `nosniff`, referrer policy, HSTS (1 day at first),
+  `frame-ancestors 'self'` on staff, account and tracking screens (customer forms and booking
+  pages stay embeddable), and an immutable cache for hashed assets.
+* Checked locally with `wrangler pages dev dist`:
+  * `/live/t/zigel-bar`, `/live/t/zigel-bar/menu`, `/live/f/zigel-bar-private-events`, `/` and
+    `/demo` answer 200 and render real data, with no console errors.
+  * The assets load as `application/javascript`, and the headers are present.
+* GitHub Pages keeps deploying every commit, so it stays the live site and the fallback.
 
 ### Phase 2: verify on `formangle.pages.dev` (me, no risk to the live site)
 
@@ -152,7 +133,7 @@ Cloudflare Pages fixes all three, at zero cost.
 | A rewrite rule catches asset files | Rules name only `/live/t/*`, `/live/f/*`, `/live/app/*`; assets live under `/live/assets/` |
 | A staff route without a static copy breaks | Phase 2 checks every route in `src/App.tsx` |
 | Brief certificate gap at cutover | Quiet hour; Cloudflare usually issues within minutes; rollback is one DNS edit |
-| Cloudflare token misuse | Token limited to *Pages · Edit* on one account, stored only as a GitHub secret |
+| Repository access for Cloudflare | Git integration limited to this one repository; no API token exists |
 | Cost | Free plan limits verified above; static requests are not metered; phase 5 is optional |
 
 ## Alternative that was considered and not recommended
