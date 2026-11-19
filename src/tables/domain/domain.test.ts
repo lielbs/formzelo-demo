@@ -181,6 +181,11 @@ describe('phone and errors', () => {
     expect(toTablesError({ code: 'PT409', message: 'Draft changed by another team member' }).code).toBe('stale');
     expect(toTablesError({ message: 'Failed to fetch' }).isNetwork).toBe(true);
     expect(toTablesError({ code: 'XX000', message: 'relation "x" does not exist' }).message).not.toContain('relation');
+    // A phone at its booking limit gets its own message, in both languages, not "wait a few minutes".
+    const many = toTablesError({ code: '54000', message: 'tables:too_many_bookings' });
+    expect(many.code).toBe('too_many_bookings');
+    expect(many.message).not.toBe(messageFor('rate_limited'));
+    expect(toTablesError({ code: '54000', message: 'tables:too_many_bookings' }, 'en').message).toMatch(/upcoming bookings/);
   });
 });
 

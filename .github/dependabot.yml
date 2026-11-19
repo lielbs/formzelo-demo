@@ -1,0 +1,10 @@
+# Workflow actions are pinned to exact commits (supply-chain safety); Dependabot proposes the
+# updates as pull requests so the pins never go stale. npm security fixes come from the
+# repository's Dependabot security updates setting.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

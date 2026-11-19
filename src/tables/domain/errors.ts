@@ -22,6 +22,7 @@ const HE: Record<string, string> = {
   stale: 'מישהו אחר בצוות עדכן את ההזמנה הזו הרגע. הצגנו את המצב העדכני — בדקו ונסו שוב אם צריך.',
   denied: 'אין לכם הרשאה לפעולה הזו.',
   rate_limited: 'נעשו יותר מדי ניסיונות בזמן קצר. המתינו כמה דקות ונסו שוב.',
+  too_many_bookings: 'למספר הטלפון הזה כבר יש כמה הזמנות קרובות במקום. לשינוי או להזמנה נוספת פנו למקום ישירות.',
   no_table: 'אין שולחן פנוי שמתאים לגודל הקבוצה בשעה הזו.',
   table_conflict: 'השולחן כבר תפוס בשעה הזו. בחרו שולחן אחר.',
   table_occupied: 'השולחן עדיין תפוס על ידי האורחים הקודמים. סיימו קודם את הביקור הקודם או בחרו שולחן אחר.',
@@ -66,6 +67,7 @@ const HE: Record<string, string> = {
 const EN: Record<string, string> = {
   network: 'No connection. Nothing was saved — check your connection and try again.',
   rate_limited: 'Too many attempts in a short time. Please wait a few minutes.',
+  too_many_bookings: 'This phone number already has several upcoming bookings here. To change one or book more, contact the venue directly.',
   no_table: 'No table is free for your party at that time.',
   table_conflict: 'That time was just taken. Please choose another.',
   closed: 'The venue is closed at that time.',
