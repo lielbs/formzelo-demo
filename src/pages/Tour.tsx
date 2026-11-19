@@ -193,7 +193,7 @@ export function Tour() {
                 onClick={() => go(i)}
                 aria-current={step === i ? 'step' : undefined}
                 className={cx(
-                  'w-full border-t-[3px] pt-2 text-start text-[11px] font-medium transition sm:text-sm disabled:cursor-not-allowed',
+                  'min-h-[44px] w-full border-t-[3px] pb-2 pt-2 text-start text-xs font-medium transition sm:text-sm disabled:cursor-not-allowed',
                   step === i ? 'border-orange text-ink' : i < step ? 'border-midnight text-ink-muted' : 'border-cloud-300 text-ink-soft',
                 )}
               >

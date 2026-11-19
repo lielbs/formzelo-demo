@@ -811,8 +811,9 @@ export function WorkflowEditor() {
     <div data-fz-canvas>
       {/* Wraps instead of squeezing: labels stay on one line in a narrow canvas column. */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <DeviceToggle device={device} onChange={setDevice} tablet />
-        <div className="flex items-center gap-1.5">
+        {/* On a phone the preview already is a phone: the size switch would only add a row. */}
+        <div className="hidden sm:block"><DeviceToggle device={device} onChange={setDevice} tablet /></div>
+        <div className="ms-auto flex items-center gap-1.5">
           {!previewMode && <button
             type="button"
             aria-pressed={pickMode}

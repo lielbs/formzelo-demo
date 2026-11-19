@@ -547,12 +547,15 @@ export function WorkflowRenderer({
               )}
             </div>
 
-            <div className="fz-divider my-6" />
-            <div className="fz-nav">
-              <button type="button" className="fz-btn fz-btn-ghost" onClick={goBack} disabled={stepIndex === 0 && firstScreen}>
-                <ArrowRight className="h-4 w-4" aria-hidden />
-                חזרה
-              </button>
+            {/* No "Back" on the very first step (nothing to go back to); the row keeps its layout. */}
+            <div className="fz-divider my-6" data-at-start={stepIndex === 0 && firstScreen ? '' : undefined} />
+            <div className="fz-nav" data-at-start={stepIndex === 0 && firstScreen ? '' : undefined}>
+              {stepIndex === 0 && firstScreen ? <span aria-hidden /> : (
+                <button type="button" className="fz-btn fz-btn-ghost" onClick={goBack}>
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                  חזרה
+                </button>
+              )}
               {isSummary ? (
                 <button type="submit" className="fz-btn fz-btn-primary" disabled={submitting} aria-busy={submitting || undefined}>
                   {submitting ? <span className="fz-spin" aria-hidden /> : plan.dueNow > 0 && (!plan.choice || payNow) ? <CreditCard className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}

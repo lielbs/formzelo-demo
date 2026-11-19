@@ -174,12 +174,17 @@ export function BrandKitPage() {
             >
               איפוס לברירת מחדל
             </Button>
-            <Button variant="ghost" icon={RotateCcw} disabled={!dirty} onClick={() => setKit(JSON.parse(saved))}>
-              ביטול שינויים
-            </Button>
-            <Button icon={Save} onClick={save} loading={busy} disabled={!dirty}>
-              שמירה
-            </Button>
+            {/* Like the studio: Discard and Save appear only when there is something to keep. */}
+            {(dirty || busy) && (
+              <>
+                <Button variant="ghost" icon={RotateCcw} disabled={busy} onClick={() => setKit(JSON.parse(saved))}>
+                  ביטול שינויים
+                </Button>
+                <Button icon={Save} onClick={save} loading={busy}>
+                  שמירה
+                </Button>
+              </>
+            )}
           </>
         }
       />

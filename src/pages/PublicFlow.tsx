@@ -34,7 +34,7 @@ export function Shell({ children, theme = NEUTRAL, orgName }: { children: ReactN
           {orgName ? `${orgName} · ` : ''}{runtimeConfiguration.mode === 'demo' ? 'דמו מקומי: הנתונים נשמרים בדפדפן זה בלבד, ללא תשלומים וללא שליחת הודעות אמיתיות.' : 'הטופס מאובטח ומופעל על ידי Formangle. לא מתבצע תשלום דרך טופס זה.'}
         </p>
         <span className="fz-powered">
-          <span>מופעל על ידי</span> <Logo endorsement={false} className="scale-[0.7] !no-underline" />
+          <span>מופעל על ידי</span> <Logo endorsement={false} inherit className="scale-[0.7] !no-underline" />
         </span>
       </footer>
     </ThemeScope>

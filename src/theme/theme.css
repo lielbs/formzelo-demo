@@ -1771,6 +1771,12 @@ select.fz-control {
 .fz-layout[data-bar-go='true'] .fz-nav {
   justify-content: flex-start;
 }
+/* First step with the bar: the row would be empty, so it and its divider step aside. */
+@container fz (max-width: 959px) {
+  .fz-layout[data-bar-go='true'] [data-at-start] {
+    display: none;
+  }
+}
 @container fz (min-width: 960px) {
   .fz-layout[data-bar-go='true'] .fz-nav .fz-btn-primary {
     display: inline-flex;
@@ -1959,7 +1965,6 @@ select.fz-control {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  opacity: 0.8;
 }
 
 /* ---------- content blocks ---------- */

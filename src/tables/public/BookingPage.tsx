@@ -262,8 +262,10 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
         {venue.policy.maxParty > parties[parties.length - 1]! && (
           <div className="mt-2 flex items-center gap-2">
             <label htmlFor="party-more" className="text-sm text-ink-muted">{s.partyMore}:</label>
-            <select id="party-more" value={party > parties[parties.length - 1]! ? party : ''} onChange={(e) => e.target.value && setParty(Number(e.target.value))} className="ui-select h-11 rounded-xl border border-cloud-300 bg-white px-3">
-              <option value="">—</option>
+            {/* A real placeholder ("13–20"), so the closed control reads as a choice, not an empty box. */}
+            <select id="party-more" value={party > parties[parties.length - 1]! ? party : ''} onChange={(e) => e.target.value && setParty(Number(e.target.value))}
+              className={cx('ui-select h-11 min-w-[6.5rem] rounded-xl border border-cloud-300 bg-white ps-3 pe-8 text-[15px] font-semibold tabular-nums', party > parties[parties.length - 1]! && 'pp-chip-on')}>
+              <option value="">{parties[parties.length - 1]! + 1}–{venue.policy.maxParty}</option>
               {Array.from({ length: venue.policy.maxParty - parties[parties.length - 1]! }, (_, i) => parties[parties.length - 1]! + 1 + i).map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>

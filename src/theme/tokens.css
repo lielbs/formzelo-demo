@@ -31,7 +31,7 @@
   /* Orange: brand accent and primary action (700/800 carry white or small text at WCAG AA). */
   --fz-orange: 233 107 61;
   --fz-orange-600: 211 90 46;
-  --fz-orange-700: 191 79 40;
+  --fz-orange-700: 184 74 36; /* ≥4.5:1 for small text on white and on the cloud page colour */
   --fz-orange-800: 166 67 31;
   --fz-orange-50: 253 240 235;
   --fz-orange-100: 250 223 212;

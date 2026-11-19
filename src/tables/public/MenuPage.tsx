@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { PageLoader } from '../../components/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { cx, PageLoader } from '../../components/ui';
 import { Link, useParams } from 'react-router-dom';
 import { publicMenus, publicVenue, type MenuDoc, type PublicMenus, type PublicVenue } from '../data/client';
 import { tx, type Lang } from './i18n';
@@ -55,18 +55,9 @@ export function MenuDocView({ m, lang, img, asPageTitle, note }: {
   return (
         <section key={m.id} aria-labelledby={`menu-${m.id}`} className="mt-6 first:mt-0">
           <MenuHeroBlock id={`menu-${m.id}`} title={m.title} hero={m.doc.hero} img={img} asPageTitle={asPageTitle} note={note} />
-          {m.doc.gallery?.length ? <Gallery ids={m.doc.gallery} img={img} lang={lang} /> : null}
-          {m.doc.sections.length > 2 && (
-            <nav aria-label={lang === 'he' ? 'קטגוריות בתפריט' : 'Menu sections'} className="pp-menu-nav sticky top-0 z-10 -mx-5 mt-5 px-5 py-2 sm:-mx-7 sm:px-7">
-              <ul className="pp-scroll flex gap-2 overflow-x-auto">
-                {m.doc.sections.map((sec, i) => (
-                  <li key={i} className="shrink-0">
-                    <a href={`#sec-${m.id}-${i}`} className="pp-chip inline-flex min-h-[38px] items-center rounded-full px-4 text-sm font-semibold">{sec.title}</a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          )}
+          {/* The cover photo is already the hero: the gallery never shows it a second time. */}
+          {m.doc.gallery?.length ? <Gallery ids={m.doc.gallery.filter((g) => g !== m.doc.hero?.imageAssetId)} img={img} lang={lang} /> : null}
+          {m.doc.sections.length > 2 && <SectionNav menuId={m.id} titles={m.doc.sections.map((sec) => sec.title)} lang={lang} />}
           {m.doc.sections.map((sec, i) => {
             const cover = img(sec.imageAssetId);
             return (
@@ -114,6 +105,48 @@ export function MenuDocView({ m, lang, img, asPageTitle, note }: {
             );
           })}
         </section>
+  );
+}
+
+/**
+ * The sticky row of menu categories. It follows the reading position: the category on screen is
+ * marked (aria-current) and its chip slides into view, so a long menu never leaves the guest lost.
+ */
+function SectionNav({ menuId, titles, lang }: { menuId: string; titles: string[]; lang: Lang }) {
+  const [active, setActive] = useState(0);
+  const list = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const els = titles.map((_, i) => document.getElementById(`sec-${menuId}-${i}`)).filter((e): e is HTMLElement => !!e);
+    if (!els.length || typeof IntersectionObserver === 'undefined') return;
+    const visible = new Map<number, boolean>();
+    // A section counts as "current" while it crosses a band just under the sticky row.
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) visible.set(els.indexOf(e.target as HTMLElement), e.isIntersecting);
+      const first = [...visible.entries()].filter(([, v]) => v).map(([i]) => i).sort((a, b) => a - b)[0];
+      if (first !== undefined) setActive(first);
+    }, { rootMargin: '-72px 0px -60% 0px' });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [menuId, titles.length]); // eslint-disable-line react-hooks/exhaustive-deps -- re-observe only when the sections change
+  useEffect(() => {
+    const ul = list.current;
+    const chip = ul?.children[active] as HTMLElement | undefined;
+    if (!ul || !chip) return;
+    // Scroll the row only (never the page): centre the active chip.
+    const target = chip.offsetLeft - (ul.clientWidth - chip.offsetWidth) / 2;
+    ul.scrollTo({ left: target, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, [active]);
+  return (
+    <nav aria-label={lang === 'he' ? 'קטגוריות בתפריט' : 'Menu sections'} className="pp-menu-nav sticky top-0 z-10 -mx-5 mt-5 px-5 py-2 sm:-mx-7 sm:px-7">
+      <ul ref={list} className="pp-scroll flex gap-2 overflow-x-auto">
+        {titles.map((title, i) => (
+          <li key={i} className="shrink-0">
+            <a href={`#sec-${menuId}-${i}`} aria-current={i === active ? 'location' : undefined} onClick={() => setActive(i)}
+              className={cx('pp-chip inline-flex min-h-[40px] items-center rounded-full px-4 text-sm font-semibold', i === active && 'pp-chip-on')}>{title}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 

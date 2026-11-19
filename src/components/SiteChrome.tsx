@@ -70,7 +70,7 @@ export function SiteFooter() {
         <div>
           <Logo dark />
           <p className="mt-3 max-w-sm text-sm leading-relaxed">לכל עסק יש את הזווית שלו. תהליכים דיגיטליים ממותגים — מוקמים ומלווים על ידי RockStack.</p>
-          <p className="mt-4 max-w-sm text-xs leading-relaxed text-white/40">
+          <p className="mt-4 max-w-sm text-xs leading-relaxed text-white/60">
             זהו דמו מקומי: הנתונים נשמרים בדפדפן שלכם בלבד, היצירה מתבצעת במנוע מקומי שמבוסס על מילות מפתח ותבניות, ואין תשלומים, הודעות או הזמנות אמיתיות.
           </p>
         </div>
@@ -94,7 +94,7 @@ export function SiteFooter() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-white/40">
+      <div className="border-t border-white/10 py-5 text-center text-xs text-white/60">
         © {new Date().getFullYear()} RockStack Digital Solutions · Formangle demo ·{' '}
         <Link to="/privacy" className="underline hover:text-white">
           פרטיות ותנאי שימוש

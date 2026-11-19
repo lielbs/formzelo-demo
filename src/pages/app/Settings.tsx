@@ -199,7 +199,7 @@ export function Settings() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {runtimeConfiguration.mode === 'demo' && <PaymentConnectors />}
         <Card className="p-5"><ThemeChoice /></Card>
         {runtimeConfiguration.mode === 'production' && <AccountCard />}

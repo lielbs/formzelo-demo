@@ -23,11 +23,15 @@ export function BrandMark({ size = 28, className, title, onDark = false }: { siz
   );
 }
 
-/** Wordmark: "Form" + orange "angle". Canonical spelling is exactly "Formangle". */
-export function Wordmark({ dark = false, className }: { dark?: boolean; className?: string }) {
+/**
+ * Wordmark: "Form" + orange "angle". Canonical spelling is exactly "Formangle". On light surfaces
+ * "angle" uses the deeper orange (AA contrast for text); `inherit` is the one-colour lockup that
+ * takes the surrounding text colour (the "powered by" badge on themed customer pages).
+ */
+export function Wordmark({ dark = false, inherit = false, className }: { dark?: boolean; inherit?: boolean; className?: string }) {
   return (
-    <span className={cx('text-[21px] font-semibold leading-none tracking-[-0.02em]', dark ? 'text-white' : 'text-midnight', className)} aria-hidden>
-      Form<span className="text-orange">angle</span>
+    <span className={cx('text-[21px] font-semibold leading-none tracking-[-0.02em]', inherit ? 'text-current' : dark ? 'text-white' : 'text-midnight', className)} aria-hidden>
+      Form<span className={inherit ? undefined : dark ? 'text-orange' : 'text-orange-700'}>angle</span>
     </span>
   );
 }
@@ -41,10 +45,13 @@ export function Logo({
   endorsement = true,
   variant = 'full',
   stacked = false,
+  inherit = false,
   className,
   to = '/',
 }: {
   dark?: boolean;
+  /** One-colour wordmark in the surrounding text colour (themed customer pages). */
+  inherit?: boolean;
   endorsement?: boolean;
   variant?: 'full' | 'compact';
   /** "by RockStack" under the wordmark — for narrow spaces such as the app sidebar. */
@@ -62,7 +69,7 @@ export function Logo({
       <BrandMark size={variant === 'compact' ? 30 : 26} onDark={dark} />
       {variant === 'full' && (
         <span className={stacked ? 'inline-flex flex-col items-start gap-1' : 'inline-flex items-baseline gap-1.5'}>
-          <Wordmark dark={dark} />
+          <Wordmark dark={dark} inherit={inherit} />
           {endorsement && <span className={cx('whitespace-nowrap text-[11px] font-medium leading-none', dark ? 'text-white/50' : 'text-ink-soft')}>by RockStack</span>}
         </span>
       )}

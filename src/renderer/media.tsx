@@ -59,7 +59,8 @@ export function BusinessGallery({ theme, assets, slot, studio }: { theme: Workfl
   return (
     <section className="fz-gallery-biz" data-style={m.galleryStyle} aria-label={m.galleryTitle || 'תמונות מהעסק'}>
       {m.galleryTitle?.trim() && <h3 className="fz-gallery-title">{m.galleryTitle}</h3>}
-      <ul data-count={items.length}>
+      {/* Focusable: when the row scrolls sideways, keyboard users can scroll it too. */}
+      <ul data-count={items.length} tabIndex={0} aria-label={m.galleryTitle || 'תמונות מהעסק'}>
         {items.map((u, i) => (
           <li key={i} style={{ ['--i' as string]: i }}>
             <Photo src={u} tone={m.tone} empty={u ? undefined : 'תמונה מהעסק'} />

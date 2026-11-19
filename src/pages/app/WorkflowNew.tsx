@@ -5,7 +5,7 @@
  */
 import { asPublicWorkflow } from '../../engine/templates';
 import { runtimeConfiguration } from '../../production/runtime';
-import { AlertTriangle, ArrowLeft, Copy, FilePlus2, LayoutTemplate, MessageSquareText, RotateCcw, Square, Wand2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ChevronDown, Copy, FilePlus2, LayoutTemplate, MessageSquareText, RotateCcw, Square, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -68,6 +68,7 @@ export function WorkflowNew() {
   const location = useLocation();
   const initialPrompt = (location.state as { prompt?: string } | null)?.prompt ?? '';
   const [start, setStart] = useState<StartOption>('describe');
+  const [wideScreen] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -227,8 +228,12 @@ export function WorkflowNew() {
                     </p>
                   )}
                 </div>
-                <div>
-                  <p className="mb-2 text-xs font-medium text-ink-muted">אפשר להוסיף לתיאור בלחיצה:</p>
+                {/* Additions fold away on a phone (examples stay open): one decision at a time. */}
+                <details className="group" open={wideScreen || undefined}>
+                  <summary className="mb-2 flex min-h-[36px] cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-ink-muted [&::-webkit-details-marker]:hidden">
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
+                    אפשר להוסיף לתיאור בלחיצה <span className="text-ink-soft">({ADD_HINTS.length})</span>
+                  </summary>
                   <div className="flex flex-wrap gap-1.5">
                     {ADD_HINTS.map((h) => (
                       <button
@@ -247,8 +252,8 @@ export function WorkflowNew() {
                       </button>
                     ))}
                   </div>
-                  <p className="mt-1.5 text-[11px] text-ink-soft">אחר כך משנים את המספרים במילים שלכם — המנוע מבין גם ״א׳-ו׳״, ״10:00-14:00״, ״יומיים מראש״.</p>
-                </div>
+                  <p className="mt-1.5 text-xs text-ink-soft">אחר כך משנים את המספרים במילים שלכם — המנוע מבין גם ״א׳-ו׳״, ״10:00-14:00״, ״יומיים מראש״.</p>
+                </details>
                 <div>
                   <p className="mb-2 text-xs font-medium text-ink-muted">דוגמאות שאפשר להתחיל מהן:</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -264,7 +269,7 @@ export function WorkflowNew() {
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-[11px] text-ink-soft">אפשר לשלב: ״הרשמה לסדנה עם 2 מועדים, עד 12 משתתפים, באישור ידני, ללא תשלום״.</p>
+                  <p className="mt-2 text-xs text-ink-soft">אפשר לשלב: ״הרשמה לסדנה עם 2 מועדים, עד 12 משתתפים, באישור ידני, ללא תשלום״.</p>
                 </div>
                 <Button type="submit" icon={draft ? RotateCcw : Wand2} loading={generating}>
                   {generating ? 'מרכיבים תהליך…' : draft ? 'יצירה מחדש' : 'יצירת תהליך'}
@@ -430,7 +435,8 @@ export function WorkflowNew() {
               </div>
             </div>
           ) : (
-            <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-cloud-300 bg-white/60 p-8 text-center">
+            // The empty preview frame only earns its space beside the form (wide screens); on a phone it would sit below everything.
+            <div className="hidden h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-cloud-300 bg-white/60 p-8 text-center lg:flex">
               <Wand2 className="h-8 w-8 text-ink-soft" aria-hidden />
               <p className="mt-3 font-medium">התצוגה המקדימה תופיע כאן</p>
               <p className="mt-1 max-w-xs text-sm text-ink-muted">

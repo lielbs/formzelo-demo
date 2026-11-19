@@ -1,8 +1,7 @@
 /** Venue facts shown around the guest pages: booking hours, location, contact. Real data only. */
-import { Clock, MapPin, MessageCircle, Navigation, Phone, UtensilsCrossed, Users } from 'lucide-react';
+import { Clock, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cx } from '../../components/ui';
-import { displayPhone, normalizePhone, whatsappHref } from '../domain/phone';
 import { Ltr } from '../ui';
 import { tx, type Lang } from './i18n';
 
@@ -65,51 +64,23 @@ export function HoursList({ services, today, lang }: { services: VenueService[];
   );
 }
 
-/** Side panel of the booking page: about, hours, location, contact and related pages. */
+/**
+ * Side panel of the booking page: the week's hours and the waitlist. Address, directions, call,
+ * WhatsApp and the menu are already the hero's quick actions, so they are not repeated here.
+ */
 export function VenueAside({ lang, venue, today }: {
   lang: Lang;
   today: string;
   venue: { slug: string; intro?: string | null; address?: string | null; phone?: string | null; showWhatsapp?: boolean; services: VenueService[]; policy: { waitlistPublic: boolean; maxParty: number } };
 }) {
   const s = tx(lang);
-  const phone = venue.phone ? normalizePhone(venue.phone) : null;
   const q = lang === 'en' ? '?lang=en' : '';
   return (
     <div className="grid gap-4">
       {venue.services.length > 0 && (
         <div className="pp-card rounded-2xl border border-cloud-200 bg-white p-5"><HoursList services={venue.services} today={today} lang={lang} /></div>
       )}
-      {(venue.address || phone) && (
-        <div className="pp-card grid gap-3 rounded-2xl border border-cloud-200 bg-white p-5 text-sm">
-          {venue.address && (
-            <div className="flex items-start gap-2.5">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--fz-accent)]" aria-hidden />
-              <div className="min-w-0">
-                <p>{venue.address}</p>
-                <a href={mapsHref(venue.address)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex min-h-[32px] items-center gap-1 font-medium text-[var(--fz-accent)] underline-offset-2 hover:underline">
-                  <Navigation className="h-3.5 w-3.5" aria-hidden />{s.directions}
-                </a>
-              </div>
-            </div>
-          )}
-          {phone && (
-            <div className="flex flex-wrap gap-2">
-              <a href={`tel:${phone}`} className="pp-soft-btn inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 font-medium">
-                <Phone className="h-4 w-4" aria-hidden /><Ltr>{displayPhone(phone)}</Ltr>
-              </a>
-              {venue.showWhatsapp && (
-                <a href={whatsappHref(phone)} target="_blank" rel="noopener noreferrer" className="pp-soft-btn inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 font-medium">
-                  <MessageCircle className="h-4 w-4" aria-hidden />WhatsApp
-                </a>
-              )}
-            </div>
-          )}
-        </div>
-      )}
       <nav aria-label={lang === 'he' ? 'עוד באתר' : 'More'} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-        <Link to={`/t/${venue.slug}/menu${q}`} className="pp-card group flex min-h-[56px] items-center gap-3 rounded-2xl border border-cloud-200 bg-white px-4 font-medium">
-          <span className="pp-icon-chip flex h-9 w-9 items-center justify-center rounded-full"><UtensilsCrossed className="h-4 w-4" aria-hidden /></span>{s.viewMenu}
-        </Link>
         {venue.policy.waitlistPublic && (
           <Link to={`/t/${venue.slug}/waitlist${q}`} className="pp-card group flex min-h-[56px] items-center gap-3 rounded-2xl border border-cloud-200 bg-white px-4 font-medium">
             <span className="pp-icon-chip flex h-9 w-9 items-center justify-center rounded-full"><Users className="h-4 w-4" aria-hidden /></span>{s.joinWaitlist}
