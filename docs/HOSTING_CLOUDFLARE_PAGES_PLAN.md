@@ -1,4 +1,4 @@
-# Hosting move: GitHub Pages → Cloudflare Pages (plan, not started)
+# Hosting move: GitHub Pages → Cloudflare Pages (done 2026-11-19)
 
 Status: **live on Cloudflare Pages since 2026-11-19 (phase 3 done).** GitHub Pages still deploys as the fallback.
 Written 2026-11-19 after the UI/UX review (finding #1).
