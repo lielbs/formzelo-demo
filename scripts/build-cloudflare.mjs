@@ -12,7 +12,8 @@
  *     Pages turns index.html into its folder URL, and a rewrite to it falls through to the root
  *     app (checked with `wrangler pages dev`). Pages follows redirects even when a file matches,
  *     so the rules never name /live/assets/ (no /live/* catch-all);
- *   - _headers: security headers static hosting could not send before.
+ *   - _headers: security headers static hosting could not send before, and `no-transform`
+ *     so Cloudflare never injects scripts (its analytics beacon) into the pages.
  * Only public values appear here: the publishable key is public by design, and the runtime refuses
  * any other project or a secret key.
  */
@@ -50,11 +51,11 @@ writeFileSync('dist/_headers', [
   '  X-Content-Type-Options: nosniff',
   '  Referrer-Policy: strict-origin-when-cross-origin',
   '  Strict-Transport-Security: max-age=86400',
+  // no-transform: Cloudflare must not rewrite pages (it would inject its analytics beacon, which
+  // the CSP blocks and the privacy notice does not mention). One Cache-Control for every path:
+  // Pages joins repeated headers, so a second rule for assets would produce a conflicting value.
+  '  Cache-Control: public, max-age=0, must-revalidate, no-transform',
   ...sameOrigin.flatMap((p) => [p, "  Content-Security-Policy: frame-ancestors 'self'"]),
-  '/assets/*',
-  '  Cache-Control: public, max-age=31536000, immutable',
-  '/live/assets/*',
-  '  Cache-Control: public, max-age=31536000, immutable',
   '',
 ].join('\n'));
 

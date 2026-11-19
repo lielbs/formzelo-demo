@@ -1,6 +1,6 @@
 # Hosting move: GitHub Pages → Cloudflare Pages (plan, not started)
 
-Status: **phase 1 done; phase 0 waits for the founder's Cloudflare sign-in.** DNS is unchanged.
+Status: **live on Cloudflare Pages since 2026-11-19 (phase 3 done).** GitHub Pages still deploys as the fallback.
 Written 2026-11-19 after the UI/UX review (finding #1).
 
 ## Why
@@ -73,7 +73,8 @@ the site, so no key is created, copied or stored.
 
 * `dist/_headers`: `nosniff`, referrer policy, HSTS (1 day at first),
   `frame-ancestors 'self'` on staff, account and tracking screens (customer forms and booking
-  pages stay embeddable), and an immutable cache for hashed assets.
+  pages stay embeddable), and `Cache-Control: public, max-age=0, must-revalidate, no-transform`
+  on every path, so Cloudflare never injects its analytics beacon (added after the cutover).
 * Checked locally with `wrangler pages dev dist`:
   * `/live/t/zigel-bar`, `/live/t/zigel-bar/menu`, `/live/f/zigel-bar-private-events`, `/` and
     `/demo` answer 200 and render real data, with no console errors.
