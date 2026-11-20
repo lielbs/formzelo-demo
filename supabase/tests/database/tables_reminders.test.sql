@@ -77,8 +77,8 @@ select is((select lock_version::text from public.tables_reservations where id=(s
 set local role authenticated;
 set local request.jwt.claim.sub = 'a8000000-0000-4000-8000-000000000001';
 select is(public.tables_mark_reminded((select v::uuid from ctx where k='r1'), false)->>'remindedAt', null, 'a mark can be undone');
-select is((select count(*) from public.tables_reminders)::int, 0, 'undo removes the mark');
 reset role;
+select is((select count(*) from public.tables_reminders)::int, 0, 'undo removes the mark');
 
 update public.tables_reservations set status='cancelled', cancelled_at=clock_timestamp() where id=(select v::uuid from ctx where k='r2');
 set local role authenticated;
