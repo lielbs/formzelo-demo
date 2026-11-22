@@ -45,7 +45,7 @@ export function validateOptionCapacity(config: WorkflowConfig, values: Values, u
     const v = values[f.key];
     const opt = f.options?.find((o) => o.value === v);
     if (opt?.capacity && placesLeft(opt.capacity, usage[f.key]?.[opt.value]) === 0) {
-      errors[f.key] = `"${opt.label}" מלא לפי ההרשמות שנשמרו בדפדפן זה. בחרו אפשרות אחרת.`;
+      errors[f.key] = `"${opt.label}" מלא. בחרו אפשרות אחרת.`;
     }
   }
   return errors;

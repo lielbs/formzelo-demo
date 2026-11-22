@@ -12,6 +12,7 @@ import { DigitalPresence, ReviewRequest } from './presence';
 import { Signoff } from './extras';
 import { BusinessGallery, resolveMedia } from './media';
 import { presenceOf, reviewLink, shouldAskForReview } from '../engine/presence';
+import { byMode } from '../lib/modeCopy';
 
 /** Pieces of the completion burst: end offset (px) and spin, spread evenly around the mark. */
 const BURST: [number, number, number][] = Array.from({ length: 14 }, (_, i) => {
@@ -251,7 +252,7 @@ export function Confirmation({
         {/* Engagement comes after the confirmation details, never instead of them. */}
         <DigitalPresence theme={theme} slot="completion" title={booking && !booking.confirmed ? 'בינתיים, אפשר להכיר אותנו' : 'נשארים בקשר'} />
         {shouldAskForReview({ enabled: presenceOf(theme.presence).reviewCta, hasReviewLink: Boolean(reviewLink(theme.presence?.links ?? [])), status: run.status }) && <ReviewRequest theme={theme} />}
-        <p className="fz-help mt-5 text-center">אפשר לרענן את הדף — הבקשה נשמרה מקומית בדפדפן זה.</p>
+        <p className="fz-help mt-5 text-center">{byMode('אפשר לרענן את הדף — הבקשה נשמרה מקומית בדפדפן זה.', 'אפשר לרענן את הדף — הבקשה נשמרה.')}</p>
       </section>
     </div>
   );

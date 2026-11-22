@@ -11,7 +11,7 @@ mkdirSync(OUT, { recursive: true });
 const only = process.argv[2];
 const SIZES = { d: { viewport: { width: 1440, height: 900 } }, t: { viewport: { width: 1180, height: 820 }, hasTouch: true }, m: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } };
 const SCREENS = [
-  ['tables-home', '/app/tables', true], ['venue', `/app/tables/${VENUE_ID}`, true], ['setup', `/app/tables/${VENUE_ID}/setup`, true],
+  ['dashboard', '/app', true], ['tables-home', '/app/tables', true], ['venue', `/app/tables/${VENUE_ID}`, true], ['setup', `/app/tables/${VENUE_ID}/setup`, true],
   ['menus', `/app/tables/${VENUE_ID}/menus`, true], ['design', `/app/tables/${VENUE_ID}/design`, true], ['analytics', `/app/tables/${VENUE_ID}/analytics`, true],
   ['live', LIVE, true], ['guest-book', `/t/${SLUG}`, false], ['guest-menu', `/t/${SLUG}/menu`, false], ['guest-waitlist', `/t/${SLUG}/waitlist`, false],
   ['guest-manage', '/t/r#t=Tokxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', false], ['guest-wl-status', '/t/w#t=Wxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', false],

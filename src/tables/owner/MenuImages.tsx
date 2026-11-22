@@ -5,7 +5,7 @@
  */
 import { ArrowLeft, ArrowRight, ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { ImagePicker } from '../../components/ImagePicker';
+import { ImagePicker, LibraryUsage } from '../../components/ImagePicker';
 import { useToast } from '../../components/Toast';
 import { Button, cx } from '../../components/ui';
 import type { Asset } from '../../domain/theme';
@@ -116,6 +116,7 @@ export function GalleryEditor({ value, media, orgId, onChange }: { value: string
           }} />
       )}
       {full && replace == null && <p className="text-xs text-ink-muted">הגלריה מלאה ({MENU_GALLERY_MAX} תמונות). הסירו תמונה כדי להוסיף אחרת.</p>}
+      <LibraryUsage assets={media.assets} className="mt-2" />
     </div>
   );
 }

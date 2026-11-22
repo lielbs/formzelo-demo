@@ -1,14 +1,15 @@
-/** Pick, upload (downscaled locally) or delete a workspace image. Nothing leaves the browser. */
+/** Pick, upload (downscaled in the browser first) or delete an image of the business library. */
 import { runtimeConfiguration } from '../production/runtime';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import type { Asset } from '../domain/theme';
+import { LIBRARY_QUOTA, type Asset } from '../domain/theme';
 import { isShowcaseId } from '../data/showcase';
 import { useRepo } from '../data/store';
 import { assetSrc } from '../lib/links';
 import { ImagePrepError, prepareImage } from '../lib/images';
 import { useToast } from './Toast';
 import { Button, cx } from './ui';
+import { byMode, IS_DEMO } from '../lib/modeCopy';
 
 export function ImagePicker({
   kind,
@@ -56,7 +57,7 @@ export function ImagePicker({
     <div>
       <p className="text-sm font-medium text-ink">{label}</p>
       <p className="text-xs text-ink-muted">{hint}</p>
-      {missing && <p className="mt-1 text-xs text-amber-700">התמונה שנבחרה לא נמצאה בדפדפן זה — יוצג איור במקומה.</p>}
+      {missing && <p className="mt-1 text-xs text-amber-700">{byMode('התמונה שנבחרה לא נמצאה בדפדפן זה — יוצג איור במקומה.', 'התמונה הוסרה מהספרייה — יוצג איור במקומה.')}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -105,3 +106,17 @@ export function ImagePicker({
   );
 }
 
+
+/** "62 of 400 images · 8.1 of 50 MB" for the business image library (production only). Warns from 90%. */
+export function LibraryUsage({ assets, className }: { assets: Asset[]; className?: string }) {
+  if (IS_DEMO) return null;
+  const count = assets.length;
+  const mb = assets.reduce((sum, a) => sum + (a.bytes || 0), 0) / 1_048_576;
+  const near = count >= LIBRARY_QUOTA.count * 0.9 || mb >= LIBRARY_QUOTA.megabytes * 0.9;
+  return (
+    <p className={cx('text-xs', near ? 'font-medium text-amber-800' : 'text-ink-muted', className)}>
+      בספריית התמונות: {count} מתוך {LIBRARY_QUOTA.count} · {mb.toFixed(1)}MB מתוך {LIBRARY_QUOTA.megabytes}MB
+      {near ? '. כמעט מלא: הסירו תמונות שאינן בשימוש.' : ''}
+    </p>
+  );
+}

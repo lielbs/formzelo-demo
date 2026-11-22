@@ -9,6 +9,7 @@ import { hasArt, inferArt, OptionArt } from '../theme/art';
 import { runtimeConfiguration } from '../production/runtime';
 import { resolveAppearance } from './appearance';
 import { DisplayBlock, slotHint } from './blocks';
+import { byMode } from '../lib/modeCopy';
 
 interface Props {
   field: WorkflowField;
@@ -194,7 +195,7 @@ export function FieldInput({ field, value, onChange, onBlur, error, optionArt: i
               );
             })}
           </div>
-          {availability && <p className="fz-help">הזמינות מחושבת מהבקשות שנשמרו בדפדפן זה בלבד — המסעדה מאשרת סופית.</p>}
+          {availability && <p className="fz-help">{byMode('הזמינות מחושבת מהבקשות שנשמרו בדפדפן זה בלבד — המסעדה מאשרת סופית.', 'הזמינות מתעדכנת לפי הבקשות שכבר התקבלו — העסק מאשר סופית.')}</p>}
           <Help field={field} error={error} />
         </fieldset>
       );

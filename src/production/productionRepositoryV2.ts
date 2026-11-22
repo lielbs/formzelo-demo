@@ -13,7 +13,7 @@ import {
   type WorkflowRun,
   type WorkflowVersion,
 } from '../domain/schema';
-import { BrandKitSchema, completeBrandKit, PresenceLinkSchema, WorkflowThemeSchema, type Asset, type BrandKit } from '../domain/theme';
+import { BrandKitSchema, completeBrandKit, PresenceLinkSchema, WorkflowThemeSchema, type Asset, type BrandKit, LIBRARY_QUOTA } from '../domain/theme';
 import { runtimeConfiguration } from './runtime';
 import type { FormangleRepository } from '../data/repository';
 import { DomainRuleError, NotFoundError, ValidationFailedError } from '../data/repository';
@@ -645,7 +645,7 @@ export function createProductionRepository(client: SupabaseClient<Database>): Fo
         p_width: Math.round(input.width), p_height: Math.round(input.height),
       });
       if (error || !data?.[0]) {
-        if (error?.code === '54000') throw new DomainRuleError('הגעתם למגבלת התמונות של העסק (80 תמונות או 50MB). הסירו תמונות שאינן בשימוש.');
+        if (error?.code === '54000') throw new DomainRuleError(`הגעתם למגבלת התמונות של העסק (${LIBRARY_QUOTA.count} תמונות או ${LIBRARY_QUOTA.megabytes}MB). הסירו תמונות שאינן בשימוש.`);
         fail(error, 'Unable to save image');
       }
       emit();

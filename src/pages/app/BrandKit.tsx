@@ -7,7 +7,7 @@ import { AlertCircle, CheckCircle2, Palette, Pipette, RotateCcw, Save } from 'lu
 import { BRAND_TABS, type BrandTab } from './brandTabs';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ImagePicker } from '../../components/ImagePicker';
+import { ImagePicker, LibraryUsage } from '../../components/ImagePicker';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, cx, ErrorState, FieldLabel, Input, PageHeader, Spinner, Textarea } from '../../components/ui';
 import { BUTTON_VARIANTS, DENSITIES, TYPOGRAPHY_PRESETS, type BrandKit } from '../../domain/theme';
@@ -281,6 +281,7 @@ export function BrandKitPage() {
             <ImagePicker kind="logo" label="לוגו ראשי" hint="רקע שקוף נראה הכי טוב." selected={kit.logoAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.logoAssetId = id))} />
             <ImagePicker kind="logo" label="לוגו משני (אופציונלי)" hint="סימן קטן / אייקון, לשימוש עתידי בכותרות קומפקטיות." selected={kit.secondaryLogoAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.secondaryLogoAssetId = id))} />
             <ImagePicker kind="cover" label="תמונת כיסוי ברירת מחדל" hint="משמשת בפתיח כשלתהליך אין תמונה משלו. רק תמונות שבבעלותכם." selected={kit.coverAssetId} assets={q.data.assets} urls={assetUrls} orgId={org.id} onSelect={(id) => set((k) => void (k.coverAssetId = id))} />
+            <LibraryUsage assets={q.data.assets} />
           </Group>
 
           </>

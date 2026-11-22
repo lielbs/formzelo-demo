@@ -6,6 +6,12 @@ import { STATUS_HE, TABLE_STATE_HE } from './domain/status';
 import type { ReservationStatus, TableDef, TableLiveState, TableShape } from './domain/types';
 import { loadCache } from '../lib/loadCache';
 
+/**
+ * `fetchpriority="high"` for the one image that paints first (the hero). React 18 does not know the
+ * camelCase `fetchPriority` prop and drops it with a warning; the lowercase attribute passes through.
+ */
+export const HIGH_PRIORITY_IMG = { fetchpriority: 'high' } as Record<string, string>;
+
 /** Left-to-right island for phone numbers, codes, times and mixed strings inside RTL text. */
 export function Ltr({ children, className }: { children: ReactNode; className?: string }) {
   return <bdi dir="ltr" className={cx('fz-ltr', className)}>{children}</bdi>;

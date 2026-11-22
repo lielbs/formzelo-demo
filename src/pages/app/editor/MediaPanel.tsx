@@ -9,6 +9,7 @@ import { Button, cx, FieldLabel, Input } from '../../../components/ui';
 import { COVER_STYLES, FRAME_SHAPES, GALLERY_PLACEMENTS, GALLERY_STYLES, LOGO_STYLES, PHOTO_TONES, type Asset, type MediaSettings, type WorkflowTheme } from '../../../domain/theme';
 import { resolveMedia } from '../../../renderer/media';
 import { Segmented } from './DesignPanel';
+import { byMode } from '../../../lib/modeCopy';
 
 const COVER_INFO: Record<(typeof COVER_STYLES)[number], { label: string; diagram: ReactNode }> = {
   backdrop: { label: 'רקע לפתיח', diagram: <><rect x="2" y="2" width="56" height="26" rx="3" className="ph" /><rect x="30" y="9" width="22" height="4" rx="2" className="tx" /><rect x="36" y="16" width="16" height="3" rx="1.5" className="tx" /></> },
@@ -110,7 +111,7 @@ export function MediaEditor({
           <ImagePicker
             kind="image"
             label="הוספת תמונה"
-            hint="מוקטנת ל-900px ונשמרת בדפדפן בלבד."
+            hint={byMode('מוקטנת ל-900px ונשמרת בדפדפן בלבד.', 'מוקטנת ל-900px ונשמרת בספריית התמונות של העסק.')}
             selected={undefined}
             assets={assets}
             urls={assetUrls}

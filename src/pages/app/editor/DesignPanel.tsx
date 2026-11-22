@@ -33,6 +33,7 @@ import { ExtrasEditor, FlowPicker } from './ExtrasPanel';
 
 const SPOT_LABELS = { hero: 'בפתיח', options: 'בכרטיסי האפשרויות', blocks: 'בבלוקים של תמונה' } as const;
 import { MediaEditor } from './MediaPanel';
+import { byMode } from '../../../lib/modeCopy';
 
 export const L = {
   hero: { split: 'פאנל עריכתי', banner: 'רצועה טכנית', immersive: 'אווירה מלאה', compact: 'כותרת עניינית', poster: 'פוסטר נועז', centered: 'ממורכז', none: 'ללא פתיח' },
@@ -260,7 +261,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
         <p className="text-xs text-ink-muted">משתמשים שביקשו להפחית תנועה במכשיר שלהם יראו את הטופס ללא אנימציות בכל מקרה.</p>
       </Group>
 
-      <Group title="תמונות העסק ולוגו" hint={`נשמרות מוקטנות בדפדפן זה בלבד (לוגו עד ${ASSET_LIMITS.logo.maxBytes / 1024}KB, כיסוי עד ${ASSET_LIMITS.cover.maxBytes / 1024}KB). בשימוש: ${Math.round(used / 1024)}KB מתוך ${Math.round(ASSET_LIMITS.totalBytes / 1024)}KB.`}>
+      <Group title="תמונות העסק ולוגו" hint={byMode(`נשמרות מוקטנות בדפדפן זה בלבד (לוגו עד ${ASSET_LIMITS.logo.maxBytes / 1024}KB, כיסוי עד ${ASSET_LIMITS.cover.maxBytes / 1024}KB). בשימוש: ${Math.round(used / 1024)}KB מתוך ${Math.round(ASSET_LIMITS.totalBytes / 1024)}KB.`, 'מוקטנות אוטומטית לפני ההעלאה ונשמרות בספריית התמונות של העסק, לשימוש בכל הטפסים והדפים.')}>
         <ImagePicker kind="logo" label="לוגו" hint="PNG שקוף עובד הכי טוב." selected={design.logo.assetId} assets={assets} urls={assetUrls} orgId={orgId} onSelect={(id) => set((d) => void (d.logo.assetId = id))} />
         <ImagePicker kind="cover" label="תמונת כיסוי לפתיח" hint="מחליפה את האיור בפתיח. השתמשו רק בתמונות שבבעלותכם." selected={design.hero.coverAssetId} assets={assets} urls={assetUrls} orgId={orgId} onSelect={(id) => set((d) => void (d.hero.coverAssetId = id))} />
         <Toggle checked={design.logo.showName} onChange={(v) => set((d) => void (d.logo.showName = v))}>

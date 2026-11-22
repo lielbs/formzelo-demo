@@ -46,18 +46,31 @@ writeFileSync('dist/_redirects', [
 // Staff, account and tracking screens may only be framed by the site itself (clickjacking).
 // Customer forms and booking pages stay embeddable: owners embed them on their own sites.
 const sameOrigin = ['/live/app/*', '/live/app', '/live/operator*', '/live/invite*', '/live/reset*', '/live/track*', '/live/t/r*', '/live/t/w*', '/app/*', '/operator*', '/invite*', '/reset*', '/track*'];
-writeFileSync('dist/_headers', [
+// Hashed build files never change under the same name: browsers keep them for a year instead of
+// asking again on every visit. Pages joins repeated headers, so these rules first detach the
+// site-wide value with "! Cache-Control"; they must come AFTER the "/*" rule (rules apply in file
+// order, and a detach only removes what an earlier rule added).
+// https://developers.cloudflare.com/pages/configuration/headers/
+export const IMMUTABLE_PATHS = ['/assets/*', '/live/assets/*'];
+const HEADERS = [
   '/*',
   '  X-Content-Type-Options: nosniff',
   '  Referrer-Policy: strict-origin-when-cross-origin',
-  '  Strict-Transport-Security: max-age=86400',
+  '  Strict-Transport-Security: max-age=31536000',
   // no-transform: Cloudflare must not rewrite pages (it would inject its analytics beacon, which
-  // the CSP blocks and the privacy notice does not mention). One Cache-Control for every path:
-  // Pages joins repeated headers, so a second rule for assets would produce a conflicting value.
+  // the CSP blocks and the privacy notice does not mention). Pages and data revalidate every time.
   '  Cache-Control: public, max-age=0, must-revalidate, no-transform',
+  ...IMMUTABLE_PATHS.flatMap((p) => [p, '  ! Cache-Control', '  Cache-Control: public, max-age=31536000, immutable, no-transform']),
   ...sameOrigin.flatMap((p) => [p, "  Content-Security-Policy: frame-ancestors 'self'"]),
   '',
-].join('\n'));
+].join('\n');
+writeFileSync('dist/_headers', HEADERS);
+if (HEADERS.indexOf('/assets/*') < HEADERS.indexOf('/*\n') || !HEADERS.includes('! Cache-Control')) throw new Error('_headers: the immutable asset rules must follow the site-wide rule');
+for (const dir of ['dist/assets', 'dist/live/assets']) {
+  // Only hashed names may be cached forever (name-hash.ext); anything else there would go stale.
+  const plain = readdirSync(dir).filter((n) => !/-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(n));
+  if (plain.length) throw new Error(`${dir} has files without a content hash (cached for a year): ${plain.slice(0, 5).join(', ')}`);
+}
 
 // The same guarantees the GitHub Pages workflow checks.
 for (const f of ['dist/index.html', 'dist/live/index.html', 'dist/live/track.html', 'dist/live/invite.html', 'dist/live/reset.html']) {

@@ -9,6 +9,7 @@ import { useActiveOrg, useRepoQuery } from '../../data/store';
 import { simulatedMoney, workflowOutcome } from '../../engine/metrics';
 import { DONE_STATUSES } from '../../engine/transitions';
 import { formatCurrency, formatNumber, formatShortDate, isoDay } from '../../lib/format';
+import { byMode } from '../../lib/modeCopy';
 
 const RANGES = [7, 14, 30] as const;
 
@@ -75,7 +76,7 @@ export function Analytics() {
     <>
       <PageHeader
         title="אנליטיקה"
-        description="מחושב בזמן אמת מהבקשות השמורות בדפדפן."
+        description={byMode('מחושב בזמן אמת מהבקשות השמורות בדפדפן.', 'מחושב בזמן אמת מהבקשות של העסק.')}
         actions={
           <>
             <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-card">

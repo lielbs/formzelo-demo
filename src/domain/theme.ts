@@ -308,6 +308,9 @@ export const AssetSchema = z.object({
 export type Asset = z.infer<typeof AssetSchema>;
 
 /** Hard limits that keep demo assets from exhausting the ~5 MB localStorage quota. */
+/** Image library of a business in production (server rule: register_organization_asset). */
+export const LIBRARY_QUOTA = { count: 400, megabytes: 50 } as const;
+
 export const ASSET_LIMITS = {
   logo: { maxEdge: 320, maxBytes: 80 * 1024 },
   cover: { maxEdge: 1400, maxBytes: 320 * 1024 },

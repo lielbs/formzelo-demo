@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Logo } from './Brand';
 import { ButtonLink } from './ui';
 import { appHref } from '../lib/links';
+import { IS_DEMO } from '../lib/modeCopy';
 
 const LINKS = [
   { href: '/#how', label: 'איך זה עובד' },
@@ -70,9 +71,11 @@ export function SiteFooter() {
         <div>
           <Logo dark />
           <p className="mt-3 max-w-sm text-sm leading-relaxed">לכל עסק יש את הזווית שלו. תהליכים דיגיטליים ממותגים — מוקמים ומלווים על ידי RockStack.</p>
-          <p className="mt-4 max-w-sm text-xs leading-relaxed text-white/60">
-            זהו דמו מקומי: הנתונים נשמרים בדפדפן שלכם בלבד, היצירה מתבצעת במנוע מקומי שמבוסס על מילות מפתח ותבניות, ואין תשלומים, הודעות או הזמנות אמיתיות.
-          </p>
+          {IS_DEMO && (
+            <p className="mt-4 max-w-sm text-xs leading-relaxed text-white/60">
+              זהו דמו מקומי: הנתונים נשמרים בדפדפן שלכם בלבד, היצירה מתבצעת במנוע מקומי שמבוסס על מילות מפתח ותבניות, ואין תשלומים, הודעות או הזמנות אמיתיות.
+            </p>
+          )}
         </div>
         <div>
           <p className="text-sm font-medium text-white">מוצר</p>

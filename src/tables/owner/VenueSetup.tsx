@@ -163,7 +163,7 @@ export function VenueSetup() {
           </div>
           {/* The way forward stays in reach while a long step scrolls (above the phone dock). */}
           <div className="sticky bottom-[calc(var(--fz-tabbar,0px)+0.75rem)] z-10 mt-8 flex items-center justify-between gap-3 rounded-2xl border border-cloud-200 bg-white/95 p-2.5 shadow-card backdrop-blur">
-            {stepIndex > 0 ? <Button variant="ghost" icon={ArrowRight} onClick={() => void go(STEPS[stepIndex - 1]!.key)} className="shrink-0">הקודם</Button> : <SaveIndicator state={save} at={autosave.savedAt} />}
+            {stepIndex > 0 ? <Button variant="ghost" icon={ArrowRight} onClick={() => void go(STEPS[stepIndex - 1]!.key)} className="shrink-0">הקודם</Button> : <SaveIndicator state={save} at={autosave.savedAt} announce={false} />}
             {stepIndex < STEPS.length - 1 && (
               <Button size="lg" onClick={() => void go(STEPS[stepIndex + 1]!.key)} className="min-w-0">
                 המשך<span className="sr-only min-[400px]:not-sr-only">: {STEPS[stepIndex + 1]!.title}</span> <ArrowLeft className="h-4 w-4" aria-hidden />

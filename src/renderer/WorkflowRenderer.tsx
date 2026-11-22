@@ -236,7 +236,7 @@ export function WorkflowRenderer({
       const booking = validateBooking(config, all, []);
       const time = b.timeKey ? all[b.timeKey] : undefined;
       if (b.timeKey && typeof time === 'string' && time && !booking[b.timeKey]) {
-        if (availability?.[time]?.state === 'full') booking[b.timeKey] = b.schedule ? 'המועד הזה כבר נתפס. בחרו שעה אחרת.' : 'המועד מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו שעה אחרת.';
+        if (availability?.[time]?.state === 'full') booking[b.timeKey] = b.schedule ? 'המועד הזה כבר נתפס. בחרו שעה אחרת.' : 'המועד מלא. בחרו שעה אחרת.';
         else if (b.schedule && availability && !availability[time]) booking[b.timeKey] = 'השעה הזו לא פנויה ביום שנבחר. בחרו שעה מהרשימה.';
       }
       for (const [k, msg] of Object.entries(booking)) if (keys.has(k) && !errs[k]) errs[k] = msg;

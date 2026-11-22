@@ -20,6 +20,16 @@ test.beforeAll(async () => {
   venue = await seedVenue(biz, { approval: 'conditional', publicWaitlist: true, tables: 12 });
 });
 
+/** Picks a free time on the guest booking page. Times are grouped by service (lunch / dinner / late)
+ * and the page opens on the first service with a free time, so switch to the one that holds `time`. */
+async function pickTime(page: Page, time: string) {
+  const tabs = page.getByRole('tab');
+  const [h] = time.split(':').map(Number);
+  const service = h! < 17 ? 'צהריים' : h! >= 23 || h! < 5 ? 'לילה' : 'ערב';
+  if (await tabs.count()) await tabs.filter({ hasText: service }).click();
+  await page.locator('section[aria-labelledby="times-h"] [data-slot]', { hasText: time }).first().click();
+}
+
 async function openShift(page: Page, date = today()) {
   await page.goto(`/app/tables/${venue.id}/live?date=${date}`);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -47,7 +57,7 @@ test('guest books on a phone; both hosts see it without reloading', async ({ bro
   console.log('GUEST URL', gp.url(), (await gp.locator('body').innerText()).slice(0, 120).split('\n').join(' | '));
   await gp.getByRole('button', { name: 'מחר' }).click();
   await gp.getByRole('button', { name: '3', exact: true }).click();
-  await gp.locator('section[aria-labelledby="times-h"] [data-slot]', { hasText: '19:30' }).click();
+  await pickTime(gp, '19:30');
   await gp.getByLabel('שם מלא').fill('נועה ברק');
   await gp.getByLabel('טלפון נייד').fill('052-3456789');
   await gp.getByRole('checkbox', { name: /קראתי ואני מסכים/ }).check();
@@ -100,7 +110,7 @@ test('large party request is approved by a host; guest page shows pending then c
   await gp.goto(`/t/${venue.slug}`);
   await gp.getByRole('button', { name: 'מחר' }).click();
   await gp.getByRole('button', { name: '8', exact: true }).click();
-  await gp.locator('section[aria-labelledby="times-h"] [data-slot]', { hasText: '20:00' }).click();
+  await pickTime(gp, '20:00');
   await expect(gp.getByText('בקשה — המקום יאשר')).toBeVisible();
   await gp.getByLabel('שם מלא').fill('ערב חברה');
   await gp.getByLabel('טלפון נייד').fill('053-9998877');
@@ -126,7 +136,7 @@ test('guest changes the time, then cancels; the slot reopens', async ({ browser 
   const gp = await g.newPage();
   await gp.goto(`/t/${venue.slug}?lang=en`);
   await gp.getByRole('button', { name: /Tomorrow/ }).click();
-  await gp.locator('section[aria-labelledby="times-h"] [data-slot]', { hasText: '18:00' }).click();
+  await pickTime(gp, '18:00');
   await gp.getByLabel('Full name').fill('Alex Rivera');
   await gp.getByLabel('Mobile phone').fill('+44 7700 900123');
   await gp.getByRole('checkbox', { name: /accept the booking terms/ }).check();

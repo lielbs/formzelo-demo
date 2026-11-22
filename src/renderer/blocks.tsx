@@ -23,6 +23,7 @@ import type { SlotAvailability } from '../engine/booking';
 import type { PriceResult } from '../engine/pricing';
 import { formatCurrency } from '../lib/format';
 import { hasArt, OptionArt } from '../theme/art';
+import { byMode } from '../lib/modeCopy';
 
 const ICONS: Record<NonNullable<HighlightItem['icon']>, LucideIcon> = {
   sparkles: Sparkles,
@@ -45,7 +46,7 @@ const paragraphs = (text?: string) => (text ?? '').split(/\n{2,}|\r\n\r\n/).map(
 export function Media({ refId, assets, className, alt }: { refId: string; assets: Record<string, string>; className?: string; alt?: string }) {
   if (refId.startsWith('ast_')) {
     const url = assets[refId];
-    return url ? <img src={url} alt={alt ?? ''} className={className} loading="lazy" /> : <span className={`fz-media-missing ${className ?? ''}`}>התמונה אינה זמינה בדפדפן זה</span>;
+    return url ? <img src={url} alt={alt ?? ''} className={className} loading="lazy" /> : <span className={`fz-media-missing ${className ?? ''}`}>{byMode('התמונה אינה זמינה בדפדפן זה', 'התמונה אינה זמינה')}</span>;
   }
   if (!hasArt(refId)) return null;
   return (

@@ -32,6 +32,7 @@ import { newId } from '../../../lib/id';
 import { ART_KEYS } from '../../../theme/art';
 import { ConditionEditor, FIELD_TYPE_LABELS, move, uniqueKey } from './FieldEditor';
 import { AppointmentSetup, setBookingUnit } from './AppointmentSetup';
+import { byMode } from '../../../lib/modeCopy';
 
 const APPEARANCE_LABELS: Record<FieldAppearance, string> = {
   auto: 'אוטומטי',
@@ -329,7 +330,7 @@ export function FieldInspector({
               תמונה
             </Button>
           )}
-          <ImagePicker kind="image" label="העלאת תמונה משלכם" hint="מוקטנת ל-900px ונשמרת בדפדפן בלבד (עד 160KB)." selected={undefined} assets={images} urls={{}} orgId={orgId} onSelect={(assetId) => assetId && onChange({ ...f, media: f.type === 'image' ? [assetId] : [...(f.media ?? []), assetId].slice(0, 12) })} />
+          <ImagePicker kind="image" label="העלאת תמונה משלכם" hint={byMode('מוקטנת ל-900px ונשמרת בדפדפן בלבד (עד 160KB).', 'מוקטנת ל-900px ונשמרת בספריית התמונות של העסק.')} selected={undefined} assets={images} urls={{}} orgId={orgId} onSelect={(assetId) => assetId && onChange({ ...f, media: f.type === 'image' ? [assetId] : [...(f.media ?? []), assetId].slice(0, 12) })} />
         </div>
       )}
 

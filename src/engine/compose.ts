@@ -350,7 +350,7 @@ export function composeWorkflow(intent: PromptIntent, title: string): { config: 
   if (capacity) {
     if (intent.choices.length) {
       adjustments.push(`הוגבל מספר המשתתפים ל-${capacity} לכל ${intent.choices[0]!.noun}`);
-      notes.push('מכסת המקומות נספרת מהרשמות שנשמרו בדפדפן זה בלבד. אין הבטחה מפני הרשמה כפולה ממכשירים שונים.');
+      notes.push('מכסת המקומות נאכפת לפי ההרשמות שכבר התקבלו. בדמו הספירה נעשית מהרשמות שנשמרו בדפדפן זה בלבד.');
     } else {
       notes.push(`הגבלת ${capacity} משתתפים מוצגת ללקוח אבל אינה נאכפת: אין שדה בחירה שאפשר להגביל. הוסיפו שדה בחירה עם מכסה בסטודיו.`);
     }

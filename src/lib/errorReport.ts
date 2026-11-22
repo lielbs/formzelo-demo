@@ -8,6 +8,7 @@
  * message only once. Demo mode keeps everything in the browser and reports nothing.
  */
 import { runtimeConfiguration } from '../production/runtime';
+import { getProductionSupabaseClient } from '../production/supabaseClient';
 
 export type ErrorKind = 'error' | 'rejection' | 'render';
 export interface ErrorReport { kind: ErrorKind; route: string; message: string; stack?: string; build?: string; browser?: string }
@@ -76,7 +77,7 @@ export function reportError(kind: ErrorKind, error: unknown): void {
   sent++;
   void (async () => {
     try {
-      const [{ getProductionSupabaseClient }, { clientToken }] = await Promise.all([import('../production/supabaseClient'), import('../tables/data/client')]);
+      const { clientToken } = await import('../tables/data/client');
       const client = await getProductionSupabaseClient();
       await client.rpc('log_client_error', { p_report: { ...report }, p_client: clientToken() });
     } catch {

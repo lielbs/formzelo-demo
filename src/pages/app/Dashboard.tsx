@@ -11,6 +11,7 @@ import { DONE_STATUSES, ownerActions, PENDING_STATUSES } from '../../engine/tran
 import { actionsByRun, actionStatus, countActions } from '../../engine/actions';
 import { formatCurrency, formatNumber, formatRelative } from '../../lib/format';
 import { appHref } from '../../lib/links';
+import { byMode, IS_DEMO } from '../../lib/modeCopy';
 
 const FILTERS = [
   { key: 'all', label: 'הכול' },
@@ -313,20 +314,20 @@ export function Dashboard() {
 
         <button type="button" onClick={() => setShowFeed((v) => !v)} aria-expanded={showFeed} aria-controls="dashboard-feed"
           className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-cloud-300 bg-white text-sm font-medium text-ink lg:hidden">
-          {showFeed ? 'הסתרת הפעילות וההודעות' : 'פעילות אחרונה והודעות'}
+          {showFeed ? byMode('הסתרת הפעילות וההודעות', 'הסתרת הפעילות') : byMode('פעילות אחרונה והודעות', 'פעילות אחרונה')}
         </button>
         <div id="dashboard-feed" className={cx('space-y-6', !showFeed && 'hidden lg:block')}>
           <Card className="p-5">
             <h2 className="mb-4 font-semibold">פעילות אחרונה</h2>
             <Timeline events={events.slice(0, 7)} runs={runs} showRun />
           </Card>
-          <Card className="p-5">
+          {IS_DEMO && <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold">הודעות מדומות</h2>
               <Badge tone="neutral">לא נשלחות</Badge>
             </div>
             <NotificationList items={notifications.slice(0, 3)} />
-          </Card>
+          </Card>}
         </div>
       </div>}
       {stats.demoShare > 0 && <p className="mt-6 text-xs text-ink-soft">חלק מהנתונים בעמוד זה הם נתוני דמו בדיוניים ({Math.round(stats.demoShare * 100)}% מהבקשות), מסומנים בתג "דמו".</p>}

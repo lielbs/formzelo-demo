@@ -5,6 +5,7 @@ import { publicMenus, publicVenue, type MenuDoc, type PublicMenus, type PublicVe
 import { tx, type Lang } from './i18n';
 import { lookFor, publicAssetUrl } from './look';
 import { accentButton, PublicShell, useDocumentLanguage, useLang } from './PublicShell';
+import { HIGH_PRIORITY_IMG } from '../ui';
 
 export const DIETARY: Record<Lang, Record<string, string>> = {
   he: { vegan: 'טבעוני', vegetarian: 'צמחוני', gluten_free: 'ללא גלוטן', spicy: 'חריף', kosher: 'כשר', dairy_free: 'ללא חלב', contains_alcohol: 'מכיל אלכוהול' },
@@ -165,7 +166,7 @@ function MenuHeroBlock({ id, title, hero, img: imgOf, asPageTitle, note }: { id:
     return (
       <div className="relative -mx-4 overflow-hidden bg-cloud-200 sm:mx-0 sm:rounded-2xl">
         <div className="relative">
-          <img src={img} alt="" decoding="async" fetchPriority="high" width={1200} height={750} className="aspect-[4/3] w-full object-cover sm:aspect-[16/9]" />
+          <img src={img} alt="" decoding="async" {...HIGH_PRIORITY_IMG} width={1200} height={750} className="aspect-[4/3] w-full object-cover sm:aspect-[16/9]" />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-5 text-white">
             <Heading id={id} className="text-3xl font-semibold leading-tight">{heading}</Heading>

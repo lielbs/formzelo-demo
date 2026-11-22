@@ -12,7 +12,7 @@ import { ensureContrast, readableOn } from '../../theme/color';
 import { displayPhone, normalizePhone, whatsappHref } from '../domain/phone';
 import type { ResolvedLook } from '../domain/publicPages';
 import { ThemeButton } from '../theme';
-import { Ltr } from '../ui';
+import { HIGH_PRIORITY_IMG, Ltr } from '../ui';
 import { t, tx, type Lang } from './i18n';
 import { hoursOn, mapsHref, weekdayOf, type VenueService } from './VenueInfo';
 
@@ -107,7 +107,7 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
       <header className={cx('pp-hero relative isolate overflow-hidden', photo ? 'pp-hero-photo' : 'pp-hero-band')}>
         {photo && (
           <>
-            <img src={photo} alt="" width={1600} height={900} decoding="async" fetchPriority="high"
+            <img src={photo} alt="" width={1600} height={900} decoding="async" {...HIGH_PRIORITY_IMG}
               className="pp-hero-img absolute inset-0 -z-20 h-full w-full object-cover" />
             <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/45 to-black/25" />
           </>

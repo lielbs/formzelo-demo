@@ -103,7 +103,7 @@ export function validateBooking(config: WorkflowConfig, values: Values, runs: Wo
   if (b.maxPerDay) {
     const used = runs.filter((r) => r.id !== excludeRunId && HOLDS_CAPACITY.includes(r.status) && answerOf(r, b.dateKey) === date).reduce((n, r) => n + unitsOf(b, r), 0);
     const units = b.capacityUnit === 'guests' ? Math.max(1, Number(values[b.guestsKey ?? '']) || 1) : 1;
-    if (used + units > b.maxPerDay) return { [b.dateKey]: 'היום הזה מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו תאריך אחר.' };
+    if (used + units > b.maxPerDay) return { [b.dateKey]: 'היום הזה מלא. בחרו תאריך אחר.' };
   }
   const wd = weekdayOf(date);
   if (wd === null || !b.openWeekdays.includes(wd)) {
@@ -126,7 +126,7 @@ export function validateBooking(config: WorkflowConfig, values: Values, runs: Wo
       else {
         const slot = slotAvailability(b, date, runs, excludeRunId).find((s) => s.time === time);
         const units = b.capacityUnit === 'guests' ? Math.max(1, Number(values[b.guestsKey ?? '']) || 1) : 1;
-        if (slot && slot.used + units > slot.capacity) errors[b.timeKey] = 'המועד מלא לפי הבקשות שנשמרו בדפדפן זה. בחרו שעה אחרת.';
+        if (slot && slot.used + units > slot.capacity) errors[b.timeKey] = 'המועד מלא. בחרו שעה אחרת.';
       }
     }
   }
