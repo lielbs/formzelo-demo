@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button, Card, cx, ErrorState, FieldLabel, Input, Select, Spinner, Textarea } from '../../components/ui';
 import { getVenue, publishVenue, saveDraft } from '../data/client';
-import { normalizeDraft, problemText, stepOfProblem, totalSeats, uuid } from '../domain/draft';
+import { layoutFromAnswers, normalizeDraft, problemText, stepOfProblem, totalSeats, uuid, type ZoneAnswer } from '../domain/draft';
 import type { TablesError } from '../domain/errors';
 import { daysText, minutesText, previewApproval, ruleSentence, WEEKDAY_SHORT_HE } from '../domain/policy';
 import { range } from '../domain/bidi';
@@ -158,7 +158,7 @@ export function VenueSetup() {
             {step === 'hours' && <HoursStep draft={draft} update={update} />}
             {step === 'seating' && <FloorEditor floor={draft} onChange={(f) => update({ ...draft, ...f })} />}
             {step === 'rules' && <RulesStep draft={draft} update={update} />}
-            {step === 'guest' && <GuestStep draft={draft} update={update} />}
+            {step === 'guest' && <GuestStep draft={draft} update={update} venueId={venueId} published={!!venue.published} />}
             {step === 'review' && <ReviewStep draft={draft} problems={problems} venue={venue} onFix={(s) => void go(s)} onPublish={onPublish} publishing={publishing} publishError={publishError} blocking={blocking} />}
           </div>
           {/* The way forward stays in reach while a long step scrolls (above the phone dock). */}
@@ -208,11 +208,48 @@ function BasicsStep({ draft, update }: StepProps) {
       <div className="sm:max-w-xs">
         <FieldLabel htmlFor="b-tz">שעון המקום</FieldLabel>
         <Select id="b-tz" value={b.timezone} onChange={(e) => set({ timezone: e.target.value })}>
-          {TIMEZONES.map((tz) => <option key={tz} value={tz}>{TZ_HE[tz]}</option>)}
+          {/* Israel first; the rest is for venues abroad (UX audit A2.6). */}
+          <option value="Asia/Jerusalem">{TZ_HE['Asia/Jerusalem']}</option>
+          <optgroup label="מחוץ לישראל">
+            {TIMEZONES.filter((tz) => tz !== 'Asia/Jerusalem').map((tz) => <option key={tz} value={tz}>{TZ_HE[tz]}</option>)}
+          </optgroup>
         </Select>
         <p className="mt-1 text-xs text-ink-muted">כל השעות במערכת מוצגות לפי השעון של המקום, גם כשמישהו מזמין מחו״ל.</p>
       </div>
+      {/* Before the owner reaches the map: build the first floor from three numbers per area (A2.2). */}
+      {!draft.progress?.visited?.includes('seating') && <QuickFloor draft={draft} update={update} />}
     </Card>
+  );
+}
+
+function QuickFloor({ draft, update }: StepProps) {
+  const [rows, setRows] = useState<ZoneAnswer[]>([{ name: 'פנים', t2: 4, t4: 4, t6: 2 }]);
+  const [done, setDone] = useState(false);
+  const set = (i: number, p: Partial<ZoneAnswer>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const total = rows.reduce((n, r) => n + r.t2 + r.t4 + r.t6, 0);
+  const num = (v: string) => Math.max(0, Math.min(60, Math.round(Number(v) || 0)));
+  return (
+    <fieldset className="grid gap-3 rounded-xl border border-cloud-200 bg-cloud-100 p-4">
+      <legend className="px-1 text-sm font-semibold">כמה שולחנות יש בערך? (רשות)</legend>
+      <p className="-mt-1 text-xs text-ink-muted">נבנה מזה מפה ראשונה; בשלב ״שולחנות ומפה״ מסדרים אותה כמו במקום.</p>
+      {rows.map((r, i) => (
+        <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
+          <Input aria-label={`שם האזור ${i + 1}`} value={r.name} maxLength={40} onChange={(e) => set(i, { name: e.target.value })} className="col-span-2 sm:col-span-1" />
+          {(['t2', 't4', 't6'] as const).map((k) => (
+            <label key={k} className="grid gap-0.5 text-xs text-ink-muted">של {k.slice(1)}
+              <Input type="number" min={0} max={60} value={r[k]} onChange={(e) => set(i, { [k]: num(e.target.value) })} className="h-10" />
+            </label>
+          ))}
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="ghost" icon={Plus} onClick={() => setRows((r) => [...r, { name: r.length === 1 ? 'חוץ' : `אזור ${r.length + 1}`, t2: 0, t4: 0, t6: 0 }])} className="h-10">עוד אזור</Button>
+        <Button size="sm" variant="secondary" disabled={!total} onClick={() => { update({ ...draft, ...layoutFromAnswers(rows), combinations: [] }); setDone(true); }} className="ms-auto h-10">
+          בניית מפה עם {total} שולחנות
+        </Button>
+      </div>
+      {done && <p role="status" className="text-sm text-teal-800">המפה נבנתה. אפשר לסדר אותה בשלב ״שולחנות ומפה״.</p>}
+    </fieldset>
   );
 }
 
@@ -450,7 +487,7 @@ function ApprovalPreview({ draft }: { draft: VenueDraft }) {
   );
 }
 
-function GuestStep({ draft, update }: StepProps) {
+function GuestStep({ draft, update, venueId, published }: StepProps & { venueId: string; published: boolean }) {
   const g = draft.guest;
   const set = (p: Partial<VenueDraft['guest']>) => update({ ...draft, guest: { ...g, ...p } });
   return (
@@ -469,7 +506,13 @@ function GuestStep({ draft, update }: StepProps) {
         <input type="checkbox" className="h-6 w-6 shrink-0 accent-orange-700" checked={!!g.showWhatsapp} onChange={(e) => set({ showWhatsapp: e.target.checked })} />
         להציג לאורחים כפתור וואטסאפ אל הטלפון של המקום
       </label>
-      <Hint icon={Info}>הצבעים והלוגו מגיעים מ״ערכת המותג״ של העסק. אחרי הפרסום אפשר לעצב את דפי ההזמנה (תמונות, גופנים, שאלות נוספות) ב״עיצוב דפי ההזמנה״, עם תצוגה מקדימה בטלפון, טאבלט ומחשב.</Hint>
+      {/* One place for the page's look: the design studio (UX audit A2.5). */}
+      <Hint icon={Info}>
+        הצבעים והלוגו מגיעים מ״ערכת המותג״ של העסק. תמונות, גופנים ושאלות נוספות לאורחים נקבעים ב״עיצוב דפי ההזמנה״, עם תצוגה מקדימה בטלפון, בטאבלט ובמחשב.
+        {published
+          ? <> <Link to={`/app/tables/${venueId}/design`} className="font-semibold text-orange-800 underline-offset-2 hover:underline">לעיצוב דפי ההזמנה ←</Link></>
+          : ' הוא נפתח אחרי הפרסום.'}
+      </Hint>
     </Card>
     <aside aria-label="תצוגה מקדימה של ראש עמוד ההזמנה">
       <p className="mb-2 text-sm font-semibold text-ink-muted">כך האורחים יראו את ראש העמוד</p>

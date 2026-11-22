@@ -135,6 +135,8 @@ const answer = (fn, b, now) => ({
   tables_public_waitlist_status: () => ({ status: 'waiting', party: 2, joinedAt: at('20:01'), offerExpiresAt: null, position: 2, estimate: { min: 15, max: 25 }, venue: { name: 'Indigo 8', slug: SLUG, timezone: 'Asia/Jerusalem' }, serverNow: now.toISOString(), date: DATE, desiredTime: null, booking: null }),
   log_client_error: () => null,
   tables_menu_sold_out: () => ({}),
+  tables_analytics_more: () => ({ heat: [5, 6].flatMap((dow) => [19, 20, 21, 22].map((hour) => ({ dow, hour, bookings: 4 + hour - 19, covers: (4 + hour - 19) * 3 }))).concat([{ dow: 4, hour: 20, bookings: 3, covers: 8 }]),
+    regulars: [{ name: 'נוי כהן', visits: 4, last: '2026-11-20' }, { name: 'קבוצת טל', visits: 2, last: '2026-11-13' }], noShows: [{ name: 'אורח בדוי', count: 2, last: '2026-11-06' }] }),
   tables_menu_set_sold_out: () => (b.p_sold_out ? [b.p_item_id] : []),
   tables_guest_lookup: () => (String(b.p_phone ?? '').endsWith('2128') ? { name: 'נוי כהן', visits: 4, noShows: 0, lastVisit: '2026-11-13' } : null),
 }[fn]);

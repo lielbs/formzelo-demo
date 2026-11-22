@@ -5,6 +5,7 @@
 import { Copy, LayoutGrid, Link2, List, Minus, Plus, Redo2, RotateCw, Trash2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Button, Card, cx, Input, Select } from '../../components/ui';
+import { suggestCombinations } from '../domain/combos';
 import { makeTable, nextLabel, totalSeats, uuid } from '../domain/draft';
 import type { CombinationDef, TableDef, TableShape, VenueDraft, ZoneDef } from '../domain/types';
 import { FloorCanvas, Hint, Segmented } from '../ui';
@@ -20,6 +21,9 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
   const [view, setView] = useState<'map' | 'list'>(() => (typeof window !== 'undefined' && window.innerWidth < 640 ? 'list' : 'map'));
   const [zoneId, setZoneId] = useState<string>(floor.zones[0]?.id ?? '');
   const [selected, setSelected] = useState<string | null>(null);
+  // Shift+click adds tables to a group selection, for moving them to a zone or deleting together.
+  const [group, setGroup] = useState<Set<string>>(new Set());
+  const [bulk, setBulk] = useState({ open: false, count: 6, seats: 4 });
   const [zoom, setZoom] = useState(1);
   const past = useRef<Floor[]>([]);
   const future = useRef<Floor[]>([]);
@@ -43,20 +47,27 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
   const undo = () => { const p = past.current.pop(); if (p) { future.current.push(floor); onChange(p); force((n) => n + 1); } };
   const redo = () => { const f = future.current.pop(); if (f) { past.current.push(floor); onChange(f); force((n) => n + 1); } };
 
-  function addTable(seats: number) {
+  /** Adds `count` tables of `seats` in the zone's next free grid places (one undo step). */
+  function addTables(seats: number, count = 1) {
     if (!zone) return;
     const occupied = new Set(zoneTables.map((t) => `${t.x},${t.y}`));
-    let x = 30;
-    let y = 30;
-    for (let i = 0; i < 400; i++) {
-      x = 30 + (i % 6) * 140;
-      y = 30 + Math.floor(i / 6) * 120;
-      if (!occupied.has(`${x},${y}`)) break;
+    const tables = [...floor.tables];
+    const added: TableDef[] = [];
+    for (let i = 0, made = 0; i < 600 && made < count; i++) {
+      const x = 30 + (i % 6) * 140;
+      const y = 30 + Math.floor(i / 6) * 120;
+      if (occupied.has(`${x},${y}`)) continue;
+      const t = makeTable(zone.id, nextLabel(tables), seats, x, y);
+      tables.push(t);
+      added.push(t);
+      occupied.add(`${x},${y}`);
+      made++;
     }
-    const t = makeTable(zone.id, nextLabel(floor.tables), seats, x, y);
-    commit({ ...floor, tables: [...floor.tables, t] });
-    setSelected(t.id);
+    commit({ ...floor, tables });
+    setSelected(added[added.length - 1]?.id ?? null);
+    setGroup(new Set());
   }
+  const addTable = (seats: number) => addTables(seats, 1);
 
   function removeTable(id: string) {
     commit({
@@ -87,7 +98,7 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
     const t = floor.tables.find((x) => x.id === id);
     const p = toSvgPoint(e);
     if (!t || !p) return;
-    setSelected(id);
+    pickTable(id, e.shiftKey || e.metaKey || e.ctrlKey);
     drag.current = { id, dx: p.x - t.x, dy: p.y - t.y, start: floor, moved: false };
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
   };
@@ -114,6 +125,22 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
     const m = moves[e.key];
     if (m) { e.preventDefault(); updateTable(sel.id, { x: snap(sel.x + m[0]), y: snap(sel.y + m[1]) }); }
     if (e.key === 'Delete') { e.preventDefault(); removeTable(sel.id); }
+    // Ctrl/⌘+D duplicates the selected table (UX audit A2.1).
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicate(sel); }
+  };
+  const pickTable = (id: string, additive: boolean) => {
+    if (!additive) { setGroup(new Set()); setSelected(id); return; }
+    setGroup((g) => { const next = new Set(g); if (selected && !next.size) next.add(selected); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+    setSelected(id);
+  };
+  const moveGroupTo = (zid: string) => { commit({ ...floor, tables: floor.tables.map((t) => (group.has(t.id) ? { ...t, zoneId: zid } : t)) }); setGroup(new Set()); };
+  const removeGroup = () => {
+    commit({
+      ...floor,
+      tables: floor.tables.filter((t) => !group.has(t.id)),
+      combinations: floor.combinations.map((c) => ({ ...c, tableIds: c.tableIds.filter((x) => !group.has(x)) })).filter((c) => c.tableIds.length >= 2),
+    });
+    setGroup(new Set()); setSelected(null);
   };
 
   // ---------- Zones ----------
@@ -130,7 +157,7 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
     setZoneId(zones[0]?.id ?? '');
   }
 
-  const items = useMemo(() => zoneTables.map((t) => ({ ...t, caption: t.minCovers === t.maxCovers ? String(t.maxCovers) : `${t.minCovers}–${t.maxCovers}`, spoken: `${t.minCovers} עד ${t.maxCovers} סועדים` })), [zoneTables]);
+  const items = useMemo(() => zoneTables.map((t) => ({ ...t, highlight: group.has(t.id), caption: t.minCovers === t.maxCovers ? String(t.maxCovers) : `${t.minCovers}–${t.maxCovers}`, spoken: `${t.minCovers} עד ${t.maxCovers} סועדים${group.has(t.id) ? ', נבחר' : ''}` })), [zoneTables, group]);
 
   return (
     <div className="grid gap-4">
@@ -171,6 +198,7 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
         {[2, 4, 6, 8].map((n) => (
           <Button key={n} size="sm" variant="secondary" icon={Plus} onClick={() => addTable(n)} className="h-10">{n} מקומות</Button>
         ))}
+        <Button size="sm" variant="secondary" icon={LayoutGrid} aria-expanded={bulk.open} onClick={() => setBulk((b) => ({ ...b, open: !b.open }))} className="h-10">הוספה מרובה</Button>
         <span className="mx-1 hidden h-6 w-px bg-cloud-300 sm:block" aria-hidden />
         {view === 'map' && <>
           <Button size="sm" variant="secondary" icon={ZoomIn} aria-label="הגדלת המפה" onClick={() => setZoom((z) => Math.min(2.5, z + 0.25))} className="h-10 w-10 px-0" />
@@ -180,6 +208,34 @@ export function FloorEditor({ floor, onChange }: { floor: Floor; onChange: (f: F
         <Button size="sm" variant="ghost" icon={Redo2} onClick={redo} disabled={!future.current.length} aria-label="שחזור פעולה" className="h-10" />
       </div>
 
+      {bulk.open && (
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-cloud-200 bg-cloud-100 p-3" role="group" aria-label="הוספה מרובה">
+          <label className="grid gap-1 text-sm">כמה שולחנות
+            <Input type="number" min={1} max={40} value={bulk.count} onChange={(e) => setBulk((b) => ({ ...b, count: Math.max(1, Math.min(40, Number(e.target.value) || 1)) }))} className="h-10 w-24" />
+          </label>
+          <label className="grid gap-1 text-sm">מקומות בכל שולחן
+            <Select value={bulk.seats} onChange={(e) => setBulk((b) => ({ ...b, seats: Number(e.target.value) }))} className="h-10 w-28">
+              {[1, 2, 4, 6, 8, 10, 12].map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
+          </label>
+          <Button size="sm" icon={Plus} onClick={() => { addTables(bulk.seats, bulk.count); setBulk((b) => ({ ...b, open: false })); }} className="h-10">
+            הוספת {bulk.count} שולחנות ל{zone?.name ?? 'אזור'}
+          </Button>
+        </div>
+      )}
+      {group.size > 1 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm" role="group" aria-label="שולחנות שנבחרו">
+          <span className="font-medium">{group.size} שולחנות נבחרו</span>
+          {floor.zones.length > 1 && (
+            <Select aria-label="העברה לאזור" value="" onChange={(e) => e.target.value && moveGroupTo(e.target.value)} className="h-10 w-auto">
+              <option value="">העברה לאזור…</option>
+              {floor.zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </Select>
+          )}
+          <Button size="sm" variant="danger" icon={Trash2} onClick={removeGroup} className="h-10">מחיקת {group.size}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setGroup(new Set())} className="h-10">ביטול הבחירה</Button>
+        </div>
+      )}
       {view === 'map' ? (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 2xl:grid-cols-[minmax(0,1fr)_18rem]">
           <Card className="relative overflow-hidden p-2">
@@ -326,6 +382,7 @@ function TableList({ floor, zoneFilter, onUpdate, onRemove }: { floor: Floor; zo
 function Combinations({ floor, onChange }: { floor: Floor; onChange: (c: CombinationDef[]) => void }) {
   const [picking, setPicking] = useState<string[] | null>(null);
   const byId = new Map(floor.tables.map((t) => [t.id, t]));
+  const suggestions = useMemo(() => suggestCombinations(floor.tables, floor.combinations), [floor.tables, floor.combinations]);
   const save = () => {
     if (!picking || picking.length < 2) return;
     const members = picking.map((id) => byId.get(id)!).filter(Boolean);
@@ -343,6 +400,18 @@ function Combinations({ floor, onChange }: { floor: Floor; onChange: (c: Combina
         </div>
         {!picking && <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicking([])} disabled={floor.tables.length < 2}>צירוף חדש</Button>}
       </div>
+      {/* Tables that stand side by side, offered with one tap (UX audit A2.4). */}
+      {!picking && suggestions.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="הצעות לצירוף">
+          <span className="text-sm text-ink-muted">סמוכים במפה:</span>
+          {suggestions.map((sg) => (
+            <Button key={sg.label} size="sm" variant="secondary" icon={Plus} className="h-10"
+              onClick={() => onChange([...floor.combinations, { id: uuid(), label: sg.label, tableIds: [...sg.tableIds], minCovers: sg.minCovers, maxCovers: sg.maxCovers, priority: 0 }])}>
+              {sg.label} <span className="font-normal opacity-70">(עד {sg.maxCovers})</span>
+            </Button>
+          ))}
+        </div>
+      )}
       {picking && (
         <div className="mt-4 rounded-xl border border-cloud-300 p-3">
           <p id="combo-pick" className="text-sm font-medium">בחרו 2 שולחנות או יותר:</p>

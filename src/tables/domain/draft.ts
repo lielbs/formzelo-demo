@@ -64,6 +64,30 @@ export function starterLayout(tables2: number, tables4: number, tables6: number)
   return { zones: [hall], tables: out };
 }
 
+/** How many tables of each size a zone has, as the owner answers it during setup (UX audit A2.2). */
+export interface ZoneAnswer { name: string; t2: number; t4: number; t6: number }
+
+/**
+ * A first floor built from the owner's answers: one zone per answer, its tables in rows of five
+ * (2-, then 4-, then 6-seaters), each zone in its own band so the map reads like the room.
+ * Labels run on across zones (1, 2, 3…), as most venues number their tables.
+ */
+export function layoutFromAnswers(answers: ZoneAnswer[]): { zones: ZoneDef[]; tables: TableDef[] } {
+  const zones: ZoneDef[] = [];
+  const tables: TableDef[] = [];
+  let label = 1;
+  let top = 30;
+  for (const [i, a] of answers.entries()) {
+    const sizes = [...Array(Math.max(0, a.t2)).fill(2), ...Array(Math.max(0, a.t4)).fill(4), ...Array(Math.max(0, a.t6)).fill(6)] as number[];
+    if (!sizes.length) continue;
+    const zone: ZoneDef = { id: uuid(), name: a.name.trim() || `אזור ${i + 1}`, sort: zones.length };
+    zones.push(zone);
+    sizes.forEach((seats, k) => tables.push(makeTable(zone.id, String(label++), seats, 30 + (k % 5) * 150, top + Math.floor(k / 5) * 130)));
+    top += Math.ceil(sizes.length / 5) * 130 + 60;
+  }
+  return { zones, tables };
+}
+
 export function newDraft(name: string, timezone = 'Asia/Jerusalem'): VenueDraft {
   const { zones, tables } = starterLayout(4, 4, 2);
   return {

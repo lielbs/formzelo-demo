@@ -207,3 +207,17 @@ describe('analytics definitions', () => {
     expect(JSON.stringify(s)).not.toMatch(/revenue|₪/);
   });
 });
+
+describe('floor from the owner\'s answers (UX audit A2.2)', () => {
+  it('builds one zone per answer with numbered tables and no overlap between zones', async () => {
+    const { layoutFromAnswers } = await import('./draft');
+    const { zones, tables } = layoutFromAnswers([{ name: 'פנים', t2: 3, t4: 4, t6: 1 }, { name: 'בר', t2: 6, t4: 0, t6: 0 }, { name: 'ריק', t2: 0, t4: 0, t6: 0 }]);
+    expect(zones.map((z) => z.name)).toEqual(['פנים', 'בר']);
+    expect(tables).toHaveLength(14);
+    expect(tables.map((t) => t.label).slice(0, 3)).toEqual(['1', '2', '3']);
+    expect(tables.filter((t) => t.zoneId === zones[0]!.id).map((t) => t.maxCovers)).toEqual([2, 2, 2, 4, 4, 4, 4, 6]);
+    const maxYIn = Math.max(...tables.filter((t) => t.zoneId === zones[0]!.id).map((t) => t.y + t.h));
+    const minYBar = Math.min(...tables.filter((t) => t.zoneId === zones[1]!.id).map((t) => t.y));
+    expect(minYBar).toBeGreaterThan(maxYIn);
+  });
+});

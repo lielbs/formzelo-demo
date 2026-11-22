@@ -12,6 +12,7 @@ import { actionsByRun, actionStatus, countActions } from '../../engine/actions';
 import { formatCurrency, formatNumber, formatRelative } from '../../lib/format';
 import { appHref } from '../../lib/links';
 import { byMode, IS_DEMO } from '../../lib/modeCopy';
+import { TablesTonight } from '../../tables/owner/TablesTonight';
 
 const FILTERS = [
   { key: 'all', label: 'הכול' },
@@ -127,6 +128,9 @@ export function Dashboard() {
           </>
         }
       />
+
+      {/* Tonight at the venues comes first for a restaurant (UX audit A1.3). Production only. */}
+      {!IS_DEMO && <div className="mb-6"><TablesTonight organizationId={org.id} /></div>}
 
       {showOnboarding && (
         <Card className="mb-6 p-5">

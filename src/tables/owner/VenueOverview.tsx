@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, CalendarCheck, CalendarX, ChevronDown, ChevronLeft, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, ShieldCheck, Trash2, UserCog, type LucideIcon } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarCheck, Check, Printer, X, CalendarX, ChevronDown, ChevronLeft, Copy, Download, ExternalLink, MessageCircle, Palette, Pause, Play, Settings2, ShieldCheck, Trash2, UserCog, type LucideIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { confirmAction } from '../../components/Confirm';
@@ -7,9 +7,9 @@ import { copyText, useToast } from '../../components/Toast';
 import { Badge, Button, ButtonLink, Card, ErrorState, FieldLabel, Input, Select, Spinner, cx } from '../../components/ui';
 import { publicBaseUrl } from '../../lib/links';
 import { qrSvg, whatsappShareUrl } from '../../lib/share';
-import { assignStaff, deleteVenue, getShift, getVenue, listStaff, setException, setVenueStatus } from '../data/client';
+import { assignStaff, decidePending, deleteVenue, getShift, getVenue, listStaff, setException, setVenueStatus } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import type { VenueDetail } from '../domain/types';
+import type { ShiftReservation, VenueDetail } from '../domain/types';
 import { addDays, dateInTz, formatDate, timeInTz } from '../domain/time';
 import { Hint, Ltr, useLoad } from '../ui';
 import { GuestPrivacy } from './GuestPrivacy';
@@ -147,9 +147,10 @@ function More({ icon: Icon, title, hint, danger = false, children }: { icon: Luc
 const ACTIVE = new Set(['pending_approval', 'confirmed', 'arrived', 'seated']);
 
 /** Today at a glance, from the same shift data the host screen uses (one bounded read). */
-function Today({ venueId, timezone }: { venueId: string; timezone: string }) {
+export function Today({ venueId, timezone, title }: { venueId: string; timezone: string; title?: string }) {
   const today = dateInTz(new Date(), timezone);
-  const { data, error, loading } = useLoad(() => getShift(venueId, today), [venueId, today], 'venue-today');
+  const { data, error, loading, reload } = useLoad(() => getShift(venueId, today), [venueId, today], 'venue-today');
+  const pendingRows = (data?.reservations ?? []).filter((r) => r.status === 'pending_approval').sort((a, b) => a.time.localeCompare(b.time));
   const shiftHref = `/app/tables/${venueId}/live`;
   const now = timeInTz(new Date(), timezone);
   const active = (data?.reservations ?? []).filter((r) => ACTIVE.has(r.status));
@@ -161,10 +162,10 @@ function Today({ venueId, timezone }: { venueId: string; timezone: string }) {
   const closedToday = (data?.closed ?? []).some((c) => c.kind === 'closed' && !c.serviceKey);
 
   return (
-    <section aria-labelledby="venue-today" className="overflow-hidden rounded-2xl bg-white shadow-card">
+    <section aria-labelledby={`venue-today-${venueId}`} className="overflow-hidden rounded-2xl bg-white shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cloud-200 px-5 py-4">
         <div className="min-w-0">
-          <h2 id="venue-today" className="text-lg font-semibold text-ink">היום</h2>
+          <h2 id={`venue-today-${venueId}`} className="text-lg font-semibold text-ink">{title ?? 'היום'}</h2>
           <p className="text-sm text-ink-muted">{formatDate(today, 'he', false)}{closedToday ? ' · סגור להזמנות' : ''}</p>
         </div>
         <ButtonLink to={shiftHref} icon={CalendarCheck} className="h-12 px-5 text-base">פתיחת המשמרת</ButtonLink>
@@ -186,17 +187,57 @@ function Today({ venueId, timezone }: { venueId: string; timezone: string }) {
                 <b className="tabular-nums">{next.time}</b> · {next.guestName} · {next.party} סועדים
               </p>
             )}
-            {pending > 0 && (
-              <Link to={shiftHref} className="font-semibold text-red-800 hover:underline">
-                {pending === 1 ? 'הזמנה אחת מחכה לאישור שלכם' : `${pending} הזמנות מחכות לאישור שלכם`}
-              </Link>
-            )}
+            {pending > 0 && <p className="font-semibold text-red-800">{pending === 1 ? 'הזמנה אחת מחכה לאישור שלכם' : `${pending} הזמנות מחכות לאישור שלכם`}</p>}
             {waiting > 0 && <p className="text-ink-muted">{waiting === 1 ? 'אורח אחד ברשימת ההמתנה' : `${waiting} אורחים ברשימת ההמתנה`}</p>}
           </div>
         </div>
       )}
+      {/* Decide here, without opening the shift (UX audit A1.1). */}
+      {pendingRows.length > 0 && (
+        <ul className="grid gap-2 border-t border-cloud-200 px-5 py-4" aria-label="ממתינות לאישור">
+          {pendingRows.slice(0, 3).map((r) => <PendingRow key={r.id} r={r} onDone={reload} />)}
+          {pendingRows.length > 3 && <li><Link to={shiftHref} className="text-sm font-medium text-orange-800 hover:underline">עוד {pendingRows.length - 3} במשמרת</Link></li>}
+        </ul>
+      )}
     </section>
   );
+}
+
+function PendingRow({ r, onDone }: { r: ShiftReservation; onDone: () => unknown }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
+  const decide = async (d: 'approve' | 'reject') => {
+    if (d === 'reject' && !(await confirmAction({ title: `לדחות את הבקשה של ${r.guestName}?`, message: 'האורח יראה שהבקשה נדחתה. אפשר להתקשר אליו מהמשמרת.', confirmLabel: 'דחייה', destructive: true }))) return;
+    setBusy(d);
+    try { await decidePending(r.id, d, r.lockVersion); toast(d === 'approve' ? `${r.guestName}: אושרה` : `${r.guestName}: נדחתה`, 'success'); await onDone(); }
+    catch (e) { toast((e as TablesError).message, 'error'); await onDone(); }
+    finally { setBusy(null); }
+  };
+  return (
+    <li className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2">
+      <span className="min-w-0 flex-1 text-[15px]"><b className="tabular-nums">{r.time}</b> · {r.guestName} · {r.party} סועדים{r.approvalRule && r.approvalRule !== 'venue_default' ? <span className="text-sm text-ink-muted"> · לפי כלל</span> : null}</span>
+      <Button size="sm" icon={Check} loading={busy === 'approve'} disabled={!!busy} onClick={() => void decide('approve')} className="h-10">אישור</Button>
+      <Button size="sm" variant="ghost" icon={X} loading={busy === 'reject'} disabled={!!busy} onClick={() => void decide('reject')} className="h-10 text-red-700">דחייה</Button>
+    </li>
+  );
+}
+
+/** Opens a printable page with one large QR code per link (A4: three per page; each cuts to A6). */
+function printKit(venueName: string, codes: { title: string; url: string }[]) {
+  const w = window.open('', '_blank', 'noopener=no,width=820,height=1000');
+  if (!w) return;
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const cards = codes.map((c) => `<section><h2>${esc(c.title)}</h2>${qrSvg(c.url, { size: 520 })}<p dir="ltr">${esc(c.url.replace(/^https?:\/\//, ''))}</p></section>`).join('');
+  w.document.write(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(venueName)} · קודים להדפסה</title><style>
+    @page { size: A4; margin: 12mm; } body { font-family: system-ui, sans-serif; margin: 0; color: #0F1B2D; }
+    header { text-align: center; margin: 4mm 0 6mm; } header h1 { font-size: 26pt; margin: 0; }
+    main { display: grid; gap: 8mm; } section { break-inside: avoid; border: 1px dashed #c7cdd6; border-radius: 6mm; padding: 6mm; text-align: center; }
+    section h2 { font-size: 22pt; margin: 0 0 3mm; } section svg { width: 62mm; height: 62mm; } section p { font-size: 10pt; color: #5b6678; margin: 2mm 0 0; }
+    button { margin: 6mm auto; display: block; font-size: 14pt; padding: 3mm 8mm; } @media print { button { display: none; } }
+  </style></head><body><header><h1>${esc(venueName)}</h1></header><main>${cards}</main></body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
 }
 
 function Figure({ value, unit, note }: { value: number; unit: string; note?: string }) {
@@ -263,10 +304,16 @@ function Share({ venue, onChanged }: { venue: VenueDetail; onChanged: () => unkn
           </div>
         )}
       </Card>
+      {/* One print kit (UX audit A1.4): booking, waitlist and menu codes on one page for the door and the tables. */}
       <Card className="flex flex-col items-center gap-2 p-4">
         <img src={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(url, { size: 220 }))}`} width={180} height={180} alt={`קוד QR לעמוד ההזמנות של ${venue.name}`} />
+        <Button size="sm" variant="secondary" icon={Printer} onClick={() => printKit(venue.name, [
+          { title: 'הזמנת שולחן', url },
+          ...(waitlistPublic ? [{ title: 'רשימת המתנה', url: waitlistUrl }] : []),
+          { title: 'התפריט', url: `${url}/menu` },
+        ])} className="h-10">ערכת הדפסה</Button>
         <a download={`qr-${venue.slug}.svg`} href={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(url, { size: 1024 }))}`} className="inline-flex h-10 items-center gap-1.5 text-sm font-medium text-orange-800 hover:underline">
-          <Download className="h-4 w-4" aria-hidden /> הורדת הקוד להדפסה
+          <Download className="h-4 w-4" aria-hidden /> הורדת הקוד כקובץ
         </a>
       </Card>
     </div>

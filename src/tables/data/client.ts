@@ -84,6 +84,14 @@ export const setException = (venueId: string, date: string, kind: 'closed' | 'ma
   rpc<{ date: string; serviceKey: string | null; kind: string; note: string | null }[]>('tables_set_exception', { p_venue_id: venueId, p_date: date, p_kind: kind, p_note: note, p_service_key: null });
 export const analytics = (venueId: string, from: string, to: string) =>
   rpc<AnalyticsResult>('tables_analytics', { p_venue_id: venueId, p_from: from, p_to: to });
+/** Busy hours (weekday × booked hour) and, for managers, regular guests and repeated no-shows. */
+export interface AnalyticsMore {
+  heat: { dow: number; hour: number; bookings: number; covers: number }[];
+  regulars: { name: string; visits: number; last: string }[] | null;
+  noShows: { name: string; count: number; last: string }[] | null;
+}
+export const analyticsMore = (venueId: string, from: string, to: string) =>
+  rpc<AnalyticsMore>('tables_analytics_more', { p_venue_id: venueId, p_from: from, p_to: to });
 
 // ---------- Host ----------
 export const getShift = (venueId: string, date: string) => rpc<Shift>('tables_shift', { p_venue_id: venueId, p_service_date: date });

@@ -1,7 +1,7 @@
 import { runtimeConfiguration } from '../../production/runtime';
 import { BarChart3, CheckCircle2, Clock, Inbox, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { GroupedBars } from '../../components/charts/Bars';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Badge, Card, EmptyState, ErrorState, PageHeader, Spinner, Stat } from '../../components/ui';
 import { RUN_STATUSES } from '../../domain/schema';
@@ -115,16 +115,9 @@ export function Analytics() {
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <Card className="p-5 lg:col-span-2">
               <h2 className="mb-4 font-semibold">בקשות לפי יום</h2>
-              <div dir="ltr" className="h-64" role="img" aria-label={`תרשים עמודות: בקשות לפי יום ב-${range} הימים האחרונים`}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metrics.perDay} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                    <CartesianGrid vertical={false} stroke="#E8EAEE" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#5B6675' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#5B6675' }} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: '#F5F6F8' }} contentStyle={{ borderRadius: 12, border: '1px solid #E8EAEE', direction: 'rtl', fontFamily: 'Rubik' }} />
-                    <Bar dataKey="בקשות" fill="#E96B3D" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                  </BarChart>
-                </ResponsiveContainer>
+              {/* Light SVG bars (UX audit D4); the label below describes the chart for screen readers. */}
+              <div role="img" aria-label={`תרשים עמודות: בקשות לפי יום ב-${range} הימים האחרונים`}>
+                <GroupedBars height={256} data={metrics.perDay} labelOf={(r) => String(r.day)} series={[{ key: 'בקשות', label: 'בקשות', color: '#E96B3D' }]} />
               </div>
             </Card>
             <Card className="p-5">

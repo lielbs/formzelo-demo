@@ -8,13 +8,15 @@
  * (availability, capacity, waitlist eligibility, rate limits) are not editable here.
  */
 import {
-  ArrowDown, ArrowUp, Check, ExternalLink, Eye, EyeOff, ListPlus, Monitor, Palette, Plus, Rocket, Save, Smartphone, Tablet, Trash2, Type,
+  ArrowDown, ArrowUp, Check, ExternalLink, Eye, EyeOff, ListPlus, Monitor, Palette, Plus, Rocket, Smartphone, Tablet, Trash2, Type,
   Image as ImageIcon, LayoutList,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ImagePicker } from '../../components/ImagePicker';
+import { SaveStatus } from '../../components/SaveStatus';
 import { useToast } from '../../components/Toast';
+import { useDraftAutosave } from '../../lib/useDraftAutosave';
 import { Badge, Button, cx, ErrorState, FieldLabel, Input, Select, Spinner, Textarea } from '../../components/ui';
 import { useRepoQuery } from '../../data/store';
 import { appHref } from '../../lib/links';
@@ -84,8 +86,8 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
   const baseDraft = useMemo(() => normalizeDraft(venue.draft!, venue.name), [venue.draft, venue.name]);
   const [pages, setPages] = useState<PublicPagesConfig | null>(() => (baseDraft.publicPages ? normalizePublicPages(baseDraft.publicPages) : null));
   const [saved, setSaved] = useState<string>(() => stable(baseDraft.publicPages ? normalizePublicPages(baseDraft.publicPages) : null));
-  const [lock, setLock] = useState(venue.lockVersion);
-  const [busy, setBusy] = useState<'save' | 'publish' | null>(null);
+  const lock = useRef(venue.lockVersion);
+  const [busy, setBusy] = useState<'publish' | null>(null);
   const [kind, setKind] = useState<PageKind>('booking');
   const [device, setDevice] = useState<Device>('phone');
   const [previewLang, setPreviewLang] = useState<Lang>('he');
@@ -102,14 +104,20 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
     return strip(venue.draft ?? {}) !== strip(published);
   }, [venue.draft, published]);
 
-  // Leaving with unsaved changes: browser close/reload and in-app back links ask first.
-  useEffect(() => {
-    if (!dirty) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [dirty]);
-  const leave = async (to: string) => { if (!dirty || await confirmAction({ title: 'לצאת בלי לשמור?', message: 'יש שינויים שלא נשמרו.', confirmLabel: 'יציאה', cancelLabel: 'המשך עריכה', destructive: true })) navigate(to); };
+  // Drafts save themselves shortly after each change (UX audit X1 / A11.2); publishing stays explicit.
+  const autosave = useDraftAutosave<PublicPagesConfig | null>(async (pg) => {
+    const next: VenueDraft = { ...baseDraft };
+    if (pg) next.publicPages = pg; else delete next.publicPages;
+    const r = await saveDraft(venue.id, next, lock.current);
+    lock.current = r.lockVersion;
+    setSaved(stable(pg));
+  }, { isConflict: (e) => (e as TablesError).isConflict });
+  // Leaving: whatever is queued is saved first; only a change that cannot be saved (invalid) asks.
+  const leave = async (to: string) => {
+    if (dirty && problems.length && !(await confirmAction({ title: 'לצאת בלי לשמור?', message: 'יש שינוי שלא נשמר כי הוא לא תקין.', confirmLabel: 'יציאה', cancelLabel: 'המשך עריכה', destructive: true }))) return;
+    await autosave.flush();
+    navigate(to);
+  };
 
   const assetIds = useMemo(() => new Set((media.data?.assets ?? []).map((a) => a.id)), [media.data]);
   const problems = useMemo(() => (pages && media.data ? publicPagesProblems(pages, assetIds) : []), [pages, media.data, assetIds]);
@@ -119,27 +127,14 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
   const ownTheme = !!page?.ownTheme;
   const theme: PageTheme | null = pages ? (ownTheme && page?.theme ? page.theme : pages.theme) : null;
   const setTheme = (fn: (t: PageTheme) => void) => update((p) => { const t = p[kind].ownTheme && p[kind].theme ? p[kind].theme! : p.theme; fn(t); });
-
-  async function save(): Promise<number | null> {
-    if (problems.length) { toast(PAGES_PROBLEM_HE[problems[0]!.code] ?? 'יש הגדרה לא תקינה.', 'error'); return null; }
-    setBusy('save');
-    try {
-      const next: VenueDraft = { ...baseDraft };
-      if (pages) next.publicPages = pages; else delete next.publicPages;
-      const r = await saveDraft(venue.id, next, lock);
-      setLock(r.lockVersion);
-      setSaved(stable(pages));
-      return r.lockVersion;
-    } catch (e) {
-      const te = e as TablesError;
-      toast(te.isConflict ? 'מישהו אחר בצוות שינה את הגדרות המקום בינתיים. רעננו את הדף כדי לראות את הגרסה העדכנית.' : te.message, 'error');
-      return null;
-    } finally { setBusy(null); }
-  }
+  const { queue } = autosave;
+  useEffect(() => { if (dirty && !problems.length) queue(pages); }, [pages, dirty, problems.length, queue]);
 
   async function publish() {
-    const lv = dirty ? await save() : lock;
-    if (lv == null) return;
+    if (problems.length) { toast(PAGES_PROBLEM_HE[problems[0]!.code] ?? 'יש הגדרה לא תקינה.', 'error'); return; }
+    await autosave.flush();
+    if (autosave.state === 'error' || autosave.state === 'conflict') { toast('השינויים עוד לא נשמרו. נסו שוב בעוד רגע.', 'error'); return; }
+    const lv = lock.current;
     if (venue.problems?.length) {
       toast(`אי אפשר לפרסם עדיין: ${problemText(venue.problems[0]!)} (בהגדרות המקום)`, 'error');
       return;
@@ -147,7 +142,7 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
     setBusy('publish');
     try {
       const r = await publishVenue(venue.id, lv);
-      setLock(r.lockVersion);
+      lock.current = r.lockVersion;
       toast('דפי ההזמנה פורסמו — האורחים רואים את העיצוב החדש', 'success');
       await reload();
     } catch (e) {
@@ -329,13 +324,10 @@ function Studio({ venue, reload }: { venue: VenueDetail; reload: () => Promise<v
 
       <div className="sticky bottom-[calc(var(--fz-tabbar,0px)+0.75rem)] z-20 mt-5 rounded-2xl border border-cloud-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lift backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
-          <Button icon={Save} variant="secondary" loading={busy === 'save'} disabled={!dirty || busy != null} className="h-11"
-            onClick={async () => { if (await save() != null) toast('הטיוטה נשמרה. האורחים עדיין רואים את הגרסה שפורסמה.', 'success'); }}>
-            {dirty ? 'שמירת טיוטה' : 'נשמר'}
-          </Button>
+          <SaveStatus state={problems.length && dirty ? 'error' : autosave.state} at={autosave.savedAt} conflictText="מישהו אחר בצוות שינה את הגדרות המקום — רעננו את הדף" />
           <Button icon={Rocket} loading={busy === 'publish'} disabled={busy != null || (!dirty && !unpublished)} className="h-11" onClick={() => void publish()}>פרסום</Button>
-          <p className="min-w-0 flex-1 text-xs text-ink-muted" aria-live="polite">
-            {dirty ? 'יש שינויים שלא נשמרו.' : unpublished ? 'הטיוטה שמורה. פרסום יעדכן את מה שהאורחים רואים.' : 'מה שמוצג כאן הוא מה שהאורחים רואים.'}
+          <p className="min-w-0 flex-1 text-xs text-ink-muted">
+            {dirty && problems.length ? `לא נשמר: ${PAGES_PROBLEM_HE[problems[0]!.code] ?? 'יש הגדרה לא תקינה.'}` : dirty ? 'שומר את הטיוטה…' : unpublished ? 'הטיוטה שמורה. פרסום יעדכן את מה שהאורחים רואים.' : 'מה שמוצג כאן הוא מה שהאורחים רואים.'}
             {otherChanges && (dirty || unpublished) && ' שימו לב: בטיוטה יש גם שינויים אחרים (שעות/שולחנות/כללים) שיפורסמו יחד.'}
           </p>
         </div>

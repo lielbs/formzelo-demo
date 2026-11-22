@@ -90,8 +90,8 @@ test('owner designs, saves, reloads and publishes the guest pages; a guest answe
   await expect(ask).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/app/tables/${venue.id}/design$`));
 
-  await page.getByRole('button', { name: 'שמירת טיוטה' }).click();
-  await expect(page.getByText('נשמר כטיוטה · לא פורסם')).toBeVisible();
+  // Drafts save themselves (shared autosave): wait for the saved state.
+  await expect(page.getByText('נשמר כטיוטה · לא פורסם')).toBeVisible({ timeout: 10_000 });
 
   // Saved draft survives a reload; guests still see the published (standard) page.
   await page.reload();
@@ -169,8 +169,8 @@ test('owner adds menu images (hero, ordered gallery, section, dish), removes one
   await expect(page.getByRole('button', { name: 'החלפת תמונה למנה' })).toBeVisible();
   await shot(page, 'menu-editor-1280');
 
-  await page.getByRole('button', { name: 'שמירת טיוטה' }).click();
-  await expect(page.getByText('הטיוטה נשמרה')).toBeVisible();
+  // The menu editor saves itself: wait for the save indicator.
+  await expect(page.getByRole('status').filter({ hasText: /^נשמר/ }).first()).toBeVisible({ timeout: 10_000 });
   const [m] = await sql<{ draft: { hero?: { imageAssetId?: string }; gallery?: string[]; sections: { imageAssetId?: string; items: { imageAssetId?: string }[] }[] } }>(
     'select draft from public.tables_menus where venue_id = $1 and status <> $2', [venue.id, 'archived']);
   expect(m!.draft.hero?.imageAssetId).toBe(hero);

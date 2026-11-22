@@ -1254,6 +1254,9 @@ isOneToOne: false
 "tables_analytics":
 { Args: { "p_from": string,"p_to": string,"p_venue_id": string }; Returns: Json
                            },
+"tables_analytics_more":
+{ Args: { "p_from": string,"p_to": string,"p_venue_id": string }; Returns: Json
+                           },
 "tables_anonymize_guest":
 { Args: { "p_guest_id": string,"p_organization_id": string }; Returns: Json
                            },

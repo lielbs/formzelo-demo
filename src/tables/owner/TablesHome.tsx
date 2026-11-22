@@ -4,11 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Badge, Button, buttonClass, Card, EmptyState, ErrorState, FieldLabel, Input, PageHeader, Spinner } from '../../components/ui';
 import { useActiveOrg } from '../../data/store';
 import { BASE_PATH } from '../../lib/links';
-import { createVenue, listVenues } from '../data/client';
+import { createVenue, getVenue, listVenues } from '../data/client';
 import { newDraft } from '../domain/draft';
 import { saveDraft } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import type { VenueSummary } from '../domain/types';
+import type { SetupStep, VenueSummary } from '../domain/types';
 import { Ltr, useLoad } from '../ui';
 
 const ROLE_HE: Record<string, string> = { owner: 'בעלים', manager: 'מנהל/ת', host: 'מארח/ת', viewer: 'צפייה' };
@@ -30,6 +30,7 @@ function VenueCard({ v }: { v: VenueSummary }) {
         </div>
         <Badge tone={status.tone}>{status.text}</Badge>
       </div>
+      {!v.published && (v.role === 'owner' || v.role === 'manager') && <SetupProgress venueId={v.id} />}
       <div className="mt-auto flex flex-wrap gap-2">
         {v.published && (
           <Link to={`/app/tables/${v.id}/live`} className={buttonClass('primary', 'md', 'h-11 px-4')}>
@@ -144,6 +145,26 @@ export function TablesHome() {
           </form>
         </Card>
       )}
+    </div>
+  );
+}
+
+const SETUP_STEPS: { key: SetupStep; title: string }[] = [
+  { key: 'basics', title: 'פרטי המקום' }, { key: 'hours', title: 'שעות ומשמרות' }, { key: 'seating', title: 'שולחנות ומפה' },
+  { key: 'rules', title: 'כללי הזמנה' }, { key: 'guest', title: 'עמוד האורחים' }, { key: 'review', title: 'בדיקה ופרסום' },
+];
+
+/** "3 of 6 · next: booking rules", so an unfinished setup shows how much is left (UX audit A1.6). */
+function SetupProgress({ venueId }: { venueId: string }) {
+  const { data } = useLoad(() => getVenue(venueId), [venueId], 'venue');
+  const visited = new Set(data?.draft?.progress?.visited ?? []);
+  if (!data) return null;
+  const done = SETUP_STEPS.filter((st) => visited.has(st.key)).length;
+  const next = SETUP_STEPS.find((st) => !visited.has(st.key)) ?? SETUP_STEPS[SETUP_STEPS.length - 1]!;
+  return (
+    <div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-cloud-200" aria-hidden><div className="h-full rounded-full bg-orange-600" style={{ width: `${Math.round((done / SETUP_STEPS.length) * 100)}%` }} /></div>
+      <p className="mt-1.5 text-sm text-ink-muted">{done} מתוך {SETUP_STEPS.length} שלבים · הבא: {next.title}</p>
     </div>
   );
 }
