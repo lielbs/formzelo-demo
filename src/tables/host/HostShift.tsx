@@ -2,17 +2,20 @@
  * Live shift: tablet-landscape first, usable in portrait and as an emergency phone list.
  * Every inventory action waits for the server; nothing shows as done before it is.
  */
-import { ArrowRight, BellRing, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Wifi, WifiOff } from 'lucide-react';
+import { ArrowRight, BellRing, CalendarDays, Sun, SunDim, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, LayoutGrid, List, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Wifi, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button, cx, ErrorState, PageLoader } from '../../components/ui';
+import { useMedia } from '../../lib/useMedia';
+import { useWakeLock } from '../../lib/useWakeLock';
 import { useShiftSync, type Connection } from '../data/useShiftSync';
-import { filterCount, inTile, isDone, matchesFilters, matchesQuery, NO_FILTERS, shiftSummary, tileCounts, timeline, type ShiftFilters, type SortKey, type TileKey, type TimelineItem } from '../domain/shiftList';
-import { bucketOf, BUCKET_HE, deriveTableStates, type Bucket } from '../domain/status';
+import { filterCount, inTile, isDone, matchesFilters, matchesQuery, NO_FILTERS, seatedFirstToLeave, shiftSummary, tileCounts, timeline, TILE_HE, type ShiftFilters, type SortKey, type TileKey, type TimelineItem } from '../domain/shiftList';
+import { bucketOf, BUCKET_HE, deriveTableStates, seatedProgress, type Bucket } from '../domain/status';
 import { addDays, currentServiceDate, dateInTz, formatDate, formatDateShort, timeInTz } from '../domain/time';
 import type { ShiftReservation } from '../domain/types';
 import { ThemeButton } from '../theme';
 import { Segmented } from '../ui';
+import { AutoAssign } from './AutoAssign';
 import { DetailPanel, type Selection } from './DetailPanel';
 import { FilterSheet } from './FilterSheet';
 import { FloorView } from './FloorView';
@@ -52,12 +55,30 @@ export function HostShift() {
   const [view, setView] = useState<View>(() => (params.get('view') as View) || 'list');
   const [service, setService] = useState<string>('all');
   const [query, setQuery] = useState('');
-  const [tile, setTile] = useState<TileKey>('active');
+  // The tile the host left the shift on, per venue on this device.
+  const tileKey = `fz-shift-tile:${venueId}`;
+  const [tile, setTileState] = useState<TileKey>(() => {
+    try { const v = localStorage.getItem(tileKey) as TileKey | null; return v && v in TILE_HE ? v : 'active'; } catch { return 'active'; }
+  });
+  const setTile = (t: TileKey) => { setTileState(t); try { localStorage.setItem(tileKey, t); } catch { /* private mode */ } };
+  const [showSeated, setShowSeated] = useState(false);
+  // Keep the screen on during the shift (the tablet at the door). On by default on touch tablets.
+  const [awake, setAwakeState] = useState(() => {
+    try { const v = localStorage.getItem('fz-shift-awake'); if (v) return v === '1'; } catch { /* private mode */ }
+    return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse) and (min-width: 768px)').matches;
+  });
+  const setAwake = (v: boolean) => { setAwakeState(v); try { localStorage.setItem('fz-shift-awake', v ? '1' : '0'); } catch { /* private mode */ } };
+  const wake = useWakeLock(awake);
+  const [autoAssign, setAutoAssign] = useState(false);
+  // From 1100 px the list and the map sit side by side (UX audit A3.5); from 1400 px the details too.
+  const wideSplit = useMedia('(min-width: 1100px)');
+  const roomy = useMedia('(min-width: 1400px)');
   const [filters, setFilters] = useState<ShiftFilters>(NO_FILTERS);
   const [sort, setSort] = useState<SortKey>('time');
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [chooser, setChooser] = useState(false);
+  // ?add=1 (the + of the app dock inside a venue): open the add chooser right away.
+  const [chooser, setChooser] = useState(() => params.get('add') === '1');
   const [showDone, setShowDone] = useState(true);
   const [selection, setSelection] = useState<Selection>(null);
   const [assigning, setAssigning] = useState<ShiftReservation | null>(null);
@@ -76,6 +97,8 @@ export function HostShift() {
     }
   }, [shift, date, setParams]);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(t); }, []);
+  // The ?add=1 request is used once; a reload should not open the chooser again.
+  useEffect(() => { if (params.get('add')) setParams((p) => { p.delete('add'); return p; }, { replace: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { document.title = shift ? `משמרת · ${shift.venue.name}` : 'משמרת'; }, [shift]);
 
   const setDate = (d: string) => { setSelection(null); setAssigning(null); setParams((p) => { p.set('date', d); return p; }); };
@@ -105,9 +128,19 @@ export function HostShift() {
   const closed = shift.closed.find((x) => x.kind === 'closed' && !x.serviceKey);
   const shownDate = date || shift.serviceDate;
   const isToday = shownDate === today;
+  const split = wideSplit && view === 'list';
+  // Without room for three columns, the selection decides: a table keeps the map, a booking the list.
+  const showList = !split || roomy || !selection || selection.kind !== 'table';
+  const showFloorBeside = split && (roomy || !selection || selection.kind === 'table');
+  const unassigned = day.filter((r) => (r.status === 'confirmed' || r.status === 'arrived') && r.tableIds.length === 0).length;
   const activeRows = tile === 'done' ? reservations : reservations.filter((r) => !isDone(r));
   const doneRows = tile === 'active' ? reservations.filter(isDone) : [];
-  const items = timeline(activeRows, now, isToday ? timeInTz(now, shift.venue.timezone) : null);
+  // Today, in time order: parties already at their tables fold into one line at the top, so the
+  // list opens on who is arriving now (UX audit A3.1).
+  const foldSeated = sort === 'time' && tile === 'active' && isToday;
+  const seatedRows = foldSeated ? seatedFirstToLeave(activeRows) : [];
+  const leavingSoon = seatedRows.filter((r) => seatedProgress(r, now)?.tone !== 'ok').length;
+  const items = timeline(foldSeated ? activeRows.filter((r) => r.status !== 'seated') : activeRows, now, isToday ? timeInTz(now, shift.venue.timezone) : null);
   const groups = (['attention', 'upcoming', 'arrived', 'seated', 'done'] as Bucket[]).map((b) => ({ b, rows: reservations.filter((r) => bucketOf(r, now) === b) }));
   const nFilters = filterCount(filters);
   const row = (r: ShiftReservation, next = false, order = 0) => (
@@ -120,6 +153,7 @@ export function HostShift() {
   // would cover the map, so it closes; on a wide screen the details stay open beside the map.
   const startAssign = (r: ShiftReservation) => {
     setAssigning(r);
+    if (split) { setSelection(null); return; }
     setView('floor');
     setSelection(window.matchMedia('(min-width: 1024px)').matches ? { kind: 'reservation', id: r.id } : null);
   };
@@ -157,6 +191,13 @@ export function HostShift() {
             <button type="button" onClick={() => setReminders(true)} aria-haspopup="dialog" aria-label="תזכורות לאורחים"
               className="hs-round flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
               <BellRing className="h-5 w-5" aria-hidden /><span className="hidden lg:inline">תזכורות</span>
+            </button>
+          )}
+          {wake.supported && (
+            <button type="button" onClick={() => setAwake(!awake)} aria-pressed={awake} aria-label="להשאיר את המסך דלוק במשמרת"
+              title={awake ? 'המסך נשאר דלוק' : 'המסך יכבה לפי הגדרות המכשיר'}
+              className="hs-round flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+              {awake ? <Sun className="h-5 w-5" aria-hidden /> : <SunDim className="h-5 w-5 opacity-60" aria-hidden />}
             </button>
           )}
           <ThemeButton />
@@ -240,7 +281,15 @@ export function HostShift() {
         <main id="shift-main" ref={listRef} className={cx('min-w-0 flex-1 transition-opacity duration-150', stale && 'hs-stale')} aria-busy={stale || undefined} aria-label="המשמרת">
           <div key={view} className="hs-view">
           {view === 'list' && (
-            reservations.length === 0 ? (
+            <div className={split ? 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-4' : undefined}>
+            {showList && <div className="min-w-0">
+            {canAct && unassigned > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--hs-line)] bg-[var(--hs-surface)] px-3 py-2 text-sm">
+                <span>{unassigned === 1 ? 'הזמנה אחת עוד בלי שולחן' : `${unassigned} הזמנות עוד בלי שולחן`}</span>
+                <Button size="sm" variant="secondary" onClick={() => setAutoAssign(true)} className="ms-auto h-10">שיבוץ אוטומטי</Button>
+              </div>
+            )}
+            {reservations.length === 0 ? (
               <div className="hs-empty">
                 <SearchX className="h-8 w-8" aria-hidden />
                 <p className="mt-2 font-semibold text-[var(--hs-ink)]">{narrowing ? 'אין הזמנות שמתאימות לסינון' : 'אין הזמנות ליום הזה עדיין'}</p>
@@ -263,6 +312,17 @@ export function HostShift() {
               </div>
             ) : (
               <div className="grid gap-3">
+                {seatedRows.length > 0 && (
+                  <section aria-labelledby="grp-seated">
+                    <button type="button" id="grp-seated" aria-expanded={showSeated} onClick={() => setShowSeated((v) => !v)}
+                      className="hs-seatedfold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+                      <ChevronDown className={cx('h-4 w-4 shrink-0 transition-transform', showSeated && 'rotate-180')} aria-hidden />
+                      <span>יושבים עכשיו · {seatedRows.length === 1 ? 'שולחן אחד' : `${seatedRows.length} שולחנות`}</span>
+                      <small>{seatedRows.reduce((n, r) => n + r.party, 0)} סועדים{leavingSoon ? ` · ${leavingSoon} מתפנים בקרוב` : ''}</small>
+                    </button>
+                    {showSeated && <ul className="hs-list mt-1">{seatedRows.map((r) => row(r, false, order++))}</ul>}
+                  </section>
+                )}
                 {sections.map((sec) => sec.kind === 'now' ? (
                   <div key={sec.key} className="hs-nowmark" role="separator" aria-label={`עכשיו ${sec.time}`}><span>עכשיו <bdi dir="ltr">{sec.time}</bdi></span></div>
                 ) : (
@@ -282,7 +342,15 @@ export function HostShift() {
                   </section>
                 )}
               </div>
-            )
+            )}
+            </div>}
+            {showFloorBeside && (
+              <div className="min-w-0 lg:sticky lg:top-[7.5rem]">
+                <FloorView shift={shift} states={tableStates} now={now} selection={selection} assigning={assigningNow} canAct={canAct}
+                  onSelectTable={(id) => setSelection({ kind: 'table', id })} onAssigned={(m) => { setAssigning(null); done(m); }} />
+              </div>
+            )}
+            </div>
           )}
           {view === 'floor' && (
             <FloorView shift={shift} states={tableStates} now={now} selection={selection} assigning={assigningNow} canAct={canAct}
@@ -305,6 +373,7 @@ export function HostShift() {
           onApply={(f, s) => { setFilters(f); setSort(s); setFilterOpen(false); if (view !== 'list') setView('list'); }} />
       )}
       {reminders && <RemindersSheet venueId={venueId} today={today} canAct={canAct} onClose={() => setReminders(false)} />}
+      {autoAssign && <AutoAssign shift={shift} onClose={() => setAutoAssign(false)} onDone={(m) => { setAutoAssign(false); done(m); }} />}
       {quickAdd && <QuickAdd mode={quickAdd} shift={shift} states={tableStates} onClose={() => setQuickAdd(null)} onDone={(m) => { setQuickAdd(null); done(m); }} />}
       <div aria-live="polite" className="sr-only">{announce}</div>
     </div>

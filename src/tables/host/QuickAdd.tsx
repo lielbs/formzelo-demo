@@ -1,7 +1,7 @@
 import { ClipboardList, Footprints, PhoneCall } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button, cx, FieldLabel, Input, Modal, Select } from '../../components/ui';
-import { newKey, staffAvailability, staffCreate, waitlistAdd } from '../data/client';
+import { guestLookup, newKey, staffAvailability, staffCreate, waitlistAdd, type GuestLookup } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { normalizePhone } from '../domain/phone';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
@@ -38,6 +38,17 @@ export function QuickAdd({ mode: initial, shift, states, onClose, onDone }: {
     staffAvailability(shift.venue.id, shift.serviceDate, party).then((s) => alive && setSlots(s)).catch(() => alive && setSlots([]));
     return () => { alive = false; };
   }, [mode, party, shift.venue.id, shift.serviceDate]);
+
+  // A returning guest: once the number is complete, show who it is and offer the name (A6.4).
+  const [known, setKnown] = useState<GuestLookup | null>(null);
+  useEffect(() => {
+    setKnown(null);
+    const e164 = normalizePhone(phone);
+    if (!e164) return;
+    let alive = true;
+    const t = setTimeout(() => { guestLookup(shift.venue.id, e164).then((g) => alive && setKnown(g)).catch(() => undefined); }, 350);
+    return () => { alive = false; clearTimeout(t); };
+  }, [phone, shift.venue.id]);
 
   const freeNow = shift.tables.filter((t) => states.get(t.id)?.state === 'ready' && t.maxCovers >= party);
   const phoneOk = !phone.trim() || normalizePhone(phone) != null;
@@ -92,7 +103,7 @@ export function QuickAdd({ mode: initial, shift, states, onClose, onDone }: {
               <div key={s.key} className="mb-2">
                 <p className="mb-1 text-xs text-ink-muted">{s.name}</p>
                 <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-                  {s.slots.map((sl) => {
+                  {s.slots.filter((sl) => sl.reason !== 'too_soon').map((sl) => {
                     const on = time?.time === sl.time && time.serviceKey === s.key;
                     return (
                       <button key={sl.time} type="button" disabled={!sl.ok} aria-pressed={on} onClick={() => setTime({ serviceKey: s.key, time: sl.time })}
@@ -129,6 +140,12 @@ export function QuickAdd({ mode: initial, shift, states, onClose, onDone }: {
             <Input id="qa-phone" type="tel" dir="ltr" inputMode="tel" value={phone} maxLength={24} invalid={!phoneOk} onChange={(e) => setPhone(e.target.value)} placeholder="050-1234567" autoComplete="off" />
           </div>
         </div>
+        {known && (
+          <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl bg-[var(--hs-accent-soft,#fff3ec)] px-3 py-2 text-sm">
+            <span><b>{known.name}</b> · {known.visits ? `${known.visits} ביקורים` : 'אורח מוכר'}{known.lastVisit ? ` · אחרון ${known.lastVisit.slice(8, 10)}.${known.lastVisit.slice(5, 7)}` : ''}{known.noShows ? ` · לא הגיעו ${known.noShows}` : ''}</span>
+            {name.trim() !== known.name && <Button type="button" size="sm" variant="secondary" onClick={() => setName(known.name)} className="ms-auto h-9">שימוש בשם</Button>}
+          </div>
+        )}
         <div>
           <FieldLabel htmlFor="qa-req">{mode === 'waitlist' ? 'הערה' : 'בקשות'} (רשות)</FieldLabel>
           <Input id="qa-req" value={requests} maxLength={300} onChange={(e) => setRequests(e.target.value)} />

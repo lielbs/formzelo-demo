@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from '../stack';
-import { asUser, newContext, seedBusiness, signIn, venueDraft, warmUp, type Business } from './fixtures';
+import { asUser, expandSeated, newContext, seedBusiness, signIn, venueDraft, warmUp, type Business } from './fixtures';
 
 test.use({ actionTimeout: 15_000, navigationTimeout: 30_000 });
 test.setTimeout(600_000);
@@ -99,6 +99,7 @@ test('three hosts work one busy shift while guests book; every screen converges 
   await hosts[0]!.page.waitForTimeout(3000);
   const db = Object.fromEntries((await sql<{ guest_name: string; status: string }>(`select guest_name, status from public.tables_reservations where venue_id=$1 and service_date=$2`, [venueId, day()])).map((r) => [r.guest_name, r.status]));
   const he: Record<string, string> = { pending_approval: 'ממתין לאישור', confirmed: 'הוזמן', arrived: 'הגיעו', seated: 'הושבו', completed: 'הסתיים', cancelled: 'בוטל', no_show: 'לא הגיעו', rejected: 'נדחה', expired: 'פג תוקף' };
+  for (const { page } of hosts) await expandSeated(page);
   const views = await Promise.all(hosts.map(({ page }) => rowStatuses(page)));
   const mismatches: string[] = [];
   for (const [i, v] of views.entries()) {

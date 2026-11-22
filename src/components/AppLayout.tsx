@@ -131,6 +131,10 @@ function TabBar({ pending, onMore, moreOpen, access }: { pending: number; onMore
     ...(tables ? [{ key: 'tables', label: 'שולחנות', icon: UtensilsCrossed, to: '/app/tables' }] : []),
     { key: 'more', label: 'עוד', icon: MoreHorizontal, onSelect: onMore, ariaLabel: 'עוד — התפריט המלא', expanded: moreOpen },
   ];
+  // Inside a venue the + adds to tonight's shift (a phone booking, walk-ins or the waitlist), not a new
+  // workflow (UX audit A1.2).
+  const venueMatch = tables ? /^\/app\/tables\/([0-9a-f-]{36})/.exec(path) : null;
+  const venueAdd = venueMatch ? `/app/tables/${venueMatch[1]}/live?add=1` : null;
   const at = (key: string) => items.findIndex((it) => it.key === key);
   const active = access === 'tables' ? (path.startsWith('/app/settings') ? at('more') : at('tables'))
     : moreOpen || inMore ? at('more')
@@ -141,7 +145,7 @@ function TabBar({ pending, onMore, moreOpen, access }: { pending: number; onMore
   return (
     <GlassDock label="ניווט מהיר" mode="nav" hideFrom="lg" items={items} active={active}
       onChoose={(i) => { const it = items[i]!; if (it.to) navigate(it.to); else it.onSelect?.(); }}
-      action={access === 'tables' ? undefined : { label: 'תהליך חדש', icon: Plus, to: '/app/workflows/new' }} />
+      action={venueAdd ? { label: 'הוספה למשמרת', icon: Plus, to: venueAdd } : access === 'tables' ? undefined : { label: 'תהליך חדש', icon: Plus, to: '/app/workflows/new' }} />
   );
 }
 

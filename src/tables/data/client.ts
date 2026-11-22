@@ -124,6 +124,9 @@ export interface ReminderDay { venue: { id: string; name: string; slug: string; 
 export const reminderList = (venueId: string, date: string) => rpc<ReminderDay>('tables_reminder_list', { p_venue_id: venueId, p_service_date: date });
 export const markReminded = (reservationId: string, sent = true) =>
   rpc<{ remindedAt: string | null }>('tables_mark_reminded', { p_reservation_id: reservationId, p_sent: sent });
+/** A returning guest by exact phone number (venue staff only): name, visits and no-shows here. */
+export interface GuestLookup { name: string; visits: number; noShows: number; lastVisit: string | null }
+export const guestLookup = (venueId: string, phone: string) => rpc<GuestLookup | null>('tables_guest_lookup', { p_venue_id: venueId, p_phone: phone });
 export const reservationDetail =(id: string) => rpc<ReservationDetail>('tables_reservation_detail', { p_reservation_id: id });
 export const waitlistAdd = (venueId: string, input: Record<string, unknown>, key: string) =>
   rpc<{ id: string }>('tables_waitlist_add', { p_venue_id: venueId, p_input: input, p_idempotency_key: key });

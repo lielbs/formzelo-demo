@@ -109,6 +109,12 @@ export async function newContext(browser: Browser, size: { width: number; height
   return browser.newContext({ viewport: size, isMobile: touch, hasTouch: touch, locale: 'he-IL', timezoneId: 'Asia/Jerusalem' });
 }
 
+/** Today's list folds the parties already seated into one line at the top; open it to see or act on them. */
+export async function expandSeated(page: Page) {
+  const fold = page.locator('#grp-seated');
+  if (await fold.count() && (await fold.getAttribute('aria-expanded')) === 'false') await fold.click();
+}
+
 export async function signIn(page: Page, who: Person, path = '/app') {
   await page.goto(path);
   await page.getByLabel('אימייל').fill(who.email);

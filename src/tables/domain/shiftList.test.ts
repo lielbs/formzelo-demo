@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterCount, matchesFilters, matchesQuery, NO_FILTERS, optionCounts, shiftSummary, slotOf, tileCounts, timeline } from './shiftList';
+import { filterCount, matchesFilters, matchesQuery, NO_FILTERS, optionCounts, seatedFirstToLeave, shiftSummary, slotOf, tileCounts, timeline } from './shiftList';
 import type { ShiftReservation } from './types';
 
 const res = (extra: Partial<ShiftReservation>): ShiftReservation => ({
@@ -39,7 +39,7 @@ describe('shift list', () => {
   it('groups by hour, places the now marker and flags the next arrival', () => {
     const items = timeline([at('21:30'), at('19:30', { status: 'seated' }), at('20:45'), at('20:05', { status: 'seated' })], now, '20:10');
     expect(items.map((i) => (i.kind === 'slot' ? `[${i.label}]` : i.kind === 'now' ? 'NOW' : i.r.time + (i.next ? '*' : '')))).toEqual(
-      ['[19:00]', '19:30', '[20:00]', '20:05', 'NOW', '[20:00]', '20:45*', '[21:00]', '21:30']);
+      ['[19:00]', '19:30', '[20:00]', '20:05', 'NOW', '[20:45]', '20:45*', '[21:00]', '21:30']);
     const slot = items.find((i) => i.kind === 'slot' && i.label === '21:00');
     expect(slot).toMatchObject({ count: 1, covers: 2 });
   });
@@ -107,5 +107,21 @@ describe('shift summary', () => {
     ];
     const states = new Map([['a', { state: 'ready' }], ['b', { state: 'occupied' }], ['c', { state: 'reserved_soon' }], ['d', { state: 'unavailable' }], ['e', { state: 'ready' }]]);
     expect(shiftSummary(rows, states, now)).toEqual({ seatedCovers: 4, expectedCovers: 12, late: 1, freeTables: 2, openTables: 4 });
+  });
+});
+
+describe('host list: now first (UX audit 2026-11, A3)', () => {
+  const now = new Date('2027-07-01T17:15:00Z'); // 20:15 local
+
+  it('labels the part of an hour after the now line by its first time, never a second "20:00"', () => {
+    const items = timeline([at('20:00'), at('20:30'), at('20:45'), at('21:00')], now, '20:15');
+    expect(items.map((i) => (i.kind === 'slot' ? `[${i.label}]` : i.kind === 'now' ? 'NOW' : i.r.time))).toEqual(
+      ['[20:00]', '20:00', 'NOW', '[20:30]', '20:30', '20:45', '[21:00]', '21:00']);
+  });
+
+  it('lists seated parties soonest-to-leave first', () => {
+    const a = at('19:00', { status: 'seated', seatedAt: '2027-07-01T16:30:00Z', endsAt: '2027-07-01T18:00:00Z', guestName: 'א' }); // seated 19:30, 2 h → 21:30
+    const b = at('19:30', { status: 'seated', seatedAt: '2027-07-01T16:35:00Z', endsAt: '2027-07-01T17:30:00Z', guestName: 'ב' }); // 1 h stay → 20:35
+    expect(seatedFirstToLeave([a, b, at('21:00')]).map((r) => r.guestName)).toEqual(['ב', 'א']);
   });
 });

@@ -6,7 +6,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { warmUp } from './fixtures';
 import { sql } from '../stack';
-import { asUser, newContext, seedBusiness, seedVenue, signIn, today, watch, type Business } from './fixtures';
+import { asUser, expandSeated, newContext, seedBusiness, seedVenue, signIn, today, watch, type Business } from './fixtures';
 
 test.use({ actionTimeout: 15_000, navigationTimeout: 30_000 });
 test.describe.configure({ mode: 'serial' });
@@ -86,6 +86,8 @@ test('two hosts act on the same party: one wins, the other sees the current stat
   await signIn(p2, biz.hosts[1]!, `/app/tables/${venue.id}/live`);
   await openShift(p1, day);
   await openShift(p2, day);
+  await expandSeated(p1);
+  await expandSeated(p2);
   const row1 = p1.locator('li', { hasText: 'שולחן מתנגש' });
   const row2 = p2.locator('li', { hasText: 'שולחן מתנגש' });
   await expect(row1.getByRole('button', { name: 'סיום' })).toBeVisible();

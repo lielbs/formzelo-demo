@@ -1278,6 +1278,9 @@ isOneToOne: false
 "tables_get_venue":
 { Args: { "p_venue_id": string }; Returns: Json
                            },
+"tables_guest_lookup":
+{ Args: { "p_phone": string,"p_venue_id": string }; Returns: Json
+                           },
 "tables_list_staff":
 { Args: { "p_venue_id": string }; Returns: Json
                            },

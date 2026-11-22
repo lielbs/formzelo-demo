@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, cx } from '../../components/ui';
 import { moveReservation } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import { TABLE_STATE_HE } from '../domain/status';
+import { seatedProgress, TABLE_STATE_HE } from '../domain/status';
+import { timeInTz } from '../domain/time';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
 import { FloorCanvas, floorBounds, StateLegend, TABLE_STATE_SYMBOL } from '../ui';
 import type { Selection } from './DetailPanel';
@@ -11,19 +12,9 @@ import { MAX_SCALE, useMapView } from './useMapView';
 
 type States = Map<string, { state: TableLiveState; current?: ShiftReservation; next?: ShiftReservation }>;
 
-/** Tables a reservation could move to: active, big enough, no other active booking overlapping. */
-export function candidateTables(shift: Shift, r: ShiftReservation): Set<string> {
-  const start = new Date(r.status === 'seated' ? Date.now() : r.startsAt).getTime();
-  const end = new Date(r.endsAt).getTime();
-  const busy = new Set<string>();
-  for (const o of shift.reservations) {
-    if (o.id === r.id || !['pending_approval', 'confirmed', 'arrived', 'seated'].includes(o.status)) continue;
-    const os = new Date(o.startsAt).getTime();
-    const oe = o.status === 'seated' ? Math.max(new Date(o.endsAt).getTime(), Date.now()) : new Date(o.endsAt).getTime();
-    if (os < end && start < oe) o.tableIds.forEach((t) => busy.add(t));
-  }
-  return new Set(shift.tables.filter((t) => t.maxCovers >= r.party && t.opState !== 'unavailable' && !busy.has(t.id) && !r.tableIds.includes(t.id)).map((t) => t.id));
-}
+/** Kept here for existing imports; the logic lives in the domain (shared with auto-assign). */
+export { candidateTables } from '../domain/autoAssign';
+import { candidateTables } from '../domain/autoAssign';
 
 export function FloorView({ shift, states, now, selection, assigning, canAct, onSelectTable, onAssigned }: {
   shift: Shift; states: States; now: Date; selection: Selection; assigning: ShiftReservation | null; canAct: boolean;
@@ -41,8 +32,14 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
     const live = states.get(t.id);
     const r = live?.current ?? live?.next;
     // Numbers only on the map (no names): mixed-direction text and guest data stay in the list/detail.
-    const caption = live?.current ? `● ${live.current.party}` : live?.next ? `${live.next.time} · ${live.next.party}` : String(t.maxCovers);
-    const spoken = live?.current ? `יושבים ${live.current.guestName}, ${live.current.party} סועדים` : live?.next ? `הבאים ${live.next.guestName} ב-${live.next.time}, ${live.next.party} סועדים` : undefined;
+    // An occupied table shows when it should free up ("~21:40"): what the host needs to promise a
+    // table to the next party (UX audit A4.2).
+    const progress = live?.current ? seatedProgress(live.current, now) : null;
+    const frees = progress ? timeInTz(progress.freesAt, shift.venue.timezone) : null;
+    const caption = live?.current ? (frees ? `~${frees}` : `● ${live.current.party}`) : live?.next ? `${live.next.time} · ${live.next.party}` : String(t.maxCovers);
+    const spoken = live?.current
+      ? `יושבים ${live.current.guestName}, ${live.current.party} סועדים${frees ? progress!.tone === 'over' ? `, עברו את הזמן המתוכנן (${frees})` : `, מתפנה בערך ב-${frees}` : ''}`
+      : live?.next ? `הבאים ${live.next.guestName} ב-${live.next.time}, ${live.next.party} סועדים` : undefined;
     return { ...t, state: live?.state ?? 'ready', caption: r ? caption : String(t.maxCovers), spoken, highlight: candidates.has(t.id), dim: !!assigning && !candidates.has(t.id) };
   });
 
@@ -60,7 +57,11 @@ export function FloorView({ shift, states, now, selection, assigning, canAct, on
     return () => window.removeEventListener('resize', on);
   }, []);
   const natural = size.w ? (size.w * room.h) / room.w : 320;
-  const inPage = Math.round(Math.min(Math.max(natural, 240), Math.max(240, vh - 290)));
+  // Tables must stay big enough to read and tap (44 px): when the screen height alone would shrink
+  // them below that, the map grows taller and the page scrolls (UX audit A4.1).
+  const smallest = visible.length ? Math.min(...visible.map((t) => Math.min(t.w, t.h))) : 60;
+  const readable = Math.ceil((44 * room.h) / Math.max(1, smallest));
+  const inPage = Math.round(Math.min(Math.max(natural, 240), Math.max(240, vh - 290, readable)));
 
   useEffect(() => {
     if (!full) return;

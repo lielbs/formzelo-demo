@@ -4,7 +4,7 @@ import { Button, cx } from '../../components/ui';
 import { decidePending, transition } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { isDone } from '../domain/shiftList';
-import { ACTION_HE, bucketOf, isLate, nextAction } from '../domain/status';
+import { ACTION_HE, bucketOf, doorWait, DOOR_WAIT_WARN_MINUTES, hmText, isLate, nextAction, seatedProgress } from '../domain/status';
 import type { ShiftReservation } from '../domain/types';
 import { StatusChip } from '../ui';
 
@@ -44,6 +44,8 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
   const late = isLate(r, now);
   const tables = r.tableIds.map((id) => labels.get(id) ?? '?').join('+');
   const needsTable = !isDone(r) && r.tableIds.length === 0;
+  const progress = seatedProgress(r, now);
+  const wait = doorWait(r, now);
 
   async function run() {
     if (!action) return;
@@ -68,12 +70,22 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
     <li className={cx('hs-row', `hs-tone-${tone(r, now)}`)} data-flash={flash || undefined} data-next={next || undefined}
       data-selected={selected || undefined} data-dim={isDone(r) || undefined} style={{ animationDelay: `${Math.min(order, 8) * 20}ms` }}>
       <button type="button" onClick={onSelect} className="hs-row-main" aria-label={`${r.time} ${r.guestName}, ${r.party} סועדים, ${seatText ?? 'בלי שולחן'} — פתיחת פרטים`}>
-        <span className="hs-row-time"><b dir="ltr">{r.time}</b><small dir="ltr" aria-hidden>{duration(r)}</small></span>
+        <span className="hs-row-time">
+          <b dir="ltr">{r.time}</b>
+          {progress ? (
+            <small dir="ltr" className="hs-sat" data-tone={progress.tone} aria-hidden>{hmText(progress.elapsed)}/{hmText(progress.planned)}
+              <span className="hs-sat-bar"><span style={{ width: `${Math.min(100, Math.round((progress.elapsed / progress.planned) * 100))}%` }} /></span>
+            </small>
+          ) : <small dir="ltr" aria-hidden>{duration(r)}</small>}
+        </span>
         <span className="hs-row-guest">
           {next && <span className="hs-nextlabel">הבאים בתור</span>}
           <span data-guest-name className="hs-row-name">{r.guestName}</span>
           <span className="hs-row-meta">
             <StatusChip status={r.status} late={late} />
+            {wait != null && <span className="hs-wait" data-warn={wait >= DOOR_WAIT_WARN_MINUTES || undefined}>מחכים {wait} דק׳</span>}
+            {progress && <span className="sr-only">{progress.tone === 'over' ? `עברו את הזמן ב־${-progress.remaining} דקות` : `יושבים ${progress.elapsed} דקות מתוך ${progress.planned}`}</span>}
+            {progress?.tone === 'over' && <span className="hs-wait" data-warn aria-hidden>+{-progress.remaining} דק׳</span>}
             <span className="md:hidden" aria-hidden>·</span>
             <span className="md:hidden tabular-nums">{r.party} סועדים</span>
             <span className="md:hidden" aria-hidden>·</span>

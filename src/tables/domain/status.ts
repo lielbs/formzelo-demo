@@ -40,6 +40,10 @@ export const SOURCE_HE: Record<ShiftReservation['source'], string> = {
   staff: 'צוות',
   waitlist: 'רשימת המתנה',
 };
+/** Short source labels for tight spots (the detail facts row); the full label goes in the title. */
+export const SOURCE_SHORT_HE: Record<ShiftReservation['source'], string> = {
+  online: 'אתר', phone: 'טלפון', walk_in: 'מזדמן', staff: 'צוות', waitlist: 'המתנה',
+};
 
 /** Minutes after the booked time at which a confirmed party counts as late. */
 export const LATE_AFTER_MINUTES = 10;
@@ -115,10 +119,21 @@ export function counters(reservations: ShiftReservation[], now: Date): Counters 
   return c;
 }
 
+/**
+ * A booking without a table needs the host only once it is close: when the party is at the door,
+ * or its time is within this many minutes. Later ones stay in "expected" (still marked "no table").
+ */
+export const ASSIGN_SOON_MINUTES = 60;
+export function needsTableNow(r: Pick<ShiftReservation, 'status' | 'tableIds' | 'startsAt'>, now: Date): boolean {
+  if (r.tableIds.length > 0) return false;
+  if (r.status === 'arrived') return true;
+  return r.status === 'confirmed' && new Date(r.startsAt).getTime() - now.getTime() <= ASSIGN_SOON_MINUTES * 60_000;
+}
+
 /** List grouping: operational buckets in service order. */
 export type Bucket = 'attention' | 'upcoming' | 'arrived' | 'seated' | 'done';
 export function bucketOf(r: ShiftReservation, now: Date): Bucket {
-  if (r.status === 'pending_approval' || isLate(r, now) || ((r.status === 'confirmed' || r.status === 'arrived') && r.tableIds.length === 0)) return 'attention';
+  if (r.status === 'pending_approval' || isLate(r, now) || needsTableNow(r, now)) return 'attention';
   if (r.status === 'confirmed') return 'upcoming';
   if (r.status === 'arrived') return 'arrived';
   if (r.status === 'seated') return 'seated';
@@ -131,3 +146,44 @@ export const BUCKET_HE: Record<Bucket, string> = {
   seated: 'יושבים',
   done: 'הסתיימו / בוטלו',
 };
+
+const minutesBetween = (from: number, to: number) => Math.floor((to - from) / 60_000);
+/** "1:05" from minutes. */
+export const hmText = (minutes: number) => `${Math.floor(Math.abs(minutes) / 60)}:${String(Math.abs(minutes) % 60).padStart(2, '0')}`;
+
+/**
+ * How long a seated party has been at the table against the planned stay: `soon` in the last
+ * 10 minutes, `over` once past it. `freesAt` is when the table is expected to free up.
+ */
+export interface SeatedProgress { elapsed: number; planned: number; remaining: number; tone: 'ok' | 'soon' | 'over'; freesAt: Date }
+export const SOON_TO_FREE_MINUTES = 10;
+export function seatedProgress(r: Pick<ShiftReservation, 'status' | 'seatedAt' | 'startsAt' | 'endsAt'>, now: Date): SeatedProgress | null {
+  if (r.status !== 'seated' || !r.seatedAt) return null;
+  const planned = Math.max(1, minutesBetween(new Date(r.startsAt).getTime(), new Date(r.endsAt).getTime()));
+  const seated = new Date(r.seatedAt).getTime();
+  const elapsed = Math.max(0, minutesBetween(seated, now.getTime()));
+  const remaining = planned - elapsed;
+  return { elapsed, planned, remaining, tone: remaining < 0 ? 'over' : remaining <= SOON_TO_FREE_MINUTES ? 'soon' : 'ok', freesAt: new Date(seated + planned * 60_000) };
+}
+
+/** Minutes an arrived party has been waiting at the door (null when not waiting). Warn from 5. */
+export const DOOR_WAIT_WARN_MINUTES = 5;
+export function doorWait(r: Pick<ShiftReservation, 'status' | 'arrivedAt'>, now: Date): number | null {
+  if (r.status !== 'arrived' || !r.arrivedAt) return null;
+  return Math.max(0, minutesBetween(new Date(r.arrivedAt).getTime(), now.getTime()));
+}
+
+/**
+ * Waiting time against what the party was told (UX audit A5.1): `near` from 80% of the upper
+ * estimate, `over` once past it. Without an estimate there is nothing to compare: `ok`.
+ */
+export function quoteTone(waited: number, quotedMax: number | null | undefined): 'ok' | 'near' | 'over' {
+  if (quotedMax == null || quotedMax <= 0) return 'ok';
+  if (waited > quotedMax) return 'over';
+  return waited >= quotedMax * 0.8 ? 'near' : 'ok';
+}
+
+/** The WhatsApp text a host sends when the table is ready (the host presses send; nothing is automatic). */
+export function tableReadyText(guestName: string, venueName: string, table: string | null): string {
+  return `שלום ${guestName}, כאן ${venueName}. השולחן שלכם מוכן${table ? ` (שולחן ${table})` : ''} — מחכים לכם בכניסה.`;
+}

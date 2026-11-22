@@ -134,6 +134,7 @@ const answer = (fn, b, now) => ({
   tables_public_waitlist_join: () => ({ token: 'W' + 'x'.repeat(40), status: 'waiting' }),
   tables_public_waitlist_status: () => ({ status: 'waiting', party: 2, joinedAt: at('20:01'), offerExpiresAt: null, position: 2, estimate: { min: 15, max: 25 }, venue: { name: 'Indigo 8', slug: SLUG, timezone: 'Asia/Jerusalem' }, serverNow: now.toISOString(), date: DATE, desiredTime: null, booking: null }),
   log_client_error: () => null,
+  tables_guest_lookup: () => (String(b.p_phone ?? '').endsWith('2128') ? { name: 'נוי כהן', visits: 4, noShows: 0, lastVisit: '2026-11-13' } : null),
 }[fn]);
 
 // ---------- A fake local session (never verified by anything real) ----------

@@ -1,9 +1,10 @@
-import { Phone, Plus, Star } from 'lucide-react';
+import { MessageCircle, Phone, Plus, Star } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button, cx } from '../../components/ui';
 import { newKey, staffCreate, waitlistBook, waitlistClose, waitlistOffer, waitlistSeat } from '../data/client';
 import type { TablesError } from '../domain/errors';
-import { displayPhone, telHref } from '../domain/phone';
+import { displayPhone, telHref, whatsappHref } from '../domain/phone';
+import { quoteTone, tableReadyText } from '../domain/status';
 import { dateInTz, minutesBetween } from '../domain/time';
 import type { Shift, WaitlistEntry } from '../domain/types';
 import { Ltr } from '../ui';
@@ -59,6 +60,8 @@ function WaitlistRow({ e, shift, now, canAct, onDone, labels }: { e: WaitlistEnt
       if (te.isConflict) onDone('');
     } finally { setBusy(null); }
   }
+  const tone = quoteTone(waited, e.quotedMax);
+  const readyTable = e.status === 'offered' ? held : suggestion;
   const seatLabel = e.status === 'offered' ? `הושבה עכשיו בשולחן ${held}` : suggestion ? `הושבה עכשיו בשולחן ${suggestion}` : null;
   return (
     <li className="hs-wl" data-offered={e.status === 'offered' || undefined}>
@@ -79,7 +82,11 @@ function WaitlistRow({ e, shift, now, canAct, onDone, labels }: { e: WaitlistEnt
           </p>
           <CustomAnswers answers={e.customAnswers} compact />
         </div>
-        {!later && <span className="hs-wl-wait" aria-label={`ממתינים ${waited} דקות`}><b>{waited}</b><small>דק׳</small></span>}
+        {!later && (
+          <span className="hs-wl-wait" data-tone={tone} aria-label={`ממתינים ${waited} דקות${tone === 'over' ? ', יותר ממה שנאמר להם' : ''}`}>
+            <b>{waited}</b><small>{tone === 'over' ? 'מעבר לזמן' : 'דק׳'}</small>
+          </span>
+        )}
       </div>
       {e.status === 'offered' && e.offerExpiresAt && (
         <p className="mt-2 rounded-lg bg-[var(--hs-accent-soft)] px-3 py-1.5 text-sm">שולחן {held} שמור להם · <Countdown until={e.offerExpiresAt} now={now} /></p>
@@ -102,7 +109,7 @@ function WaitlistRow({ e, shift, now, canAct, onDone, labels }: { e: WaitlistEnt
                 {seatLabel}
               </Button>
               {e.status === 'waiting' && (
-                <Button variant="secondary" aria-label={`לשמור שולחן ${suggestion}`} loading={busy === 'offer'} onClick={() => run('offer', () => waitlistOffer(e.id, e.suggestion!.tableIds, e.lockVersion), `שולחן ${suggestion} נשמר ל${e.guestName}`)} className="h-12">
+                <Button variant="secondary" aria-label={`לשמור שולחן ${suggestion}`} title="השולחן נשמר להם לזמן קצר, ודף הסטטוס שלהם מראה שהשולחן מוכן" loading={busy === 'offer'} onClick={() => run('offer', () => waitlistOffer(e.id, e.suggestion!.tableIds, e.lockVersion), `שולחן ${suggestion} נשמר ל${e.guestName}`)} className="h-12">
                   לשמור שולחן
                 </Button>
               )}
@@ -111,6 +118,13 @@ function WaitlistRow({ e, shift, now, canAct, onDone, labels }: { e: WaitlistEnt
           <div className="flex flex-wrap items-center gap-x-1">
             {e.guestPhone && (
               <a href={telHref(e.guestPhone)} className="hs-quiet"><Phone className="h-4 w-4" aria-hidden /><span className="sr-only">התקשרות ל{e.guestName}: </span><Ltr>{displayPhone(e.guestPhone)}</Ltr></a>
+            )}
+            {/* The usual way to call a party in: WhatsApp with the text ready (the host presses send). */}
+            {e.guestPhone && !later && (
+              <a href={whatsappHref(e.guestPhone, tableReadyText(e.guestName, shift.venue.name, readyTable || null))} target="_blank" rel="noopener noreferrer"
+                className={cx('hs-quiet', e.status === 'offered' && 'font-semibold text-[var(--hs-accent)]')}>
+                <MessageCircle className="h-4 w-4" aria-hidden />וואטסאפ: השולחן מוכן
+              </a>
             )}
             {e.status === 'offered' && <button type="button" disabled={!!busy} onClick={() => run('back', () => waitlistClose(e.id, 'waiting', e.lockVersion), 'ההצעה בוטלה, חזרו להמתנה')} className="hs-quiet">ביטול השמירה</button>}
             <button type="button" disabled={!!busy} onClick={() => run('left', () => waitlistClose(e.id, 'departed', e.lockVersion), `${e.guestName} הוסרו מהרשימה`)} className="hs-quiet">עזבו</button>

@@ -1,10 +1,10 @@
-import { Ban, CalendarClock, CheckCircle2, Footprints, LogIn, MessageCircle, Phone, Sparkles, Undo2, UserX, Wrench, X } from 'lucide-react';
+import { Ban, CalendarClock, CheckCircle2, Footprints, LogIn, MessageCircle, Minus, Phone, Plus, Sparkles, Undo2, UserX, Wrench, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, cx, Textarea } from '../../components/ui';
-import { addNote, decidePending, reservationDetail, setTableState, transition, type ReservationDetail, type TransitionAction } from '../data/client';
+import { addNote, decidePending, reservationDetail, setTableState, staffAvailability, transition, updateReservation, type ReservationDetail, type TransitionAction } from '../data/client';
 import type { TablesError } from '../domain/errors';
 import { displayPhone, telHref, whatsappHref } from '../domain/phone';
-import { canSeatNow, isLate, SOURCE_HE, STATUS_HE, TABLE_STATE_HE } from '../domain/status';
+import { canSeatNow, isLate, SOURCE_HE, SOURCE_SHORT_HE, STATUS_HE, TABLE_STATE_HE } from '../domain/status';
 import { walkInWindow } from '../domain/tableBooking';
 import { timeInTz } from '../domain/time';
 import type { Shift, ShiftReservation, TableLiveState } from '../domain/types';
@@ -184,8 +184,12 @@ function ReservationDetailView({ r, shift, now, canAct, onDone, onAssign }: {
         <div><dt>שעה</dt><dd><bdi dir="ltr">{r.time}</bdi></dd></div>
         <div><dt>סועדים</dt><dd>{r.party}</dd></div>
         <div><dt>שולחן</dt><dd className={cx(!tables && open && 'hs-warn')}>{tables || '—'}</dd></div>
-        <div><dt>מקור</dt><dd>{SOURCE_HE[r.source]}</dd></div>
+        <div><dt>מקור</dt><dd title={SOURCE_HE[r.source]}>{SOURCE_SHORT_HE[r.source]}</dd></div>
       </dl>
+      {canAct && ['pending_approval', 'confirmed', 'arrived'].includes(r.status) && (
+        <QuickEdit r={r} venueId={shift.venue.id} date={shift.serviceDate} busy={busy === 'edit'}
+          onEdit={(input, message) => act('edit', () => updateReservation(r.id, input, r.lockVersion), `${r.guestName}: ${message}`)} />
+      )}
       {!live && <p className="hs-final">ההזמנה במצב סופי: {STATUS_HE[r.status]}.</p>}
 
       {error && (
@@ -345,6 +349,52 @@ function TableDetail({ shift, tableId, states, now, canAct, onDone, onSelect }: 
         )}
       </section>
       {book && <TableBook shift={shift} table={table} state={live.state} now={now} initial={book} onClose={() => setBook(null)} onDone={(m) => { setBook(null); onDone(m); }} />}
+    </div>
+  );
+}
+
+/**
+ * The two changes guests ask for most, one tap away (UX audit A6.2): one more or one less diner,
+ * and another time from the times that are free for this party. The server re-checks capacity and
+ * refuses what does not fit; the message then explains why.
+ */
+function QuickEdit({ r, venueId, date, busy, onEdit }: {
+  r: ShiftReservation; venueId: string; date: string; busy: boolean;
+  onEdit: (input: Record<string, unknown>, message: string) => void;
+}) {
+  const [times, setTimes] = useState<{ key: string; time: string }[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  useEffect(() => { setOpen(false); setTimes(null); }, [r.id, r.lockVersion]);
+  const showTimes = async () => {
+    setOpen((o) => !o);
+    if (times) return;
+    try {
+      const services = await staffAvailability(venueId, date, r.party);
+      setTimes(services.flatMap((sv) => sv.slots.filter((sl) => sl.ok && sl.time !== r.time).map((sl) => ({ key: sv.key, time: sl.time }))));
+    } catch { setLoadError(true); }
+  };
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">סועדים</span>
+        <Button variant="secondary" icon={Minus} aria-label="סועד אחד פחות" disabled={busy || r.party <= 1} onClick={() => onEdit({ party: r.party - 1 }, `עכשיו ${r.party - 1} סועדים`)} className="h-11 w-11 rounded-full px-0" />
+        <b className="min-w-[2ch] text-center text-lg tabular-nums" aria-live="polite">{r.party}</b>
+        <Button variant="secondary" icon={Plus} aria-label="סועד אחד יותר" disabled={busy} onClick={() => onEdit({ party: r.party + 1 }, `עכשיו ${r.party + 1} סועדים`)} className="h-11 w-11 rounded-full px-0" />
+        <Button variant="ghost" icon={CalendarClock} aria-expanded={open} onClick={() => void showTimes()} className="ms-auto h-11">שינוי שעה</Button>
+      </div>
+      {open && (
+        <div role="group" aria-label="שעות פנויות לקבוצה הזו" className="flex flex-wrap gap-2">
+          {loadError ? <p className="text-sm text-red-700">לא הצלחנו לטעון את השעות הפנויות.</p>
+            : !times ? <p className="hs-muted text-sm">טוען שעות פנויות…</p>
+            : times.length === 0 ? <p className="hs-muted text-sm">אין שעה פנויה אחרת היום לקבוצה בגודל הזה.</p>
+            : times.map((t) => (
+              <Button key={`${t.key}-${t.time}`} variant="secondary" disabled={busy} onClick={() => onEdit({ serviceKey: t.key, time: t.time }, `הועברו ל־${t.time}`)} className="h-11 rounded-full px-4">
+                <bdi dir="ltr">{t.time}</bdi>
+              </Button>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

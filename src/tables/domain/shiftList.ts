@@ -147,16 +147,23 @@ export function timeline(rows: ShiftReservation[], now: Date, nowLabel: string |
   const items: TimelineItem[] = [];
   let placedNow = nowLabel === null;
   let slot: Extract<TimelineItem, { kind: 'slot' }> | null = null;
+  let hour: string | null = null;
+  let afterMarker: string | null = null; // the hour the "now" line cut in two
   for (const r of sorted) {
     if (!placedNow && new Date(r.startsAt).getTime() > t) {
       items.push({ kind: 'now', key: 'now', time: nowLabel! });
       placedNow = true;
-      slot = null; // the next booking repeats its hour under the marker
+      afterMarker = hour;
+      slot = null; // a new section starts under the marker
     }
-    const label = slotOf(r.time);
-    if (!slot || slot.label !== label) {
+    const h = slotOf(r.time);
+    if (!slot || hour !== h) {
+      // Under the marker, the rest of a cut hour is labelled by its first time ("20:30", not a
+      // second "20:00").
+      const label: string = !slot && afterMarker === h ? r.time : h;
       slot = { kind: 'slot', key: `slot-${items.length}-${label}`, label, count: 0, covers: 0 };
       items.push(slot);
+      hour = h;
     }
     slot.count++;
     slot.covers += r.party;
@@ -182,4 +189,13 @@ export function optionCounts(rows: ShiftReservation[], tables: Map<string, Pick<
     for (const f of Object.keys(FLAG_HE) as FlagKey[]) if (hasFlag(r, f)) bump(flags, f);
   }
   return { statuses, sources, party, zones, flags };
+}
+
+/**
+ * Parties already at their tables, soonest to leave first. On today's list they fold into one
+ * line at the top, so the host opens the shift on who is arriving now, not on who sat at 19:00.
+ */
+export function seatedFirstToLeave(rows: ShiftReservation[]): ShiftReservation[] {
+  const leaves = (r: ShiftReservation) => (r.seatedAt ? new Date(r.seatedAt).getTime() : new Date(r.startsAt).getTime()) + (new Date(r.endsAt).getTime() - new Date(r.startsAt).getTime());
+  return rows.filter((r) => r.status === 'seated').sort((a, b) => leaves(a) - leaves(b));
 }
