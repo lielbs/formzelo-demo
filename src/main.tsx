@@ -26,6 +26,7 @@ import { RepoProvider } from './data/store';
 import { framedByOtherOrigin, isFrameProtectedPath, routePath } from './lib/frameGuard';
 import { BASE_PATH } from './lib/links';
 import { installPressFeedback } from './lib/press';
+import { installErrorReporting } from './lib/errorReport';
 
 // Reopen a deep link that the site-wide 404 page sent here (see public/site-fallback.js): the demo
 // at the root takes non-/live paths; the production app at /live/ takes its own.
@@ -41,6 +42,7 @@ try {
 }
 
 installPressFeedback();
+installErrorReporting();
 
 const root = createRoot(document.getElementById('root')!);
 if (isFrameProtectedPath(routePath(window.location.pathname, BASE_PATH)) && framedByOtherOrigin(window)) {

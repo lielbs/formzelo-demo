@@ -1,5 +1,5 @@
 /** Small shared pieces for Formangle Tables screens (owner, host, guest). */
-import { Check, Loader2, Sparkles, type LucideIcon } from 'lucide-react';
+import { Sparkles, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { cx } from '../components/ui';
 import { STATUS_HE, TABLE_STATE_HE } from './domain/status';
@@ -225,23 +225,9 @@ export function FloorCanvas({
   );
 }
 
-export type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
-export function SaveIndicator({ state, at }: { state: SaveState; at?: Date | null }) {
-  const text = {
-    idle: '',
-    saving: 'שומר…',
-    saved: at ? `נשמר ${at.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'נשמר',
-    error: 'לא נשמר — בדקו את החיבור',
-    conflict: 'מישהו אחר שינה את ההגדרות',
-  }[state];
-  return (
-    <span role="status" aria-live="polite" className={cx('inline-flex items-center gap-1.5 text-xs', state === 'error' || state === 'conflict' ? 'font-medium text-red-700' : 'text-ink-muted')}>
-      {state === 'saving' && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-      {state === 'saved' && <Check className="h-3.5 w-3.5 text-teal" aria-hidden />}
-      {text}
-    </span>
-  );
-}
+/** The shared save indicator (kept under its old name for the Tables screens). */
+export { SaveStatus as SaveIndicator } from '../components/SaveStatus';
+export type { SaveState } from '../lib/draftSaver';
 
 /** Async loader with a stale-safe result; exposes reload. */
 

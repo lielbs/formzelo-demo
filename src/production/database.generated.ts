@@ -974,6 +974,9 @@ isOneToOne: false
 "list_team":
 { Args: { "p_organization_id": string }; Returns: Json
                            },
+"log_client_error":
+{ Args: { "p_client": string,"p_report": Json }; Returns: undefined
+                           },
 "my_access":
 { Args: Record<PropertyKey, never>; Returns: {
               "access": string,"organization_id": string,"role": string

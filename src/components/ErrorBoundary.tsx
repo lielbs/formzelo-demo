@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportError } from '../lib/errorReport';
 import { appHref } from '../lib/links';
 
 /** Last-resort boundary: logs the error and offers a recovery path instead of a blank page. */
@@ -11,6 +12,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[formangle] render error', error, info.componentStack);
+    reportError('render', error);
   }
 
   render() {

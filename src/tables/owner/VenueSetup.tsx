@@ -9,7 +9,8 @@ import { daysText, minutesText, previewApproval, ruleSentence, WEEKDAY_SHORT_HE 
 import { range } from '../domain/bidi';
 import { crossesMidnight, slotTimes } from '../domain/time';
 import type { ApprovalRule, Problem, ServiceDef, SetupStep, VenueDetail, VenueDraft, Weekday } from '../domain/types';
-import { Hint, NumberField, SaveIndicator, type SaveState } from '../ui';
+import { useDraftAutosave } from '../../lib/useDraftAutosave';
+import { Hint, NumberField, SaveIndicator } from '../ui';
 import { FloorEditor } from './FloorEditor';
 
 const STEPS: { key: SetupStep; title: string; lead: string }[] = [
@@ -33,14 +34,16 @@ export function VenueSetup() {
   const [draft, setDraft] = useState<VenueDraft | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loadError, setLoadError] = useState<Error | null>(null);
-  const [save, setSave] = useState<SaveState>('idle');
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const lock = useRef(0);
-  const pending = useRef<VenueDraft | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inflight = useRef<Promise<void> | null>(null);
+  const autosave = useDraftAutosave<VenueDraft>(async (next) => {
+    const r = await saveDraft(venueId, next, lock.current);
+    lock.current = r.lockVersion;
+    setProblems(r.problems);
+  }, { isConflict: (e) => (e as TablesError).isConflict });
+  const { flush, discard } = autosave;
+  const save = autosave.state;
 
   const step = (params.get('step') as SetupStep) || draft?.progress?.step || 'basics';
   const stepIndex = Math.max(0, STEPS.findIndex((s) => s.key === step));
@@ -53,52 +56,18 @@ export function VenueSetup() {
       setDraft(normalizeDraft(v.draft ?? {}, v.name));
       setProblems(v.problems ?? []);
       setLoadError(null);
-      setSave('idle');
+      discard();
     } catch (e) {
       setLoadError(e as Error);
     }
-  }, [venueId]);
+  }, [venueId, discard]);
   useEffect(() => { void load(); }, [load]);
 
-  const flush = useCallback(async () => {
-    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    if (inflight.current) await inflight.current;
-    const next = pending.current;
-    if (!next) return;
-    pending.current = null;
-    setSave('saving');
-    inflight.current = (async () => {
-      try {
-        const r = await saveDraft(venueId, next, lock.current);
-        lock.current = r.lockVersion;
-        setProblems(r.problems);
-        setSavedAt(new Date());
-        setSave(pending.current ? 'saving' : 'saved');
-      } catch (e) {
-        const te = e as TablesError;
-        pending.current = pending.current ?? next;
-        setSave(te.isConflict ? 'conflict' : 'error');
-      } finally {
-        inflight.current = null;
-      }
-    })();
-    await inflight.current;
-  }, [venueId]);
-
+  const { queue } = autosave;
   const update = useCallback((next: VenueDraft) => {
     setDraft(next);
-    pending.current = next;
-    setSave('saving');
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => { void flush(); }, 700);
-  }, [flush]);
-
-  // Save before leaving the page; warn the browser if a save is still pending.
-  useEffect(() => {
-    const before = (e: BeforeUnloadEvent) => { if (pending.current || inflight.current) { e.preventDefault(); e.returnValue = ''; } };
-    window.addEventListener('beforeunload', before);
-    return () => { window.removeEventListener('beforeunload', before); void flush(); };
-  }, [flush]);
+    queue(next);
+  }, [queue]);
 
   const go = async (key: SetupStep) => {
     if (!draft) return;
@@ -142,12 +111,12 @@ export function VenueSetup() {
           </Link>
           <h1 className="mt-1 break-words text-[26px] font-bold leading-tight tracking-tight text-ink">{venue.published ? 'עריכת' : 'הקמת'} {draft.basics.name || venue.name}</h1>
         </div>
-        <SaveIndicator state={save} at={savedAt} />
+        <SaveIndicator state={save} at={autosave.savedAt} />
       </div>
       {save === 'conflict' && (
         <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           <AlertCircle className="h-4 w-4" aria-hidden /> מישהו אחר שינה את ההגדרות במקביל. השינויים האחרונים שלכם לא נשמרו.
-          <Button size="sm" variant="secondary" onClick={() => { pending.current = null; void load(); }}>טעינת הגרסה העדכנית</Button>
+          <Button size="sm" variant="secondary" onClick={() => { discard(); void load(); }}>טעינת הגרסה העדכנית</Button>
         </div>
       )}
       {save === 'error' && (
@@ -194,7 +163,7 @@ export function VenueSetup() {
           </div>
           {/* The way forward stays in reach while a long step scrolls (above the phone dock). */}
           <div className="sticky bottom-[calc(var(--fz-tabbar,0px)+0.75rem)] z-10 mt-8 flex items-center justify-between gap-3 rounded-2xl border border-cloud-200 bg-white/95 p-2.5 shadow-card backdrop-blur">
-            {stepIndex > 0 ? <Button variant="ghost" icon={ArrowRight} onClick={() => void go(STEPS[stepIndex - 1]!.key)} className="shrink-0">הקודם</Button> : <SaveIndicator state={save} at={savedAt} />}
+            {stepIndex > 0 ? <Button variant="ghost" icon={ArrowRight} onClick={() => void go(STEPS[stepIndex - 1]!.key)} className="shrink-0">הקודם</Button> : <SaveIndicator state={save} at={autosave.savedAt} />}
             {stepIndex < STEPS.length - 1 && (
               <Button size="lg" onClick={() => void go(STEPS[stepIndex + 1]!.key)} className="min-w-0">
                 המשך<span className="sr-only min-[400px]:not-sr-only">: {STEPS[stepIndex + 1]!.title}</span> <ArrowLeft className="h-4 w-4" aria-hidden />

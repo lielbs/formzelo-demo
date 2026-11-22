@@ -17,7 +17,8 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5174',
-    channel: process.env.E2E_BROWSER_CHANNEL ?? 'msedge',
+    // Locally Edge (installed with Windows); CI sets E2E_BROWSER_CHANNEL=chromium (Playwright's own build).
+    channel: process.env.E2E_BROWSER_CHANNEL === 'chromium' ? undefined : (process.env.E2E_BROWSER_CHANNEL ?? 'msedge'),
     locale: 'he-IL',
     timezoneId: 'Asia/Jerusalem',
     trace: 'retain-on-failure',

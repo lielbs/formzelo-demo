@@ -90,3 +90,68 @@ jobs:
         if: always()
         continue-on-error: true
         run: npx --yes "supabase@${SUPABASE_CLI_VERSION}" stop --no-backup
+
+  # The Tables journeys in a real browser against the same disposable local stack (UX audit
+  # 2026-11, C2): booking, live shift with two hosts, a busy Friday, owner screens and access.
+  # Synthetic data only; the keys are the local stack's own and are masked in the log.
+  tables-e2e:
+    name: Tables journeys in a browser (local stack)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      SUPABASE_CLI_VERSION: "3.0.0"
+      E2E_BROWSER_CHANNEL: chromium
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Install locked application dependencies
+        run: npm ci
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Start isolated local Supabase
+        run: |
+          start_log="$RUNNER_TEMP/supabase-start.log"
+          if ! npx --yes "supabase@${SUPABASE_CLI_VERSION}" start >"$start_log" 2>&1; then
+            grep -Ev 'SECRET_KEY|JWT_SECRET|ANON_KEY|SERVICE_ROLE_KEY|PUBLISHABLE_KEY' "$start_log" | tail -100
+            exit 1
+          fi
+
+      - name: Hand the local stack keys to the tests (masked)
+        run: |
+          status="$RUNNER_TEMP/stack.env"
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" status -o env >"$status"
+          value() { grep -E "^$1=" "$status" | head -1 | cut -d= -f2- | tr -d '"'; }
+          pub="$(value PUBLISHABLE_KEY)"; [ -n "$pub" ] || pub="$(value ANON_KEY)"
+          svc="$(value SECRET_KEY)"; [ -n "$svc" ] || svc="$(value SERVICE_ROLE_KEY)"
+          rm -f "$status"
+          if [ -z "$pub" ] || [ -z "$svc" ]; then echo "Local stack keys not found"; exit 1; fi
+          echo "::add-mask::$pub"
+          echo "::add-mask::$svc"
+          { echo "E2E_SUPABASE_PUBLISHABLE_KEY=$pub"; echo "E2E_SUPABASE_SERVICE_KEY=$svc"; } >>"$GITHUB_ENV"
+
+      - name: Run the Tables journeys
+        run: >-
+          npx playwright test
+          e2e/tables/journeys.spec.ts
+          e2e/tables/host-shift.spec.ts
+          e2e/tables/busy-shift.spec.ts
+          e2e/tables/owner.spec.ts
+          e2e/tables/access.spec.ts
+
+      - name: Stop isolated local Supabase
+        if: always()
+        continue-on-error: true
+        run: npx --yes "supabase@${SUPABASE_CLI_VERSION}" stop --no-backup
