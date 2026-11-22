@@ -262,6 +262,11 @@ html.fz-dark .border-orange-400 { border-color: #c2410c; }
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: background-color 150ms ease;
 }
 .fz-guest .pp-tile:hover { background-color: rgb(255 255 255 / 0.22); }
+/* Phone: shorter quick-action tiles, so times are reachable sooner (UX audit A7.1). */
+@media (max-width: 639px) {
+  .fz-guest .pp-tile { min-height: 50px; gap: 2px; padding: 6px 2px; border-radius: 14px; font-size: 11.5px; }
+  .fz-guest .pp-tile svg { width: 18px; height: 18px; }
+}
 .fz-guest .pp-tile:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .fz-guest .pp-hero-band { background-image:
     radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--pp-hero-glow, #3a4a5c) 90%, transparent) 0%, transparent 60%),
@@ -281,3 +286,8 @@ html.fz-dark .border-orange-400 { border-color: #c2410c; }
   .fz-guest .pp-strip-arrow:hover { box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 6px 18px -4px rgb(0 0 0 / 0.3); }
   .fz-guest .pp-strip-arrow:active { transform: scale(0.94); }
 }
+
+/* "Request" (needs the venue's approval): readable on light and on dark page styles (UX audit A7.7). */
+.fz-guest .pp-warn { color: #92400e; }
+html .fz-pp[data-pp-tone="dark"] .pp-warn, html.fz-dark .fz-guest .pp-warn { color: #fcd34d; }
+html .fz-guest .pp-chip-on .pp-warn { color: inherit; }

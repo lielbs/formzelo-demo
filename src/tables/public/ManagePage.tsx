@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, Clock, Hourglass, XCircle } from 'lucide-react';
+import { BookOpen, CalendarClock, CheckCircle2, Clock, Hourglass, Navigation, Phone, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cx, PageLoader } from '../../components/ui';
 import { newKey, publicCancel, publicManage, publicModify, publicModifyOptions, publicVenue, type GuestReservation, type PublicAvailability, type PublicVenue } from '../data/client';
@@ -9,7 +9,8 @@ import { STATUS_GUEST, tx, type Lang } from './i18n';
 import { lookFor } from './look';
 import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
 import { PushReminder } from './PushReminder';
-import { CalendarButtons, manageUrl } from './VenueInfo';
+import { CalendarButtons, manageUrl, mapsHref } from './VenueInfo';
+import { Link } from 'react-router-dom';
 
 /** Reads the capability token from the URL fragment, then removes it from the address bar. */
 export function useFragmentToken(kind: 'manage' | 'waitlist' = 'manage'): string | null {
@@ -122,6 +123,14 @@ function Manage({ res, token, lang, onChange }: { res: GuestReservation; token: 
         </section>
       )}
 
+      {/* On the day guests look for the way there, the phone and the menu (UX audit A8.1). */}
+      {mode === 'view' && res.open && (res.status === 'confirmed' || res.status === 'pending_approval') && (
+        <nav aria-label={lang === 'en' ? 'Getting there' : 'בדרך למקום'} className="grid grid-cols-3 gap-2">
+          {res.venue.address && <a href={mapsHref(res.venue.address)} target="_blank" rel="noopener noreferrer" className={cx(softButton, 'flex-col gap-1 text-sm')}><Navigation className="h-5 w-5" aria-hidden />{lang === 'en' ? 'Directions' : 'ניווט'}</a>}
+          {res.venue.phone && <a href={`tel:${res.venue.phone}`} className={cx(softButton, 'flex-col gap-1 text-sm')}><Phone className="h-5 w-5" aria-hidden />{lang === 'en' ? 'Call' : 'חיוג'}</a>}
+          <Link to={`/t/${res.venue.slug}/menu${lang === 'en' ? '?lang=en' : ''}`} className={cx(softButton, 'flex-col gap-1 text-sm')}><BookOpen className="h-5 w-5" aria-hidden />{lang === 'en' ? 'Menu' : 'תפריט'}</Link>
+        </nav>
+      )}
       {mode === 'view' && res.open && (res.status === 'confirmed' || res.status === 'pending_approval') && (
         <div className="grid gap-1.5">
           <div className="grid gap-2 sm:grid-cols-2">

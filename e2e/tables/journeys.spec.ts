@@ -111,7 +111,8 @@ test('large party request is approved by a host; guest page shows pending then c
   const gp = await g.newPage();
   await gp.goto(`/t/${venue.slug}`);
   await gp.getByRole('button', { name: 'מחר' }).click();
-  await gp.getByRole('button', { name: '8', exact: true }).click();
+  // Six sizes are buttons; larger groups are picked from the "7–N" list.
+  await gp.locator('#party-more').selectOption('8');
   await pickTime(gp, '20:00');
   await expect(gp.getByText('בקשה — המקום יאשר')).toBeVisible();
   await gp.getByLabel('שם מלא').fill('ערב חברה');
@@ -171,6 +172,8 @@ test('walk-in seated immediately; waitlist QR join → offer → guest notice �
   await hp.getByRole('button', { name: '4', exact: true }).click();
   await hp.getByLabel('שם', { exact: true }).fill('זוג מהרחוב');
   await hp.getByRole('button', { name: 'הושבה עכשיו' }).click();
+  await expect(hp.locator('#grp-seated')).toBeVisible(); // seated parties fold into one line
+  await expandSeated(hp);
   await expect(hp.locator('li', { hasText: 'זוג מהרחוב' }).getByText('הושבו')).toBeVisible();
 
   const g = await newContext(browser, { width: 375, height: 812 }, true);

@@ -36,6 +36,9 @@ export function fieldText(f: PageField, lang: Lang): { label: string; hint?: str
   return { label: f.label?.trim() || base.label, hint: f.hint?.trim() || base.hint };
 }
 
+/** Choice questions with at most this many answers show as buttons. */
+const CHIP_MAX = 6;
+
 const BUILTIN_MAX: Record<string, number> = { name: 120, phone: 24, email: 254, requests: 500, notes: 200 };
 
 export function GuestFields({ kind, page, lang, values, onChange, errors, prefix, disabled }: {
@@ -79,6 +82,26 @@ export function GuestFields({ kind, page, lang, values, onChange, errors, prefix
           </label>
           {hint && <p id={`${id}-hint`} className="ms-9 text-xs text-ink-muted">{hint}</p>}
           {err && <p id={`${id}-err`} className="ms-9 mt-1 text-sm text-red-700">{err}</p>}
+        </div>
+      );
+    }
+    // A short choice is one tap on a button instead of opening a list (UX audit A7.4). Tapping the
+    // chosen answer again clears it when the question is optional.
+    if (f.kind === 'select' && (f.options?.length ?? 0) <= CHIP_MAX) {
+      return (
+        <div key={f.key} role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={describedBy} aria-required={f.required || undefined} aria-invalid={!!err || undefined}>
+          <p id={`${id}-label`} className="mb-1.5 block text-sm font-medium">{label}{f.required && <span aria-hidden className="ms-1 text-[var(--fz-accent)]">*</span>}</p>
+          <div className="flex flex-wrap gap-2">
+            {(f.options ?? []).map((o, i) => (
+              <button key={o} id={i === 0 ? id : undefined} type="button" role="radio" aria-checked={str === o} disabled={disabled}
+                onClick={() => onChange(f.key, str === o && !f.required ? '' : o)}
+                className={cx('pp-chip min-h-[44px] rounded-full border px-4 text-[15px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', str === o && 'pp-chip-on')}>
+                {o}
+              </button>
+            ))}
+          </div>
+          {hint && <p id={`${id}-hint`} className="mt-1 text-xs text-ink-muted">{hint}</p>}
+          {err && <p id={`${id}-err`} className="mt-1 text-sm text-red-700">{err}</p>}
         </div>
       );
     }

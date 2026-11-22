@@ -128,6 +128,23 @@ export function WaitlistStatusPage() {
   const venueSlug = st?.venue.slug;
   useEffect(() => { if (venueSlug) publicVenue(venueSlug, lang).then(setVenue).catch(() => setVenue(null)); }, [venueSlug, lang]);
   const design = useMemo(() => (venue ? lookFor(venue, 'waitlist') : null), [venue]);
+  // When the table becomes ready, a guest who is not looking at the screen must notice (UX audit
+  // A8.2): the phone vibrates and the tab title changes until the page is seen again.
+  const ready = st?.status === 'offered';
+  const wasReady = useRef(false);
+  useEffect(() => {
+    if (!ready) { wasReady.current = false; return; }
+    if (wasReady.current) return;
+    wasReady.current = true;
+    try { navigator.vibrate?.([250, 120, 250, 120, 400]); } catch { /* not supported */ }
+    const original = document.title;
+    let on = true;
+    const blink = setInterval(() => { document.title = on ? `🔔 ${s.tableReady}` : original; on = !on; }, 1000);
+    const stop = () => { if (document.visibilityState === 'visible') { clearInterval(blink); document.title = original; } };
+    document.addEventListener('visibilitychange', stop);
+    if (document.visibilityState === 'visible') setTimeout(stop, 4000);
+    return () => { clearInterval(blink); document.removeEventListener('visibilitychange', stop); document.title = original; };
+  }, [ready, s.tableReady]);
 
   if (st === undefined) return <PageLoader label={s.loading} />;
   if (st === null) return <PublicShell lang={lang} venue={null}><h1 className="text-xl font-semibold">{s.linkUnavailable}</h1><p className="mt-2 text-ink-muted">{s.linkUnavailableBody}</p></PublicShell>;

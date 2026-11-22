@@ -121,13 +121,15 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
             </Link>
           </div>
           {venue && (
-            <div className={cx('flex flex-col gap-4', compact ? 'pb-16 pt-3 sm:pb-20' : 'pb-20 pt-6 sm:pb-24 sm:pt-10 lg:pb-28')}>
+            // On a phone the header stays short so the booking starts in the first screen (UX audit
+            // A7.1); tablets and computers keep the full header.
+            <div className={cx('flex flex-col gap-3 sm:gap-4', compact ? 'pb-16 pt-3 sm:pb-20' : 'pb-14 pt-2 sm:pb-24 sm:pt-10 lg:pb-28')}>
               <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                 {design?.logoUrl ? (
                   <img src={design.logoUrl} alt="" width={80} height={80} decoding="async"
-                    className={cx('pp-logo shrink-0 rounded-[var(--pp-r-lg)] bg-white object-contain p-1.5 shadow-lg ring-1 ring-black/5', compact ? 'h-12 w-12' : 'h-16 w-16 sm:h-20 sm:w-20')} />
+                    className={cx('pp-logo shrink-0 rounded-[var(--pp-r-lg)] bg-white object-contain p-1.5 shadow-lg ring-1 ring-black/5', compact ? 'h-12 w-12' : 'h-12 w-12 sm:h-20 sm:w-20')} />
                 ) : (
-                  <span aria-hidden className={cx('pp-monogram flex shrink-0 items-center justify-center rounded-[var(--pp-r-lg)]', compact ? 'h-12 w-12 text-lg' : 'h-16 w-16 text-2xl sm:h-20 sm:w-20 sm:text-3xl')}>
+                  <span aria-hidden className={cx('pp-monogram flex shrink-0 items-center justify-center rounded-[var(--pp-r-lg)]', compact ? 'h-12 w-12 text-lg' : 'h-12 w-12 text-lg sm:h-20 sm:w-20 sm:text-3xl')}>
                     {monogram(venue.name)}
                   </span>
                 )}
@@ -138,10 +140,10 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
                       {eyebrow && <span className="break-words">{eyebrow}</span>}
                     </p>
                   )}
-                  <p className={cx('pp-display pp-venue-name break-words leading-[1.05]', compact ? 'text-2xl sm:text-3xl' : 'text-[2rem] sm:text-5xl')}>{venue.name}</p>
+                  <p className={cx('pp-display pp-venue-name break-words leading-[1.05]', compact ? 'text-2xl sm:text-3xl' : 'text-[1.7rem] sm:text-5xl')}>{venue.name}</p>
                 </div>
               </div>
-              {!compact && venue.intro && <p className="pp-hero-text max-w-2xl whitespace-pre-line text-base sm:text-lg">{venue.intro}</p>}
+              {!compact && venue.intro && <p className="pp-hero-text line-clamp-2 max-w-2xl whitespace-pre-line text-[15px] sm:line-clamp-none sm:text-lg">{venue.intro}</p>}
               {!compact && todayHours !== undefined && (
                 <p className="pp-glass inline-flex min-h-[36px] w-fit items-center gap-1.5 rounded-full border px-3 text-sm">
                   <Clock className="h-4 w-4" aria-hidden />{todayHours ? <span>{s.openToday('')}<Ltr>{todayHours}</Ltr></span> : s.closedToday}
@@ -164,15 +166,15 @@ export function PublicShell({ lang, venue, children, compact, design, aside, she
                 </ul>
               )}
               {!compact && venue.address && (
-                <p className="pp-hero-text flex items-start gap-1.5 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="break-words">{venue.address}</span></p>
+                <p className="pp-hero-text hidden items-start gap-1.5 text-sm sm:flex"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="break-words">{venue.address}</span></p>
               )}
             </div>
           )}
           {/* Same shape as the loaded header, so the booking card does not jump when the venue arrives. */}
           {!venue && (
-            <div aria-hidden className={cx('flex animate-pulse flex-col gap-4', compact ? 'pb-16 pt-3 sm:pb-20' : 'pb-20 pt-6 sm:pb-24 sm:pt-10 lg:pb-28')}>
+            <div aria-hidden className={cx('flex animate-pulse flex-col gap-3 sm:gap-4', compact ? 'pb-16 pt-3 sm:pb-20' : 'pb-14 pt-2 sm:pb-24 sm:pt-10 lg:pb-28')}>
               <div className="flex items-center gap-3 sm:gap-4">
-                <span className={cx('shrink-0 rounded-[var(--pp-r-lg,16px)] bg-white/25', compact ? 'h-12 w-12' : 'h-16 w-16 sm:h-20 sm:w-20')} />
+                <span className={cx('shrink-0 rounded-[var(--pp-r-lg,16px)] bg-white/25', compact ? 'h-12 w-12' : 'h-12 w-12 sm:h-20 sm:w-20')} />
                 <span className="grid gap-2">
                   <span className="h-3 w-24 rounded bg-white/20" />
                   <span className={cx('rounded bg-white/30', compact ? 'h-6 w-40' : 'h-8 w-56 sm:h-10 sm:w-72')} />

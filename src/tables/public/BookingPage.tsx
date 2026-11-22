@@ -15,6 +15,7 @@ import { lookFor, pageOf } from './look';
 import { accentButton, PublicShell, softButton, useDocumentLanguage, useLang } from './PublicShell';
 import { PushReminder } from './PushReminder';
 import { ScrollStrip } from './ScrollStrip';
+import { loadGuest, saveGuest } from './rememberGuest';
 import { CalendarButtons, manageUrl, mapsHref, VenueAside, weekdayOf } from './VenueInfo';
 
 type Step = 'choose' | 'details' | 'result';
@@ -107,7 +108,9 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
   const [avail, setAvail] = useState<PublicAvailability | null>(null);
   const [availError, setAvailError] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
-  const [values, setValues] = useState<GuestValues>({});
+  // Details remembered on this device (only if the guest asked for it last time).
+  const [values, setValues] = useState<GuestValues>((): GuestValues => { const g = loadGuest(); return g ? { name: g.name ?? '', phone: g.phone ?? '', email: g.email ?? '' } : {}; });
+  const [remember, setRemember] = useState(() => loadGuest() != null);
   const [terms, setTerms] = useState(false);
   const shown = (key: string) => !page || page.fields.some((f) => f.key === key && !f.hidden);
   const text = (key: string) => (typeof values[key] === 'string' ? (values[key] as string).trim() : '');
@@ -149,7 +152,8 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
   const locale = lang === 'he' ? 'he-IL' : 'en-GB';
   const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...o }).format(new Date(`${d}T12:00:00Z`));
   const dayLabel = (d: string) => (d === today ? s.today : d === addDays(today, 1) ? s.tomorrow : fmt(d, { weekday: 'short' }));
-  const parties = Array.from({ length: Math.min(12, venue.policy.maxParty - venue.policy.minParty + 1) }, (_, i) => venue.policy.minParty + i);
+  // Up to six sizes as buttons in one row (2 and 4 are most bookings); larger groups pick from "7–N" (UX audit A7.2).
+  const parties = Array.from({ length: Math.min(6, venue.policy.maxParty - venue.policy.minParty + 1) }, (_, i) => venue.policy.minParty + i);
   const [serviceTab, setServiceTab] = useState<string | null>(null);
   /** The time the guest asked for when it was not free (free times book straight away). */
   const [desired, setDesired] = useState<string | null>(null);
@@ -174,6 +178,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
         name: text('name'), phone: text('phone'), email: shown('email') ? text('email') : '', requests: shown('requests') ? text('requests') : '', termsAccepted: true,
         ...(page && Object.keys(answersPayload(page, values)).length ? { customAnswers: answersPayload(page, values) } : {}),
       }, key.current, lang);
+      saveGuest(remember ? { name: text('name'), phone: text('phone'), email: shown('email') ? text('email') : undefined } : null);
       setResult(r);
       setStep('result');
     } catch (err) {
@@ -207,7 +212,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
             </p>
             <button type="button" onClick={() => setStep('choose')} className="min-h-[44px] px-2 text-sm font-semibold text-[var(--fz-accent)] underline-offset-2 hover:underline">{s.change}</button>
           </div>
-          {choice.approval === 'request' && <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-800"><Hourglass className="h-4 w-4" aria-hidden />{s.requestNote}</p>}
+          {choice.approval === 'request' && <p className="pp-warn mt-2 flex items-center gap-1.5 text-sm"><Hourglass className="h-4 w-4" aria-hidden />{s.requestNote}</p>}
         </div>
         {errorList.length > 0 && (
           <div id="booking-errors" tabIndex={-1} role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 outline-none">
@@ -229,8 +234,15 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
             </details>
           ) : <p className="mt-1 whitespace-pre-line text-sm text-ink-muted">{venue.terms}</p>}
           <label className="mt-3 flex min-h-[44px] items-center gap-3 text-sm">
-            <input id="bk-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} aria-invalid={!!errors.terms} className="h-6 w-6 shrink-0 accent-[var(--fz-accent)]" />
+            <input id="bk-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} aria-invalid={!!errors.terms}
+              aria-describedby={errors.terms ? 'bk-terms-error' : undefined} className="h-6 w-6 shrink-0 accent-[var(--fz-accent)]" />
             {s.agree}
+          </label>
+          {/* The error also sits next to the box it is about, not only in the summary above (A7.3). */}
+          {errors.terms && <p id="bk-terms-error" className="mt-1 text-sm font-medium text-red-700">{errors.terms}</p>}
+          <label className="mt-1 flex min-h-[44px] items-center gap-3 text-sm text-ink-muted">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--fz-accent)]" />
+            {s.remember}
           </label>
         </section>
         {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{submitError}</p>}
@@ -253,12 +265,12 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
       {venue.paused && <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">{s.paused}</p>}
       <fieldset>
         <SectionTitle as="legend" icon={<Users className="h-4 w-4" />}>{s.party}</SectionTitle>
-        <ScrollStrip className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 py-1 sm:-mx-7 sm:px-7" lang={lang}>
+        <div className="flex flex-wrap gap-1.5 py-1 sm:gap-2">
           {parties.map((n) => (
             <button key={n} type="button" aria-pressed={party === n} onClick={() => setParty(n)}
-              className={cx('pp-chip h-12 w-12 shrink-0 rounded-full text-[17px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', party === n && 'pp-chip-on')}>{n}</button>
+              className={cx('pp-chip h-11 w-11 shrink-0 rounded-full text-[16px] max-[379px]:h-10 max-[379px]:w-10 sm:h-12 sm:w-12 sm:text-[17px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', party === n && 'pp-chip-on')}>{n}</button>
           ))}
-        </ScrollStrip>
+        </div>
         {venue.policy.maxParty > parties[parties.length - 1]! && (
           <div className="mt-2 flex items-center gap-2">
             <label htmlFor="party-more" className="text-sm text-ink-muted">{s.partyMore}:</label>
@@ -353,7 +365,7 @@ function Booking({ venue, lang, page }: { venue: PublicVenue; lang: Lang; page: 
                             aria-label={w.time + (free?.approval === 'request' ? ', ' + s.requestNote : '')}
                             className={cx('pp-chip flex h-12 flex-col items-center justify-center rounded-full font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fz-accent)] focus-visible:ring-offset-2', desired === w.time && 'pp-chip-on')}>
                             <span dir="ltr" className="text-[15px] leading-none">{w.time}</span>
-                            {free?.approval === 'request' && <span className="mt-0.5 text-[10px] font-normal leading-none text-amber-800">{he ? 'בקשה' : 'Request'}</span>}
+                            {free?.approval === 'request' && <span className="pp-warn mt-0.5 text-[11px] font-semibold leading-none">{he ? 'בקשה' : 'Request'}</span>}
                           </button>
                         );
                       })}

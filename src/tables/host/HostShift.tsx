@@ -137,7 +137,8 @@ export function HostShift() {
   const doneRows = tile === 'active' ? reservations.filter(isDone) : [];
   // Today, in time order: parties already at their tables fold into one line at the top, so the
   // list opens on who is arriving now (UX audit A3.1).
-  const foldSeated = sort === 'time' && tile === 'active' && isToday;
+  // Not while searching or filtering: then every match shows.
+  const foldSeated = sort === 'time' && tile === 'active' && isToday && !narrowing;
   const seatedRows = foldSeated ? seatedFirstToLeave(activeRows) : [];
   const leavingSoon = seatedRows.filter((r) => seatedProgress(r, now)?.tone !== 'ok').length;
   const items = timeline(foldSeated ? activeRows.filter((r) => r.status !== 'seated') : activeRows, now, isToday ? timeInTz(now, shift.venue.timezone) : null);
