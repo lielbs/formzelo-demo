@@ -10,8 +10,8 @@ insert into public.organizations(id,slug,name,status) values ('39000000-0000-400
 insert into public.organization_memberships(organization_id,user_id,role) values ('39000000-0000-4000-8000-000000000001','29000000-0000-4000-8000-000000000001','owner');
 
 -- 399 images already in the library (1 KB each).
-insert into public.organization_assets(id, organization_id, kind, name, mime, bytes, width, height)
-select format('ast_quota%s', lpad(n::text, 5, '0')), '39000000-0000-4000-8000-000000000001', 'image', 'מנה', 'image/webp', 1024, 900, 600
+insert into public.organization_assets(id, organization_id, kind, name, mime, bytes, width, height, created_by)
+select format('ast_quota%s', lpad(n::text, 5, '0')), '39000000-0000-4000-8000-000000000001', 'image', 'מנה', 'image/webp', 1024, 900, 600, '29000000-0000-4000-8000-000000000001'
   from generate_series(1, 399) n;
 
 set local role authenticated;
