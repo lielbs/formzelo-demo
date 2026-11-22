@@ -147,8 +147,8 @@ export interface MenuHero {
   subtitle?: string;
   description?: string;
 }
-export interface MenuItem { name: string; description?: string; price?: string; dietary?: string[]; allergens?: string[]; imageAssetId?: string }
-export interface MenuSection { title: string; imageAssetId?: string; items: MenuItem[] }
+export interface MenuItem { /** Stable id (sold-out marks, reordering); added by the editor. */ id?: string; name: string; description?: string; price?: string; dietary?: string[]; allergens?: string[]; imageAssetId?: string }
+export interface MenuSection { id?: string; title: string; imageAssetId?: string; items: MenuItem[] }
 export interface MenuDoc { hero?: MenuHero; gallery?: string[]; sections: MenuSection[] }
 export interface MenuRow { id: string; title: string; status: string; lockVersion: number; draft: MenuDoc; publishedVersion: number | null; hasUnpublishedChanges: boolean; problems: Problem[] }
 export const listMenus = (venueId: string) => rpc<MenuRow[]>('tables_menu_list', { p_venue_id: venueId });
@@ -157,6 +157,11 @@ export const saveMenu = (id: string, title: string, doc: MenuDoc, lockVersion: n
   rpc<{ lockVersion: number; problems: Problem[] }>('tables_menu_save', { p_menu_id: id, p_title: title, p_doc: doc, p_expected_lock_version: lockVersion });
 export const publishMenu = (id: string, lockVersion: number) => rpc<{ versionNumber: number }>('tables_menu_publish', { p_menu_id: id, p_expected_lock_version: lockVersion });
 export const archiveMenu = (id: string) => rpc<null>('tables_menu_archive', { p_menu_id: id });
+/** Marks an item sold out for today (or clears it); returns the ids sold out today in that menu. */
+export const setSoldOut = (menuId: string, itemId: string, soldOut: boolean) =>
+  rpc<string[]>('tables_menu_set_sold_out', { p_menu_id: menuId, p_item_id: itemId, p_sold_out: soldOut });
+/** Items sold out today, by menu id. */
+export const soldOutToday = (venueId: string) => rpc<Record<string, string[]>>('tables_menu_sold_out', { p_venue_id: venueId });
 
 // ---------- Public (anonymous) ----------
 export interface PublicVenue {
@@ -213,5 +218,5 @@ export interface WaitlistStatus {
 }
 export const publicWaitlistStatus = (token: string, lang: Lang) => rpc<WaitlistStatus | null>('tables_public_waitlist_status', { p_token: token, p_client: clientToken() }, lang);
 export const publicWaitlistLeave = (token: string, lang: Lang) => rpc<{ status: string }>('tables_public_waitlist_leave', { p_token: token, p_client: clientToken() }, lang);
-export interface PublicMenus { venue: { name: string; slug: string; assetOwner: string }; brand: PublicVenue['brand']; menus: { id: string; title: string; doc: MenuDoc; version: number; publishedAt: string }[] }
+export interface PublicMenus { venue: { name: string; slug: string; assetOwner: string }; brand: PublicVenue['brand']; menus: { id: string; title: string; doc: MenuDoc; version: number; publishedAt: string; /** Item ids sold out today. */ soldOut?: string[] }[] }
 export const publicMenus = (slug: string, lang: Lang) => rpc<PublicMenus | null>('tables_public_menus', { p_slug: slug }, lang);

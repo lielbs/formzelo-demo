@@ -14,10 +14,11 @@ function dataUrlBytes(url: string) {
   return Math.ceil((url.length - url.indexOf(',') - 1) * 0.75);
 }
 
-export async function prepareImage(file: File, kind: Asset['kind']): Promise<Pick<Asset, 'kind' | 'name' | 'mime' | 'dataUrl' | 'width' | 'height'>> {
+/** `limits` overrides the size for a use that shows the image small (dish photos: 400 px). */
+export async function prepareImage(file: File, kind: Asset['kind'], limits?: { maxEdge: number; maxBytes: number }): Promise<Pick<Asset, 'kind' | 'name' | 'mime' | 'dataUrl' | 'width' | 'height'>> {
   if (!ACCEPTED.includes(file.type)) throw new ImagePrepError('ניתן לבחור תמונת PNG, JPG או WebP בלבד.');
   if (file.size > ASSET_LIMITS.maxUploadBytes) throw new ImagePrepError('הקובץ גדול מדי (מעל 12MB).');
-  const limit = ASSET_LIMITS[kind];
+  const limit = limits ?? ASSET_LIMITS[kind];
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);

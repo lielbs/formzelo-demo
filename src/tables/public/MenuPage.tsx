@@ -30,6 +30,8 @@ export function MenuPage() {
     const d = venue ? lookFor(venue, 'booking') : null;
     return d ? { ...d, heroUrl: '' } : null;
   }, [venue]);
+  const [q, setQ] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   if (data === undefined) return <PageLoader label={s.loading} />;
   if (data === null) return <PublicShell lang={lang} venue={null}><h1 className="text-xl font-semibold">{s.notFound}</h1><p className="mt-2 text-ink-muted">{s.notFoundBody}</p></PublicShell>;
   const owner = data.venue.assetOwner;
@@ -43,16 +45,40 @@ export function MenuPage() {
         </>
       )}
       {data.menus.length === 0 && <p className="mt-6 text-ink-muted">{s.noMenus}</p>}
-      {data.menus.map((m) => <MenuDocView key={m.id} m={m} lang={lang} img={(id) => publicAssetUrl(owner, id)} asPageTitle={single} note={single ? s.menuNote : undefined} />)}
-      <Link to={`/t/${data.venue.slug}${lang === 'en' ? '?lang=en' : ''}`} className={`${accentButton} mt-8`}>{s.book}</Link>
+      {/* Large menus: find a dish or a diet in one tap (UX audit A10.2). */}
+      {dishCount(data) >= SEARCH_FROM && (
+        <div className="mt-4 grid gap-2">
+          <label htmlFor="menu-q" className="sr-only">{lang === 'he' ? 'חיפוש בתפריט' : 'Search the menu'}</label>
+          <input id="menu-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={lang === 'he' ? 'חיפוש מנה…' : 'Search a dish…'}
+            className="fz-input h-11 w-full rounded-xl border border-cloud-300 bg-white px-3.5 text-[16px]" />
+          <div className="flex flex-wrap gap-2" role="group" aria-label={lang === 'he' ? 'סינון לפי סימון' : 'Filter by diet'}>
+            {FILTER_TAGS.filter((t) => hasTag(data, t)).map((t) => (
+              <button key={t} type="button" aria-pressed={tags.includes(t)} onClick={() => setTags((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t])}
+                className={cx('pp-chip min-h-[40px] rounded-full border px-3 text-sm font-medium', tags.includes(t) && 'pp-chip-on')}>{DIETARY[lang][t] ?? t}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {data.menus.map((m) => <MenuDocView key={m.id} m={m} lang={lang} img={(id) => publicAssetUrl(owner, id)} asPageTitle={single} note={single ? s.menuNote : undefined} filter={{ q, tags }} />)}
+      {/* Booking stays one tap away while reading the menu (UX audit A10.3). */}
+      <div className="sticky bottom-3 z-20 mt-8 pb-[env(safe-area-inset-bottom)]">
+        <Link to={`/t/${data.venue.slug}${lang === 'en' ? '?lang=en' : ''}`} className={cx(accentButton, 'w-full shadow-lg')}>{s.book}</Link>
+      </div>
     </PublicShell>
   );
 }
 
 /** One menu as guests see it. Also used by the owner's live preview (images resolved by `img`). */
-export function MenuDocView({ m, lang, img, asPageTitle, note }: {
-  m: { id: string; title: string; doc: MenuDoc }; lang: Lang; img: (id?: string) => string; asPageTitle: boolean; note?: string;
+export function MenuDocView({ m, lang, img, asPageTitle, note, filter }: {
+  m: { id: string; title: string; doc: MenuDoc; soldOut?: string[] }; lang: Lang; img: (id?: string) => string; asPageTitle: boolean; note?: string;
+  /** Guest search and diet filter (large menus): only matching dishes show. */
+  filter?: { q: string; tags: string[] };
 }) {
+  const sold = new Set(m.soldOut ?? []);
+  const q = filter?.q.trim().toLowerCase() ?? '';
+  const keep = (it: MenuDoc['sections'][number]['items'][number]) =>
+    (!q || `${it.name} ${it.description ?? ''}`.toLowerCase().includes(q)) && (filter?.tags ?? []).every((t) => it.dietary?.includes(t));
+  const filtering = !!filter && (q !== '' || filter.tags.length > 0);
   return (
         <section key={m.id} aria-labelledby={`menu-${m.id}`} className="mt-6 first:mt-0">
           <MenuHeroBlock id={`menu-${m.id}`} title={m.title} hero={m.doc.hero} img={img} asPageTitle={asPageTitle} note={note} />
@@ -61,6 +87,8 @@ export function MenuDocView({ m, lang, img, asPageTitle, note }: {
           {m.doc.sections.length > 2 && <SectionNav menuId={m.id} titles={m.doc.sections.map((sec) => sec.title)} lang={lang} />}
           {m.doc.sections.map((sec, i) => {
             const cover = img(sec.imageAssetId);
+            const items = filtering ? sec.items.filter(keep) : sec.items;
+            if (filtering && !items.length) return null;
             return (
               <div key={i} id={`sec-${m.id}-${i}`} className="mt-8 scroll-mt-16">
                 {cover ? (
@@ -77,13 +105,15 @@ export function MenuDocView({ m, lang, img, asPageTitle, note }: {
                   </h3>
                 )}
                 <ul className="pp-menu-list mt-2">
-                  {sec.items.map((it, j) => {
+                  {items.map((it, j) => {
                     const dish = img(it.imageAssetId);
+                    const out = !!it.id && sold.has(it.id);
                     return (
-                      <li key={j} className="pp-menu-item flex gap-4 py-4">
+                      <li key={it.id ?? j} className={cx('pp-menu-item flex gap-4 py-4', out && 'opacity-55')}>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-2">
-                            <p className="text-[16px] font-semibold leading-snug">{it.name}</p>
+                            <p className={cx('text-[16px] font-semibold leading-snug', out && 'line-through')}>{it.name}</p>
+                            {out && <span className="shrink-0 rounded-full bg-cloud-200 px-2 py-0.5 text-xs font-semibold text-ink">{lang === 'he' ? 'אזל היום' : 'Sold out today'}</span>}
                             {it.price && <span aria-hidden className="pp-menu-leader min-w-[12px] flex-1 translate-y-[-3px]" />}
                             {it.price && <bdi dir="ltr" className="shrink-0 text-[16px] font-semibold tabular-nums">{priceText(it.price)}</bdi>}
                           </div>
@@ -210,3 +240,9 @@ function Gallery({ ids, img, lang }: { ids: string[]; img: (id?: string) => stri
     </section>
   );
 }
+
+/** From this many dishes the guest menu offers search and diet filters. */
+const SEARCH_FROM = 20;
+const FILTER_TAGS = ['vegan', 'vegetarian', 'gluten_free', 'dairy_free', 'kosher'];
+const dishCount = (d: PublicMenus) => d.menus.reduce((n, m) => n + m.doc.sections.reduce((k, sec) => k + sec.items.length, 0), 0);
+const hasTag = (d: PublicMenus, tag: string) => d.menus.some((m) => m.doc.sections.some((sec) => sec.items.some((it) => it.dietary?.includes(tag))));

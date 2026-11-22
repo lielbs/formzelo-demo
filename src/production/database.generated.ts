@@ -1305,6 +1305,12 @@ isOneToOne: false
 "tables_menu_save":
 { Args: { "p_doc": Json,"p_expected_lock_version": number,"p_menu_id": string,"p_title": string }; Returns: Json
                            },
+"tables_menu_set_sold_out":
+{ Args: { "p_item_id": string,"p_menu_id": string,"p_sold_out": boolean }; Returns: Json
+                           },
+"tables_menu_sold_out":
+{ Args: { "p_venue_id": string }; Returns: Json
+                           },
 "tables_move":
 { Args: { "p_expected_lock_version": number,"p_reason"?: string,"p_reservation_id": string,"p_table_ids": (string)[] }; Returns: Json
                            },

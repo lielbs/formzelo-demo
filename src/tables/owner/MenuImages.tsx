@@ -17,7 +17,10 @@ export const MENU_GALLERY_MAX = 12;
 
 export interface MediaLibrary { assets: Asset[]; urls: Record<string, string> }
 
-function useUpload(orgId: string) {
+/** Dish photos are shown at 96 px: 400 px is plenty and keeps a large photo menu light (A9 / D5). */
+export const DISH_IMAGE = { maxEdge: 400, maxBytes: 48 * 1024 };
+
+function useUpload(orgId: string, small = false) {
   const { repo } = useRepo();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -25,7 +28,7 @@ function useUpload(orgId: string) {
     if (!file) return;
     setBusy(true);
     try {
-      const prepared = await prepareImage(file, 'image');
+      const prepared = await prepareImage(file, 'image', small ? DISH_IMAGE : undefined);
       const asset = await repo.saveAsset(orgId, prepared);
       onDone(asset.id);
     } catch (e) {
@@ -42,7 +45,8 @@ export function ImageSlot({ label, value, media, orgId, onChange, wide }: {
   label: string; value?: string; media: MediaLibrary | undefined; orgId: string; onChange: (id: string | undefined) => void; wide?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const { busy, upload } = useUpload(orgId);
+  // Wide slots are section banners (full size); square slots are dish photos (small).
+  const { busy, upload } = useUpload(orgId, !wide);
   const url = value ? media?.urls[value] : undefined;
   const missing = !!value && !!media && !url;
   return (
