@@ -377,6 +377,26 @@ isOneToOne: false
       referencedColumns: ["organization_id","venue_id","id"]
     }
                   ]
+                },"tables_menu_item_state": {
+                  Row: {
+                    "item_id": string,"menu_id": string,"sold_out_on": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "item_id": string,"menu_id": string,"sold_out_on": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "item_id"?: string,"menu_id"?: string,"sold_out_on"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tables_menu_item_state_menu_id_fkey"
+      columns: ["menu_id"]
+isOneToOne: false
+      referencedRelation: "tables_menus"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tables_menu_versions": {
                   Row: {
                     "created_at": string,"id": string,"menu_id": string,"organization_id": string,"published_by": string,"snapshot": NonNullable<Json>,"venue_id": string,"version_number": number
