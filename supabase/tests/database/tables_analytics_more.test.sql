@@ -60,11 +60,12 @@ set local role anon;
 select pg_temp.book('f9300000-0000-4000-8000-000000000001', 2, '19:00', '050-3000001');
 select pg_temp.book('f9300000-0000-4000-8000-000000000002', 4, '20:00', '050-3000001');
 select pg_temp.book('f9300000-0000-4000-8000-000000000003', 2, '20:30', '050-3000002');
-select pg_temp.book('f9300000-0000-4000-8000-000000000004', 2, '21:00', '050-3000002');
+-- 21:30: table 11 frees at 21:30 (the 20:00 party of four), so this booking always fits.
+select pg_temp.book('f9300000-0000-4000-8000-000000000004', 2, '21:30', '050-3000002');
 reset role;
 -- The first guest came twice; the second did not come twice.
 update public.tables_reservations set status = 'completed' where venue_id = (select v::uuid from ctx where k='venue') and local_time in ('19:00','20:00');
-update public.tables_reservations set status = 'no_show' where venue_id = (select v::uuid from ctx where k='venue') and local_time in ('20:30','21:00');
+update public.tables_reservations set status = 'no_show' where venue_id = (select v::uuid from ctx where k='venue') and local_time in ('20:30','21:30');
 
 create function pg_temp.more() returns jsonb language sql as $$
   select public.tables_analytics_more((select v::uuid from ctx where k='venue'), (select v::date from ctx where k='today'), (select v::date from ctx where k='day'))
