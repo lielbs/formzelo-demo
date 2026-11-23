@@ -123,7 +123,7 @@ export function Dashboard() {
               </a>
             )}
             <ButtonLink to="/app/workflows/new" icon={Plus}>
-              תהליך חדש
+              טופס חדש
             </ButtonLink>
           </>
         }

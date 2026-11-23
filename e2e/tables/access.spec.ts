@@ -32,7 +32,7 @@ test('owner sets access; Tables-only and Formangle-only staff see only their par
   await expect(tp).toHaveURL(/\/app\/tables$/);
   const dock = tp.getByRole('navigation', { name: 'ניווט מהיר' });
   await expect(dock.getByText('שולחנות')).toBeVisible();
-  await expect(dock.getByText('תהליכים')).toHaveCount(0);
+  await expect(dock.getByText('טפסים')).toHaveCount(0);
   await expect(tp.getByText('ביסטרו הנמל')).toBeVisible();
   await tp.goto('/app/workflows');
   await expect(tp).toHaveURL(/\/app\/tables$/);
@@ -43,7 +43,7 @@ test('owner sets access; Tables-only and Formangle-only staff see only their par
   const f = await newContext(browser);
   const fp = await f.newPage();
   await signIn(fp, biz.manager, '/app');
-  await expect(fp.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'תהליכים' })).toBeVisible();
+  await expect(fp.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'טפסים ותהליכים' })).toBeVisible();
   await expect(fp.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'שולחנות' })).toHaveCount(0);
   await fp.goto(`/app/tables/${venue.id}`);
   await expect(fp).toHaveURL(/\/app$/);

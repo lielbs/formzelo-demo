@@ -157,6 +157,10 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
   const warnings = themeTokens(design).warnings;
   const recName = PRESETS[recommendation.presetId].meta.nameHe;
   const used = assets.reduce((s, a) => s + a.bytes, 0);
+  // Simple by default (UX audit B1.1): style, lead colour, fill experience, logo and images. The
+  // rest (full palette, type and opening, components, mobile, illustrations) one tap away.
+  const [advanced, setAdvancedState] = useState(() => { try { return localStorage.getItem('fz-design-advanced') === '1'; } catch { return false; } });
+  const setAdvanced = (v: boolean) => { setAdvancedState(v); try { localStorage.setItem('fz-design-advanced', v ? '1' : '0'); } catch { /* private mode */ } };
 
   return (
     <div className="space-y-5">
@@ -184,13 +188,14 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
         </div>
       </Card>
 
-      <Group title="סגנון" hint={`${PRESET_LIST.length} שפות עיצוב — כל אחת עם קומפוזיציה, טיפוגרפיה, צורות, איור ותנועה משלה, לא רק צבע. החלפה שומרת את התוכן.`}>
+      <Group title="סגנון" hint={advanced ? `${PRESET_LIST.length} שפות עיצוב — כל אחת עם קומפוזיציה, טיפוגרפיה, צורות, איור ותנועה משלה, לא רק צבע. החלפה שומרת את התוכן.` : 'כל סגנון מגיע עם צבעים, גופנים וצורות משלו. החלפה שומרת את התוכן.'}>
         <PresetPicker
           label="סגנון עיצוב"
           value={design.presetId}
           recommended={recommendation.presetId}
           columns="sm:grid-cols-2 2xl:grid-cols-3"
           details
+          initial={advanced ? undefined : 4}
           onChange={(id) => onChange(buildTheme(id, { source: id === recommendation.presetId ? design.source : 'manual', keep }))}
         />
         <p className="text-xs text-ink-muted">{PRESETS[design.presetId].meta.description}</p>
@@ -202,7 +207,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
 
       <Group title="צבעים" hint="ניגודיות נבדקת אוטומטית; טקסט וקישורים מקבלים גוון קריא גם מצבע בהיר.">
         <div className="grid gap-3 sm:grid-cols-2">
-          {PALETTE_FIELDS.map(([k, label]) => (
+          {PALETTE_FIELDS.filter(([k]) => advanced || k === 'primary').map(([k, label]) => (
             <ColorInput key={k} label={label} value={design.palette[k]} onChange={(v) => set((d) => void (d.palette[k] = v))} />
           ))}
         </div>
@@ -219,6 +224,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
         )}
       </Group>
 
+      {advanced && <>
       <Group title="טיפוגרפיה ופתיח">
         <div>
           <p className="mb-1.5 text-sm font-medium">גופן</p>
@@ -261,6 +267,8 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
         <p className="text-xs text-ink-muted">משתמשים שביקשו להפחית תנועה במכשיר שלהם יראו את הטופס ללא אנימציות בכל מקרה.</p>
       </Group>
 
+      </>}
+
       <Group title="תמונות העסק ולוגו" hint={byMode(`נשמרות מוקטנות בדפדפן זה בלבד (לוגו עד ${ASSET_LIMITS.logo.maxBytes / 1024}KB, כיסוי עד ${ASSET_LIMITS.cover.maxBytes / 1024}KB). בשימוש: ${Math.round(used / 1024)}KB מתוך ${Math.round(ASSET_LIMITS.totalBytes / 1024)}KB.`, 'מוקטנות אוטומטית לפני ההעלאה ונשמרות בספריית התמונות של העסק, לשימוש בכל הטפסים והדפים.')}>
         <ImagePicker kind="logo" label="לוגו" hint="PNG שקוף עובד הכי טוב." selected={design.logo.assetId} assets={assets} urls={assetUrls} orgId={orgId} onSelect={(id) => set((d) => void (d.logo.assetId = id))} />
         <ImagePicker kind="cover" label="תמונת כיסוי לפתיח" hint="מחליפה את האיור בפתיח. השתמשו רק בתמונות שבבעלותכם." selected={design.hero.coverAssetId} assets={assets} urls={assetUrls} orgId={orgId} onSelect={(id) => set((d) => void (d.hero.coverAssetId = id))} />
@@ -270,6 +278,7 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
         <MediaEditor design={design} set={set} orgId={orgId} assets={assets} assetUrls={assetUrls} />
       </Group>
 
+      {advanced && <>
       <ExtrasEditor design={design} set={set} orgId={orgId} assets={assets} assetUrls={assetUrls} />
 
       <Group title="מובייל">
@@ -326,6 +335,13 @@ export function DesignPanel({ design, onChange, recommendation, orgId, orgBrandC
           </>
         )}
       </Group>
+      </>}
+
+      <button type="button" aria-expanded={advanced} onClick={() => setAdvanced(!advanced)}
+        className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-xl border border-cloud-300 bg-white px-4 text-start text-sm font-medium hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+        <span>{advanced ? 'פחות אפשרויות' : 'אפשרויות מתקדמות'}<span className="block text-xs font-normal text-ink-muted">{advanced ? 'חזרה לתצוגה הפשוטה' : 'כל הצבעים, טיפוגרפיה ופתיח, רכיבים, מובייל ואיורים'}</span></span>
+        <span aria-hidden>{advanced ? '−' : '+'}</span>
+      </button>
     </div>
   );
 }

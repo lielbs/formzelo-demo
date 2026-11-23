@@ -38,7 +38,7 @@ for (const size of [{ width: 390, height: 844, name: 'phone' }, { width: 1280, h
     const problems: string[] = [];
     const screens: [string, string, () => Promise<unknown>][] = [
       ['dashboard', '/app', () => expect(page.getByRole('heading', { name: 'לוח בקרה' })).toBeVisible()],
-      ['workflows', '/app/workflows', () => expect(page.getByRole('heading', { name: 'תהליכים' })).toBeVisible()],
+      ['workflows', '/app/workflows', () => expect(page.getByRole('heading', { name: 'טפסים ותהליכים' })).toBeVisible()],
       ['requests', '/app/requests', () => expect(page.getByRole('heading', { name: 'בקשות' })).toBeVisible()],
       ['analytics', '/app/analytics', () => expect(page.getByRole('heading', { level: 1 })).toBeVisible()],
       ['brand', '/app/brand', () => expect(page.getByRole('heading', { level: 1 })).toBeVisible()],

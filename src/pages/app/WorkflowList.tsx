@@ -94,11 +94,11 @@ export function WorkflowList() {
   return (
     <>
       <PageHeader
-        title="תהליכים"
+        title="טפסים ותהליכים"
         description="כל תהליך הוא סכמה אחת שמוצגת ללקוחות דרך אותו מנוע."
         actions={
           <ButtonLink to="/app/workflows/new" icon={Plus}>
-            תהליך חדש
+            טופס חדש
           </ButtonLink>
         }
       />

@@ -32,7 +32,6 @@ import {
   Redo2,
   RotateCcw,
   Rocket,
-  Save,
   Settings2,
   Share2,
   Undo2,
@@ -48,6 +47,8 @@ import type { WorkflowTheme } from '../../domain/theme';
 import { DEMO_SLUGS } from '../../data/seed';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
+import { SaveStatus } from '../../components/SaveStatus';
+import { useDraftAutosave } from '../../lib/useDraftAutosave';
 import { COMPLETION_LABELS, completionOf } from '../../engine/completion';
 import { fieldHasPrice } from '../../engine/pricing';
 import { formatDateTime, formatNumber } from '../../lib/format';
@@ -155,8 +156,10 @@ export function WorkflowEditor() {
   const setSnap = useCallback((s: Snapshot) => setHist(historyOf(s)), []);
   const [saved, setSaved] = useState('');
   /** Adopts the stored draft as the present (keeping undo history) so "saved" compares like with like. */
-  const markSaved = useCallback((stored: Snapshot) => {
-    setHist((h) => (h ? { ...h, present: stored } : historyOf(stored)));
+  const markSaved = useCallback((stored: Snapshot, sent?: Snapshot) => {
+    // With autosave, the user may have typed on while the save was in flight: adopt the stored
+    // version only if the present is still what was sent; otherwise the next save follows.
+    setHist((h) => (!h ? historyOf(stored) : !sent || JSON.stringify(h.present) === JSON.stringify(sent) ? { ...h, present: stored } : h));
     setSaved(JSON.stringify(stored));
   }, []);
   const [previewMode, setPreviewMode] = useState(false);
@@ -240,7 +243,15 @@ export function WorkflowEditor() {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
 
-  useUnsavedGuard(dirty);
+  // Drafts save themselves after a short pause (UX audit X1/6.1). Only a draft with errors (which
+  // cannot be saved) still warns before leaving; the autosave guards the moments in between.
+  const autosave = useDraftAutosave<Snapshot>(async (sent) => {
+    const wf = await repo.saveDraft(org.id, workflow.id, sent.config, sent.design);
+    markSaved({ config: wf.draft, design: wf.design }, sent);
+  });
+  const { queue: queueSave } = autosave;
+  useEffect(() => { if (snap && dirty && !issues.length) queueSave(snap); }, [snap, dirty, issues.length, queueSave]);
+  useUnsavedGuard(dirty && issues.length > 0);
 
   const recommendation = useMemo(
     () =>
@@ -329,28 +340,16 @@ export function WorkflowEditor() {
     if (window.matchMedia('(max-width: 1279px)').matches) setMobilePane('inspector');
   };
 
-  const save = async () => {
-    if (issues.length) return toast('יש לתקן שגיאות לפני שמירה', 'error');
-    setBusy('save');
-    try {
-      const wf = await repo.saveDraft(org.id, workflow.id, config, design);
-      markSaved({ config: wf.draft, design: wf.design });
-      toast('הטיוטה נשמרה — תוכן ועיצוב');
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'השמירה נכשלה', 'error');
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const publish = async () => {
     if (issues.length || !canPublish(publishReadiness(config))) return toast('יש לתקן את הפריטים המסומנים לפני פרסום', 'error');
     if (runtimeConfiguration.mode === 'production' && config.mode === 'case') return toast('תיק אישי עדיין אינו זמין. בחרו "קישור ציבורי" ב"אופן פתיחה" ופרסמו שוב.', 'error');
     setBusy('publish');
     try {
+      await autosave.flush();
       if (dirty) {
+        const sent = { config, design };
         const wf = await repo.saveDraft(org.id, workflow.id, config, design);
-        markSaved({ config: wf.draft, design: wf.design });
+        markSaved({ config: wf.draft, design: wf.design }, sent);
       }
       const v = await repo.publishWorkflow(org.id, workflow.id);
       // The success state is shown only now, after the repository confirmed the new version.
@@ -902,12 +901,10 @@ export function WorkflowEditor() {
             <Badge tone={isPublished ? 'teal' : workflow.status === 'archived' ? 'neutral' : 'amber'}>
               {isPublished ? `פורסם · גרסה ${versions.find((v) => v.id === workflow.publishedVersionId)?.version ?? versions[0]?.version ?? 1}` : workflow.status === 'archived' ? 'בארכיון' : 'טיוטה'}
             </Badge>
-            {(dirty || (workflow.hasUnpublishedChanges && isPublished)) && <Badge tone="amber">{dirty ? 'שינויים שלא נשמרו' : 'טיוטה שלא פורסמה'}</Badge>}
-            {!dirty && (
-              <span className="inline-flex items-center gap-1 text-teal-600">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> הכול שמור
-              </span>
-            )}
+            {!dirty && workflow.hasUnpublishedChanges && isPublished && <Badge tone="amber">טיוטה שלא פורסמה</Badge>}
+            {dirty && issues.length > 0
+              ? <Badge tone="amber">לא נשמר: יש שגיאות לתיקון</Badge>
+              : <SaveStatus state={dirty && autosave.state === 'idle' ? 'saving' : autosave.state === 'idle' ? 'saved' : autosave.state} at={autosave.savedAt} conflictText="השמירה נכשלה" />}
             {workflow.isDemo && <DemoBadge />}
             <span>{formatNumber(runCount)} בקשות</span>
           </div>
@@ -922,24 +919,7 @@ export function WorkflowEditor() {
             </Button>
           </div>
           {/* Save and discard appear only when there is something to save: no grey, dead buttons. */}
-          {dirty && (
-            <>
-              <Button
-                variant="ghost"
-                icon={RotateCcw}
-                aria-label="ביטול שינויים"
-                onClick={async () => {
-                  if (!(await confirmAction({ title: 'לבטל את השינויים?', message: 'כל מה שלא נשמר (תוכן ועיצוב) יחזור למצב השמור האחרון.', confirmLabel: 'ביטול השינויים', cancelLabel: 'המשך עריכה', destructive: true }))) return;
-                  setSnap(structuredClone(savedSnap));
-                }}
-              >
-                <span className="hidden sm:inline">ביטול שינויים</span>
-              </Button>
-              <Button variant="secondary" icon={Save} onClick={save} loading={busy === 'save'}>
-                שמירת טיוטה
-              </Button>
-            </>
-          )}
+          {/* Drafts save themselves; undo (Ctrl+Z) and the version history are the way back. */}
           <Button
             icon={Rocket}
             onClick={() => {
@@ -1007,32 +987,27 @@ export function WorkflowEditor() {
       />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1 sm:w-auto" role="group" aria-label="מצב עבודה">
+        {/* One path through the studio (UX audit B1.2): content → design → test → publish. Logic
+            (conditions between fields) is part of the content, opened from the button beside it. */}
+        <div className="flex w-full gap-1 overflow-x-auto rounded-xl border border-cloud-200 bg-white p-1 sm:w-auto" role="group" aria-label="שלבי העבודה">
           {(
             [
-              ['content', 'תוכן', Layers, () => { setPreviewMode(false); if (studioMode !== 'content') select({ kind: 'workflow' }); }],
-              ['design', 'עיצוב', Palette, () => { setPreviewMode(false); select({ kind: 'design' }); }],
-              ['logic', 'לוגיקה', GitBranch, () => { setPreviewMode(false); select({ kind: 'logic' }); }],
-              ['preview', 'בדיקה', Play, () => { setPreviewMode(true); setMobilePane('canvas'); setPreviewKey((k) => k + 1); }],
+              ['content', '1 · תוכן', Layers, () => { setPreviewMode(false); if (studioMode !== 'content') select({ kind: 'workflow' }); }],
+              ['design', '2 · עיצוב', Palette, () => { setPreviewMode(false); select({ kind: 'design' }); }],
+              ['preview', '3 · בדיקה', Play, () => { setPreviewMode(true); setMobilePane('canvas'); setPreviewKey((k) => k + 1); }],
+              ['publish', '4 · פרסום', Rocket, () => { setPreviewMode(false); select({ kind: 'publish' }); }],
             ] as const
           ).map(([k, label, Icon, go]) => (
             <button
               key={k}
               type="button"
-              aria-pressed={studioMode === k}
+              aria-pressed={k === 'content' ? studioMode === 'content' || studioMode === 'logic' : k === 'publish' ? !previewMode && sel.kind === 'publish' : studioMode === k}
               onClick={go}
               className={cx('inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', studioMode === k ? 'bg-midnight text-white' : 'text-ink-muted hover:bg-cloud hover:text-ink')}
             >
               <Icon className="h-4 w-4" aria-hidden />{' '}
-              {k === 'preview' ? (
-                <>
-                  <span className="sm:hidden">{label}</span>
-                  <span className="hidden sm:inline">תצוגה ובדיקה</span>
-                </>
-              ) : (
-                label
-              )}
-              {k === 'logic' && logicErrors > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white">{logicErrors}</span>}
+              {label}
+              {k === 'content' && logicErrors > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white" aria-label={`${logicErrors} בעיות לוגיקה`}>{logicErrors}</span>}
             </button>
           ))}
         </div>
@@ -1041,9 +1016,14 @@ export function WorkflowEditor() {
             חזרה לעריכה
           </Button>
         ) : (
-          <Button size="sm" variant="ghost" icon={Plus} onClick={() => setLibrary({ stepId: focusStepId ?? config.steps[0]!.id })}>
-            הוספת שדה
-          </Button>
+          <div className="flex flex-wrap gap-1">
+            <Button size="sm" variant="ghost" icon={GitBranch} aria-pressed={studioMode === 'logic'} onClick={() => { setPreviewMode(false); select({ kind: 'logic' }); }}>
+              לוגיקה ותנאים{logicErrors > 0 ? ` (${logicErrors})` : ''}
+            </Button>
+            <Button size="sm" variant="ghost" icon={Plus} onClick={() => setLibrary({ stepId: focusStepId ?? config.steps[0]!.id })}>
+              הוספת שדה
+            </Button>
+          </div>
         )}
       </div>
 

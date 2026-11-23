@@ -81,7 +81,7 @@ export function SiteFooter() {
           <p className="text-sm font-medium text-white">מוצר</p>
           <ul className="mt-3 space-y-2 text-sm">
             <li><Link to="/app" className="hover:text-white">לוח בקרה</Link></li>
-            <li><Link to="/app/workflows/new" className="hover:text-white">תהליך חדש</Link></li>
+            <li><Link to="/app/workflows/new" className="hover:text-white">טופס חדש</Link></li>
             <li><Link to="/pricing" className="hover:text-white">מחירים</Link></li>
             <li><Link to="/themes" className="hover:text-white">גלריית עיצובים</Link></li>
           </ul>

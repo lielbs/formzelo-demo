@@ -36,13 +36,13 @@ test('phone: tap and drag between sections, new workflow, full menu', async ({ b
 
   // Drag from "בקשות" to "תהליכים" and release: the dock navigates there.
   const from = (await dock.getByRole('link', { name: /בקשות/ }).boundingBox())!;
-  const to = (await dock.getByRole('link', { name: 'תהליכים' }).boundingBox())!;
+  const to = (await dock.getByRole('link', { name: 'טפסים' }).boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
   await expect(page).toHaveURL(/\/app\/workflows$/);
-  await expect(dock.getByRole('link', { name: 'תהליכים' })).toHaveAttribute('aria-current', 'page');
+  await expect(dock.getByRole('link', { name: 'טפסים' })).toHaveAttribute('aria-current', 'page');
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/phone-workflows.png` });
 
@@ -50,7 +50,7 @@ test('phone: tap and drag between sections, new workflow, full menu', async ({ b
   await expect(page.getByRole('dialog', { name: 'תפריט' })).toBeVisible();
   await page.getByRole('dialog', { name: 'תפריט' }).getByRole('button', { name: 'סגירת תפריט' }).last().click();
 
-  await dock.getByRole('link', { name: 'תהליך חדש' }).click();
+  await dock.getByRole('link', { name: 'טופס חדש' }).click();
   await expect(page).toHaveURL(/\/app\/workflows\/new$/);
   await ctx.close();
 });

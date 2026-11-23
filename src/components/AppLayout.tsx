@@ -17,7 +17,7 @@ const allowed = (to: string, access: Access) => (access === 'tables' ? TABLES_ON
 
 const NAV = [
   { to: '/app', label: 'לוח בקרה', icon: LayoutDashboard, end: true },
-  { to: '/app/workflows', label: 'תהליכים', icon: Workflow },
+  { to: '/app/workflows', label: 'טפסים ותהליכים', icon: Workflow },
   { to: '/app/requests', label: 'בקשות', icon: Inbox, badge: true },
   // Formangle Tables needs the real server, so it is not offered in the local demo.
   ...(runtimeConfiguration.mode === 'production' ? [{ to: '/app/tables', label: 'שולחנות', icon: UtensilsCrossed }] : []),
@@ -127,7 +127,7 @@ function TabBar({ pending, onMore, moreOpen, access }: { pending: number; onMore
   ] : [
     { key: 'home', label: 'בית', icon: LayoutDashboard, to: '/app' },
     { key: 'requests', label: 'בקשות', icon: Inbox, to: '/app/requests', badge: pending, badgeLabel: `${pending} ממתינות` },
-    { key: 'workflows', label: 'תהליכים', icon: Workflow, to: '/app/workflows' },
+    { key: 'workflows', label: 'טפסים', icon: Workflow, to: '/app/workflows' },
     ...(tables ? [{ key: 'tables', label: 'שולחנות', icon: UtensilsCrossed, to: '/app/tables' }] : []),
     { key: 'more', label: 'עוד', icon: MoreHorizontal, onSelect: onMore, ariaLabel: 'עוד — התפריט המלא', expanded: moreOpen },
   ];
@@ -145,7 +145,7 @@ function TabBar({ pending, onMore, moreOpen, access }: { pending: number; onMore
   return (
     <GlassDock label="ניווט מהיר" mode="nav" hideFrom="lg" items={items} active={active}
       onChoose={(i) => { const it = items[i]!; if (it.to) navigate(it.to); else it.onSelect?.(); }}
-      action={venueAdd ? { label: 'הוספה למשמרת', icon: Plus, to: venueAdd } : access === 'tables' ? undefined : { label: 'תהליך חדש', icon: Plus, to: '/app/workflows/new' }} />
+      action={venueAdd ? { label: 'הוספה למשמרת', icon: Plus, to: venueAdd } : access === 'tables' ? undefined : { label: 'טופס חדש', icon: Plus, to: '/app/workflows/new' }} />
   );
 }
 
@@ -157,7 +157,7 @@ function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => v
       </div>
       <WorkspaceSwitcher />
       <ButtonLink to="/app/workflows/new" icon={Plus} onClick={onNavigate} className="w-full">
-        תהליך חדש
+        טופס חדש
       </ButtonLink>
       <nav aria-label="ניווט ראשי" className="flex flex-col gap-0.5">
         {NAV.filter((n) => allowed(n.to, access)).map(({ to, label, icon: Icon, end, badge }) => (
