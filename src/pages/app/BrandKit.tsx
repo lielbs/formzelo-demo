@@ -9,8 +9,9 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom';
 import { ImagePicker, LibraryUsage } from '../../components/ImagePicker';
 import { useToast } from '../../components/Toast';
-import { Badge, Button, cx, ErrorState, FieldLabel, Input, PageHeader, Spinner, Textarea } from '../../components/ui';
+import { Badge, Button, cx, ErrorState, FieldLabel, Input, Modal, PageHeader, Spinner, Textarea } from '../../components/ui';
 import { BUTTON_VARIANTS, DENSITIES, TYPOGRAPHY_PRESETS, type BrandKit } from '../../domain/theme';
+import type { Workflow } from '../../domain/schema';
 import { useActiveOrg, useRepo, useRepoQuery } from '../../data/store';
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
 import { extractColors } from '../../lib/images';
@@ -57,6 +58,8 @@ export function BrandKitPage() {
   const [saved, setSaved] = useState('');
   const [busy, setBusy] = useState(false);
   const [candidates, setCandidates] = useState<string[]>([]);
+  // Publish every form that still shows the old brand, after a review (UX audit B6.1).
+  const [review, setReview] = useState(false);
   const [device, setDevice] = useState<Device>('mobile');
   const [params, setParams] = useSearchParams();
   const tab: BrandTab = BRAND_TABS.some((t) => t.id === params.get('tab')) ? (params.get('tab') as BrandTab) : 'details';
@@ -128,6 +131,7 @@ export function BrandKitPage() {
       setSaved(JSON.stringify(stored));
       setKit(stored);
       toast('ערכת המותג נשמרה · תהליכים שיורשים יתעדכנו בטיוטה');
+      await q.reload(); // recompute which published forms still show the old brand
     } catch (e) {
       toast(e instanceof Error ? e.message : 'השמירה נכשלה', 'error');
     } finally {
@@ -223,7 +227,8 @@ export function BrandKitPage() {
             <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
             {q.data.stale.length === 1 ? 'טופס אחד שפורסם' : `${q.data.stale.length} טפסים שפורסמו`} עדיין {q.data.stale.length === 1 ? 'מציג' : 'מציגים'} ללקוחות את המותג מלפני השינוי האחרון.
           </p>
-          <p className="mt-1 text-xs">כדי שהלקוחות יראו את השינויים, פתחו כל טופס ופרסמו גרסה חדשה:</p>
+          <p className="mt-1 text-xs">כדי שהלקוחות יראו את השינויים, פרסמו אותם מחדש — כולם יחד, או פתחו כל טופס:</p>
+          <Button size="sm" className="mt-2 h-9" onClick={() => setReview(true)}>סקירה ופרסום של {q.data.stale.length === 1 ? 'הטופס' : `${q.data.stale.length} הטפסים`}</Button>
           <ul className="mt-1.5 flex flex-wrap gap-2">
             {q.data.stale.map((w) => (
               <li key={w.id}>
@@ -445,6 +450,59 @@ export function BrandKitPage() {
           )}
         </div>
       </div>
+      {review && q.data.stale.length > 0 && (
+        <RepublishReview forms={q.data.stale} onClose={() => setReview(false)} onDone={async (n) => { setReview(false); toast(n === 1 ? 'טופס אחד פורסם עם המותג החדש' : `${n} טפסים פורסמו עם המותג החדש`, 'success'); await q.reload(); }}
+          publish={(id) => repo.publishWorkflow(org.id, id).then(() => undefined)} />
+      )}
     </>
+  );
+}
+
+/** Review before republishing every form that inherits the brand. A form whose draft has other
+ *  unpublished edits starts unticked: publishing it would release those edits too. */
+function RepublishReview({ forms, publish, onClose, onDone }: {
+  forms: Workflow[]; publish: (id: string) => Promise<void>; onClose: () => void; onDone: (count: number) => void;
+}) {
+  const [chosen, setChosen] = useState(() => new Set(forms.filter((w) => !w.hasUnpublishedChanges).map((w) => w.id)));
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string[]>([]);
+  const run = async () => {
+    setBusy(true);
+    const errors: string[] = [];
+    let ok = 0;
+    for (const w of forms.filter((x) => chosen.has(x.id))) {
+      try { await publish(w.id); ok++; } catch (e) { errors.push(`${w.draft.title}: ${e instanceof Error ? e.message : 'הפרסום נכשל'}`); }
+    }
+    setBusy(false);
+    if (errors.length) setFailed(errors); else onDone(ok);
+  };
+  return (
+    <Modal open onClose={onClose} title="פרסום עם המותג החדש"
+      footer={<div className="flex flex-wrap justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>ביטול</Button>
+        <Button loading={busy} disabled={!chosen.size} onClick={() => void run()}>{chosen.size === 1 ? 'פרסום טופס אחד' : `פרסום ${chosen.size} טפסים`}</Button>
+      </div>}>
+      {failed.length > 0 ? (
+        <ul role="alert" className="list-inside list-disc text-sm text-red-800">{failed.map((f) => <li key={f}>{f}</li>)}</ul>
+      ) : (
+        <div className="grid gap-2">
+          <p className="text-sm text-ink-muted">כל טופס יפורסם כגרסה חדשה עם הצבעים, הגופן והלוגו של ערכת המותג. הקישורים לא משתנים.</p>
+          <ul className="grid gap-1.5">
+            {forms.map((w) => (
+              <li key={w.id}>
+                <label className="flex min-h-[48px] cursor-pointer items-start gap-3 rounded-xl border border-cloud-200 px-3 py-2">
+                  <input type="checkbox" className="mt-1 h-5 w-5 accent-orange-600" checked={chosen.has(w.id)}
+                    onChange={(e) => setChosen((cur) => { const n = new Set(cur); if (e.target.checked) n.add(w.id); else n.delete(w.id); return n; })} />
+                  <span className="min-w-0">
+                    <span className="block font-medium">{w.draft.title}</span>
+                    {w.hasUnpublishedChanges && <span className="block text-xs text-amber-800">בטיוטה יש גם שינויים אחרים שעוד לא פורסמו — הם יפורסמו יחד.</span>}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Modal>
   );
 }

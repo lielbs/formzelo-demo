@@ -84,6 +84,7 @@ export function Dashboard() {
     .sort((a, b) => b.response!.at.localeCompare(a.response!.at))
     .slice(0, 4);
   const runOf = (id: string) => runs.find((r) => r.id === id);
+  const waitingRuns = runs.filter((r) => PENDING_STATUSES.includes(r.status)).sort((a, b) => (b.submittedAt ?? b.createdAt).localeCompare(a.submittedAt ?? a.createdAt));
 
   const filtered = runs.filter((r) =>
     filter === 'pending' ? PENDING_STATUSES.includes(r.status) : filter === 'done' ? DONE_STATUSES.includes(r.status) : filter === 'decision' ? Boolean(byRun.get(r.id)?.awaiting) : true,
@@ -172,8 +173,27 @@ export function Dashboard() {
         </Card>
       )}
 
-      {latest && (
-        <Card className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+      {/* What waits for the business comes first (UX audit B4.1); otherwise the latest request. */}
+      {waitingRuns.length > 0 ? (
+        <Card className="mb-6 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">מחכות לכם · {waitingRuns.length}</h2>
+            <Link to="/app/requests" className="text-sm font-medium text-orange-700 hover:underline">לכל הבקשות</Link>
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {waitingRuns.slice(0, 3).map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-cloud-200 px-3 py-2">
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2 font-medium"><span className="truncate">{r.customerName || 'לקוח/ה'}</span><StatusBadge status={r.status} /></span>
+                  <span className="block truncate text-sm text-ink-muted">{workflows.find((w) => w.id === r.workflowId)?.draft.title ?? ''}{r.submittedAt ? ` · ${formatRelative(r.submittedAt)}` : ''}</span>
+                </span>
+                <ButtonLink to={`/app/requests/${r.id}`} variant="secondary" className="h-10 shrink-0">פתיחה <ArrowLeft className="h-4 w-4" aria-hidden /></ButtonLink>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : latest ? (
+                <Card className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-ink-muted">הבקשה האחרונה שהגיעה · {formatRelative(latest.submittedAt!)}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
@@ -191,22 +211,12 @@ export function Dashboard() {
             פתיחת הבקשה <ArrowLeft className="h-4 w-4" aria-hidden />
           </ButtonLink>
         </Card>
-      )}
+      ) : null}
 
       {/* The four-step guide already says what to do; the card covers a guide that was closed. */}
       {fresh && !showOnboarding && <FirstRequest hasFlow={Boolean(mainFlow)} />}
 
-      {!fresh && <StatStrip label="המספרים של העסק" items={[
-        { label: 'תהליכים פעילים', value: formatNumber(stats.active), icon: WorkflowIcon, hint: stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined },
-        { label: 'בקשות ב-7 ימים', value: formatNumber(stats.incoming), icon: Inbox },
-        { label: 'ממתינות לטיפול', value: formatNumber(stats.pending), icon: Clock, tone: stats.pending ? 'orange' : 'neutral' },
-        { label: 'אושרו / הושלמו', value: formatNumber(stats.completed), icon: CheckCircle2, hint: stats.approvalRate !== null ? `שיעור אישור ${stats.approvalRate}% מהבקשות שהוכרעו` : undefined },
-        stats.money.paid > 0 || stats.money.outstanding > 0
-          ? { label: 'תשלומים מדומים', value: formatCurrency(stats.money.paid), icon: Wallet, hint: `${stats.money.outstanding ? `${formatCurrency(stats.money.outstanding)} ממתינים · ` : ''}סימולציה, לא עבר כסף` }
-          : { label: 'שיעור אישור', value: stats.approvalRate !== null ? `${stats.approvalRate}%` : '—', icon: CheckCircle2, hint: 'תהליכים ללא תשלום לא מציגים הכנסות' },
-      ]} />}
-
-      {actions.length > 0 && <Card className="mt-6 p-5">
+      {actions.length > 0 && <Card className="mb-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold">החלטות לקוחות</h2>
           <p className="text-xs text-ink-muted">פעולות מובנות שנפתחו מתוך בקשות: אישורים, בחירות ועדכונים.</p>
@@ -260,6 +270,18 @@ export function Dashboard() {
           </div>
         ) : null}
       </Card>}
+
+      {!fresh && <StatStrip label="המספרים של העסק" items={[
+        { label: 'תהליכים פעילים', value: formatNumber(stats.active), icon: WorkflowIcon, hint: stats.drafts ? `${stats.drafts} עם טיוטה שלא פורסמה` : undefined },
+        { label: 'בקשות ב-7 ימים', value: formatNumber(stats.incoming), icon: Inbox },
+        { label: 'ממתינות לטיפול', value: formatNumber(stats.pending), icon: Clock, tone: stats.pending ? 'orange' : 'neutral' },
+        { label: 'אושרו / הושלמו', value: formatNumber(stats.completed), icon: CheckCircle2, hint: stats.approvalRate !== null ? `שיעור אישור ${stats.approvalRate}% מהבקשות שהוכרעו` : undefined },
+        stats.money.paid > 0 || stats.money.outstanding > 0
+          ? { label: 'תשלומים מדומים', value: formatCurrency(stats.money.paid), icon: Wallet, hint: `${stats.money.outstanding ? `${formatCurrency(stats.money.outstanding)} ממתינים · ` : ''}סימולציה, לא עבר כסף` }
+          : { label: 'שיעור אישור', value: stats.approvalRate !== null ? `${stats.approvalRate}%` : '—', icon: CheckCircle2, hint: 'תהליכים ללא תשלום לא מציגים הכנסות' },
+      ]} />}
+
+
 
       {!fresh && stats.outcomes.length > 0 && (
         <Card className="mt-6 p-5">

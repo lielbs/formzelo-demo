@@ -131,6 +131,10 @@ export function RequestDetail() {
   const customerView = workflow && !PRODUCTION ? `/f/${workflow.slug}?r=${run.id}&from=inbox` : '';
   const canAct = Boolean(workflow) && run.status !== 'cancelled' && run.status !== 'rejected';
   const actions = ownerActions(run.status);
+  // The decision first, then at most two more; the rest under "עוד" (UX audit B3.1).
+  const ordered = [...actions].sort((x, y) => Number(y.tone === 'primary') - Number(x.tone === 'primary'));
+  const topActions = ordered.slice(0, 3);
+  const moreActions = ordered.slice(3);
   const customerLink = workflow ? publicFlowUrl(workflow.slug, run.id) : '';
   const customerCanEdit = !PRODUCTION && (run.status === 'awaiting_customer' || run.status === 'changes_requested');
   const config = version?.config;
@@ -138,6 +142,12 @@ export function RequestDetail() {
   const bState = booking ? bookingState(run.status) : null;
   const completion = config ? completionOf(config) : null;
   const answer = (key?: string) => (key ? run.answers.find((a) => a.fieldKey === key) : undefined);
+  // One sentence on where the request stands and what the business should do next (UX audit B3.1).
+  const waitingOnCustomer = runActions.some((a) => actionStatus(a) === 'pending') || quotes.some((x) => x.status === 'sent');
+  const now = !canAct ? { tone: 'neutral' as const, title: `הבקשה ${STATUS_LABELS[run.status]}.`, hint: 'אין מה לעשות כאן עכשיו.' }
+    : actions.some((a) => a.tone === 'primary') ? { tone: 'action' as const, title: booking ? 'ההזמנה מחכה לאישור שלכם' : 'הבקשה מחכה להחלטה שלכם', hint: 'בדקו את התשובות למטה ובחרו.' }
+    : customerCanEdit || waitingOnCustomer ? { tone: 'wait' as const, title: 'ממתינים ללקוח', hint: customerCanEdit ? 'הלקוח מעדכן את הבקשה בקישור האישי.' : 'נשלחה ללקוח שאלה או הצעה, והתשובה תופיע כאן.' }
+    : { tone: 'neutral' as const, title: `הבקשה במצב: ${STATUS_LABELS[run.status]}`, hint: 'אפשר לעדכן את הלקוח או לשלוח לו פעולה חדשה.' };
   const bookingDate = booking ? String(answer(booking.dateKey)?.value ?? '') : '';
 
   const transition = async (to: RunStatus, msg?: string) => {
@@ -197,26 +207,7 @@ export function RequestDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canAct && (
-            <Button variant="secondary" icon={SendHorizontal} onClick={() => setComposing(true)}>
-              פעולה חדשה ללקוח
-            </Button>
-          )}
-          {customerView && (
-            <Link to={customerView} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-4 text-sm font-medium text-ink hover:bg-cloud">
-              <Eye className="h-4 w-4" aria-hidden /> צפייה כלקוח
-            </Link>
-          )}
-          {actions.map((a) => (
-            <Button
-              key={a.to}
-              variant={a.tone === 'primary' ? 'primary' : a.tone === 'danger' ? 'danger' : 'secondary'}
-              loading={busy === a.to}
-              onClick={() => (NEEDS_MESSAGE.includes(a.to) ? setPending(a) : transition(a.to))}
-            >
-              {booking && a.to === 'approved' ? 'אישור ההזמנה' : a.label}
-            </Button>
-          ))}
+
           {!PRODUCTION && isPaymentOutstanding(run.payment) && run.status !== 'cancelled' && run.status !== 'rejected' && (
             <Button
               variant="dark"
@@ -239,6 +230,54 @@ export function RequestDetail() {
           )}
         </div>
       </div>
+
+      <Card className={cx('mb-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center', now.tone === 'action' ? 'border-orange-200 bg-orange-50/60' : now.tone === 'wait' ? 'border-amber-200 bg-amber-50/50' : '')}>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">מה עכשיו</p>
+          <p className="mt-0.5 text-lg font-semibold text-ink">{now.title}</p>
+          <p className="text-sm text-ink-muted">{now.hint}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {topActions.map((a) => (
+            <Button
+              key={a.to}
+              variant={a.tone === 'primary' ? 'primary' : a.tone === 'danger' ? 'danger' : 'secondary'}
+              loading={busy === a.to}
+              onClick={() => (NEEDS_MESSAGE.includes(a.to) ? setPending(a) : transition(a.to))}
+            >
+              {booking && a.to === 'approved' ? 'אישור ההזמנה' : a.label}
+            </Button>
+          ))}
+          {moreActions.length > 0 && (
+            <details className="relative">
+              <summary className="flex h-10 cursor-pointer list-none items-center rounded-xl border border-cloud-300 bg-white px-3 text-sm font-medium hover:bg-cloud">עוד ▾</summary>
+              <div className="absolute end-0 z-20 mt-1 grid min-w-[11rem] gap-1 rounded-xl border border-cloud-200 bg-white p-2 shadow-lift">
+{moreActions.map((a) => (
+            <Button
+              size="sm"
+              key={a.to}
+              variant={a.tone === 'primary' ? 'primary' : a.tone === 'danger' ? 'danger' : 'secondary'}
+              loading={busy === a.to}
+              onClick={() => (NEEDS_MESSAGE.includes(a.to) ? setPending(a) : transition(a.to))}
+            >
+              {booking && a.to === 'approved' ? 'אישור ההזמנה' : a.label}
+            </Button>
+          ))}
+              </div>
+            </details>
+          )}
+          {canAct && (
+            <Button variant="ghost" icon={SendHorizontal} onClick={() => setComposing(true)}>
+              פעולה חדשה ללקוח
+            </Button>
+          )}
+          {customerView && (
+            <Link to={customerView} className="inline-flex h-10 items-center gap-2 rounded-xl border border-cloud-300 bg-white px-4 text-sm font-medium text-ink hover:bg-cloud">
+              <Eye className="h-4 w-4" aria-hidden /> צפייה כלקוח
+            </Link>
+          )}
+        </div>
+      </Card>
 
       {customerCanEdit && (
         <Card className="mb-6 flex flex-col gap-3 border-amber-200 bg-amber-50/60 p-4 sm:flex-row sm:items-center">
@@ -266,6 +305,10 @@ export function RequestDetail() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          <Card className="p-5">
+            <h2 className="mb-2 font-semibold">תשובות הלקוח</h2>
+            {run.answers.length ? <Answers items={run.answers} /> : <p className="py-4 text-sm text-ink-muted">הלקוח/ה עדיין לא שלח/ה תשובות.</p>}
+          </Card>
           {booking && (
             <Card className="flex flex-wrap items-center gap-4 p-5">
               <span className={cx('flex h-11 w-11 items-center justify-center rounded-xl', bState?.confirmed ? 'bg-teal-50 text-teal-600' : 'bg-amber-50 text-amber-700')}>
@@ -329,10 +372,6 @@ export function RequestDetail() {
               <Answers items={run.caseAnswers} />
             </Card>
           )}
-          <Card className="p-5">
-            <h2 className="mb-2 font-semibold">תשובות הלקוח</h2>
-            {run.answers.length ? <Answers items={run.answers} /> : <p className="py-4 text-sm text-ink-muted">הלקוח/ה עדיין לא שלח/ה תשובות.</p>}
-          </Card>
           {completion && run.submittedAt && !PRODUCTION && (
             <Card className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -413,8 +452,10 @@ export function RequestDetail() {
             </Button>
           </Card>
           <Card className="p-5">
-            <h2 className="mb-4 font-semibold">היסטוריה</h2>
-            <Timeline events={events} />
+            <details>
+              <summary className="flex min-h-[40px] cursor-pointer items-center justify-between font-semibold">היסטוריה <span className="text-xs font-normal text-ink-muted">{events.length} אירועים</span></summary>
+              <div className="mt-3"><Timeline events={events} /></div>
+            </details>
           </Card>
         </div>
       </div>

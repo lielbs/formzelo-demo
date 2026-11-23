@@ -67,7 +67,7 @@ export const LIBRARY_PRESETS: Partial<Record<ThemePresetId, PresetEntry>> = {
     density: 'airy',
     progress: 'dots',
     motion: 'subtle',
-    mobile: { compactHero: false, stickySummary: true },
+    mobile: { compactHero: true, stickySummary: true },
   }),
   beauty_glam: preset('beauty_glam', {
     name: 'Beauty Glam',
@@ -109,7 +109,7 @@ export const LIBRARY_PRESETS: Partial<Record<ThemePresetId, PresetEntry>> = {
     density: 'comfortable',
     progress: 'dots',
     motion: 'expressive',
-    mobile: { compactHero: false, stickySummary: true },
+    mobile: { compactHero: true, stickySummary: true },
   }),
   cafe_bistro: preset('cafe_bistro', {
     name: 'Café Bistro',
@@ -298,7 +298,7 @@ export const LIBRARY_PRESETS: Partial<Record<ThemePresetId, PresetEntry>> = {
     density: 'airy',
     progress: 'dots',
     motion: 'expressive',
-    mobile: { compactHero: false, stickySummary: true },
+    mobile: { compactHero: true, stickySummary: true },
   }),
   academy_learn: preset('academy_learn', {
     name: 'Academy',
@@ -424,7 +424,7 @@ export const LIBRARY_PRESETS: Partial<Record<ThemePresetId, PresetEntry>> = {
     density: 'airy',
     progress: 'dots',
     motion: 'subtle',
-    mobile: { compactHero: false, stickySummary: true },
+    mobile: { compactHero: true, stickySummary: true },
   }),
   pets_friendly: preset('pets_friendly', {
     name: 'Pet Friendly',
