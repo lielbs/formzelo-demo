@@ -33,6 +33,8 @@ export default defineConfig({
     env: {
       VITE_FORMANGLE_MODE: 'production',
       VITE_FORMANGLE_LOCAL_STACK: 'true',
+      // The local stack has the reminder migrations, so the tests see the reminders (src/tables/features.ts).
+      VITE_TABLES_REMINDERS: 'true',
       VITE_SUPABASE_PROJECT_REF: 'ppgdbqhwbzlgzwsjmkor',
       VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
       VITE_SUPABASE_PUBLISHABLE_KEY: publishableKey,

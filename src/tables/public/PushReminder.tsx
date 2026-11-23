@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { runtimeConfiguration } from '../../production/runtime';
 import { clientToken, rpc } from '../data/client';
 import type { TablesError } from '../domain/errors';
+import { REMINDERS_LIVE } from '../features';
 import { tx, type Lang } from './i18n';
 
 export interface PushBooking { token: string; venue: string; time: string; party: number; reference: string; startsAt: string; url: string }
@@ -55,7 +56,7 @@ export function PushReminder({ booking, lang, className }: { booking: PushBookin
 
   useEffect(() => {
     let alive = true;
-    if (runtimeConfiguration.mode !== 'production' || soon) return;
+    if (!REMINDERS_LIVE || runtimeConfiguration.mode !== 'production' || soon) return;
     if (!pushSupported()) return;
     rpc<string | null>('tables_push_public_key', {}).then(async (k) => {
       if (!alive || !k) return;

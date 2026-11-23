@@ -22,6 +22,7 @@ import { FloorView } from './FloorView';
 import './host.css';
 import { QuickAdd, type QuickAddMode } from './QuickAdd';
 import { RemindersSheet } from './RemindersSheet';
+import { REMINDERS_LIVE } from '../features';
 import { ReservationRow } from './ReservationRow';
 import { ActiveFilters, AddChooser, ShiftDock, ShiftSummaryBar } from './ShiftControls';
 import { WaitlistView } from './WaitlistView';
@@ -188,7 +189,7 @@ export function HostShift() {
               <ConnectionBadge connection={connection} lastSync={lastSync} />
             </p>
           </div>
-          {shift.role !== 'viewer' && (
+          {REMINDERS_LIVE && shift.role !== 'viewer' && (
             <button type="button" onClick={() => setReminders(true)} aria-haspopup="dialog" aria-label="תזכורות לאורחים"
               className="hs-round flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
               <BellRing className="h-5 w-5" aria-hidden /><span className="hidden lg:inline">תזכורות</span>
@@ -373,7 +374,7 @@ export function HostShift() {
         <FilterSheet shift={shift} rows={day} filters={filters} sort={sort} onClose={() => setFilterOpen(false)}
           onApply={(f, s) => { setFilters(f); setSort(s); setFilterOpen(false); if (view !== 'list') setView('list'); }} />
       )}
-      {reminders && <RemindersSheet venueId={venueId} today={today} canAct={canAct} onClose={() => setReminders(false)} />}
+      {REMINDERS_LIVE && reminders && <RemindersSheet venueId={venueId} today={today} canAct={canAct} onClose={() => setReminders(false)} />}
       {autoAssign && <AutoAssign shift={shift} onClose={() => setAutoAssign(false)} onDone={(m) => { setAutoAssign(false); done(m); }} />}
       {quickAdd && <QuickAdd mode={quickAdd} shift={shift} states={tableStates} onClose={() => setQuickAdd(null)} onDone={(m) => { setQuickAdd(null); done(m); }} />}
       <div aria-live="polite" className="sr-only">{announce}</div>
