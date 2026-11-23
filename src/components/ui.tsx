@@ -11,6 +11,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { Link, type LinkProps } from 'react-router-dom';
+import { useDialog } from '../lib/useDialog';
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
@@ -237,40 +238,16 @@ export function Modal({
   footer?: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.activeElement as HTMLElement | null;
-    // The page behind a dialog stays put (no background scroll on touch screens).
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return onClose();
-      // Keep Tab inside the dialog.
-      if (e.key !== 'Tab' || !panelRef.current) return;
-      const items = [...panelRef.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
-      if (!items.length) return;
-      const first = items[0]!;
-      const last = items[items.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', onKey);
-    const t = setTimeout(() => panelRef.current?.querySelector<HTMLElement>('input,select,textarea,button:not([data-close])')?.focus(), 30);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = overflow;
-      clearTimeout(t);
-      prev?.focus?.();
-    };
-  }, [open, onClose]);
+  useDialog(panelRef, open, onClose, (el) => el.querySelector<HTMLElement>('input,select,textarea,button:not([data-close])'));
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label={title}>
       <button aria-label="סגירה" className="absolute inset-0 bg-midnight/40 backdrop-blur-[1px]" onClick={onClose} data-close />
       <div
         ref={panelRef}
+        tabIndex={-1}
         className={cx(
-          'relative z-10 flex max-h-full flex-col bg-white shadow-lift animate-fade-up',
+          'relative z-10 flex max-h-full flex-col bg-white shadow-lift animate-fade-up focus:outline-none',
           side ? 'ms-auto h-full w-full max-w-xl' : cx('m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] rounded-2xl', wide ? 'max-w-4xl' : 'max-w-lg'),
         )}
       >

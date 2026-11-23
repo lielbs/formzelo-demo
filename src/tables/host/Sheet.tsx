@@ -1,8 +1,7 @@
 import { X } from 'lucide-react';
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-
-const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+import { useDialog } from '../../lib/useDialog';
 
 /**
  * Bottom sheet on phones, centred dialog from 768 px. Escape and the scrim close it, Tab stays
@@ -21,33 +20,7 @@ export function Sheet({ title, subtitle, onClose, children, footer }: {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     setTimeout(onClose, reduce ? 0 : 160);
   }, [closing, onClose]);
-  const dismissRef = useRef(dismiss);
-  dismissRef.current = dismiss;
-  // Set up once per opening: scroll lock, focus trap, focus return.
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      // Capture phase + stopImmediatePropagation: Escape closes only this sheet, not a panel behind it.
-      if (e.key === 'Escape') { e.stopImmediatePropagation(); dismissRef.current(); return; }
-      if (e.key !== 'Tab' || !panel.current) return;
-      const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
-      if (!items.length) return;
-      const first = items[0]!;
-      const last = items[items.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', onKey, true);
-    const t = setTimeout(() => panel.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus() ?? panel.current?.focus(), 20);
-    return () => {
-      document.removeEventListener('keydown', onKey, true);
-      document.body.style.overflow = overflow;
-      clearTimeout(t);
-      opener?.focus?.();
-    };
-  }, []);
+  useDialog(panel, true, dismiss, (el) => el.querySelector<HTMLElement>('[data-autofocus]'));
 
   return createPortal(
     <div className="fz-tables" dir="rtl">

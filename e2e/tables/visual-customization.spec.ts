@@ -150,6 +150,10 @@ test('owner adds menu images (hero, ordered gallery, section, dish), removes one
   await page.getByRole('button', { name: 'מנה חדשה' }).click();
   await page.getByLabel('שם המנה').fill('ברוסקטה');
   await page.getByLabel('מחיר לתצוגה').fill('₪38');
+  // Typing key by key re-renders the editor on every key; the focus stays in the field being typed in.
+  await page.getByLabel('תיאור (רשות)').pressSequentially('עגבניות ובזיליקום', { delay: 30 });
+  await expect(page.getByLabel('תיאור (רשות)')).toHaveValue('עגבניות ובזיליקום');
+  await expect(page.getByLabel('שם המנה')).toHaveValue('ברוסקטה');
 
   const files = page.locator('input[type=file]');
   const uploaded = async (i: number, color: string, label: string) => {
