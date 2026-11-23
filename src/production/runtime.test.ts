@@ -42,4 +42,12 @@ describe('readRuntimeConfiguration', () => {
     expect(() => readRuntimeConfiguration({ ...local, DEV: false })).toThrow();
     expect(() => readRuntimeConfiguration({ ...local, DEV: true, VITE_SUPABASE_URL: 'http://evil.example:54321' })).toThrow('disposable Supabase');
   });
+
+  it('rejects an unknown mode, another project reference and a malformed URL', () => {
+    expect(() => readRuntimeConfiguration({ VITE_FORMANGLE_MODE: 'staging' })).toThrow('VITE_FORMANGLE_MODE');
+    expect(() => readRuntimeConfiguration({ ...production, VITE_SUPABASE_PROJECT_REF: 'fmwvqefoizhtuxgaryem' })).toThrow('dedicated Formangle project');
+    expect(() => readRuntimeConfiguration({ ...production, VITE_SUPABASE_URL: 'not a url' })).toThrow('URL');
+    expect(() => readRuntimeConfiguration({ ...production, VITE_SUPABASE_URL: undefined })).toThrow('URL');
+    expect(() => readRuntimeConfiguration({ ...production, VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_short' })).toThrow('publishable key');
+  });
 });

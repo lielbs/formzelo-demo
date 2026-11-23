@@ -1,9 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Organization } from '../domain/schema';
-import { LocalStorageRepository } from './localRepository';
 import type { FormangleRepository } from './repository';
 import { runtimeConfiguration } from '../production/runtime';
-import { createProductionRepository } from '../production/productionRepository';
 import { getProductionSupabaseClient } from '../production/supabaseClient';
 import { useAuth } from '../auth/AuthProvider';
 import { PageLoader } from '../components/ui';
@@ -24,9 +22,12 @@ const RepoContext = createContext<RepoState | null>(null);
 
 let repositoryPromise: Promise<FormangleRepository> | null = null;
 function getRepository() {
+  // Each mode loads only its own implementation (UX audit D3): the demo's local store and sample
+  // data never ship in the production start-up file, and the server client never in the demo's.
+  // The provider already waits for this promise, and the chunks load in parallel with the client.
   repositoryPromise ??= runtimeConfiguration.mode === 'demo'
-    ? Promise.resolve(new LocalStorageRepository())
-    : getProductionSupabaseClient().then(createProductionRepository);
+    ? import('./localRepository').then(({ LocalStorageRepository }) => new LocalStorageRepository())
+    : Promise.all([getProductionSupabaseClient(), import('../production/productionRepository')]).then(([client, m]) => m.createProductionRepository(client));
   return repositoryPromise;
 }
 
