@@ -289,5 +289,9 @@ html.fz-dark .border-orange-400 { border-color: #c2410c; }
 
 /* "Request" (needs the venue's approval): readable on light and on dark page styles (UX audit A7.7). */
 .fz-guest .pp-warn { color: #92400e; }
+/* A destructive action on a guest page, readable on light and dark venue themes. */
+.fz-guest .pp-danger { color: #b91c1c; border-color: #fecaca; }
+.fz-guest .pp-danger:hover { background-color: color-mix(in srgb, currentColor 8%, transparent); }
+html .fz-pp[data-pp-tone="dark"] .pp-danger, html.fz-dark .fz-guest .pp-danger { color: #fca5a5; border-color: rgb(252 165 165 / 0.45); }
 html .fz-pp[data-pp-tone="dark"] .pp-warn, html.fz-dark .fz-guest .pp-warn { color: #fcd34d; }
 html .fz-guest .pp-chip-on .pp-warn { color: inherit; }

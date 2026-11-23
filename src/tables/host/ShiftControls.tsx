@@ -38,11 +38,10 @@ export function ShiftSummaryBar({ summary, counts, tile, onTile, showTabs = true
             const on = tile === k;
             return (
               <button key={k} type="button" aria-pressed={on} onClick={() => onTile(on && k !== 'active' ? 'active' : k)}
-                aria-label={`${TILE_HE[k]}: ${c.count} הזמנות${on ? ' (מוצג)' : ''}`}
                 className={cx('hs-tab', `hs-tone-${k}`)} data-empty={c.count === 0 || undefined}>
                 {k !== 'active' && <span className="hs-status-dot" aria-hidden />}
-                {TILE_HE[k]}
-                <span className="hs-tab-n">{c.count}</span>
+                {TILE_HE[k]}<span className="sr-only">:</span>
+                <span className="hs-tab-n">{c.count}</span><span className="sr-only"> הזמנות</span>
               </button>
             );
           })}

@@ -1007,7 +1007,7 @@ export function WorkflowEditor() {
             >
               <Icon className="h-4 w-4" aria-hidden />{' '}
               {label}
-              {k === 'content' && logicErrors > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white" aria-label={`${logicErrors} בעיות לוגיקה`}>{logicErrors}</span>}
+              {k === 'content' && logicErrors > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white">{logicErrors}<span className="sr-only"> בעיות לוגיקה</span></span>}
             </button>
           ))}
         </div>

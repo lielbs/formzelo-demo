@@ -61,7 +61,9 @@ export function PagePreview() {
 
 function Chips({ count, start, selected }: { count: number; start: number; selected: number }) {
   return (
-    <div className="pp-scroll -mx-5 flex gap-2 overflow-x-auto px-5 py-1 sm:-mx-7 sm:px-7">
+    // A picture of the chips, not controls: it clips instead of scrolling, so keyboard users meet no
+    // scroll area that nothing inside can reach (axe scrollable-region-focusable).
+    <div className="-mx-5 flex gap-2 overflow-hidden px-5 py-1 sm:-mx-7 sm:px-7" aria-hidden>
       {Array.from({ length: count }, (_, i) => start + i).map((n) => (
         <span key={n} aria-hidden
           className={cx('pp-chip flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[17px] font-semibold tabular-nums', n === selected && 'pp-chip-on')}>{n}</span>

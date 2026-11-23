@@ -39,6 +39,8 @@ export function useDialog(
       if (!items.length) return;
       const first = items[0]!;
       const last = items[items.length - 1]!;
+      // Tab pressed before the dialog took focus (or after a click outside it): bring focus inside.
+      if (!panel.current.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };

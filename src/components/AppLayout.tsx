@@ -53,10 +53,12 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`סביבת עבודה: ${activeOrg.name}. החלפה`}
         className="fz-side-chip flex w-full items-center gap-2.5 rounded-xl p-2 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold" style={{ background: activeOrg.brand.primaryColor }}>
+        {/* The name comes from the text itself (WCAG 2.5.3: what is read includes what is shown). */}
+        <span className="sr-only">סביבת עבודה: </span>
+        {compact && <span className="sr-only">{activeOrg.name}</span>}
+        <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold" style={{ background: activeOrg.brand.primaryColor }}>
           {activeOrg.name.slice(0, 1)}
         </span>
         {!compact && (
@@ -68,6 +70,7 @@ function WorkspaceSwitcher({ compact }: { compact?: boolean }) {
             <ChevronDown className="fz-side-sub h-4 w-4" aria-hidden />
           </>
         )}
+        <span className="sr-only">. החלפה</span>
       </button>
       {open && (
         <ul role="listbox" aria-label="סביבות עבודה" className="absolute inset-x-0 top-full z-30 mt-2 min-w-[240px] overflow-hidden rounded-xl border border-cloud-200 bg-white p-1 shadow-lift">
@@ -176,8 +179,8 @@ function Sidebar({ onNavigate, pending, access = 'all' }: { onNavigate?: () => v
             <Icon className="h-[18px] w-[18px]" aria-hidden />
             <span className="flex-1">{label}</span>
             {badge && pending > 0 && (
-              <span className="rounded-full bg-orange-700 px-2 py-0.5 text-[11px] font-semibold text-white" aria-label={`${pending} ממתינות`}>
-                {pending}
+              <span className="rounded-full bg-orange-700 px-2 py-0.5 text-[11px] font-semibold text-white">
+                {pending}<span className="sr-only"> ממתינות</span>
               </span>
             )}
           </NavLink>

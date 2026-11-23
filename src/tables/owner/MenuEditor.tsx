@@ -192,12 +192,12 @@ export function MenuEditor({ menu, orgId, soldOut, onSoldOut, onSaved }: {
                       className={cx('flex items-center gap-2 rounded-xl border border-cloud-200 bg-white px-2 py-1.5', drag?.s === si && drag.i === ii && 'opacity-50')}>
                       <GripVertical className="hidden h-4 w-4 shrink-0 cursor-grab text-ink-soft sm:block" aria-hidden />
                       <button type="button" onClick={() => setEditing({ s: si, i: ii })} className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange rounded-lg"
-                        aria-label={`עריכת ${it.name || 'מנה בלי שם'}`}>
+>
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cloud">
                           {it.imageAssetId && media.data?.urls[it.imageAssetId] ? <img src={media.data.urls[it.imageAssetId]} alt="" className="h-full w-full object-cover" loading="lazy" /> : <ImageIcon className="h-4 w-4 text-ink-soft" aria-hidden />}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className={cx('block truncate font-medium', !it.name && 'text-red-700', out && 'line-through text-ink-muted')}>{it.name || 'מנה בלי שם'}</span>
+                          <span className={cx('block truncate font-medium', !it.name && 'text-red-700', out && 'line-through text-ink-muted')}><span className="sr-only">עריכת </span>{it.name || 'מנה בלי שם'}</span>
                           <span className="block truncate text-xs text-ink-muted">{[it.description, tags ? `${tags} סימונים` : ''].filter(Boolean).join(' · ') || 'בלי תיאור'}</span>
                         </span>
                         <span dir="ltr" className="shrink-0 text-sm font-semibold tabular-nums">{it.price || '—'}</span>

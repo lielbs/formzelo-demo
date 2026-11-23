@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Workflow, WorkflowRun } from '../domain/schema';
 import { formatCurrency, formatRelative } from '../lib/format';
 import { PaymentBadge, StatusBadge } from './StatusBadge';
@@ -39,15 +39,15 @@ export function RunsTable({ runs, workflows, actions }: { runs: WorkflowRun[]; w
             {runs.map((r) => (
               <tr
                 key={r.id}
-                tabIndex={0}
-                role="link"
-                aria-label={`בקשה ${r.reference} של ${r.customerName || 'לקוח'}`}
                 onClick={() => open(r.id)}
-                onKeyDown={(e) => e.key === 'Enter' && open(r.id)}
-                className="cursor-pointer border-b border-cloud-200 transition-colors last:border-0 hover:bg-cloud/60 focus-visible:bg-cloud focus-visible:outline-none"
+                className="cursor-pointer border-b border-cloud-200 transition-colors last:border-0 hover:bg-cloud/60 focus-within:bg-cloud"
               >
+                {/* The whole row opens the request by mouse; keyboard and screen readers get one real link
+                    named by its text (a row with role=link hid the row's cells, axe/WCAG 2.5.3). */}
                 <td className="px-4 py-3 font-medium ltr text-start">
-                  {r.reference} {r.isDemo && <DemoBadge className="ms-1" />}
+                  <Link to={`/app/requests/${r.id}`} onClick={(e) => e.stopPropagation()} className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange">
+                    {r.reference}<span className="sr-only"> · {r.customerName || 'לקוח'}</span>
+                  </Link>{' '}{r.isDemo && <DemoBadge className="ms-1" />}
                 </td>
                 <td className="px-4 py-3">{r.customerName || '—'}</td>
                 <td className="max-w-[220px] break-words px-4 py-3 text-ink-muted">{title(r.workflowId)}</td>

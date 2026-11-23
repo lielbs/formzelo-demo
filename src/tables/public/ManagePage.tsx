@@ -147,7 +147,7 @@ function Manage({ res, token, lang, onChange }: { res: GuestReservation; token: 
       {mode === 'view' && (res.canModify || res.canCancel) && (
         <div className="grid gap-2 sm:grid-cols-2">
           {res.canModify && <button type="button" className={accentButton} onClick={() => { setMode('modify'); setMessage(null); }}>{s.changeBooking}</button>}
-          {res.canCancel && <button type="button" onClick={() => { setMode('cancel'); setMessage(null); }} className="min-h-[48px] rounded-xl border border-red-200 bg-white px-4 font-semibold text-red-700 hover:bg-red-50">{s.cancelBooking}</button>}
+          {res.canCancel && <button type="button" onClick={() => { setMode('cancel'); setMessage(null); }} className="pp-danger min-h-[48px] rounded-xl border bg-white px-4 font-semibold">{s.cancelBooking}</button>}
         </div>
       )}
       {mode === 'cancel' && (

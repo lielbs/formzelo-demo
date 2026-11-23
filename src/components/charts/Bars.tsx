@@ -80,11 +80,14 @@ export function HeatGrid({ cells, days, hours, valueLabel }: {
               <th scope="row" className="pe-1 text-start font-medium text-ink-muted">{label}</th>
               {hours.map((h) => {
                 const v = at(d, h);
-                const a = v ? 0.12 + 0.88 * (v / max) : 0;
+                // Two bands, so the number on every cell keeps 4.5:1: light cells take dark text,
+                // dark cells white text, and no cell sits in the middle where neither reads well.
+                const t = v / max;
+                const a = !v ? 0 : t <= 0.5 ? 0.12 + 0.66 * t : 0.82 + 0.36 * (t - 0.5);
                 return (
                   <td key={h} title={`${label} ${String(h).padStart(2, '0')}:00 · ${v} ${valueLabel}`}
                     className="h-8 min-w-8 rounded-md text-center tabular-nums"
-                    style={{ background: v ? `rgba(194, 65, 12, ${a.toFixed(2)})` : '#F3F4F6', color: a > 0.55 ? '#fff' : '#3F4A5A' }}>
+                    style={{ background: v ? `rgba(154, 52, 18, ${a.toFixed(2)})` : '#F3F4F6', color: a >= 0.8 ? '#fff' : '#111827' }}>
                     {v || ''}
                   </td>
                 );

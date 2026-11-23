@@ -64,8 +64,9 @@ export function Logo({
       to={to}
       className={cx('group inline-flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange', className)}
       dir="ltr"
-      aria-label={`${PRODUCT_LOCKUP} — דף הבית`}
     >
+      {/* Named by its text (WCAG 2.5.3): the wordmark is drawn, so its words are given to screen readers here. */}
+      <span className="sr-only">{variant === 'full' && endorsement ? 'Formangle ' : `${PRODUCT_LOCKUP} `}</span>
       <BrandMark size={variant === 'compact' ? 30 : 26} onDark={dark} />
       {variant === 'full' && (
         <span className={stacked ? 'inline-flex flex-col items-start gap-1' : 'inline-flex items-baseline gap-1.5'}>
@@ -73,6 +74,7 @@ export function Logo({
           {endorsement && <span className={cx('whitespace-nowrap text-[11px] font-medium leading-none', dark ? 'text-white/50' : 'text-ink-soft')}>by RockStack</span>}
         </span>
       )}
+      <span className="sr-only"> — דף הבית</span>
     </Link>
   );
 }

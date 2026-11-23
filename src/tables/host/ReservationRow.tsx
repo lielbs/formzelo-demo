@@ -69,7 +69,8 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
   return (
     <li className={cx('hs-row', `hs-tone-${tone(r, now)}`)} data-flash={flash || undefined} data-next={next || undefined}
       data-selected={selected || undefined} data-dim={isDone(r) || undefined} style={{ animationDelay: `${Math.min(order, 8) * 20}ms` }}>
-      <button type="button" onClick={onSelect} className="hs-row-main" aria-label={`${r.time} ${r.guestName}, ${r.party} סועדים, ${seatText ?? 'בלי שולחן'} — פתיחת פרטים`}>
+      <button type="button" onClick={onSelect} className="hs-row-main">
+        {/* The button is named by what it shows (WCAG 2.5.3), with the words a screen reader needs added. */}
         <span className="hs-row-time">
           <b dir="ltr">{r.time}</b>
           {progress ? (
@@ -96,8 +97,9 @@ export function ReservationRow({ r, now, labels, selected, canAct, next = false,
             {r.noShows > 0 && <span className="hs-flag" data-tone="attention" title={`לא הגיעו בעבר: ${r.noShows}`}><AlertTriangle className="h-4 w-4" aria-hidden />{r.noShows}<span className="sr-only"> פעמים לא הגיעו בעבר</span></span>}
           </span>
         </span>
-        <span className="hs-row-col hidden md:flex" aria-hidden><Users className="h-4 w-4" />{r.party}</span>
-        <span className={cx('hs-row-col hidden md:flex', needsTable && 'hs-warn')} aria-hidden><Armchair className="h-4 w-4" />{tables || '—'}</span>
+        <span className="hs-row-col hidden md:flex"><Users className="h-4 w-4" aria-hidden />{r.party}<span className="sr-only"> סועדים,</span></span>
+        <span className={cx('hs-row-col hidden md:flex', needsTable && 'hs-warn')}><Armchair className="h-4 w-4" aria-hidden />{tables ? <><span className="sr-only">שולחן </span>{tables}</> : <><span aria-hidden>—</span><span className="sr-only">בלי שולחן</span></>}</span>
+        <span className="sr-only"> — פתיחת פרטים</span>
       </button>
       <span className="hs-row-action">
         {action && canAct && (
