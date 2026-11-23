@@ -51,7 +51,7 @@ async function open(browser: import('@playwright/test').Browser, size: { width: 
   const page = await ctx.newPage();
   await signIn(page, biz.hosts[0]!, `/app/tables/${venue.id}/live?date=${today()}`);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^הכול:/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^הכול\s*:/ })).toBeVisible();
   return { ctx, page };
 }
 
@@ -63,14 +63,14 @@ for (const theme of ['light', 'dark'] as const) {
     expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`)).toEqual([]);
 
     // The seated tile narrows the list to seated parties only; tapping it again shows everything.
-    const seated = page.getByRole('button', { name: /^יושבים:/ });
+    const seated = page.getByRole('button', { name: /^יושבים\s*:/ });
     await seated.click();
     await expect(seated).toHaveAttribute('aria-pressed', 'true');
     const statuses = await page.locator('#shift-main .hs-row').count();
     expect(statuses).toBe(2);
     await shot(page, `phone-tile-seated-${theme}`);
     await seated.click();
-    await expect(page.getByRole('button', { name: /^הכול:/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /^הכול\s*:/ })).toHaveAttribute('aria-pressed', 'true');
 
     // Tap feedback: a control sinks while pressed and springs back after release.
     const filterBtn = page.getByRole('button', { name: /^סינון וסידור/ });

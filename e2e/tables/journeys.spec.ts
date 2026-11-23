@@ -127,7 +127,8 @@ test('large party request is approved by a host; guest page shows pending then c
   const hp = await h.newPage();
   await signIn(hp, biz.hosts[0]!, `/app/tables/${venue.id}/live`);
   await openShift(hp, today(1));
-  await hp.locator('li', { hasText: 'ערב חברה' }).getByRole('button', { name: 'אישור' }).click();
+  await // The row itself is named by what it shows, status included ("ממתין לאישור"): match the action button.
+  await hp.locator('li', { hasText: 'ערב חברה' }).getByRole('button', { name: /^אישור/ }).click();
   await expect(hp.locator('li', { hasText: 'ערב חברה' }).getByText('הוזמן')).toBeVisible();
   await gp.reload();
   await expect(gp.getByRole('heading', { name: 'מאושרת' })).toBeVisible();
