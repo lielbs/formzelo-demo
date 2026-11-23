@@ -16,19 +16,19 @@ begin
   return jsonb_build_object(
     -- weekday 0 = Sunday … 6 = Saturday (of the service date), hour of the booked local time.
     'heat', coalesce((select jsonb_agg(jsonb_build_object('dow', h.dow, 'hour', h.hour, 'bookings', h.bookings, 'covers', h.covers) order by h.dow, h.hour)
-      from (select extract(dow from r.service_date)::int dow, split_part(r.local_time, ':', 1)::int hour,
-                   count(*) bookings, sum(r.party_size)::int covers
+      from (select extract(dow from r.service_date)::int as dow, split_part(r.local_time, ':', 1)::int as hour,
+                   count(*) as bookings, sum(r.party_size)::int as covers
             from public.tables_reservations r
             where r.venue_id = p_venue_id and r.service_date between p_from and p_to and r.status not in ('rejected','expired','cancelled')
             group by 1, 2) h), '[]'),
-    'regulars', case when names then coalesce((select jsonb_agg(x order by x->>'visits' desc, x->>'last' desc) from (
-        select jsonb_build_object('name', g.display_name, 'visits', count(*), 'last', max(r.service_date)) x
+    'regulars', case when names then coalesce((select jsonb_agg(x order by (x->>'visits')::int desc, x->>'last' desc) from (
+        select jsonb_build_object('name', g.display_name, 'visits', count(*), 'last', max(r.service_date)) as x
         from public.tables_reservations r join public.tables_guests g on g.id = r.guest_id
         where r.venue_id = p_venue_id and r.service_date between p_from and p_to and r.status = 'completed'
         group by g.id, g.display_name having count(*) >= 2
         order by count(*) desc, max(r.service_date) desc limit 10) q), '[]') else null end,
-    'noShows', case when names then coalesce((select jsonb_agg(x order by x->>'count' desc) from (
-        select jsonb_build_object('name', g.display_name, 'count', count(*), 'last', max(r.service_date)) x
+    'noShows', case when names then coalesce((select jsonb_agg(x order by (x->>'count')::int desc) from (
+        select jsonb_build_object('name', g.display_name, 'count', count(*), 'last', max(r.service_date)) as x
         from public.tables_reservations r join public.tables_guests g on g.id = r.guest_id
         where r.venue_id = p_venue_id and r.service_date between p_from and p_to and r.status = 'no_show'
         group by g.id, g.display_name having count(*) >= 2

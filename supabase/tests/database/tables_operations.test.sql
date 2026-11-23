@@ -248,7 +248,8 @@ set local role anon;
 insert into ctx select 'pw', public.tables_public_waitlist_join('ops-venue','{"name":"דנה","phone":"054-4000001","party":2,"consent":true}','f9400000-0000-4000-8000-000000000001','f9000000-0000-4000-8000-000000000003')->>'token';
 select is(public.tables_public_waitlist_status((select v from ctx where k='pw'),'f9000000-0000-4000-8000-000000000003')->>'status', 'waiting', 'guest sees waiting status');
 select ok(public.tables_public_waitlist_status((select v from ctx where k='pw'),'f9000000-0000-4000-8000-000000000003') ? 'estimate', 'guest sees an estimate range');
-select is(public.tables_public_waitlist_status('x'||substr((select v from ctx where k='pw'),2),'f9000000-0000-4000-8000-000000000003'), null, 'guessed waitlist token reveals nothing');
+-- Change the first character to one it is not (replacing it with 'x' was the real token 1 time in 64).
+select is(public.tables_public_waitlist_status((case when left((select v from ctx where k='pw'),1)='x' then 'y' else 'x' end)||substr((select v from ctx where k='pw'),2),'f9000000-0000-4000-8000-000000000003'), null, 'guessed waitlist token reveals nothing');
 select is(public.tables_public_waitlist_leave((select v from ctx where k='pw'),'f9000000-0000-4000-8000-000000000003')->>'status', 'cancelled', 'guest leaves the waitlist');
 select throws_ok($$select public.tables_public_waitlist_join('ops-venue','{"name":"x","phone":"054-4000002","party":2}',gen_random_uuid(),gen_random_uuid())$$, '22023', 'tables:terms_required', 'public join needs consent');
 reset role;
