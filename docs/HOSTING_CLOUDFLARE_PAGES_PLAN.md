@@ -101,9 +101,10 @@ the site, so no key is created, copied or stored.
   `Production smoke` workflow runs green, and the Edge Function preflight passes for the real
   origin. Then an Impact Networks staff screen and a booking page are checked by hand.
 
-### Phase 4: tidy up (after 7 stable days)
+### Phase 4: tidy up (done 2026-11-24, approved)
 
-* HSTS `max-age` raised to 31536000.
+* HSTS `max-age` raised to 31536000, in `_headers` and in the Pages Function responses
+  (`edge/serve.ts`), which `_headers` does not reach.
 * GitHub Pages deploy switched to `workflow_dispatch` only. It stays available as the rollback
   target. `public/CNAME` stays (harmless on Cloudflare).
 
@@ -122,6 +123,9 @@ Shipped as `functions/live/t/[[path]].ts` and `functions/live/f/[slug].ts`, back
   the function is limited to these two routes and a usage alert is set in the dashboard.
 
 ## Rollback
+
+* Since phase 4, GitHub Pages holds the last version it built. Before moving the CNAME back,
+  run the `pages.yml` workflow by hand (Actions -> Run workflow) so it serves the current `main`.
 
 * Phases 1–2: nothing live changes. Remove the workflow step.
 * After phase 3: in Cloudflare DNS, set `formangle.rockstackds.com` back to

@@ -25,7 +25,8 @@ const PAGE_HEADERS: Record<string, string> = {
   'cache-control': 'public, max-age=0, must-revalidate, no-transform',
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
-  'strict-transport-security': 'max-age=86400',
+  // Must match scripts/build-cloudflare.mjs: a browser keeps the last value it saw.
+  'strict-transport-security': 'max-age=31536000',
 };
 
 async function lookup(ctx: Ctx, key: string, fn: string, body: Record<string, string>): Promise<unknown> {

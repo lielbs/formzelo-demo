@@ -47,7 +47,7 @@ Optional build-time variable:
 
 ## Deploying to GitHub Pages
 
-`.github/workflows/pages.yml` runs on every push to `main`: `npm ci` → `npm test` → `npm run build` with `VITE_BASE=/<repo>/` → copies `index.html` to `404.html` (SPA fallback for deep links like `/app/requests/<id>`) → deploys with `actions/deploy-pages`. The build also writes `<route>.html` entries for marketing pages and public demo flows (`STATIC_ROUTES` in `vite.config.ts`) so those links answer 200, and adds a self-only Content-Security-Policy meta; `VITE_SITE_URL` (optional repository variable) sets og:image / og:url for a future custom domain (`docs/DEPLOYMENT.md`). The router basename and every raw link go through `src/lib/links.ts`, so the app works under any sub-path. Pages must be set to **Source: GitHub Actions** in the repository settings.
+The live site is served by Cloudflare Pages (`docs/HOSTING_CLOUDFLARE_PAGES_PLAN.md`). `.github/workflows/pages.yml` is the rollback target and runs only on demand (Actions → Run workflow): `npm ci` → `npm test` → `npm run build` with `VITE_BASE=/<repo>/` → copies `index.html` to `404.html` (SPA fallback for deep links like `/app/requests/<id>`) → deploys with `actions/deploy-pages`. The build also writes `<route>.html` entries for marketing pages and public demo flows (`STATIC_ROUTES` in `vite.config.ts`) so those links answer 200, and adds a self-only Content-Security-Policy meta; `VITE_SITE_URL` (optional repository variable) sets og:image / og:url for a future custom domain (`docs/DEPLOYMENT.md`). The router basename and every raw link go through `src/lib/links.ts`, so the app works under any sub-path. Pages must be set to **Source: GitHub Actions** in the repository settings.
 
 Local check of the sub-path build:
 

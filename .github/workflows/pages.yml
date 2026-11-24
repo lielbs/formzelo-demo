@@ -1,8 +1,8 @@
 name: Deploy site (demo + production app) to GitHub Pages
 
+# The site is served by Cloudflare Pages (docs/HOSTING_CLOUDFLARE_PAGES_PLAN.md). GitHub Pages is
+# the rollback target only, so it deploys on demand (Actions -> Run workflow), not on every push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

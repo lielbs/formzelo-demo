@@ -53,3 +53,12 @@ describe('shared-link previews (Cloudflare Pages Functions)', () => {
     expect(formPreview({ version: { config: {} } }, 'u')).toBeNull();
   });
 });
+
+describe('security headers on shared links', () => {
+  it('the preview function sends the same HSTS as the static pages (a browser keeps the last value it saw)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const hsts = (file: string) => readFileSync(file, 'utf8').match(/strict-transport-security['":\s]+(max-age=\d+)/i)?.[1];
+    expect(hsts('scripts/build-cloudflare.mjs')).toBe('max-age=31536000');
+    expect(hsts('edge/serve.ts')).toBe(hsts('scripts/build-cloudflare.mjs'));
+  });
+});

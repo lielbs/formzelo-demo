@@ -1,7 +1,7 @@
 # Deployment and custom-domain readiness
 
 ## Today: GitHub Pages (free)
-`.github/workflows/pages.yml` on every push to `main`:
+`.github/workflows/pages.yml`, on demand only since 2026-11-24 (the live site is on Cloudflare Pages, see `docs/HOSTING_CLOUDFLARE_PAGES_PLAN.md`):
 `npm ci` → `npm test` → `npm run build` (`VITE_BASE=/<repo>/`) → `cp dist/index.html dist/404.html`
 → `actions/deploy-pages`. Live: https://formangle.rockstackds.com/ (custom domain: `public/CNAME`, DNS on Cloudflare,
 build with `VITE_BASE=/` and `VITE_SITE_URL=https://formangle.rockstackds.com`). The former
